@@ -1,0 +1,192 @@
+\documentclass[16px]{article}
+\usepackage[utf8]{inputenc}
+
+\begin{document}
+\section{Message Authentication con hash functions}
+Ho mai detto che una hash function può essere usata per msg auth?\\
+Nuovo problema: come usare hash function per msg auth e ci saranno problemi (perché non è quello il purpose per cui è pensata).\\
+Encrytpion non garantisce integrità a meno che si usi un authenticated enrcyption $\Rightarrow$ AEAD algorithms, Authenticated Encryption Associeted data ovvero un algortimo che fa sia encryption e authentication.\\ In TLS 1.3 (la nuova) hanno proibito di usare algoritmi che non abbiamo authentication, quindi sono AEAD.\\
+AES-128 o AES-256 è enrcyption only, AES-GSM o AES-CCM sono auth enrcyption.\\
+\subsection{Message authentication with simmectric key}
+Prendi msg m, computa con una chiave k nota ad entrambi gli end(nota $\Rightarrow $che è pre-shared)
+C'è una funzione che è usata per generare il tag: riceve una size arbitraria e produce un tag di size fissa e possibilmente piccola (non troppo, per birthday paradox).
+Trasmetto msg + il tag, message authentication code aggiunge bytes al msg, c'è dell'overhead in quanto non deve aver infromazione(il msg in se è al massimo livello di entropia).
+Recevier verifica il tag usando la stessa funzione, nota e condivisa, generando il nuovo tag dal msg + chiave k e lo confronta con quello ricevuto.\\
+\subsection{Definizione di sicurezza per Message Authentication Code}
+IND-CPA model definiva la confidenzialità, posso trovarne uno analogo per msg auth?\\
+Sicurezza in integrity vuol dire che l'atk non può essere in grado di creare un nuovo msg o poter modificarne uno; anche se il msg modificato perde di senso è considerata una violazione.\\
+Formalmente, faccio un "gioco" contro l'attaccante:
+\begin{itemize} 
+\item attacker model può essere Known Message Attack o Chosen Message Attack, ovvero attacker può chiedere qualsiasi coppia (msg,tag) precedente
+\item può essere adattivo ovvero che il msg è scelto dopo una analisi della situazione.
+\end{itemize}
+Ora, se l'attacker scegli uno nuovo messaggio m, diverso da quelli del passato per cui ha i tag, non deve poter forgiare il nuovo tag per il msg m.\\
+Formalmente, la probabilità di forgiare una coppia valida deve essere un $\epsilon$(prob dell'ordine di $2^{-100}$):
+\begin{itemize} 
+\item Devo escludere che il tag sia di 1 byte
+\item Non può tirare a caso il tag del msg con scelta puramente random.
+Se fosse di 1 byte $\Rightarrow$ avrei $\frac{1}{256}$, che non va bene, il minimo è almeno 96 bit di tag (meglio 256).
+\end{itemize}
+Differenza cruciale nella scurezza: IND-CPA l'attacker poteva scegliere se il msg era A o B e aveva esattamente $\frac{1}{2}$ possibilità.\\
+Message integrity protegge dal man in the middle? Sì, genero il msg m, produco il tag=F(K,m). L'atk intercetta il mesaggio e vuole cambiarlo: se F è cryptographically strong:\\
+\begin{itemize}
+\item K non può essere computata dal msg e dal tag.
+\item Non posso cambiare il tag in un nuovo tag senza conoscere k, non posso computare tag*=G(K,m*)
+\item Non posso cambiare m in m' così che F(K,m)=G(K,m')$\Rightarrow$ anticollision property.
+\end{itemize}
+Se lo schema è sicuro, allora potrò sempre intercettare un mitm atk.Mitm ha due aspetti:
+\begin{itemize}
+\item networking class: triviale farlo,ARP poisoning, DNS spoofing.\\
+\item Il msg è efficace se posso modificare il msg, non solo cambiare il flow dei msg.
+\end{itemize}
+Un buon algoritmo deve anche proteggere dalla creazione di un nuovo msg: message spoofing$\Rightarrow$ creo un nuovo messaggio in cui metto un ip fake facendoti credere che è quello con cui vuoi comunicare.\\
+Posso risolverlo con un auth mechanism:\\
+Se ogni msg è autenticato: DNS è autenticato in plaintext, come faccio a sapere che è proprio, es. Google.com?\\
+Devo aggiungere qualcosa che mi garantisce che sia Google ad esempio con un tag.(la versione di DNSSec dovrebbe proteggere da questo, ma questo aggiunge complessità alla rete quindi si continua ad usare DNS.)Posso spoofare msg, ma devo conoscere il tag$\Rightarrow$se algoritmo è buono probabilità è un $\epsilon$.\\
+Questo schema NON protegge da un reply attack:\\
+voglio mandare due messaggi, es due transazioni. Produco due msg identici, ma la F si applica alla chiave$\Rightarrow$la F deve essere deterministica (va ricomputata all'altro end)e quindi i tag saranno gli stessi,MAC non è abbastanza.Ma se i messaggi hanno un contenuto diverso: timestamp, num. seq etc.. potrei dire che non ci sono problemi.Ma non è così: l'applicazione dovrebbe essere disegnata senza avere in mente problemi di sicurezza.Il protocollo deve essere sicuro, non mi deve importare dell'applicazione.\\
+Prevengo reply atk: uso le nonces, devo garantire a livello di protocollo che tutti i messaggi siano diversi, aggiungo una nonce ai msg. Computo il tag sul msg+nonce, posso mandare la nonce in chiaro.\\
+\begin{itemize}
+\item Se uso seq num: come gestisco i reboot?Devo prestare attenzione.
+Parto da 0 e vado avanti, però perdo alcuni n° sequenza, come faccio a dire che i pacchetti ricevuti con alcuni buchi in mezzo sono ok? Devo tenere in mente l'utlimo correttamente ricevuto per discriminare reply atk.
+\item Random number, se truly random sono meglio.Non ho probelma del reboot, ma come controllo se pkt è nuovo? Ho un certo n° bit,quindi dovrei tenere tutt la lista de msg precedentemente ricevuti, costo di memoria  e di computazione per il controllo.
+\item Timestamp migliore possibile, ma il tempo deve essere garantito o ho problemi.
+\end{itemize}
+Settare una nonce sembra facile ma non lo è, la maggior parte dei probelmi implementativi è qui.\\
+1° ingrediente:\\
+Hash functions: molto veloci, sono anticollsione se cryptographic. Buoni prodotti:
+\begin{itemize}
+\item SHA-2 family(SHA256, SHA224,SHA384$\Rightarrow$SHA512 troncato, SHA512).
+Nel passsato SHA1 e MD5, MD5 la più comune e famosa funzione hash,oggi tutte e due rotte.
+\item Next: SHA-3 family, sempre gli stessi digest ma con approcci differenti.
+\end{itemize}
+es: in TLS e Ipsec, SSH non troppo serio si usa SHA256, sha256sum fa hashing di file su Linux.\\
+2° ingrediente:\\
+Includo il segreto nell'hashing del messaggio messaggio.
+Facile? Ma dove metto l'auth key nel msg?Lo metto dopo il messaggio: H(M$||$K), o faccio il contrario?\\
+O in altri modi? Ad esempio metterlo sia all'inizio che alla fine etc..Perché me ne preoccupo?\\
+Una funzione hash teorica è una black box, c'è anche definizione per la perfect hash function:\\
+Random Oracle: black box, che preso input X, H(X) = valore truly random, ma che si ripete se X è lo stesso. Ma le due cose non possono coesistere, H(X) deve essere computabile. Nella teoria questo è il modello ideale (come per one time pad) che vorrei avere, ma non posso implementarlo.\\
+Devo vedere nel box:tutte le hash functions (tranne SHA-3, oggi non usate) sono costruite con la costruzione iterative Merkle-Damgard:
+è difficile trovare f tale che: f(any size)$\longmapsto$ fixed size. Ma è possibile trovare f t.c:\\
+f(fixed size)$\longmapsto$ samller fixed size otuput. Compression function, che possono essere molto buone.\\
+es: sha256\\
+prendo msg di k bit, paddo il messaggio in modo che il risultato(compreso i 64bit di lunghezza del messaggio) sia multiplo di 512 bit: se ad esempio la size del mio file è 1025 bit, metto un bit ad 1 seguito da vari zeri, alla fine del msg mette la size del msg come lunghezza modulo $2^{64}$, sono 64 bit (faccio il modulo nel caso in cui lunghezza sia maggiore di $2^{64}$, così che sia di size fissa).
+Ora taglio il msg in chunks di 512 bit: parto con un initialization vector(non crypto) che è noto e fisso, deve poter essere ripetuto. SHA256 prende IV 256bit,diviso in 8 gruppi da 32, è una costante.L'IV fa sì che la funzione di compressione prenda 512(il chunk) + 256(l'IV) = 768 bit di input.Questo perché SHA256 usa aritmetica $\bmod$32 o 64 a seconda dell'architettura.La compression function comprime i 768 bit in 256 bit che è l'hash summary del chunk 1.\\
+Ma ora, se uso questi 256 bit come input per un secondo blocco di compressione, che comprime il chunks 2? SHA256 reitera la stessa funzione di compressione.
+La F è il cuore dell'hash function, theorem di Merkle-Damgard dimostra che se F è resistente, ovvero soddisfa le 3 proprietà di una funzione hash$\Rightarrow$l'intera costruzione è sicura.(la F non deve essere lineare)\\La chiave è trovare una buona compression function, questa prende un input fisso e ridà un output fisso, a questo punto posso usarla iterativamente; l'ultima iterazione mi darà i 256 bit finali.\\
+In che posizione metto il segreto nell'argomento dell'hash fucntion? Prima del messaggio, o dopo, o in altri modi?
+La posizione del segreto conta ed è importantissima:\\
+es: msg di 1GB, segreto 128bit, poi ho pad+length.Messaggio è noto, vedo il tag = hash(msg,k), vado da 0 a $2^{128}$ e faccio H(msg,k$_{x}$)=?tag. Brute force atk devo computare fino al massimo $2^{128}$ hash functions.\\
+SHA256 è white box, so che è costruita iterativamente, il msg è sempre lo stesso: computo i primi blocchi che contengono il messaggio e prenderò l'output precomputato (i 256 bit risultanti), ed ora dovrò computare solo l'ultimo pezzo a partire dal precomputato.Non quindi computare N$\cdot$ $2^{128}$ blocchi, bensì $2^{128}$ $\Rightarrow$ riduco la complessità d un fattore N.\\Se metto il secret all'inizio, posso rompere la forgiability?Posso forgaire un tag valido per un m\textsuperscript{'} scelto da me, partendo da M,tag=H(s,m). Sì è possibile:\\
+triviale forgiare un messaggio autenticato valido
+m' != m.
+Estendo msg, che può anche essere insensato, con una parte di plaintext.\\
+Non posso modificare il msg originale ma non è un problema, inoltre lo faccio senza conoscere il segreto: es. aggiungo una transazione alla fine del messaggio.Aggiungo extra chunks, partendo dal MAC code di prima e genero un MAC extended valido.\\
+Questo è un problema $\Rightarrow$ ho una funzione forte, ma la costruzione rompe tutto (errore tipico della crypto), quindi non si usa mai una funzione non pensata per quel purpose, anche se i purpose sono simili.\\
+La posizione del segreto CONTA TANTISSIMO.\\
+Come fixare il problema:\\
+Hash Based Message Authentication Code (HMAC), che è stata dimostrata essere sicura come l'hash sottostante.\\
+Ho imparato che una secure hash non basta, quindi HMAC aggiunge un modo sicuro di aggiungere segreto nell'hash, non patcho l' hash in se quindi non dipende da come è fatta l'hash.\\
+1996, paper di Bellare, Canetti e Krawczyk con due versioni: crypto e IETR RFC 2104.\\
+Pluggable hash e usando l'HMAC non aumenti il costo computazionale di molto:\\
+HMAC$_{k}$(M)=H(K\textsuperscript{+}$\oplus$opad |H(K\textsuperscript{+}$\oplus$ipad|M)\\
+Il primo pezzo contiene la chiave, i secondo il messaggio. Sembra che sto facendo come prima, ma in realtà sto usando hash del messaggio tra message e secret alla fine. Quindi faccio hash della chiave seguita da hash di message e chiave,come fare 2 volte hash del msg.\\
+Se il segreto K è $<$ della lunghezza di un blocco fai si che sia di pari lunghezza, paddo con zeri, ottengo così K\textsuperscript{+}.Questo è il primo chunk di SHA256.\\Per la sicurezza della costruzione, i due segreti che uso negli hash devono essere diversi: miglior costruzione è la nested MAC construction : H(secret$_{1}$ !! H(secret$_{2}$ !! msg)). Ma chiedere di usare due segreti sarebbe stato un disatro, quindi per praticità non era conveniente lasciare all'implementatore la scelta dei due segreti.\\Soluzione è che produco due segreti dviersi a partire dallo stesso: in entrambi i due risultati flippo bit diversi riseptto all'originale, sembrano quindi due segreti indipendenti(ma non lo sono) ed hanno una distanza larga in termini di bit.\\
+es : k = 01010101, inner: 01010101$\oplus$01011100=K$_{o}$, outer: 01010101$\oplus$00110110=K$_{i}$ (entrambe le sequenze ripetute come serve).\\
+Parto dal msg, aggiungo all'inizio (prefix) K$_{i}$, runno hash function: parto da IV e lo unisco a K$_{i}$ ed ottengo un secret IV.Hash sugli altri chunks, ed ottengo l'inner hash: ho un classico MAC secret prefix, devo mettergli una pezza: prendo l'oueter key K$_{o}$ e faccio hash del singolo blocco (inner hash + pad).\\Ottengo quindi HMAC, che è dimostrato essere una costruzione sicura.\\
+storiella: 2005 md5 broken, tutti gli HMAC tags usavano md5. Thm ti dice che la costruzione è sicura quanto l'hash sottostante: se l'hash è unsecure $\Rightarrow$dovrebbe rompersi anche il meccanismo di HMAC. 2006: non era ancora stato trovato un atck pratico ad HMAC di md5.\\
+Assunzioni: modello math dell'hash function:
+\begin{itemize}
+\item pseudorandom output
+\item anticollision property.
+\end{itemize}
+Entrando nei dettagli, Bellare si rende conto che non usa mai la proprietà 2 e capisce che HMAC è più sicuro dell'hash fuction, finché la properietà 1 non è violata.\\
+Paper del 2006 su collision resistance NON necessaria.\\
+Messaggi importanti:\\
+\begin{itemize}
+\item Confidentiality != integrity
+\item Message authentication with symmetric key
+\item Reply atck: MAC non è abbastanza, servono nonces e vanno gestite bene.
+\item Crypto hash functions
+\item Come includere key nell'hash fuction? Non è triviale, usa HMAC.
+\end{itemize}
+\section{Gestione dell'accesso remoto: RADIUS}
+Tool usato nel backend, Remote Authentication Dial In User Service, obsoleto:\\
+oggi migliori protocolli(DIAMETER) ma ci sono un sacco di problemi quindi è utile studiarlo.\\
+Posso accedere alla rete usando diverse tecnologie, tutte eterogenee fra loro e largamente distribuite. Gestire la rete con tutte queste tecnologie ed access point: uso server centralizzato, RADIUS server che è incaricato di gestire username e password dell'utente, così da evitare la distribuzione all'interno della rete.\\Anche una questione di sicurezza:(di solito in AP: Linux machine con db interni), non lascio username e psw distribuite in giro per la rete.\\Devo cambiare l'authentication model: faccio auth con local technology, RADIUS client che counica con l'utene e col server contatta quest'ultimo ed il server ,manda RADIUS response con un si o no a seconda se l'utente può accdere o meno$\Rightarrow$parte più importante.Il client dice quindi all'utente se può entrare o no(l'utente non sa che sta usando RADIUS).\\
+\subsection{RADIUS: AAA protocol}
+3 servizi di solito eseguiti insieme:
+\begin{itemize}
+\item Authentication
+\item Authorization: da non confondere con Authentication, qui voglio sapere che l'utente ha il permesso di usare il servizio (perché ha pagato o per altri motivi).
+Posso avere 
+\begin{itemize}
+\item authentication senza authorization
+\item authorization without authentication ed avrei un servizio privacy preserving.\\Letteratura scientifica è ricca di tecniche per farlo, ma nel mondo pratico non molto usato.
+\item l'intersezione fra i due.
+\end{itemize}
+Serve per management
+\item Accounting: transmitted bytes (quanti GB sto consumando), billing, minuti di telefonate spese etc..\\Segno cosa stai facendo in termini di una risorsa che stai usando.
+\end{itemize}
+\subsubsection{RADISU è client-server protocol}
+Richiesta parte dal client, non confondere il RADIUS client con l'end user, ovvero il NAS: ho end user - NAS- RADIUS client- Server.\\Basato su UDP/IP porta 1812, client port è ephemeral. Sistema centralizzato, logicamente centralizzato: in teoria ho un singolo server ma in pratica è ridondato (sennò è single point of failure)\\In RADIUS si può usare roaming: se cambio città rispetto a dove sta il server, es. della mia università, dovrei cambiare account, ma quello che accade è che la mia richiesta viene presa dal RADIUS server della città e la inoltra al RADIUS server della mia univeristà, agendo da proxy server.\\Architettura complessa, diversi blocchi:
+\begin{itemize}
+\item Server application
+\item User db: per ogni username ho almeno authentication info, authentication method e authorization attributes
+\item Client db: clients che possono comunicare col server.
+\item  Accounting db: se RADIUS usato per accounting, deve essere aggiornato in real time, per questo separato dal db utente.Non necessario se si fa solo authentication.
+\end{itemize}
+\subsubsection{RADIUS security features}
+Due feature, 1° è
+per packet authenticated reply: NAS non ha le mie credenziali, le manda al server, atck interecetta il messaggio e risponde con un "sì", il NAS ora vede che l'utente è autenticato.Non devo pter spoofare il msg$\Rightarrow$deve essere autenticato, ed è quello che è stato fatto: si usa shared secret, approccio CHAP-like,ma:
+\begin{itemize}
+\item solo la reply è autenticata
+\item l'autenticazione è hash based e non HMAC-based
+\item funzione hash specifica MD5, quando uso una hash function deve essere future-proof, se metto uno specifico crypto algo in un protocollo è male: qualcuno prima o poi lo romperà. Non è semplice andare poi a modificarlo. Il protocollo è una cosa, l'algoritmo di encryption deve essere messo a parte, così da cambiarlo in caso venga violato.
+\item Secret non truly random, ma low-entropy shared key
+\end{itemize}
+2° servizio: user password enrcyptata: se uso PAP, ho la psw in chiaro. Standardizzazione di un meccanismo. Problemi:
+\begin{itemize}
+\item Custom mechanism, non inventare algoritmi per quanto possibile, ma usane uno già esistente. (Non era rotto, però devo considerarlo come possibile vulnerabilità).
+\item Shared secret key usata anche per l'authentication $\Rightarrow$NUN SE FA, anche se non è exploitabile è errato, perché se rompi la chiave rompi più di un servizio.
+\end{itemize}
+\subsubsection{RADIUS authenticated reply concept}
+End user credentials $\Longrightarrow$ manda le credenziali al NAS, RADIUS client e server hanno uno shared secret che è $\neq$ dalle credenziali del utente. NAS parsa le informazioni e le traduce nel RADIUS language, include le credenziali in un pacchetto RADIUS che è un pacchetto UDP/IP che ha:
+\begin{itemize}
+\item ID field: mi permette di matchare una richiesta con la risposta.
+\item Authentication field: nonce di forma strana, è una nonce che mando al server così che il server possa creare un reply message (sì, no go-on se servono più informazioni) e possa autenticare il pacchetto, ovvero il pacchetto deve avere un authentication tag. In message authentication includevo il TAG (che era HMAC di K + content), qui ho una cosa analoga: ho la risposta, il tag si costruisce combinando l'ID, il valore random usato come nonce ed il segreto pre-shared.MAC=H(ID,nonce,secret).\\ Il reply può anche avere authorization, esempio poter permettere accesso per un tempo limitato.
+\end{itemize}
+NAS si tiene in un local db l'associazione ID-nonce(authentication). Faccio un check e se mi torna $\Rightarrow$ sono sicuro che il messaggio mi è arrivato dal server e so che non può essere replicato perché l'auth è fresh per ogni nuovo handshake.Ora NAS passa l'informazione all'end user. È una sorta di challenge-response:
+\begin{itemize}
+\item la challenge è il request authenticator
+\item la risposta include anche,una volta validata, il messaggio di risposta.
+\end{itemize}
+Formato del pacchetto:\\
+IP header | UDP header | RADIUS packet: 
+\begin{itemize} 
+\item byte di codice:
+\begin{itemize}
+\item 1) sì
+\item 2) no
+\item . . .
+\item 3)access challenge: sta per go-on, non inteso come la classica challenge.
+\end{itemize}
+\item 1 byte di identifier
+\item 2 byte di length per il pacchetto
+\item 16 byte di authenticator che deve essere non replyable $\Rightarrow$ unique. Sono 128 bit $\Rightarrow$ $2^128$ possibili authenticator, se fosse realmente truly random, avrei avuto probabilità di collidere proporzionale al birthday paradox (ordine $2^64$). 
+\item Attributi sono triplette di (type,length,value), ogni tipo corrisponde ad un determinato tipo (username, password, framed-MTU, Callback-number)
+\end{itemize}
+Authenticator field: la parte più importante per la sicurezza.Dovrebbe essere unico ed unpredictable per evitare reply attack. Ha due scopi: nell'access request server per authentication mechanism, nella response è sempre di 16 byte ma viene usato per il TAG. TAG è MD5(Code|ID|Length|RequestAuthenticator|Attributes|Secret): qui code è codice di risposta, length è la lunghezza del pacchetto di risposta, attributes sono le triplette. Request Authentication si ottiene dall'access request.\\ Access-request di solito contiene 2 classi di informazioni, uno dell'utente ed uno dell'access service device:
+\begin{itemize}
+\item Username: NAS ha le credenziali, deve mandarle al server
+\item Password dell'utente
+\item Identificatore del RADIUS client, NAS-IP o NAS-identifier
+\item Identificatore della porta a cui l'utente sta accedendo, la NAS-port (se il NAS ha una porta)
+\end{itemize}
+Access-reject: o ho fallito l'autenticazione oppure non ho l'autorizzazione (esempio: non ho pagato)\\
+Access challenge è un go-on message: usato quando server vuole che venga fatto altro: ci sono altri protocolli di autenticazione (esempio: EAP-TLS, EAP-TTLS) in cui devo fare più operazioni, che richiedono più messaggi
+\subsubsection{PPP CHAP support with RADIUS}
+In una situazione normale di challenge handshake ho user, server: server mi da challenge,rispondo e lui mi dice si o no.\\ Nel caso di user | NAS | server:\\
+potrei generare un processo simile, ma se faccio questo devo anche mandare il segnale fisico per far capire che l'utente è attivo: overhead grande, devo "svegliare" l'utente, il NAS deve chiedere la challenge al server e così via.\\ L'utente si sveglia, il NAS genera la quantità random (mi dovrei fidare dell'access point): utente risponde con hash della password e della challenge usando CHAP. Il NAS crea Access-request RADIUS con Username|Risposta della challenge| Chalenge|Servizio....\\ Or il server può verificare se il client è autentico e decidere se dargli accesso o no, manda RADIUS Access accept. Nel caso di protocollo CHAP non uso access-challenge message, uso solo Access-request.\\ Vulnerabilità: messaggio del NAS non è autenticato, l'Access Accept non contiene la tripletta di username o psw, è anche vero che la challenge cambia sempre.NAS non può verificare che la challenge era quella vera. Attacco:\\ prendo il NAS, mando una challenge "1234" e user manda reply"$\alpha\beta\gamma$" NAS manda il pacchetto al server ed ottiene Access Accept.\\L'attacker si finge me: prende il pacchetto che ha generato fingendosi me e sostituisce ai campi dell'auth che il NAS gli ha mandato e la sua risposta alla challenge (che è random,tanto non è importante che sia corretta), a quel punto lo invia al server e non è detto che il server faccia un check per vedere se la challenge che il NAS mi ha dato è fresh o no. Attacco al payload del messaggio: rispondo con una coppia di valori precedenti validi. \\ Dal 1998 anche le richieste diventano autenticate, ma non era una cosa necessaria.\\ Problema: posso fixarlo? Potrei pensare di autenticare reply e request, ad esempio fare HASH(request, reply).
+\end{document}

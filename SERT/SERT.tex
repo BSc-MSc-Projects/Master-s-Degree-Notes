@@ -1,0 +1,122 @@
+\documentclass[18px]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{cases}
+\usepackage{graphicx}
+
+\begin{document}
+\tableofcontents
+\section{Schedulabilità di algoritmi a priorità fissa}
+Algoritmi a priorità dinamica, come EDF, sono ottimali (sotto determinate condizioni): se $\exists$ schedulazione fattibile $\Rightarrow$ anche EDF trova schedulazione.\\ Nessun algoritmo X a priorità fissa può avere un fatto di utilizzazione U$_{X}$ = 1, deve per forza essere $<$ 1.\\ Inoltre RM è ottimale (in senso assoluto, ovvero può raggiungere U = 1) per sistemi armonici con scadenze implicite.\\ In questa condizione RM è tanto buono quanto EDF.\\ DM è ottimale tra gli algoritmi a priorità fissa, ma non in senso assoluto: se $\exists$ algoritmo a priorità fissa che trova una schedulazione fattibile per un insieme di task, allora lo fa anche DM. Questo mi fa capire assegnare priorità fisse ai task,in modo arbitrario, non fa guadagnare nulla rispetto ad assegnarle con un parametro come la scadenza relativa. Algoritmo è altrettanto buono, se non più buono di algoritmi che fissano le scadenze in modo soggettivo, posso realizzare sistemi di task basati su parametri oggettivi e non soggettivi.\\ Corollario: RM è ottimale tra gli algoritmi a priorità fissa per sistemi ti task con scadenza proporzionale al periodo.\\ Mi pongo un problema generale: se ho sys di task generale ed un algoritmo di schedulazione a priorità fissa, come faccio a verificare il sistema, ovvero a certificare che l'algoritmo produrrà sempre una schedulazione valida?
+\subsection{Istanti critici}
+Istanti critici: suppongo che nel sys di task tutti i job abbiano un tempo di risposta piccolo, ovvero ogni job termina prima del rilascio del job successivo del task $\Rightarrow$ ogni job viene rilasciato in un periodo e si conclude entro quel periodo (job potrebbe non rispettare la scadenza, se questa è minore del periodo).\\ L'istante critico è il momento in cui il rilascio del job comporta il massimo tempo di risposta possibile  per quel job.\\ Se almeno un job T$_{i}$ non rispetta la scadenza relativa, l'istante critico è un momento in cui il rilascio di un job provoca il mancato rispetto della scadenza di quel job.\\ Io voglio verificare che tutti i job rispettino le scadenze, sottigliezza della definizione è irrilevante dal punto di vista critico.\\ Teorema: Se ho un sistema di task a priorità fissa e tempi di risposta piccoli, l'istante in cui uno dei job di T$_{i}$  viene rilasciato contemporaneamente ai job di tutti i task con priorità maggiore di T$_{i}$ è l'istante critico di T$_{i}$.\\ Teorema non da condizione necessaria e sufficiente, ma solo sufficiente: se capita tale condizione $\Rightarrow$ ho un istante critico, ma potrei averne altri.\\ esempio : T$_{1}$=(2, 0.6) T$_{2}$=(2.5,0.2), T$_{3}$=(3,1.2).\\ T$_{1}$ ha la priorità massima: tutti i multipli di 2 sono istanti critici.\\ T$_{2}$ ha istanti critici 0 e 10, che sono anche i momenti in cui rilascio job di T$_{1}$, non c'è nessun altro momento in cui c'è rilascio contemporaneo di job di T$_{1}$ e T$_{2}$.\\ T$_{3}$ avrà rilasci in 0, 3, 6, 9: in 0 ho istante critico, 6 e 9 sono critici ma il thm non li evidenzia.\\
+\includegraphics[scale=0.2]{images/SERT1710.png}\\
+Stesso esempio anche se i task non sono in fase: 6 è istante critico, è descritto dal teorema.\\ Quando c'è rilascio in fase, siccome priorità è fissa, la schedulazione prodotta risulta identica a qualsiasi schedulazione non in fase $\Rightarrow$ mi interessa ricondurmi a quando tutti i task sono in fase.
+\subsection{Schedulabilità per priorità fissa e tempi di risposta piccoli}
+Supponiamo che in un sistema ho task a priorità fissa e tempi di risposta piccoli.\\ Ordino i task per priorità decrescente, suppongo siano in fase all'istante t$_{0}$.\\ Ho i task T$_{1}$......T$_{i}$ e mi chiedo il tempo necessario per eseguire tutti i job dei task T$_{1}$......T$_{i}$, nell'intervallo [t$_{0}$, t$_{0}$+t] (t $\leq$ p$_{i}$:\\
+w$_{i}$(t) = e$_{i}$ +  $\sum\limits_{k=0}^{i-1} \lceil\frac{t}{p_{k}}\rceil \cdot e_{k}$.\\ Somma si estende su tutti i task di priorità superiore di T$_{i}$, devo considerarli perché portano via tempo al job di T$_{i}$. Prendo k-esimo task: a t$_{0}$ tutti i task sono in fase, quindi rilascio sicuro un job, quando ne rilascio? Prendo il ceil di $\frac{t}{p_{k}}$,anche job rilasciato nel periodo dopo quello considerato mi ruba tempo; moltiplico tutto per e$_{k}$, il tempo che ci metto per completare i job.\\ Test di schedulabilità: dati job T$_{1}$......T$_{i}$, in fase a t$_{0}$ con priorità decrescenti con T$_{1}$......T$_{i-1}$ effettivamente schedulabili. Il task T$_{i}$ può essere schedulato nell'intervallo di tempo [t$_{0}$, t$_{0}$+D] se $\exists$ t $\leq$ D$_{i}$ tale che w$_{i}$(t) $\leq$ t. IL mio scopo è sempre quello di verificare la schedulabilità del sistema, se ne trovo uno non schedulabile la mia analisi è finita, non ci faccio nulla col sistema di task.\\ Applicazione: ho T$_{1}$......T$_{n}$ con priorità decrescenti. \\Considero un task alla volta: $\forall$ task T$_{i}$  calcolo il valore della funzione di tempo necessario w$_{i}$(t) per tutti i valori t $\leq$D$_{i}$ tali per cui t è un multiplo intero di p$_{k}$ per k $\in$ \{1,2....,i \}.Funzione w$_{i}$(t) sale a gradini, devo considerare valori per cui tale funzione cambia valori.\\ Se per almeno uno dei valori t vale che w$_{i}$(t) $\leq$ t allora T$_{i}$ è effettivamente schedulabile. Altrimenti il test fallisce, ovvero n job di T$_{i}$ potrebbe mancare la scadenza, ovvero la manca sicuro se c'è un rilascio di tutti i job in fase dei task di priorità superiore e tutti quei task hanno un tempo di esecuzione pari al loro worst-case.\\ Possono esserci casi fortuiti, quindi in ipotesi rilassate il test non conferma schedulabilità ma scheduler riesce, però il risultato non è rilevante.\\Tanto vale fermarsi e riprogettare il sistema.\\
+esempio: T$_{1}$=(3,1), T$_{2}$=(5,1.5), T$_{3}$=(7, 1.25), T$_{4}$=(9,0,5) e considero le funzioni di tempo necessario:\\
+\includegraphics[scale=0.3]{images/SERT1710_1.png}\\
+Grafico per l'esempio precedente, ho la bisettrice del 1° quadrante, dire che w$_{i}$(t) è $\leq$ t vuol dire che w$_{i}$(t) sta sotto la bisettrice. La funzione è a scalini, non ha senso calcolarla, la applico nel periodo tra 0 e la fine del periodo.In T$_{2}$ la funzione sale sopra la bisettrice, ma non è importante: devo verificare che sia sotto in un certo momento, se fosse sempre sopra non sarebbe schedulabile.\\ Ogni volta che c'è rilascio di un task a priorità superiore $\Rightarrow$ ho gradino nella funzione di tempo necessario.\\
+\includegraphics[scale=0.2]{images/SERT1710_2.png}\\
+\subsection{Massimo tempo di risposta}
+Massimo tempo di risposta W$_{i}$ di T$_{i}$ è il più piccolo valore prima della scadenza relativa t.c : t=w$_{i}$(t). Se l'equazione non ha soluzioni $\leq$ a D$_{i}$, allora qualche job di T$_{i}$ mancherà la scadenza relativa.\\ Uso un algoritmo:\\
+\begin{itemize}
+\item $t^(1)$ = e$_{1}$ in prima approssimazione
+\item  Sostituisco nella funzione ed ottengo un nuovo valore $t^(k+1)$ = w$_{i}$($t^(k)$)
+\item continuo ad iterare finché: 
+\begin{itemize}
+\item $t^(k+1)$ = $t^(k)$ e $t^(k)$ $\leq$ D$_{i}$ $\Rightarrow$ W$_{i}$ = $t^(k)$
+\item $t^(k)$ $\geq$ D$_{i}$ e allora sono fuori scadenza
+\end{itemize}
+\end{itemize}
+Ma dato che caso peggiore sono task in fase e dato che ho tutti i parametri sono noti, non sarebbe più facile provare a simulare la schedulazione? Sì, ma ci sono dei fattori che non ho considerato e che mi impediscono di simulare, esempio:
+\begin{itemize}
+\item Non è possibile determinare facilmente il worst case
+\item Il worst case cambia da task a task
+\item È difficile integrare nella simulazione altri fattori che possono essere considerati estendendo il test di schedulabilità.
+\end{itemize}
+In ogni caso, sia simulare il test che il test di schedulabilità stesso hanno la stessa complessità.
+\subsubsection{Task periodici con tempi di risposta arbitrari}
+Considero ora task con tempi di risposta arbitrari, che implica che: 
+\begin{itemize}
+\item Un job non deve necessariamente prima che il job successivo dello stesso task sia eseguito
+\item è possibile che D$_{i}$ $\geq$ di p$_{i}$
+\item Ci possono essere nello stesso istante più job di uno stesso task in attesa di essere eseguiti.
+\item Un job rilasciato contemporaneamente a tutti i job dei task con priorità maggiore non ha necessariamente il massimo t. di risposta possibile.
+\end{itemize}
+Assumo sempre che i job di uno stesso task hanno vincoli di precedenza impliciti fra di loro, ovvero sempre eseguiti FIFO.\\ Analizzo task per task: considero T$_{i}$ (i precedenti sono schedulabili). Ho insieme task $\tau_{i}$=T$_{1}$....T$_{i}$ con priorità decrescente. \\Definisco un intervallo totalmente occupato di un livello $\pi_{i}$ un intervallo (t$_{0}$, t$_{1}$] tale che:
+\begin{itemize}
+\item all'istante t$_{0}$ tutti i job di $\tau_{i}$ rilasciatiti prima di t$_{0}$ sono stati completati
+\item All'istante t$_{0}$ un job di $\tau_{i}$ viene rilasciato.
+\item L'istante t$_{1}$ è il primo istante in cui tutti i job di $\tau_{i}$ rilasciati a partire da t$_{0}$ sono stati completati
+\end{itemize}
+È possibile che in un intervallo totalmente occupato il processore sia idle o esegua task non di $\tau_{i}$? No: se fosse idle, l'intervallo terminerebbe prima, non può neanche eseguire task di priorità inferiore, quindi non può eseguire task al di fuori di $\tau_{i}$\\
+esempio: T$_{1}$, T$_{2}$, T$_{3}$.\\ Intervalli di T$_{3}$ non sono lunghi uguale, questo perché i rilasci di T$_{3}$ non sono in concomitanza con T$_{1}$ e T$_{2}$, posso dire che l'intervallo a lunghezza massimo quando i rilasci di tutti i task sono in fase.\\ Test di schedulabilità generale per tempi di risposta arbitrari è ancora basato sul caso peggiore, la differenza rispetto al test per tempi piccoli è che il primo job rilasciato contemporaneamente agli altri potrebbe non avereil massimo tempo di risposta.\\ Idea : $\forall$ T$_{i}$ analizzo tutti i suoi job eseguiti nel primo intervallo totalmente occupato di livello $\pi_{i}$. \\ Come determino l'intervallo totalmente occupato: 
+\begin{itemize}
+\item Inizio determinato dal rilascio dei primi job (in fase) dei task $\tau_{i}$=\{T$_{1}$, ...., T$_{i}$\}
+\item Lunghezza massima calcolata risolvendo iterativamente t = $\sum\limits_{k=1}^{i}\lceil\frac{t}{p_{k}}\rceil \cdot e_{k}$. Molto simile alla funzione di tempo necessario, dico che aumento t fino a che non trovo il valore dato dalla sommatoria, ovvero il primo t per cui il lavoro necessario per compiere tutti i task permette di eseguire tutti i task rilasciati nell'intervallo [t$_{0}$, t$_{0}$+t] 
+\end{itemize}
+Quindi si procede nel seguente modo:
+\begin{itemize}
+\item Considero i task \{T$_{1}$, ...., T$_{i}$\} con priorità $\pi_{1}$ $<$ $\pi_{2}$....$<$ $\pi_{i}$, considero un task T$_{i}$ alla volta cominciando da quello con la massima priorità, ovvero T$_{1}$
+\item Il caso peggiore per la schedulabilità di T$_{i}$: assumere che i task $\tau$ $_{i}$ = \{T$_{1}$, ...., T$_{i}$\} sono in fase.
+\item Se il primo job di tutti i task in $Tau_{i}$ termina entro il primo periodo del task $\Rightarrow$ decidere se T$_{i}$ è  schedulabile si effettua controllando se J$_{i,1}$ termina entro la scadenza tramite la funzione di tempo richiesto w$_{i,1}$ := w$_{i}$(t)
+\item Altrimenti almeno un primo job di $Tau_{i}$ termina dopo il periodo del task, calcola la lunghezza $t^L$ dell'intervallo totalmente occupato di livello $\pi_{i}$ che inizia da t = 0.
+\item Calcolo i tempi di risposta massimi di tutti i job di T$_{i}$ dentro l'intervallo totalmente occupato che sono $\lceil$ $\frac{t^L}{p_{i}}$ $\rceil$; il primo l'ho già calcolato.
+\item Decido se questi job sono schedulabili dentro l'intervallo totalmente occupato. Uso un lemma:\\
+Il tempo di risposta massimo W$_{i,j}$ del j-esimo job di T$_{i}$, in un intervallo totalmente occupato di livello $\pi_{i}$ in fase è uguale al minimo t che soddisfa l'equazione t = w$_{i,j}$(t+(j-1)$\cdot$ p$_{i}$) - (j-1)$\cdot$ p$_{i}$, con w$_{i,j}$(t) = j$\cdot$e$_{i}$ + $\sum\limits_{k=1}^{i-1}\lceil\frac{t}{p_{k}}\rceil \cdot e_{k}$.\\ Aggiungo un j che moltiplica e$_{i}$, devo verificare l'equazione nei punti multipli.\\ 
+\end{itemize}
+esercizio:
+T$_{1}$ = ($\phi_{1}$,2,1,1), T$_{2}$ = ($\phi_{2}$,3,1.25,4), T$_{3}$ = ($\phi_{3}$,5,0.25,7)\\ Parto verificando T$_{1}$: \\w$_{1}$(t) = w$_{1,1}$(t) = e$_{1}$ = 1 = D$_{1}$. Quindi è sicuramente schedulabile . \\T$_{2}$:\\
+w$_{2,1}$(2) = e$_{1}$ + e$_{2}$ = 2.25 $>$ 2, quindi non va bene. Vado avanti: \\
+w$_{2,1}$(3) = 2$\cdot$e$_{1}$ + e$_{2}$ = 3.25 $>$ 3. Non va ancora bene, proseguo: \\
+w$_{2,1}$(4) = 2$\cdot$e$_{1}$ + e$_{2}$ = 3.25 $\leq$ 4 $\leq$ $D_{2}$ quindi T$_{2}$ è schedulabile, ma ha completato oltre il periodo $\Rightarrow$ non posso più considerare tempi piccoli, devo considerare gli intervalli totalmente occupati, uso l'equazione iterativa:\\
+$t^(1)$ = e$_{1}$ + e$_{2}$ = 2.25, sostituisco nella sommatoria,ed ottengo $t^(2)$ = 2$\cdot$e$_{1}$ + e$_{2}$ = 3.25, $t^(3)$ = 2$\cdot$e$_{1}$ + 2$\cdot$e$_{2}$ = 4.5, $t^(4)$ = 3$\cdot$e$_{1}$ + 2$\cdot$e$_{2}$ = 5.5, $t^(5)$ = 3$\cdot$e$_{1}$ + 3$\cdot$e$_{2}$ = 5.5 $\Rightarrow$ $t^(4)$ = $t^L$, ovvero intervallo totalmente occupato di livello 2 è 5.5.\\ Ora calcolo quanti job di T$_{2}$ ci sono in (0, 5.5] = $\lceil$ $\frac{t^L}{p_{2}}$ $\rceil$ = 2.\\ Veridico il secondo job di T$_{2}$:\\
+w$_{2,2}$(3) = 2$\cdot$e$_{1}$ + 2$\cdot$e$_{2}$ = 4.5 $>$ 3, no\\
+w$_{2,2}$(4) = 2$\cdot$e$_{1}$ + 2$\cdot$e$_{2}$ = 4.5 $>$ 4, ancora no.\\
+w$_{2,2}$(3) = 3$\cdot$e$_{1}$ + 2$\cdot$e$_{2}$ = 5.5 $\leq$6 $\leq$ $p_{2}$+$D_{2}$=7, quindi accetto il task.\\ Ora devo capire  se posso accettare T$_{3}$, e considerare l'intervallo totalmente occupato di lvl 3:\\ 
+$t^(1)$ = e$_{1}$ + e$_{2}$ +e$_{3}$ = 2.5\\
+$t^(2)$ = 2$\cdot$e$_{1}$ + e$_{2}$ +e$_{3}$ = 3.5\\
+$t^(3)$ = 2$\cdot$e$_{1}$ + 2$\cdot$e$_{2}$ +e$_{3}$ = 4.75\\
+$t^(4)$ = 3$\cdot$e$_{1}$ + 2$\cdot$e$_{2}$ +e$_{3}$ = 5.75\\
+$t^(5)$ = 3$\cdot$e$_{1}$ + 2$\cdot$e$_{2}$ + 2$\cdot$e$_{3}$ = 6\\
+$t^(6)$ = 3$\cdot$e$_{1}$ + 2$\cdot$e$_{2}$ + 2$\cdot$e$_{3}$ = 6 = $t^L$\\
+\# job di T$_{3}$ nell'intervallo (0,6]: $\lceil$ $\frac{t^L}{p_{3}}$ $\rceil$ = 2. Considero i  singoli job:\\
+w$_{3,1}$(2) = e$_{1}$ + e$_{2}$ + e$_{3}$ = 2.5 $>$ 2, no.\\
+w$_{3,1}$(3) = 2$\cdot$e$_{1}$ + e$_{2}$ + e$_{3}$ = 3.5 $>$ 3, no.\\
+w$_{3,1}$(4) = 2$\cdot$e$_{1}$ + 2$\cdot$e$_{2}$ + e$_{3}$ = 4.75 $>$ 4, no.\\
+w$_{3,1}$(5) = 3$\cdot$e$_{1}$ + 2$\cdot$e$_{2}$ + e$_{3}$ = 5.75 $>$ 5, no.\\
+w$_{3,1}$(6) = 3$\cdot$e$_{1}$ + 2$\cdot$e$_{2}$ + e$_{3}$ = 5.75 $\leq$ 6 $\leq$ D$_{3}$ = 7. Posso accettare il job\\\\
+w$_{3,2}$(5) = 3$\cdot$e$_{1}$ + 2$\cdot$e$_{2}$ + 2$\cdot$e$_{3}$ = 6 $>$ 5, no.\\
+w$_{3,2}$(6) = 3$\cdot$e$_{1}$ + 2$\cdot$e$_{2}$ + 2$\cdot$e$_{3}$ = 6 $\leq$ 6 $\leq$ p$_{3}$ + D$_{3}$ = 12 Accetto il job, e quindi il task.\\ Tutti i task sono schedulabili a prescindere dai loro task.\\ 
+\subsection{Condizioni di schedulabilità}
+Il test di schedulabilità generale determina se insieme di task è schedulabile o no, considerando worst case che è task in fase.\\ Ho dei limiti:
+\begin{itemize}
+\item Devo conoscere tutti i periodi, le scadenze ed i tempi d'esecuzione. Per validazione è necessario, ma no per implementazione di scheduler a priorità fissa. Se voglio aggiungere un task dovrei conoscere parametri che in fase di progettazione del sw non servono.
+\item Il risultato ottenuto non è valido se il task varia periodo, scadenza o tempo di esecuzione.
+\item È computazionalmente costoso, poco adatto per scheduling on-line.
+\end{itemize}
+Cerco di trovare delle condizioni di schedulabilità, confronto il test con la condizione, che è molto più semplice da calcolare e che può essere applicata anche se alcuni parametri non sono noti (esempio: condizione di EDF).\\ Mi chiedo se $\exists$ condizione di schedulabilità per algoritmi a priorità fissa:\\ Condizione di Liu-Layland: sistema $\tau$ di n task indipendenti ed interrompibili con scadenze relative uguali ai rispettivi periodi può essere effettivamente schedulato su un processore in accordo con RM se il suo fattore di utilizzazione U$_{\tau}$ è $\leq$ a U$_{RM}$(n) = n$\cdot$($2^{\frac{1}{n}}$-1)\\ Questo è il fattore di utilizzazione di RM, se considero: $\lim_{n \to \inf}$ U$_{RM}$(n) = ln2, ovvero RM in generale garantisce di rispettare le scadenze pur di non caricare il processore per più del 69.3.\\ Ho un criterio per adottare RM negli scheduler real-time.\\ esempio:\\ T$_{1}$ = (1,0.25), T$_{2}$ = (1.25,0.1), T$_{3}$ = (1.5,0.3), T$_{4}$ = (1.75,0.07), T$_{5}$ = (2,0.1). U$_{\tau}$ = 0.62 $\leq$ 0.743 = U$_{RM}$(5) $\Rightarrow$ è schedulabile con RM.\\ IL sistema T$_{1}$ = (3,1), T$_{2}$ = (5,1.5), T$_{3}$ = (7,1.25), T$_{4}$ = (9,0.5) ha fattore di utilizzazione U$_{\tau}$ = 0.867 $>$ 0.757 = U$_{RM}$(4),  forse non schedulabile.\\ È condizione sufficiente, difatti l'esempio 2 era quello precedente che è schedulabile se applico la funzione di tempo necessario.\\ L'alternativa a questo risultato è il test iperbolico: Un sistema $\tau$ di n task indipendenti ed interrompibili con scadenze relative uguali ai rispettivi periodi può essere effettivamente schedulato su un processore RM se $\prod\limits_{k=1}^{n}(1 + \frac{e_{k}}{p_{k}})$ $\leq$ 2.\\ SI applica anche questo conoscendo solo fattore di utilizzazione dei task. \\ Correlazione con condizione di Liu-Layland: se gli n task hanno tutti lo stesso rapporto $\frac{e_{k}}{p_{k}}$ vuol dire che ciascun di questi usa una porzione uguale del processore. \\ Si può dimostrare che se questo è vero allora, assumendo u$_{k}$ = $\frac{U_{\tau}}{n}$:\\
+$\prod\limits_{k=1}^{n}(1 + \frac{e_{k}}{p_{k}})$ $\leq$ 2 $\Leftrightarrow$ U$_{\tau}$ $leq$ n$\cdot$($2^{\frac{1}{n}}$-1). \\Se questo non è vero, esistono casi in cui il test iperbolico è soddisfatto, ma la condizione di Liu-Layland no; non esiste invece mai il viceversa.\\
+\subsection{Test per sottoinsiemi di task armonici}
+So che ,in generale RM è schedulabile se è soddisfatta condizione di Liu-Layland, ma so anche che su task armonici è ottimale. Suddivido insiemi di task in sottoinsiemi di task armonici fra loro.\\ Condizione di Kuo-Mok: se sistema $\tau$ di task periodici, indipendenti ed interrompibili con p$_{i}$ = D$_{i}$ può essere partizionato in n$_{h}$ sottoinsiemi disgiunti Z$_{1}$,....,Z${n_{h}}$, ciascuno dei quali contiene task semplicemente periodici, allora il sistema è schedulabile con RM se:\\
+$\sum\limits_{k=1}^{n_{h}}U_{Z_{k}}(n_{h})$ oppure se $\prod\limits_{k=1}^{n_{h}}(1+U_{Z_{k}})$ $\leq$ 2.\\ Se un sistema ha poche applicazioni molto complesse, è possibile migliorare la schedulabilità rendendo i task di ciascuna applicazione semplicemente periodici.\\ Esempio: 9 task con periodi 4,7 ,7 , 14, 16, 28, 32, 56, 64, fattore di utilizzazione di Liu-Layland è U$_{RM}$ = 0.720\\ Considero i multipli di 2 e 7 e partizionando in due sottoinsiemi ottengo U$_{Z_{1}}$ + U$_{Z_{2}}$ $\leq$ U$_{RM}$(2) = 0.828.\\\\ Il fattore di RM è in generale U$_{RM}$(n), ma posso farlo diventare pari ad 1 per task semplicemente periodici.\\ Miglioro U$_{RM}$(n) considerando quanto i periodi dei task sono vicini ad essere armonici:\\
+X$_{i}$ = log$_{2}$p$_{i}$ - $\lfloor$ log$_{2}$p$_{i}$ $\rfloor$ e $\zeta$ = max$_{1 \leq i \leq n}$X$_{i}$ - min$_{1 \leq i \leq n}$X$_{i}$\\ Considero il valore frazionario del log$_{2}$ e prendo tutti i task, di cui faccio differenza tra max e min di questi scarti decimali.\\ Teorema: nelle ipotesi della condizione di Liu-Layland, il fattore di utilizzazione di RM dipende dal numero di task n e da $\zeta$ è: 
+U$_{RM}$(n, $\zeta$) =
+\begin{itemize}
+\item (n-1)$\cdot$($2^\frac{\zeta}{(n-1)}$-1) + $2^{(1-\zeta)}$-1  se $\zeta$ $<$ 1 - $\frac{1}{n}$
+\item U$_{RM}$(n)
+\end{itemize}
+Quando si verifica il caso $\zeta$ = 0? Quando p$_{i}$ = K$\cdot$ $2^{x_{i}}$; non è vero il contrario\\
+Variante: schedulabilità per scadenze arbitrarie. Se per qualche task la scadenza è più grande del periodo il limite è valido? Sì, però la formula è "pessimista": forse è possibile trovare valori di soglia superiori a U$_{RM}$.\\ Se invece per qualche task il periodo è più grande della scadenza non posso applicare Liu-Layland.\\ Teorema:	\\
+Un sistema $\tau$ di n task indipendenti, interrompibili e con scadenze D$_{i}$ = $\delta$p$_{i}$ è schedulabile con RM se U$_{\tau}$ è $\leq$ a:
+U$_{RM}$(n, $\delta$) =
+\begin{itemize}
+%\begin{cases}
+\item $\delta$(n-1)$\cdot$($\frac{\delta+1}{\delta}^{\frac{1}{(n-1)}}$ - 1)  per $\delta$ = 2,3,.....
+\item n($2\delta^{\frac{1}{n}}$-1) + 1 - $\delta$ per 0.5 $\leq$ $\delta$ $\leq$ 1
+\item $\delta$ per 0 $\leq$ $\delta$ $\leq$ 0.5
+%\end{cases}
+\end{itemize}
+\end{document}
