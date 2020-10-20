@@ -2,6 +2,171 @@
 \usepackage[utf8]{inputenc}
 
 \begin{document}
+\tableofcontents
+\section{Introduzione-warm up example}
+Il problema spesso è che una buona crittografia è applicata male alla risoluzione di un problema.esempio: paper che discute di una tecnica di sicurezza ed in cui viene matematicamente provata la sicurezza.\\ Basata sul meccanismo del One Time Pad: ho il mio plain text e voglio criptarlo in modo che non si capisca cosa ci sia scritto. Genero una sequenza random di bit, di lunghezza pari alla lunghezza del testo. Una volta ottenuta la chiave, computo lo XOR fra la chiave ed il plaintext ed ottengo il mio ciphertext.\\ Il seguente meccanismo è il migliore possibile per fare enrcyption.\\ Per decriptare applico il procedimento inverso, facendo sempre l'XOR, infatti: b $\oplus$ 1 = $\overline{b}$ $\oplus$ 1 = b.\\ Devo però fare delle assunzioni:
+\begin{enumerate}
+\item Per ogni nuovo messaggi, devo usare una diversa chiave. Questo perché, se ripetessi la chiave avrei il peggior meccanismo di enrcyption: se ho due messaggi M$_{1}$ ed M$_{2}$, ed ottengo C$_{1}$ = M$_{1}$ $\oplus$ K e C$_{2}$ = M$_{2}$ $\oplus$ K, ora facendo C$_{1}$ $\oplus$ C$_{2}$ = (M$_{1}$ $\oplus$ K) $\oplus$ (M$_{2}$ $\oplus$ K) = M$_{1}$ $\oplus$ M$_{2}$ (in quanto K $\oplus$ K si elide).Conoscendo uno dei due messaggi posso ricavare l'altro.
+\item La chiave deve essere lunga quanto il plaintext
+\item La chiave deve essere veramente random, e non pseudorandom.
+\end{enumerate}
+L'algoritmo introdotto sopra è chiamato Vernam Cipher, ed è il miglior meccanismo di enrcyption possibile.\\ Il problema nel metterlo in pratica è che la chiave deve essere nota sia a chi produce il messaggio, sia a chi lo riceve, quindi va trasmessa su un canale sicuro. Se le dimensioni della chiave cominciano a diventare considerevoli, ad esempio per 2GB di plaintext devo avere 2GB di chiave, il costo d'invio al receiver diventa oneroso.\\ Quando si parla di sicurezza, non bisogna chiedersi come rendere il sistema sicuro, ma da cosa devo difendermi, di cosa è capace l'attaccante.\\ OTP protegge la confidenzialità, ma non garantisce l'integrità.\\ Le 3 proprietà che posso/voglio garantire sono:
+\begin{itemize}
+\item Confidenzialità: proteggo i dati da persone esterne,che non possono leggere il contenuto senza una chiave
+\item Integrità: voglio che i miei dati rimangano inalterati
+\item Aviability: mi proteggo, ad esempio da DDoS
+\end{itemize}
+Nel caso di OTP, l'integrità non è garantita: se un avversario prende il mio messaggio e lo cambia,ad esempio flippando alcuni byte (Man in the middle attack) non riesco a rendermene conto; l'avversario ha agito sul testo cifrato, senza interessarsi del,contenuto.
+\section{Encryption}
+Servizio di sicurezza che vuole proteggere la confidenzialità dei dati, non protegge però l'integrità. Si parte dal plaintext $\longrightarrow$ encryption $\longrightarrow$ cipher text $\longrightarrow$ invio $\longrightarrow$ decryption $\longrightarrow$ plaintext.\\ Servono delle chiavi per potere de/criptare, per ora mi concentro sul meccanismo della symmetric key: sia sender che receiver usano la stessa chiave. Il cipher sarà il mio algoritmo per criptare e decriptare:\\
+C = ENC(K,P) D = DEC(K,C).
+\subsection{Esempi storici di cipher}
+Un primo esempio può essere quello di sostituire le lettere del plaintext con altre lettere, in maniera reversibile ovvero se a $\longrightarrow$ b, non posso avere c $\longrightarrow$ b.\\ Posso decriptare in maniera veloce? Vedo la frequenza delle lettere di una lingua, ad esempio l'italiano, e saprò quali lettere compaiono più spesso in un plaintext, inoltre posso avere delle parole con delle ripetizioni interne.\\ Procedo per tentativi, nel momento in cui deduco una lettera, la associo ad una più o meno probabile.\\ Posso inoltre ricavare la chiave usata per criptare.\\ Il metodo è storico (me pare addirittura lo usavano i romani sotto Cesare),  quindi fortemente sconsigliato.
+\subsection{RFID mutual authentication}
+Vernam cipher è il miglior meccanismo, ma ha delle forti implicazioni. Considero una situazione reale:\\ ho un TAG, ed un reader presso cui devo autenticarmi. Il TAG ha lo scopo di provare al reader che l'utente è davvero reale, ma anche il reader dovrebbe dimostrare di essere sicuro; voglio quindi che l'autenticazione sia mutua.\\ Ho un segreto S, scritto ad esempio in una mia carta d'autenticazione e quando mi approccio al reader mi devo identificare. Ho due probelmi:
+\begin{itemize}
+\item La trasmissione avviene su un canale wireless, se poi la trasmissione è in chiaro un attacker può captare e rubare S
+\item Se il reader è falso, ora conosce il mio segreto S
+\end{itemize}
+Vorrei poter autenticarmi senza mostrare il segreto S esplicitamente, uso uno schema:\\ il TAG ha un segreto S,statico, ed una chiave temporanea k. Invece di trasmettere S, invio k $\oplus$ S al reader, che avrà un database in cui ha il segreto salvato e la chiave k. Il reader riesegue quindi lo XOR e vede se il risultato coincide con quello che gli ho inviato io. La prossima chiave sarà generata dal reader a partire da k, quindi con un meccanismo pseudorandom. Provo ad usare un former analyzer, che mi garantisce che il sistema è sicuro (software che prova a crackare il meccanismo di encryption). Sono realmente sicuro?\\ Ho l'operazione k $\oplus$ S, k è pseudorandom e posso avere due situazioni:
+\begin{enumerate}
+\item S è la chiave: sto violando la proprietà 1, in quanto riuso S più volte per messaggi diversi
+\item k è la chiave: se faccio (S $\oplus$ k$_{i}$) $\oplus$ (S $\oplus$ k$_{i+1}$) = k$_{i}$ $\oplus$ k$_{i+1}$. Non ho violato il sistema, ma ho la combinazione delle due chiavi, che sono pseudorandom: ho x $\oplus$ f(x) (PNRG(x)), x dipende da f(x), quindi posso fare un ciclo fino al valore massimo, controllo se z$_{i}$ = x$_{i}$ $\oplus$ PNRG(x$_{i}$), alla fine ricaverò k$_{i}$.
+\end{enumerate}
+Il microfono non può essere risolto in alcun modo, le assunzioni erano errate, quindi:
+\begin{itemize}
+\item Former analyzers non sono una certezza, bisogna comunque verificare che l'assunzione è corretta
+\item Random e pseudorandom sono completamente diversi
+\end{itemize}
+\subsection{Sicurezza di un cipher}
+Un cipher è sicuro quando:
+\begin{itemize}
+\item protegge la confidenzialità
+\item nasconde i messaggi
+\item non può essere violato
+\end{itemize}
+Ma questa definizione è una supercazzola (serio, così ha detto il prof a lezione e così scrivo io negli appunti), e anche altre definizioni sono brutte e sbagliate.
+Un cipher può essere sicuro per un determinato attacco che vuole svelare il contenuto, ma non sicuro per un altro che vuole vedere solo parte delle coppie plaintext-ciphertext.\\ Ad esempio un chosen plaintext attack permette di vedere sia plaintext che ciphertext, voglio essere robusto quantomeno a questo tipo di attacco.\\ Definizione di semantically secure o IND-CPA, ovvero Indistinguishability Under Chosen Plaintext Attack. \\ esempio: ho due messaggi, M$_{0}$ ed M$_{1}$, suppongo di poter criptare solo uno dei due. \\ Permetto all attacker di mandarmi i due messaggi ed io scelgo a caso quale dei due criptare con un coinflip. Mando indietro il messaggio cifrato all'attaccante: in condizioni normali l'attacante può facilmente decriptare il messaggio, se usassi un cipher non semantically secure, ma ora entra in gioco IND-CPA $\Rightarrow$ l'attaccante ha una probabilità del 50\% di ottenere il messaggio corretto, ovvero deve scegliere a caso fra i due.I sistema sarà semantically secure se l'avversario non può risolvere questa situazione: ha a disposizione un oracolo, che gli fornisce l'encryption dei due messagi, quindi se uso un meccanismo di encryption sostitutivo (vedi esempio de Giulio Cesare) $\Rightarrow$ GAME OVER. Ora uso una chiave random (esempio Vernam Cipher): allo stesso plaintext corrispondono ciphertext diversi, quindi l'oracolo non può fornire il risultato esatto all'attaccante. L'unico modo che ha per vincere è di tirare ad indovinare, quindi con un coinflip.\\ L'encryption deve essere random, perché se una sotto stringa si ripete non deve corrispondere allo stesso ciphertext. Lo XOR è random: \\
+bit segreto $\oplus$ bit random\\
+bit segreto: 0 = p, 1 = 1-p\\ 
+bit random: 0 = $\frac{1}{2}$, 1 = $\frac{1}{2}$\\
+Avrò quindi: \\
+\begin{table}
+\begin{tabular}{||c c c c||}
+\hline\hline
+bit segreto & bit random & XOR & probabilità \\
+\hline
+0 & 0 & 0 & $\frac{p}{2}$\\
+\hline
+0 & 1 & 1 & $\frac{p}{2}$\\
+\hline
+1 & 0 & 1 & $\frac{(1-p)}{2}$\\
+\hline
+1 & 1 & 0 & $\frac{(1-p)}{2}$\\
+\end{tabular}
+\end{table}
+Quindi il Vernam ciper è perfettamente random: l'avversario vede solo il cipher text, quindi può indovinare 0 o 1 con probabilità: $\frac{p}{2}$ + $\frac{(1-p)}{2}$ = $\frac{1}{2}$.
+Vernam cipher è però teorico e nella pratica si usano altri cipher, divisi in categorie:
+\begin{itemize}
+\item stream cipher: un mimic di Vernam cipher, usa un algoritmo pseudorandom usando lo XOR, il più famoso era RC4, oggi si usano Salsa20 e ChaCha20.
+\item Block cipher: il più usato è AES, usano una tecnica diversa
+\item Block cipher in stream mode: AES-CTR, il block cipher genera una chiave pseudorandom e poi usa uno stream cipher.
+\end{itemize}
+\subsection{Stream cipher}
+L'obbiettivo è quello di approssimare One Time Pad: invece di usare una chiave random, uso una chiave di 128 bit come seed per uno stream di bit pseudorandom, che sarà il keystream.\\ Usa poi lo XOR, la chiave è più corta e viene incrementata con il keystream: l'algoritmo pseudorandom è progettato ad hoc, non è il classico pseudorandom. La differenza cruciale con OTP è che la chiave è generata a partire da una chiave k piccola, quindi posso trasmettere k al receiver facilmente. Ma se k è sempre la stessa ho un problema, ovvero encrypto sempre con la stessa key di base. Se una sottostringa si ripete, avrò ciphertext diverso (la periodicità del sistema pseudorandom deve essere molto lunga), ma per lo stesso messaggio ho lo stesso ciphertext, in quanto l'algoritmo pseudorandom  deterministico. Vorrei comunicare la chiave una volta per tutte senza doverla cambiare (come avviene in Wi Fi access point), ho una chiave k piccola ed un keystream lungo, ma non sono IND-CPA.
+\subsubsection{Initialization vector}
+Ho un plaintext che voglio cifrare, mando un messaggio alla mia NIC in modo che lo encrypti con un algoritmo di tipo stream cipher. La NIC ha una chiave k a lungo termine e quando riceve il messaggio genera una quantità dinamica,che è l'initialization vector (IV); questa quantità può essere truly random. Il seed sarà generato giustapponendo la chiave k all'IV, che mi fornirà il keystream, ovviamente l'IV deve essere diverso per ogni messaggio. Come comunico all'altro end l'IV? Lo mando in chiaro con il messaggio, se lo strem cipher è buono non posso determinare il messaggio a partire dall'initialization vector. Ora il receiver può riprodurre il keystream: fa lo XOR e decripta il messaggio ricevuto; l'ipotesi fondamentale è che il PRNG sia buono.\\ Ho la prova di essere semantically secure se l'IV non si ripete.
+\subsubsection{Case study: WEP 802.11}
+Wired Equivalent Privacy, standardizzato nel 1997-1999 dagli stessi progettisti di Wi-Fi. Aveva 3 obbiettivi:
+\begin{itemize}
+\item confidenzialità: proteggere i pacchetti da qualcuno di esterno alla rete, uso dell'algoritmo stream cipher RC4 (poi scoperto vulnerabile, ma è n'altra storia).
+\item integrità: il pacchetto non doveva essere modificato lungo il tragitto.
+\item: autenticazione: voglio che qualcuno possa entrare nella rete solo tramite delle credenziali.
+\end{itemize}
+\subsubsection{RC4}
+Algoritmo PRNG specifico, usato per generare il keystream. Oggi è considerato debole, ma comunque WEP avrebbe avuto gli stessi problemi anche se fosse stato buono.\\ ENC(KEY,MSG) = MSG $\oplus$ RC4(KEY,IV)\\ L'IV va generato per ogni frame e deve essere diverso per ognuno di essi, inoltre lo stream cipher deve essere sincronizzato in un canale che ha perdita. L'IV viene trasmesso in chiaro, se lo stream cipher è buono è buono non ho problemi. WEP è sicuro se l'IV non si ripete, altrimenti userei la stessa chiave e non avrei semantic security.\\ In Wi-Fi è "semplice" attaccare con Chosen Plaintext Attack o Known Plaintext Attack, anche se non conosco i messaggi ma li vedo in XOR posso ricavare qualcosa, l'IV è quindi cruciale e in WEP furono commessi due errori:
+\begin{itemize}
+\item La taglia era di 24 bit, molto piccola: circa 16.7 milioni di encryption diversi, se assumo 1500 byte di trama, con 7 Mbps di thoughput $\Rightarrow$ riciclo dopo appena 8 ore.
+\item L'implementazione fu lasciata libera $\Rightarrow$ COSA DA NON FARE MAI, MAIIIII M A I (MAI PIÙÙÙÙÙÙÙÙÙÙ NON NOMINARE MIA MADRE CIT*), potrebbero metterci tutti 00..0 se non leggono la specifica.
+\end{itemize}
+Inoltre, conviene generare l'IV random o in maniera sequenziale? Se lo genero random, ho il 50\% di probabilità di avere un duplicato dopo circa 4000 frame (birthday paradox).Meglio quindi sceglierli in serie, però sono suscettibile ad un attacco: se il router viene spento e riacceso, la sequenza riparte da 0. L'attacker può catturare i messaggi, rebootare di nuovo e fare un Chosen Plaintext Attack, ricreando la sequenza degli IV.\\ Il reboot dovrebbe prevedere un seed sempre diverso, ma qui il generatore è PRNG.\\ L'attacker può quindi creare un dizionario:\\ per ogni IV avrà il corrispondente keystream = RC4(IV,K), così da poter usare la coppia per attaccare (manda un contenuto noto ed una volta ricevuta la risposta ricava MSG $\oplus$ keystream $\oplus$ MSG ed ottiene il keystream).\\ Se RC4 è buono, non deve essere possibile ricavare una entry del dizionario avendo tutte le restanti. Un altro attacco può consistere nell'aspettare che l'IV si ripeta.
+\subsubsection{User authentication}
+Autenticazione: mostrare davvero chi sei. Non va confusa con l'identificazione, con cui fornisco nome cognome etc..., l'autenticazione è la prova che controllo la mia identità digitale.\\ Non è semplice definire l'autenticazione, molti siti difatti permettono di creare ad esempio mail che non mostrano il mio nome e cognome e quindi questo non mi identifica, ma voglio comunque che l'account sia usato da una sola persona.\\ Metodi di autenticazione:
+\begin{itemize}
+\item Metodo "base": una password, un pin, chiave segreta etc...
+\item device fisici: smart card, token digitali, hardware non clonabile.
+\item biometrics: impronta digitale, retina etc...
+\item behavioural authentication: registrazione vocale, hand writing etc...
+\end{itemize}
+In WEP non fu prevista l'autenticazione di ogni singolo utente. L'obiettivo era quello di riuscire ad autenticare un gruppo di persone che potessero entrare nella rete. L'idea: chi sta nella stessa rete può essere visto dagli altri, quindi usa los etsso meccanismo di enrcyption.\\ Il grant di accesso era dato solo a chi aveva una password comune, pre-distribuita. Come provare l'autenticazione: non posso inviarla in chiaro (sono in Wi-Fi), quindi in WEP venne introdotto un meccanismo che prevedeva di effettuare delle operazioni sulla password; il risultato non doveva dare informazioni sulla password.\\ Meccanismo: conosco k, l'access point mi manda una challenge ed io gli fornisco un encryption della challenge e della password.Per ogni nuovo utente devo usare una challenge diversa, può seere una stringa in plaintext, in WEP era di 128 bit. Una volta ricevuta la risposta, l'AP decriptava e se il risultato era la k dava l'accesso.Tecnica symmetric key, buona? Sì, trovo in un libro scritto da gente top nel settore che mi descrive esattamente questa tecnica, se la challenge è random e senza ripetizioni sono al sicuro.\\ In WEP non è così,anzi l'autenticazione aiuta a violare la confidenzialità: come detto sopra, posso effettuare un Known Plaintext Attack per creare un dizionario IV | keystream = RC4(K,IV). Quello che vedo nel messaggio è chipertext = plaintext $\oplus$ keystream, devo conoscere il plaintext. WEP fornisce la possibilità di un KPA con l'autenticazione: CT $\oplus$ challenge = RC4(k, IV) = keystream. L'approccio è corretto, ma viene riusata la stessa chiave per cifrare la challenge ed i messaggi. La challenge inoltre è in plaintext $\longrightarrow$ nota $\longrightarrow$ Known Plaintext Attack.\\ Attacker si finge l'access point ed inviando challenge false costruisce il dizionario, una volta ottenuto il keystream (user mi manda challenge $\oplus$ keystream, io ho la challenge, faccio $\oplus$ ed ottengo il keystream) posso usarlo per criptare la challenge successiva e ottenere l'accesso.\\ L'autenticazione era certificata come robusta, ma l'implementazione non lo era, inoltre l'IV era lasciato all'implementatore $\Rightarrow$ MAI FARLO.\\ Il fix fu di far scegliere sia la challenge che l'IV all'acces point, ma in ogni caso essendo l'IV corto si sarebbe ripetuto.
+\subsection{Integrità}
+Per l'integrità, l'idea fu quella di utilizzare CRC-32, il controllo a lvl2, come integrity check. Non è certo però che funzioni, ma l'attacker vedrà solo il ciphertext, quindi anche se il CRC-32 non è buono è protetto dall'encryption: assunzione errata. Confidenzialità non garantisce integrità. CRC-32 è lineare rispetto allo XOR: se faccio CRC32(A) e CRC(32) di B (con A e B due messaggi diversi) fare CRC32(A $\oplus$ B) = CRC32(A) $\oplus$ CRC32(B). Inoltre, lo XOR era proprio usato per l'encryption $\Rightarrow$ deadly. Ogni messaggio può subire modifiche o injection: \\
+ho un plaintext M di, cui l'attacker vuole flippare 3 bit, ho CRC32(M), ed ho M $\oplus$ RC4(K,IV). Produco un messaggio $\delta$ che è uguale ad M, ma con i 3 bit che voglio flippare pari ad 1, computo CRC32($\delta$), prendo il precedente ciphertext e ne faccio lo XOR con il mio:\\
+keystream $\oplus$ M $\oplus$ $\delta$ | keystream$_{2}$ $\oplus$ CRC(M $\oplus$ $\delta$) (per linearità dello XOR).\\ Ho un nuovo messaggio valido (nelle ipotesi che $\delta$ sia pari ad M), quindi posso eseguire un Man in the middle attack.\\
+Dopo WEP ci fu 802.11 in cui il protocollo è WPA (anche WPA2 con AES), venne inoltre eseguita una patch firmware a RC4:
+\begin{itemize}
+\item IV a 48 bit
+\item protezione dell'IV
+\item etc...
+\end{itemize}
+Morale: rivolgersi ad un esperto di crittografia.
+\section{Autenticazione in generale}
+Le password sono deboli, faccio una panoramica per capire se una password è hard o no. Autenticazione: provo che ho una password, che per ora ritengo analoga ad un segreto (in pratica: un segreto è una stringa random). Se ho 4 bit, ho $2^4$ possibilità, quindi la probabilità di indovinare al primo tentativo è $\frac{1}{2^4}$.\\ Una password è una stringa con meno entropia: se ho una password di N bit, la probabilità di indovinare al primo tentativo è $>>$ di $\frac{1}{2^N}$.\\ Ho 4 problemi maggiori:
+\begin{itemize}
+\item password overload: gli utenti tendono a riutilizzare le password su più siti
+\item restricted charset: 1 byte = 8 bit, quindi 256 possibili combinazioni, ma da tastiera ne ho circa 100.
+\item low entropy: la password non è del tutto random, in quanto va comunque memorizzata.
+\item predictability: spesso le password sono associate alla vita reale
+\end{itemize}
+\subsection{Password overload}
+Nel 2018, in USA, uno studio ha rivelato che ogni persona ha circa 130 account nel web: il 38\% degli utenti riutilizza la stessa password su più siti. Se scopro una password di un account, posso usarla per accedere su altri siti $\Rightarrow$ cross site break.\\ Il 21\% degli utenti modifica la propria password, ma le modifiche sono predicibili, inoltre il 46.5\% delle password si cracka con 100 tentativi.
+\subsection{Restricted charset}
+Se ho un segreto di 8 byte, quindi 64 bit, ogni byte ha 256 diverse possibilità, quindi la probabilità di guess al primo tentativo è $\frac{1}{256^8}$. È un numero elevato? \\ Una macchina "ordinaria" può effettuare 66 milioni guess/secondo, quindi il tempo medio per crackare la password è di circa 4431 anni: 1.8x$10^19$ tentativi totali, divido per il numero di guess/secondo e divido per 2 (per fare una media), converto in anni.
+Le password però non hanno 256 possibilità per ogni byte, inoltre alcune usano solo lettere lower case, o al più numeri. Anche se vengono introdotti numeri e lettere upper case/simboli, spesso vengono messi in posizioni predicibili (es: all'inizio, alla fine, nel mezzo). \\ Sto considerando un attack brute force offline, in quanto proteggere un web server sarebbe possibile, ade sempio bloccando l'accesso dopo il 3° attempt fallito.
+\subsection{Low entropy}
+Ci sono dei tool dell'information theory che misurano la randomness. Le password non sono quasi mai random. Come misuro la randomness: Shannon entropy:
+Entropia H(X) = $-\sum\limits_{i}p_{i}log_{2}(p_{i})$, considero p $>$ 0, inoltre il segno meno serve perché essendo p $\leq$ 1, il log mi da un valore negativo.\\ La quantità viene misurata in bit. esempio: un coinflip di una moneta equiprobabile ha H(X) = $-2 \cdot (\frac{1}{2} \cdot log_{2}(\frac{1}{2}))$ = 1.\\ Per il dado ho $-6 \cdot (\frac{1}{6} \cdot log_{2}(\frac{1}{6}))$ = 2.58. Per un random byte ho $-256 \cdot (\frac{1}{256} \cdot log_{2}(\frac{1}{256}))$ = $log_{2}(256)$ = 8, ma questo solo se i bit sono davvero random, altrimenti ho un valore minore di 8.\\ L'information value di x$_{i}$ dipende da quanto x$_{i}$ è inatteso: minore è la probabilità di un certo evento e più sono sorpreso, l'information content è quindi = $\frac{1}{p_{i}}$.\\ $-log_{2}(\frac{1}{p_{i}})$ è una traslazione della probabilità in bit, ad esempio $\frac{1}{4}$ diventa 2 bit. L'information content è misurata quindi come $-log_{2}(\frac{1}{p_{i}})$.\\ Definisco l'entropia come l'average dell'information content degli x$_{i}$: H(X) = E[IC(X)] = $\sum\limits_{i}p_{i}IC_{i}$ = $-\sum\limits_{i}p_{i}log_{2}(p_{i})$.\\ Entropia: misura quantitativa per vedere quanto un evento random è predicibile, se pari ad 8 ho un byte perfettamente random, se è 0 è deterministico. Se N = $2^b$ possibili outcome allora b = $log_{2}(N)$, se l'entropia è pari a b, non posso predire. esempio: una moneta truccata con $\frac{1}{4}$ $\frac{3}{4}$ ho entropia pari a 0.81 $<$ 1, quindi è predicibile.\\ Conseguenze: quando trasmetto un bit, trasferisco una quantità minore di informazione, posso comprimere di (1-quantità)\% un file.\\
+esempio: genero 3 bit random, ho entropia pari a $\frac{1}{3}$, ma se ci sono dipendenze? Ad esempio se solo il primo è un coinflip e gli altri due sono deterministici, ad esempio prendono il valore del primo ho entropia = 1. Non conta quindi la lunghezza della stringa, bensì la randomness.\\ Nel 1950, Shannon misurò l'entropia di un testo (in inglese), mostrando che il linguaggio naturale è molto predicibile:\\
+le lettere che comparivano nel testo non erano equiprobabili, quindi l'information content della singola lettera non è 4.71 (ovvero non ho probabilità di $\frac{1}{26}$ $\Rightarrow$ $-log_{2}(\frac{1}{26}$). Nota la prima,l'entropia della seconda etc... sono in un certo modo predicibili, ogni lettera inglese ha nella migliore condizione 1.3 di information content e 0.6 nella peggiore. Ogni lettera ha un contributo $\simeq$ 2, e quindi generando una password avrò un entropia di circa 2 bit invece di 8.\\ Se ho 10 lettere random:\\
+tempo di crack se puramente random = $2^{4,7 \cdot 10}$ = $2^{47}$ attempts, mentre nel caso di password "umana" ho $2^{2 \cdot 10}$ = $2^{20}$ attempts; perdo un fattore $2^27$ $\simeq$ 134 milioni, quindi molto meno robusta.
+\subsection{Predicibilità-Dictonary attack}
+In realtà, non serve nemmeno fare un brute force attack, ma si possono usare parole note. Faccio un dictionary attack: scelgo una serie di parole comuni in una lingua e faccio try su queste parole.\\ Se riesco a recuperare un set pubblico di password dal web quello brutto e cattivo costruisco il mio dizionario, che può anche essere mirato al singolo individuo (so nomi di familiari, date di nascita, gusti etc...).Gli attacchi funzionano sia online che offline, dove la forza dipende dalla potenza dell'hardware e dalla randomness della password.\\ Alcune statistiche:
+\begin{itemize}
+\item 25\% delle password è del tipo 123456..., posso pensare anche ad un password sparying: prendo una passowrd e la provo su più account di diverse persone, in verticale (può essere molto efficace).
+\item 26\% delle password sono di 6 byte, ne vanno usati almeno 16.
+\end{itemize}
+\section{Autenticazione password-based vs autenticazione challenge-handshake}
+Dopo aver esaminato le password, vorrei un protocollo che mi permetta di usarle per autenticarmi. Ricordo che l'autenticazione è la prova di conoscere un segreto, senza dover per forza rivelarlo. Ho alcune alternative:
+\begin{itemize}
+\item PAP: mostro la password in chiaro
+\item CHAP: alcune informazioni leakate
+\item ZPK: nessuna informazione leakate (crypto forte), molto complessi e poco usati nella realtà 
+\end{itemize}
+\subsection{PAP}
+Il protocollo di autenticazione più semplice possibile: mando la password in chiaro, one way authentication. L'utente manda la sua password (insieme allo user id)ad un autenticatore, che fa un check nel DB in cui per vedere se ha una entry user id | password.\\ La password è pre-shared, ma la sto mandando in chiaro e se vengo intercettato è GAME OVER (se il canale permette eavesdropping, se è cablato sono leggermente più sl sicuro).\\ Inoltre non ho nessuna protezione da reply attack: se vengo intercettato, subito dopo l'attaccante può fingersi me, se non enrypto con un algoritmo semantically secure e se non ci sono limiti nel poter ripetere l'autenticazione; inoltre non permetto mutual authentication.\\ Il messaggio PAP è suddiviso in campi specifici a seconda del server a cui mi devo autenticare, se ad esempio ho server PPP: i campi sono espressi in ASCII ed ogni campo ha una semantica, me la studio, prendo il  pacchetto e scopro tutte le info.
+\subsection{CHAP}
+L'authenticator mi manda una challenge, a cui rispondo con un messaggio contente il mio user id + hash(challenge,password,etc).Proof of knowledge: computazione di un segreto/password, mando una f(password) per dimostrare che la conosco. La funzione deve avere due proprietà:
+\begin{itemize}
+\item la computazione non deve rivelare il segreto, quindi non devo poter computare $f^{-1}$
+\item la funzione f non deve poter essere replicata da un attaccante.
+\end{itemize}
+L'authenticator mi manda una challenge ogni volta nuova, ovver una nonce. Lo user risponde con userID ed una funzione di challenge, key, etc...(parametri opzionali). La funzione deve rispettare le due proprietà, l'authenticator la ricalcola, dopo aver preso dal db la password corrispondente allo userID ricevuto; la funzione deve quindi essere deterministica.\\ Se la challenge è fresh non sono suscettibile a reply attack, inoltre la password non è inviata in chiaro.\\ La funzione può essere una hash function crittografica.\\ In CHAP è l'autenticatore che controlla tutto il processo: potrebbe accadere che un'attacker potrebbe intercettare la mia sessione kickarmi, sostituendosi a me. Per prevenire ciò, in CHAP è possibile far si che l'authenticator rimandi la challenge periodicamente, per accertare l'autenticità dell'utente. Tutto ciò in PAP non è possibile, ma il grande svantaggio di CHAP è che le password devono essere salvate in chiaro nel db.
+\subsection{Hash function}
+Funzioni crittografiche di base. Prende qualcosa in input e la riduce in polvere in maniera che sia incomprensibile ed irreversibile. Se ho un messaggio di lunghezza X, Y=H(X) è detto digest ed ha una taglia fissa; H(X) dovrebbe essere abbastanza semplice da poter essere computata su ogni X.\\ Non è sempre detto che le funzioni hash sia crittografiche, alcuni esempi di funzioni non crittografiche:
+\begin{itemize}
+\item 4 bit parity vector checksum: prendob blocchi da 4 bit e metto un bit di parità sui blocchi. La size del digest (ottenuto giustapponendo i bit di parità) è sempre pari a 4, e la funzione non è invertibile, in quanto l'inversa non è unica
+\item modula checksum: spezzo in chunk di interi (valori $\in$ [0,..9]) il mio messaggio, li sommo e ne faccio il mod1000.
+\item call center control: devo autenticarmi con username e password, mi richiedono un pin ma non lo mando tutto, bensì solo specifiche cifre.
+\end{itemize}
+Ogni hash function, anche non crittografica, non è invertibile.\\ Un hash function crittografica prende il testo e lo comprime in un digest di dimensione fissa, ma ha un importante proprietà: anche piccoli cambiamenti producono digest completamente diversi.Deve cercare di approssimare al meglio la generazione di una stringa random.Nel caso di funzioni hash non crypto, un cambiamento minimo è abbastanza prevedibile.\\ Un attaccante non deve in alcun modo ricreare l'hash digest: nel caso di non-crypto hash, cambiando i bit posso ottenere un messaggio diverso che mi fornisce lo stesso digest $\Rightarrow$ collisione. L'attacker non dovrebbe essere in grado di poter ricreare o modificare il messaggio così da ottenere il digest originale. Devono valere 3 proprietà:
+\begin{enumerate}
+\item Perimage resistance (one-way property): dato y=digest, deve essere computazionalmente difficile trovare X tale che H(X)=Y. Proprietà più forte del non invertibile, la computazione non deve poter essere ricavabile, anche se ho infiniti emssaggi che generano lo stesso digest.\\ Corollario: per essere one-way la lunghezza del digest deve essere grande, non devo potervi fare brute force attacko crypto-analysis.
+\item Weak collision resistance: dato X, è computazionalmente difficile trovare un X', che sia diverso da X, e tale per cui H(X) = H(X').esempio: sono un giudice di un tribunale, ho un hard disk su cui ci sono delle prove, lo do ad un esperto per analizzarlo. Come posso essere sicuro che le prove non siano inquinate? Computo l'hash dell'hard disk e lo metto ar pizzo (lo scrivo su un pizzino magari), così che se qualcuno inquina le prove gli do la sedia elettrica, perché vale questa proprietà e non può produrre modifiche tali per cui l'hash è lo stesso.
+\item  Strong collision resistance: ci sono funzioni che sono solide per la proprietà 1 ma non per la 2? Sì, ad esempio se considero Y= f(x) = $g^xmodp$: g è dato, p è un numero primo molto grande. Se ad esempio so che 321475 = $3^x$, riesco a ricavare x? Sì, ho che x = log$_{3}$321475, ma se aggiungo il $modp$ non posso più farlo, non è facile computare l'inversa sotto determinate condizioni. Ma non rispetto la proprietà 2: se ho un X, mi basta sommare k$\cdot$(p-1) per trovare lo stesso risultato; la funzione sembra difficile, ma non rispetta le proprietà.\\ Con la strong collision resistance voglio che sia impossibile trovare una qualunque coppia X$_{1}$, X$_{2}$ che collida.
+\subsection{Paradosso del compleanno e dimensione del digest}
+Voglio vedere come rispettare la strong collision resistance. Considero il birthday paradox: ho k=23 persone in una stanza, voglio associare a ciascuno un hash fatto sul loro giorno+mese di nascita. Probabilità che non ci siano collisioni tra uno dei k e gli altri k-1: $(\frac{364}{365})^{22}$ = 94.1\%. Ma qual'è la probabilità che non ci siano collisioni tra tutti i k: 1 $\cdot$ (1-$\frac{1}{365}$)..... $\cdot$ (1-$\frac{22}{365}$) $\simeq$ 49.3\%. Quindi la probabilità di collidere è il complementare, ovvero 1-0.493 = 0.507 = 50.7\%. esempio: ho n bit di digest, N = $2^n$ diversi risultati. Considero k messaggi:\\ P(no collisioni) = 1-p = $\frac{\frac{N!}{(N-k+1)!}}{N^k}$ = $\frac{N}{N}$ $\cdot$ $\frac{N-1}{N}$ $\cdot$ $\frac{N-2}{N}$ ..... $\cdot$ $\frac{N-k+1}{N}$ $\simeq$ (1 - $\frac{1}{N}$) $\cdot$ (1 - $\frac{2}{N}$) ....... $\cdot$ (1 - $\frac{k-1}{N}$) = $\prod\limits_{i=1}^{k-1}(1 - \frac{i}{N})$.\\ Nelle ipotesi di N grande, 1-i $\simeq$ -i $\Rightarrow$ $\frac{-i}{N}$ $\simeq$ $e^{-\frac{i}{N}}$, quindi ho $\simeq$ $\prod\limits_{i=1}^{k-1}e^{-\frac{i}{N}}$, ma questa è uguale alla somma degli esponenti $\Rightarrow$ $e^{-\sum\limits_{i=1}^{k-1}\frac{i}{N}}$. Ho inoltre che $\sum\limits_{i=1}^{k-1} i$ è la somma di Gauss = $\frac{k \cdot (k-1)}{2}$ e quindi ho $e^{-\frac{k \cdot (k-1)}{2}}$ $\simeq$ $e^{-\frac{k^2}{2N}}$, approssimando k-1 a k. Questa è la probabilità di non avere collisioni: 1-p = $e^{-\frac{k^2}{2N}}$ da cui ln(1-p) = $-\frac{k^2}{2N}$ $\Rightarrow$ k = $\sqrt[2]{-2N \cdot ln(1-p)}$ $\Rightarrow$ k = $\sqrt[2]{2N \cdot ln(\frac{1}{1-p})}$. Quindi all'aumentare del numero di messaggi k, aumenterà la probabilità di collidere. L'obbiettivo è capire quanti messaggi devo raccogliere per avere il 50\% di probabilità di collidere:\\
+$\sqrt[2]{N}$ $\cdot$ $\sqrt[2]{ln(\frac{1}{1-\frac{1}{2}})}$ = $\sqrt[2]{N}$ $\cdot$ $\sqrt[2]{2}$ $\sqrt[2]{ln2}$ $\simeq$ 1.177$\sqrt[2]{N}$ $\simeq$ $\sqrt[2]{N}$. Siccome N = $2^n$, avrò k = 1.117 $\cdot$ $2^{\frac{n}{2}}$ $\simeq$ $2^{\frac{n}{2}}$. Se la RAND fosse una perfetta hash function: con 32 bit avrei 4.5 miliardi possibili output, e devo raccoglierne solo 60k per avere una collisione.\\ Per md5, con k = 1.8 $\cdot$ $10^{19}$ = $2^64$ oggi è considerato weak, mentre per SHA256 ho 3.4 $\cdot$ $10^{38}$.
+\end{enumerate}
 \section{Message Authentication con hash functions}
 Ho mai detto che una hash function può essere usata per msg auth?\\
 Nuovo problema: come usare hash function per msg auth e ci saranno problemi (perché non è quello il purpose per cui è pensata).\\
