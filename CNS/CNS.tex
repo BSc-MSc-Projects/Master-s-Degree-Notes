@@ -475,4 +475,65 @@ Whitebox pentesting: alcuni siti usano nell'URL  uno SHA256(emailuser, rand()), 
 \item AAA protocol non dovrebbe implementare un meccanismo proprio, inoltre non includere algoritmi nell'algoritmo.
 \end{itemize}
 Attualmente: DIAMETER per migliorare RADIUS.
+\subsection{AAA evolution: beyond RADIUS}
+Quando parto da una soluzione, meglio cambiare poco.\\ RADIUS deployato anni fa, oggi RADIUS è standard de facto per AAA, spesso anche usato in Wi-FI, supporto universale per i device vendors.\\ Buon protocollo, ma con limitazioni funzionali:
+\begin{itemize}
+\item scalability: quando fu deployato c'era pochi utenti, ma ora sono molti. UDP è unreliable, potrei avere problemi di loss
+\item diversità nelle tecnologie di accesso: prima dial up, ora Wi-Fi, 3G,4G etc..., devo supportare tutte: type|len|value era non sufficiente, 1 byte di type troppo poco.\\ Lista di possibili estensioni: più di 256 combinazioni, servono più byte di type.
+\item interoperabilità: issue importante, ho un server central, ma non è realmente centralizzato (solo logicamente centralizzato), ho delle repliche ed è distribuito.\\ Tutti i server considerati proprietari, quindi difficile avere interoperabilità.
+\end{itemize}
+Nota di scalabilità: mando RADIUS request e RADIUS accept una volta per connessione, quindi traffico è irrilevante per la scalabilità. esempio: ho NAS a 48 porte, ogni 20 minuti ho in media una nuova combinazione: $\frac{1}{20}$ $minuti^{-1}$ ma $\cdot$ 48 = 2 call/minuto. Ma se numero di NAS aumenta, tipo a 10000: 400 request/secondo. Dopo access request ho anche accounting request e delivery $\Rightarrow$ traffic può arrivare a diversi Mbps, quindi se scalo può diventare difficile da gestire, potrei avere problemi di packet loss.\\ Quando dimensiono un sistema, di solito uso average load, ma non si considerano casi speciali: esempio, ho un crash e il device si reboota. Tutti i device rebootati mandano peek traffic: posso avere molta perdita, RADIUS non scala bene per colpa di UDP, ora serve reliability e quindi TCP o meglio.
+\subsection{IETF evolution}
+\begin{itemize}
+\item Diameter: iniziato nel 1998, ora completato. Attività mosse in DiME(Diameter, Mainteinence, and Extensions WG).\\ AP a casa: PPPoE/PPPoA: protocolli per patchare la possibilità di far girare PPP su ethernet o ATM, doveva durare poco, ma attualmente alcuni lo usano ancora.
+\item RADext: path a RADIUS, usato fino a che Diameter fosse diventato mainstream.
+\end{itemize}
+RADIUS: molto lavoro già fatto, pesanemente integrato, standard de facto. Diameter: protocollo nuovo, più potente e scelta perfetta per nuovi scenari.\\ Li tengo entrambi: lavoro duplicato ma è conveniente a livello di business, se qualcosa va male in Diameter ho backup che è RADIUS.
+\subsubsection{DIAMETER}
+Simile ad """un object-oriented "protocol design" """ (non dirlo alle persone), ho classe base da cui derivo classe derivata. Primo protocollo inventato come OO: DIAMETER non è un AA protocol, ma un protocollo di messaging/signaling generico a lvl applicativo.Definisco il DIAMETER base protocol: ho le primitive per supportare messaging/signaling transport.\\ Definisco il protocollo per trasportare i messaggi, lo faccio in un altra classe base che è AAA Transport profile(SCTP, TCP-based), deve essere reliable.\\ Ora derivo le specializzazioni: creo una applicazione DIAMETER differente per ogni uso necessario:
+\begin{itemize}
+\item DIAMETER mobile IPv4 app: per muovere IP
+\item DIAMETER NAS app: questo è per il purpose di RADIUS.
+\item DIAMETER credit control app
+\item DIAMETER EAP app
+\item DIAMETER SIP app
+\end{itemize}
+Nella base: tecniche per keep alive server, load balance etc.., eredito le proprietà e specializzo per lo specifico porpuse dell'applicazione.
+\subsubsection{DIAMETER improvements}
+SCTP: perché TCP può non essere buono.\\ esempio: ho un NAS che deve parlare col server AAA. Quando arriva connessione, devo settare comunicazione, NAS manda request al server. La voglio reliable: soluzione base è setuppare TPC connection per ogni connessione: devo fare il 3-way handshake, mando il pacchetto e poi aspetto ack e mando il FIN. Tutto st'accrocco per un singolo pacchetto.\\ Non faccio TCP conn per ogni connessione. Uso una singola connesisone TCP per gestire tutti pacchetti: implemento multithreaded server: ho due thread, uno di questi si blocca. Vorrei poter gestire il secondo pacchetto, ma TCP fa consegna ordinata, quindi non posso creare gap nel protocollo: TCP mi da tutto in ordine, è uno dei goal. Ho un flow multiplo embeddato in una singola connessione TCP e quindi in un singolo flow.\\ Vorrei una connessione reliable che porta stream differenti, e vorrei un protocollo che garantisce che tutti i pacchetti nello stream siano letti nel giusto ordine, ma non di avere ordine fra gli stream: se il primo stream si blocca, vorrei bypassarlo e leggere il secondo. Effetto Head of the line blocking: anche se ho uno switch ad alta capacità, l'effetto impatta sulle performance.\\ Secondo problema di TCP: ho un NAS, per reliability ho una interfaccia ethernet, ma posso averne una di backup, ad esempio di backup (in altra tecnologia) così da garantire continuità. Ma l'IP address delle due connessioni è diverso e TCP socket usa la 4-pla: quindi se link fallisce devo inizializzare una nuova connessione (MPTCP lo risolve), vorrei supportare multi-homing: manage più IP address.\\ SCTP (Stream Control Transport Protocol) da queste due garanzie, protocollo migliore per canale di signaling dove trasmetto più flussi di dati. \\ storiella: perché se funziona così bene uso ancora TCP: chicken/egg problem. Standardizzazione bloccata dopo gli anni 2000, ad esempio anche IPv6. Problema dell'Internet Ossification: 1980/1990, con design spirit di Inernet che era End-to-end principle: nella rete telefonica originale, intelligenza nei device centrali, edge stupidi, in Internet la maggior parte dell'intelligenza ai bordi.\\1995-1998-2000: web, avvento di device più intelligente, NAT primo device necessario per far fronte al lack di device alla rete,  ma poi firewall, media converter ed altra roba messa sopra. Tutta una serie di middle boxes. Anche device come TCP accelerators, performance enanchements, etc... "intelligent devices". Arriva un nuovo protocollo: SCTP, comincio a connettere siti distanti, ma siccome traffico gira su questi device che lo reputano non noto, viene bloccato.\\ Servono middle boxes per supportarlo, ma i produttori lo fanno solo se l'evidenza mostra che è usato, ma come cazzo ti mostro che è usato se mi blocchi il traffico. Ora software networking: middleboxes diventano software e sono controllabili, 5G è rete softwarizzata.\\
+\begin{itemize}
+\item Reliable transport: uso SCTP, senno TCP se non posso
+\item Standardizzazione in caso di errore: se server fallisce, come migrare verso altro server. DIAMETER: standard per scoprire queste situazioni:
+\begin{itemize}
+\item duplicate detection
+\item controllo di ritrasmissioni a livello applicativo
+\item fallimento di peer. DIAMETER è protcol p2p, server può startare comunicazione esplicitamente con NAS.
+\end{itemize}
+\item pacchetti PING-like per testare se il device è attivo o no.
+\item Estensione dei limiti funzionali: header di RADIUS era corto, quello di DIAMETER è più complesso:  
+\begin{itemize}
+\item length di 3 byte
+\item 3 byte comando ma anche ID per la specifica applicazione.\\ Id del pacchetto serve per matchare request-response, lo scenario nel mondo reale non è solo point-to-point: ho multi-hop, ogni pacchetto averà un ID specifico. Non so se voglio matchare comunicazione globale o locale, quindi DIAMETER introduce due identificatori:
+\begin{itemize}
+\item Hop-by-hop ID
+\item End-to-end ID
+\end{itemize}
+\item altri flag: NAS può rispondere o far partire la comunicazione, sono in p2p: devo identificare se pacchetto è request o response, uso flag R, flag P sta per proxable e permette di specificare se il pacchetto può essere modificato da un proxy, flag E: messaggio di errore, flag T: messaggio potenzialmente ritrasmesso. esempio: \\ mando un pacchetto, non ricevo answare e retx. Ricevo risposta: se server era bloccato temporaneamente, potrebbe rispondere di nuovo: uso T flag, così da darti avvertimento.
+\item AVPs: i vecchi T|L|V triplets, ora chiamati attribute,value,pairs. Codice , lunghezza e attributo ma anche altro: metto vendor ID che dice che il linguaggio non è di DIAMETER, ma è customizzato.4 byte di AVP code, perché uno era troppo poco.\\ Flags:
+\begin{itemize}
+\item V: vendor specific
+\item M: sono NAS e supporto DIAMETER v4.2.1, server DIAMETER v3.9.8, NAS vuole usare un attributo della nuova versione, che server non ha. Ricevo packet, con attributo che non comprendo: se l'attributo è importante, non posso skipparlo. Conviene droppare packet e dire al NAS di non aver capito. M serve per dire di rimandare indietro, perché le info non comprese sono mandatory.
+Risolvo interoperabilità.
+\item P: se c'è encryption o no 
+\end{itemize}
+\item ho il campo dati
+\end{itemize}
+\end{itemize}
+Mangement di intermediate entities: posso usare RADIUS agent per mandare relayed message,ma non c'era supporto al romaning.\\ Non devo solo fare roaming data, ma anche routing: se mi collego ad un peer distante, quello deve fare route al server del mio paese. 3 cose strandardizzate:
+\begin{itemize}
+\item Nessuno agent intermedio
+\item Relay agent: sono a Roma, ma vengo dall'univeristà di Parigi, RADIUS server di Roma riceve la request, relay agent guarda al realm, ovvero il dominio di registrazione e nella sua routing table sa di dover mandare la richiesta al server RADIUS di Parigi.
+\item Proxy agent: simile al relay, ma assumo che può modificare il messaggio: se ho un messaggio con TAG integrità, se uso proxy e modifica $\Rightarrow$ ho rotto tutto, è un MITM attack (proxy non ha la chiave per modificare il messaggio).
+\end{itemize}
+Eduroam: sistema che permette di roammare lungo le università confederate con eduroam e non richiede di avere credenziali specifiche. Cosa fa un utente che sta a Tor Vergata e vuole accedere, ma è di Malta: server parsa l'address e mi manda a Malta.\\ M se le confederazioni sono molte: che succede se il server di Malta è va giù e viene sostituito con nuovo server che ha cambiato ip? Deve comunicarlo a tutti gli altri, anche se aggiungo un server. C'è management nightmare: se uso relay agents o proxy agents c'è problema: le routing table sono embeddate, soluzione: centralized controller che tiene le routing tables. Tizio di Malta entra da Tor Vergata, va a server di Tor Vergata e server prima di inoltrare richiesta, chiede l'ip di Malta al centralized server: il dato rimane nel RADIUS server di Roma, ma il controllo è demandato al controller,posso usare trick di caching. Separazione fra controllo e dati $\Rightarrow$ redirect agent: gestisce solo le routing table, ora le routing table non sono embeddate nell relay agent, quindi ho le due operazioni separate.\\ Questo rende ad esempio possibile number portability
 \end{document}
