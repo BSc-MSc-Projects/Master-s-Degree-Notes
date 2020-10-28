@@ -780,10 +780,182 @@ file in XRD con estensione .x, avrò due parti:
 \item parte in cui scrivo definizione dei programmi RPC, specifiche del protocollo RPC per procedure
 \item Definizioni XDR, dove definisco tipi di dato dei parametri.
 \end{itemize}
-Do un nome alla procedura remota, che fa parte di un programma, ogni procedura ha un solo parametro di input ed un solo parametro di uscita, quindi se ho bisogno di più parametri li devo passare in struct. Identificatori sono rappresentati con lettere maiuscole, altro requisito di Sun RPC, inoltre ad ogni procedura viene assegnato un identificativo del numero di procedura e della versione.\\ Inoltre il programmatore deve sviluppare lato client e server: bisogna implementare logica per effettuare binding e reperire il servizio. Nel server implemento le procedure.\\Nel server non c'è main, lo invoca il sever stub e questo viene generato automaticamente dal middleware.
+Do un nome alla procedura remota, che fa parte di un programma, ogni procedura ha un solo parametro di input ed un solo parametro di uscita, quindi se ho bisogno di più parametri li devo passare in struct. Identificatori sono rappresentati con lettere maiuscole, altro requisito di Sun RPC, inoltre ad ogni procedura viene assegnato un identificativo del numero di procedura e della versione.\\ Inoltre il programmatore deve sviluppare lato client e server: bisogna implementare logica per effettuare binding e reperire il servizio. Nel server implemento le procedure.\\Nel server non c'è main, lo invoca il server stub e questo viene generato automaticamente dal middleware.
 \\Passi di base:
 \begin{itemize}
-\item definisco file .x
-\item genero tramice rpcgen gli stub di client e server ed eventuali file di conversione dei dati
+\item definisco file .x: tutto l'insieme delle procedure remote offerte dal server. Con comando rpcgen genero file .h, da includere nel client e nel server.
+\item genero tramite rpcgen gli stub di client e server ed eventuali file di conversione dei dati. Lato server non ho completa trasparenza: devo specificare nome della procedura con versione e stare attento ai parametri di ritorno.
+\item lato client uso funzione clnt\_create(): prende hosto, nome procedura e versione procedura, protocollo di trasporto. Ho anche funzioni per la gestione degli errori che possono avvenire durante la comunicazione.
+\end{itemize}
+Codice per la procedura remota non è esattamente uguale a quello per la procedura locale. Non c'è completa trasparenza all'accesso: devo specificare alcuni parametri che permettono ai due proxy (lato client e lato server client e server stub).
+Passi base:
+\begin{itemize}
+\item Definire file .x
+\item usando rpcgen, genero client e server stub, ed eventuali funzioni di conversione XDR. Le funzioni XDR vengono prodotte in un file \_XDR.c
+\item sviluppatore scrive client e server
+\item compila i file e fa il linking dei file oggetto
+\item servizi registrati presso il port mapper, offerto dal servizio rpcbind.
+\end{itemize}
+Output del port mapper: servizi attivi per cui ho n° di programma, n° versione e la porta e protocollo. Nel client stub ho il meccanismo di request-retransmit, perché Sun RCP offre semantica di comunicazione di tipo at least once. clnt\_call è funziona di livello più basso: prende in input il gestore di trasporto, gestore per param input/output e valore di timeout per la retx. Modo in cui viene effettuata la conversione è nelle funzioni automatiche xdr\_in/xdr\_out.\\ Server stub: c'è il main generato in automatico, che dopo un serie di funzioni di inizializzazione (anche gestione delle socket) registra port mapper. Ho possibilità di chiamare NULL proc. per fare testing. Quando faccio run: client si collega ma ho passato solo host name, numero di porta reperito dal port mapper, client stub lo ottiene invocandolo. Caratteristiche di Sun RPC
+\begin{itemize}
+\item programma può contenere più procedure remote
+\item ho un unico argomento di input e di output
+\item gestione del passaggio dei parametri avviene simulando il passaggio per riferimento tramite passaggio per copia/ripristino
+\item di default SUN RPC non gestisce concorrenza, ho server sequenziale, in alcune implementazioni di Sun RPC posso avere server multithreaded.
+\item client rimane in attesa sincrona bloccante della risposta da parte del server
+\item semantica di comunicazione at least once, protocollo di trasporto di default è UDP
+\end{itemize}
+XDR supporta conversione dei dati usando formato comunuce di rappresentazione, ci sono funzioni predefinite per tipi atomici.\\ Binding: procedura deve essere registrata prima di poter essere invocata, registrazione al port mapper delle procedure: server stub specifica n° programma, n° versione e n° procedura.\\ Invocando port mapper, client stub viene a conoscenza del n° porta del server.\\ Port mapper permette
+\begin{itemize}
+\item inserimento di servizio
+\item eliminazione di servizio
+\item ricerca porta servizio
+\item ottenere lista dei servizi
+\end{itemize}
+Passi salienti: definisco specifica usando XDR, uso rpcgen per generare header client stub e server stub e le routin din conversione dei dati.\\ Sviluppo client e server e procedura remota. Ora genero con Makefile i file.o e faccio linking e posso runnare.
+\subsection{Seconda generazione di RPC-Java RMI}
+Supporto per gli oggetti remoti, ovvero distribuiti. Diversi middleware RPC che offrono supporto di metodi remoti. Analizziamo Java RMI. Java RMi estende supporto RPC al metodo remoto, posso invocare metodo di interfaccia remota a metodo remoto. Java RMI fornisce un insieme di politiche, strumenti e meccanismi per invocare metodo su un host remoto. L'obbiettivo è tenere trasparenza all'accesso in modo da far sembrare invocazione remota e invocazione locale simili; non ho trasparenza completa ma la situazione è migliore di Sun RPC. Anche qui trasparenza alla distribuzione non è completa:
+\begin{itemize}
+\item ho trasparenza alla concorrenza, ma devo specificare che metodo è syncronized
+\item non ho altri tipi di trasparenze che vedremo dopo
+\end{itemize}
+Posso invocare metodo remoto, localmente viene creato un riferimento ad un oggetto remoto che espone quel metodo, e che è attivo su una altro host. Oggetto remoto a sua volta potrà effettuare invocazioni ad altri oggetti locali o remoti. Differenze rispetto a metodo locale
+\begin{itemize}
+\item affidailità
+\item durata invocazione del metodo
+\end{itemize}
+Voglio separare interfaccia dell'oggetto dal suo comportamento: interfaccia remota permette di specificare i metodi dell'oggetto che possono essere invocati da remoto. Distribuisco solo interfaccia remota, ne ho accesso dallo stub lato client, ma implementazione dei metodi non saranno distribuiti. Uso il proxy pattern, che consente di ottenre un certo grado ti trasparenza nella gestione delle RPC, ho stub nel client e skeleton nel server (ruoli analoghi a Sun ROC stubs). Quando invoco metodo remoto lato client: binding del client con oggetto server remoto e copia dell'interfaccia del server caricata nello spazio del server. La richiesta di invocazione di metodo remoto arriva all'oggetto remoto e viene trattata dal proxy del client, a differenza di Sun RPC ho un unico ambiente di lavoro, usando de/serializzazione posso gestire eterogeneità nella rappresentazione dei dati: nel caso di Java RMI basterà questo.\\ Stub e skeleton fanno da client stub e server stub e quindi nascono a lvl applicativo la natura distribuita dell'applicazione. Stub è proxy locale sul clien, che espone la stessa interfaccia dell'oggetto remoto, lato server ho lo skeleton che riceve le invocazioni fatti dal client e le realizza effettuando chiamata del metodo.\\ Sono generati automaticamente e non è necessario usare comando ad hoc.\\ Problema di gestire eterogeneità è risolto con de/serializzazione: grazie all'uso del bytecode non serve marshaling ed unmarshaling. COn writeObject serializzo su uno stream di output, con readObject ricostruisco copia dell'oggetto originale su stream di input. Non ho codice visibile di stub e skeleton, useranno de/serializzazione per gestire parametri di I/O del metodo remoto. Limitazione nel caso di JavaRMI per definizione di oggetti remoti: posso usare solo oggetti serializzabili, ovvero che implementano interfaccia serializable. Alla deserializzazione userò .Class che deve essere accessibile. Oggetto convertito in flusso di byte che lato ricezione verrà ricostruito nell'oggetto corrispondente.Importante che stub e skeleton usino schemi di compattazione per
+\begin{itemize}
+\item ridurre banda occupata nella comunicazione
+\item ridurre memoria occupata
+\item ridurre latenza
+\end{itemize}
+Differenze tra marshaling e serializzazione diventano evidenti nel caso degli oggetti: la serializzazione si basa sul codebase presente a destinazione, non bisogna gestire le referenze, però c'è problema di gestione degli oggetti ricorsivi.
+\subsubsection{Interazione tra stub e skeleton}
+Passi della comunicazione
+\begin{itemize}
+\item client deve ottenere istanza di stub, ovvero copia di interfaccia remota. La ottiene con componente intermedio che è l'RMI registry.
+\item client invoca metodi sullo stub, sintassi invocazione remota è identica a quella locale.
+\item lo stub ricevuta invocazione del metodo effettua serializzazione delle info (id metodo e parametri) incapsula in un messaggio e invia messaggio allo skeleton
+\item skeleton riceve messaggio, deserializza ed invoca chiamata locale
+\item riceve param ritorno, serializza, incapsula nel messagigo ed invia allo stub
+\item stub riceve messaggio,effettua deserializzazione e restituisce al client.
+\end{itemize}
+RMI registry è un binder per Java RMI, consente al server di registrare l'oggetto remoto e al client di recuperarne lo stub. RMI registry identificato con URL che inizia con rmi, contiene hostname, n° porta e il nome dell'oggetto remoto.\\ Non c'è trasparenza all'ubicazione (devo sapere hostname, stesso vale per Sun RPC), non c'è gestione di sicurezza.\\ Passi essenziali
+\begin{itemize}
+\item realizzare componenti lato server, devo definire interfaccia e la sua implementazione con classe apposita.
+\item lato client devo ottenere riferimento all'oggetto remoto (lo stub), tramite RMI registry con invocazione del metodo lookup
+\item interfaccia deve essere public, in modo che estenda Remote e deve sollevare eccezione RemoteException.
+\item La classe deve estendere UnicastRemoteObject, perché viene definito un solo riferimento ad un oggetto remoto, non ho trasparenza alla replicazione.
+\item devo scrivere codice del server, che istanzierà oggetto remoto, registrarlo presso RMI registry. rebind(): permette di sostituire associazione già esistente rispetto a bind().
+\end{itemize}
+Dopo aver sviluppato il codice: compilo le classi, attivo RMI registry ed avvio client e server. Per avviare RMI registry posso farlo:
+\begin{itemize}
+\item da riga di comando, comportamento standard
+\item nel codice del server, registry locale per motivi di sicurezza.
+\end{itemize}
+Interfaccia deve estendere Remote, devo gestire RemoteException in modo da lanciare eccezione. Implementazione dei metodi non completamente trasparente. Metodo può avere 1 metodo di output, 0 o più parametro di input, passaggio può avvenire per valore o per riferimento:
+\begin{itemize}
+\item Per valore se sono oggetti primitivi che implementano Serializable, serializzazione/deserializzazione ad opera di stub/skeleton
+\item per riferimento, se sono oggetti Remote.
+\end{itemize}
+Nel caso di Java RMI non serve chiamare il compilatore ad hoc(no comando rpcgen come in Sun RPC).\\ Sicurezza: ho appl. distribuita, si pongono diversi aspetti di sicurezza. Se client invia msg, sono sicuro che invocazione del metodo remoto sia rispetto al server corretto o non sia un impostore?\\ Server accetta messaggi solo da client legittimi? Messaggi sniffati da altri processi o intercettati e modificati Protocollo RPC può essere soggetto a reply attack.
+\subsubsection{Passaggio di parametri}
+Tipi primitivi passati per valore, mentre classi passate per riferimento. Ho visto problema del passaggio per riferimento, in Java RMI:
+\begin{itemize}
+\item Per valore se tratto tipi primitivi o tipi serializzabili. In generale avviene per tutti gli oggetti la cui locazione non è necessaria per lo stato, quello che si fa è de/serializzare l'istanza dell'oggetto per creare un'istanza remota
+\item Per riferimento: oggetti la cui funzione è legata alla località di esecuzione (server). Viene serializzato lo stub, creato automaticamente a partire dalla classe dello stub.\\ Ogni istanza di stub identifica l'oggetto remoto al quale si riferisce attraverso un id univoco rispetto alla JVM dell'oggetto remoto. 
+\end{itemize}
+\subsubsection{Concorrenza sugli oggetti remoti}
+Metodi remoti possono essere invocati in modo concorrente da più client e questo può porre problemi nel caso di metodi statefull.Implementazione deve essere thread-safe se c'è stato: va usata la keyword syncronized per il metodo (es: incremento di un contatore)
+\subsubsection{Distributed garbage collection}
+Ho oggetti remoti che non vengono più utilizzati dai client, quindi è inutile tenere memoria allocata. Devo effettuare operazione di garbage collection, serevr deve sapere quanto rifermenti attivi ci sono per l'oggetto remoto e quindi quanti client stub lo stanno usando. Client possono subire un crash o possono esserci problemi di rete.\\ Richiede coordinazione fra client e server, ho quindi limiti nella scalabilità. Funzione del meccanismo: in locale,, Java mantiene il numero di riferimenti per un oggetto e lo schedula per la de allocazione quando contatore è 0. Meccanismo distribuito simile: meccanismo basato su lease, idea è che il server delega l'operazione di mantenere i riferimenti attivi al client in modo da distribuire il carico sui client. Ho due operazioni:
+\begin{itemize}
+\item Dirty: periodicamente JVM del client manda call dirty al server se l'oggetto è in utilizzo sul client, che viene rinfrescata entro un timeout che è il lease assegnato dal server.
+\item Clean: nel momento in cui JVM locale al client non sta più usando oggetto remoto, usa operazione di clean per indicare che non ci sono più riferimenti attivi all'oggetto.
+\end{itemize}
+Cancellazione oggetto avviene se non riceve dirty o clean prima del leasing. È delegato agli stub di mantenere l'informazione che l'oggetto è in utilizzo.\\ 
+\subsection{Esempi Java RMI}
+\subsubsection{Echo server}
+Server: ho la calsse che implementa il server, che deve estendere UnicastRemoteObject: nel costruttore ho metodo super(), che esegue le inizializzazioni necessarie affinché server venga correttamente lanciato e rimanga in attesa delle richeiste del client. Implemento il metodo remoto getEcho() che avevo definito nell'interfaccia.\\ Nel main: pubblico il servizio, devo esporlo esternamente affinché i client possano invocarlo, faccio bind()/rebind() del mio server sull'RMI registry (faccio la new della calsse server e ne faccio bind). Uso nome logico, che sarà usato dal client per chiamare il metodo.\\ Lato client: invoco metodo, passo la stringa al server mediante invocazione di metodo remoto. La chiamata che il client effettua è una chiamata singola bloccante.
+\subsubsection{Compute engine}
+Server riceve task da client per eseguirli e restituire il risultato.\\ Penso ad un task oneroso dal punto di vista computazionale. Task deve implementare Serializable, viene eseguito dal server che restituisce il risultato al server.\\ Due interfacce:
+\begin{itemize}
+\item Interfaccia che permettere di definire al client di definire il task
+\item Interfaccia per eseguire il task sul server
+\end{itemize}
+\subsection{Come fornire trasparenza}
+Come fornire ad esempio supporto alla trasparenza a replicazione in Java RMI/Sun RPC. Load balancer: intermediari tra client e server replicati: uso oggetto/procedura remota che faccia ruolo di load balancer. Questo è sulle spalle dello sviluppatore, per questo manca trasparenza alla replicazione ma è possibile implementare distribuzione delle RPC/RMI su più server. Client si collega la proxy server, che sceglie a chi inoltrare la richiesta a seconda del carico: si comporta da server per i client e da client per i server. \\ In RMI registry il client che effettua metodo remoto rimane bloccato in attesa della risposta del server. Suppongo di volere chiamata async a livello di codice.\\ Cosa devo usare per questo meccanismo di callback: lato server devo sapere quali sono i client interessati all'elaborazione asincrona, ovvero serve meccanismo di registrazione, metodo esposto. Lato client serve oggetto remoto tramite il quale il server possa comunicare il risultato della computazione effettuata.
+\subsection{Confronto tra Sun RPC e Java RMI}
+Sun RPC: 
+\begin{itemize}
+\item solo 1 param di input, client nell'invocare procedura remota deve passare altro param che è gestore di trasporto. 
+\item Client deve specificare n° versione della procedura chiamata, devo appendere lato server al nome della procedura \_svc. Trasparenza all'accesso incompleta.\\ 
+\item Trasparenza all'ubicazione: manca, client deve conoscere hostname sul quale viene offerto il servizio remoto, avviene mediante il port mapper. 
+\item In Sun RPC posso richiedere operazioni e funzioni
+\item Comunicazione è sincrona ed asincrona e la 
+\item Semantica è in uquesto middleware at least once (o at most once)
+\item Implementato timeout per la ritrasmissione e gestione di errori con apposite funzioni
+\item Biding eseguito dal port mapper con rpcbind(), port mapper permettere al client stub di conoscere la porta del server.
+\item XDR come IDL, generazione automatica di client e server stub.
+\item Passaggio parametri per copia/ripristino.
+\item Ci sono varie estensioni di SunRPC
+\end{itemize}
+Java RMI:
+\begin{itemize}
+\item Visione ad oggetti
+\item Maggiore trasparenza all'accesso: metodo remoto chiamato con la stessa sintassi del metodo locale
+\item Non c'è trasparenza all'ubicazione
+\item Distribuzione non completamente trasparente: devo tener conto che passo param primitivo o oggetto remoto.
+\item Entità richiedibili sono metodi di oggetti mediante interfacce remote
+\item Comunicazione sincrona, semantica at most once.
+\item Gestite le eccezioni remote 
+\item Binding del server con RMI-registry
+\item Stub e skeleton generati in modo automatico, non serve precompilatore (no rpcgen()).
+\item Passaggio parametri per valore o per riferimento per oggetti remoti.
+\end{itemize}
+\section{Go}
+Linguaggio C-like (il C del XXI secolo), eredita diversi costrutti:
+\begin{itemize}
+\item sintassi
+\item statement per controllo di flusso
+\item tipi di dato base
+\item puntatori
+\item compilazione efficiente
+\end{itemize}
+Introduce diverse facilites
+\begin{itemize}
+\item GO introduce facilities per la concorrenza nuove ed efficienti
+\item Approccio flessibile per astrazione dati
+\item Garbage collection
+\end{itemize}
+Go permette di concentrasi sulla logica del SD:
+\begin{itemize}
+\item Buon supporto per RPC
+\item Buon supporto alla concorrenza
+\item Garbage-collected
+\item type safe
+\end{itemize}
+Go permette sviluppo di app colud native, libreria Go Cloud, obbiettivi:
+\begin{itemize}
+\item Permette ai developer di fare deploy rapido su diverse combinazioni di cloud provider
+\item Utilizzo dei vari servizi cloud, come ad esempio S3.
+\end{itemize}
+Aspetti nuovi: restituzione di più parametri di ritorno, if vuole sempre \{\} anche se c'è solo una istruzione. Defer: ritardo un istruzione e la eseguo quando è stato completato tutto il codice intorno all'istruzione. Vantaggio è che riduco i potenziali errori di programmazione legato al fatto che dimentico di chiudere canale aperto.
+Reference: scaricare compilatore da goolang.org (attenzione alla variabile gopath).\\ Sito Golang ha playgound (tour.gooland.com).\\ caratteristiche:\\ mancano ; a differenza del C ed i return. Programmi sono composti in package. Programma inizia con dichiarazione package, seguita da dichiarazione degli import, quindi package importati.\\ Tool per run è standard per effettuare fetch, build e istallazione programmi.\\ Comandi fondamentali: go run $<$codice sorgente$>$, go build per il binario.
+\subsection{Package}
+Dove definisco codice Go. I programmi sono avviati dal package main, il case determina l'import o meno: se ha lettera maiuscola può essere esportata al di fuori.\\ Gli import permettono di identificare le librerie utilizzate, se ho più import non devo scriverne una per ciascuna riga ma posso fattorizzare tra parentesi ().
+\subsection{Funzioni}
+Il tipo del parametro di ritorno è dichiarato alla fine della funzione, anche i tipi sono dichiarati dopo.\\ Funzione può restituire qualsiasi numero di parametri di ritorno.\\ Per assegnazione uso :=\\ Statement var permette di dichiarare una lista di variabili, se dichiaro variabile con un certo valore il tipo può essere desunto.
+\subsection{For, while, etc...}
+Ciclo for ha 3 condizioni, se uso solo la prima è come un while (no parentesi). for \{\} = while(1).\\ Se variabili non inizializzate vengono settate a valore di default (esempio: stringhe a stringa vuota).
+If-else: \\ sempre necessarie le graffe, cosa nuova è che nel costrutto if-else, l'else deve essere attaccato alla chiusura dell'if. È possibile combinare più statement if-else con la sequenza if-else, if-else....\\ Costrutto switch, che termina quando un case ha successo, quindi non ha bisogno del break (dato automaticamente); non ci sono limitazioni sulla condizione.\\ Defer: meccanismo nuovo, che permette l'esecuzione di una funzione quando termina il codice che la circonda. Argomento valutato immediatamente, ma la chiamata non è eseguita finché codice che circonda la funzione non termina, funzione messa in stack e le funzioni vengono estratte in ordine LIFO.
+\subsection{Puntatori, struct, array etc..}
+Soliti operatori di de/referenziazione \& e *; gestione automatica dello spazio di memoria.\\ Struct come in C, per gli array si possono usare slices: costrutto di dimensione variabile che permette di vedere solo una porzione degli elementi di un array: array[low:hi]: l'hi viene escluso. La slice è una sezione dell'array sottostante, è una vista logica, quindi le modifiche sono effettive sull'array. Funzione len() permette di conoscere la lunghezza di un slice. Capacità della slice si definisce con cap(), ed è capacità complessiva dell'array sottostante a partire dal primo elemento. Slice è di dimensione variabile, può essere creata con make, modifiche a run time con append ma non si può eccedere la dimensione dell'array sottostante.\\Mappe: altro tipo di dato composto, tradizionali mappe chiave:valore. Si dichiarano con keyword map[K]V, dove K indica tipo della chiave e V tipo del valore; make crea la mappa.\\ 
+\begin{itemize}
+\item insert update: m[key] = value
+\item m[key] per retrieve
+\item delete(m, key) cancella chiave
+\item elem, ok = m[key] è un test per vedere se elemento è presente (ok avrà valore di errore in caso non c'è l'elemento).
 \end{itemize}
 \end{document}

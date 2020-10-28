@@ -1,7 +1,6 @@
 \documentclass[18px]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
-\usepackage{cases}
 \usepackage{graphicx}
 
 \begin{document}
@@ -12,8 +11,7 @@ Algoritmi a priorità dinamica, come EDF, sono ottimali (sotto determinate condi
 Istanti critici: suppongo che nel sys di task tutti i job abbiano un tempo di risposta piccolo, ovvero ogni job termina prima del rilascio del job successivo del task $\Rightarrow$ ogni job viene rilasciato in un periodo e si conclude entro quel periodo (job potrebbe non rispettare la scadenza, se questa è minore del periodo).\\ L'istante critico è il momento in cui il rilascio del job comporta il massimo tempo di risposta possibile  per quel job.\\ Se almeno un job T$_{i}$ non rispetta la scadenza relativa, l'istante critico è un momento in cui il rilascio di un job provoca il mancato rispetto della scadenza di quel job.\\ Io voglio verificare che tutti i job rispettino le scadenze, sottigliezza della definizione è irrilevante dal punto di vista critico.\\ Teorema: Se ho un sistema di task a priorità fissa e tempi di risposta piccoli, l'istante in cui uno dei job di T$_{i}$  viene rilasciato contemporaneamente ai job di tutti i task con priorità maggiore di T$_{i}$ è l'istante critico di T$_{i}$.\\ Teorema non da condizione necessaria e sufficiente, ma solo sufficiente: se capita tale condizione $\Rightarrow$ ho un istante critico, ma potrei averne altri.\\ esempio : T$_{1}$=(2, 0.6) T$_{2}$=(2.5,0.2), T$_{3}$=(3,1.2).\\ T$_{1}$ ha la priorità massima: tutti i multipli di 2 sono istanti critici.\\ T$_{2}$ ha istanti critici 0 e 10, che sono anche i momenti in cui rilascio job di T$_{1}$, non c'è nessun altro momento in cui c'è rilascio contemporaneo di job di T$_{1}$ e T$_{2}$.\\ T$_{3}$ avrà rilasci in 0, 3, 6, 9: in 0 ho istante critico, 6 e 9 sono critici ma il thm non li evidenzia.\\
 \includegraphics[scale=0.2]{images/SERT1710.png}\\
 Stesso esempio anche se i task non sono in fase: 6 è istante critico, è descritto dal teorema.\\ Quando c'è rilascio in fase, siccome priorità è fissa, la schedulazione prodotta risulta identica a qualsiasi schedulazione non in fase $\Rightarrow$ mi interessa ricondurmi a quando tutti i task sono in fase.
-\subsection{Schedulabilità per priorità fissa e tempi di risposta piccoli}
-Supponiamo che in un sistema ho task a priorità fissa e tempi di risposta piccoli.\\ Ordino i task per priorità decrescente, suppongo siano in fase all'istante t$_{0}$.\\ Ho i task T$_{1}$......T$_{i}$ e mi chiedo il tempo necessario per eseguire tutti i job dei task T$_{1}$......T$_{i}$, nell'intervallo [t$_{0}$, t$_{0}$+t] (t $\leq$ p$_{i}$:\\
+\subsection{Schedulabilità per priorità fissa e tempi di risposta piccoli}Supponiamo che in un sistema ho task a priorità fissa e tempi di risposta piccoli.\\ Ordino i task per priorità decrescente, suppongo siano in fase all'istante t$_{0}$.\\ Ho i task T$_{1}$......T$_{i}$ e mi chiedo il tempo necessario per eseguire tutti i job dei task T$_{1}$......T$_{i}$, nell'intervallo [t$_{0}$, t$_{0}$+t] (t $\leq$ p$_{i}$:\\
 w$_{i}$(t) = e$_{i}$ +  $\sum\limits_{k=0}^{i-1} \lceil\frac{t}{p_{k}}\rceil \cdot e_{k}$.\\ Somma si estende su tutti i task di priorità superiore di T$_{i}$, devo considerarli perché portano via tempo al job di T$_{i}$. Prendo k-esimo task: a t$_{0}$ tutti i task sono in fase, quindi rilascio sicuro un job, quando ne rilascio? Prendo il ceil di $\frac{t}{p_{k}}$,anche job rilasciato nel periodo dopo quello considerato mi ruba tempo; moltiplico tutto per e$_{k}$, il tempo che ci metto per completare i job.\\ Test di schedulabilità: dati job T$_{1}$......T$_{i}$, in fase a t$_{0}$ con priorità decrescenti con T$_{1}$......T$_{i-1}$ effettivamente schedulabili. Il task T$_{i}$ può essere schedulato nell'intervallo di tempo [t$_{0}$, t$_{0}$+D] se $\exists$ t $\leq$ D$_{i}$ tale che w$_{i}$(t) $\leq$ t. IL mio scopo è sempre quello di verificare la schedulabilità del sistema, se ne trovo uno non schedulabile la mia analisi è finita, non ci faccio nulla col sistema di task.\\ Applicazione: ho T$_{1}$......T$_{n}$ con priorità decrescenti. \\Considero un task alla volta: $\forall$ task T$_{i}$  calcolo il valore della funzione di tempo necessario w$_{i}$(t) per tutti i valori t $\leq$D$_{i}$ tali per cui t è un multiplo intero di p$_{k}$ per k $\in$ \{1,2....,i \}.Funzione w$_{i}$(t) sale a gradini, devo considerare valori per cui tale funzione cambia valori.\\ Se per almeno uno dei valori t vale che w$_{i}$(t) $\leq$ t allora T$_{i}$ è effettivamente schedulabile. Altrimenti il test fallisce, ovvero n job di T$_{i}$ potrebbe mancare la scadenza, ovvero la manca sicuro se c'è un rilascio di tutti i job in fase dei task di priorità superiore e tutti quei task hanno un tempo di esecuzione pari al loro worst-case.\\ Possono esserci casi fortuiti, quindi in ipotesi rilassate il test non conferma schedulabilità ma scheduler riesce, però il risultato non è rilevante.\\Tanto vale fermarsi e riprogettare il sistema.\\
 esempio: T$_{1}$=(3,1), T$_{2}$=(5,1.5), T$_{3}$=(7, 1.25), T$_{4}$=(9,0,5) e considero le funzioni di tempo necessario:\\
 \includegraphics[scale=0.3]{images/SERT1710_1.png}\\
@@ -182,14 +180,15 @@ Come posso applicare il test di schedulabilità ad uno scheduler a priorità fis
 \end{itemize}
 Perché non considero le auto-sospensione per i task a priorità inferiore? Perché task inferiore non viene mai eseguito al posto mio, pago solo il primo rilascio, perché fin quando io sono eseguibile, quelli con meno priorità di me non hanno possibilità di essere eseguiti prima di me.
 \item Devo anche considerare il tempo di blocco per non-interrompibilità, anche se tutti i miei job sono sempre non interrompibili. b$_{i}$(np) = ($\lceil max_{i+1 \leq k \leq n}\frac{\Theta_{k}}{p_{0}}\rceil$ + 1) $\cdot$ p$_{0}$. max $\Theta_{k}$ moltiplicato il p$_{0}$ diventa il max di tutti i $\Theta_{k}$ di priorità inferiore, in più c'è un p$_{0}$. esempio:\\
-ho lo shceduler che viene invocato con periodo p$_{0}$. Ad un certo istante viene rilasciato il job del task T$_{i}$, mi metto nel worst case, ovvero il job T$_{i}$ arriva un infinitesimo dopo che lo scheduler ha finito di controllare la coda dei job pendenti, quindi fino al prossimo p$_{0}$ non potrò eseguire il job. In questo periodo, prima che possa intervenire lo shceduler, si continua ad eseguire un job di priorità inferiore di T$_{k}$ e questo job entra nella regione interrompibile all'interno del periodo p$_{0}$ in cui è arrivato T$_{i}$, task T$_{k}$ continua l'esecuzione per un numero di periodi pari a $\frac{\Theta_{k}}{p_{0}}$. Solo quando scheduler interviene si rende conto che job di T$_{k}$ è diventato interrompibile e può entrare T$_{1}$, e c'è la parte intera superiore perché se il n° di periodi non è intero,anche la frazione non completata porta via tempo e devo aspettare comunque il periodo successivo; il +1 è il rilascio, almeno un periodo lo devo aspettare anche se non ho sezione critica, il job è arrivato prima. 
+\includegraphics[scale=0.3]{images/SERT2210_4.png}\\
+ho lo shceduler che viene invocato con periodo p$_{0}$. Ad un certo istante viene rilasciato il job del task T$_{i}$, mi metto nel worst case, ovvero il job T$_{i}$ arriva un infinitesimo dopo che lo scheduler ha finito di controllare la coda dei job pendenti, quindi fino al prossimo p$_{0}$ non potrò eseguire il job. In questo periodo, prima che possa intervenire lo shceduler, si continua ad eseguire un job di priorità inferiore di T$_{k}$ e questo job entra nella regione interrompibile all'interno del periodo p$_{0}$ in cui è arrivato T$_{i}$, task T$_{k}$ continua l'esecuzione per un numero di periodi pari a $\frac{\Theta_{k}}{p_{0}}$. Solo quando scheduler interviene si rende conto che job di T$_{k}$ è diventato interrompibile e può entrare T$_{1}$, e c'è la parte intera superiore perché se il n° di periodi non è intero,anche la frazione non completata porta via tempo e devo aspettare comunque il periodo successivo; il +1 è il rilascio, almeno un periodo lo devo aspettare anche se non ho sezione critica, il job è arrivato prima.
 \end{itemize}
 esempio: T$_{1}$ = (0.1, 4, 1, 4.5), T$_{2}$ = (0.1, 5, 1.8, 7.5), T$_{3}$ = (0, 20, 5, 19.5) non interrompibile in [r$_{3}$, r$_{3}$+1.1]. Scheduler ha p$_{0}$ = 1, e$_{0}$ = 0.05, CS$_{0}$ = 0.06.\\ Faccio analisi dei singoli task:\\
 Verifico T$_{1}$: sistema equivalente è T$_{0}$ = 1,0.05), T$_{0,2}$ = (5,0.06), T$_{0,3}$ = (20,0.06), T$_{1}$ = (4,1.06), b$_{1}$ = 3.\\ w$_{1}$(t)
  = 1.06 + $\lceil \frac{t}{1}\rceil$0.05 + $\lceil \frac{t}{5}\rceil$0.06 + $\lceil \frac{t}{20}\rceil$0.06.\\
 w$_{1}$(4.06) = 4.43 $\leq$ w$_{1}$(4.43) $\leq$ 4.5, quindi ok.\\
 Procedo per T$_{2}$ e T$_{3}$ sempre considerando il sistema equivalente.\\ w$_{2}$(4.86) = 7.29 $\leq$ w$_{2}$(7.29) $\leq$ 7.5, quindi ok.\\
-w$_{3}$(6.06) = 12.25,  w$_{3}$(12.25) = 16.53, w$_{3}$(16.53) = 19.65, w$_{1}$(19.65) = 19.8 $>$ 19.5, quindi no.\\ Devo concludere che il sistema non è validato, e va riprogettato.
+w$_{3}$(6.06) = 12.25,  w$_{3}$(12.25) = 16.53, w$_{3}$(16.53) = 19.65, w$_{1}$(19.65) = 19.8 $>$ 19.5, quindi no.\\ Devo concludere che il sistema non è validato, e va ri-progettato.
 \subsubsection{Condizione di schedulabilità su tick}
 Per ciascun T$_{i}$ da controllare faccio quanto segue:
 \begin{itemize}
@@ -208,13 +207,236 @@ Mi pongo il problema di dover gestire job che arrivano ad istanti di tempo non p
 Se non ho nessuna ipotesi su tempi di arrivo ed esecuzioni non posso prendere impegni: potrà sempre arrivare qualcosa che non mi permette di rispettare le scadenze.\\ Richiedono algoritmi differenti, però devono essere corretti ed ottimali: le scadenze vanno rispettate, i job aperiodici hard-rt va rifiutato se non è possibile garantirne le scadenze.Inoltre: tempi di risposta dei job soft-rt non hanno scadenze ma vanno minimizzato i tempi di risposta.
 \subsubsection{Schedulazione di job aperiodici soft RT in background}
 Metto in coda apposta e quando job è in background eseguo il job aperiodico in cima alla coda. Algoritmo è corretto, i task periodici non sono influenzati, ma non è ottimale: ritardo job aperiodici senza motivo.esempio:\\
-T$_{1}$ = (3,1), T$_{2}$ = (10,4) job aperiodico A con rilascio 0.1 e durata 0.8.
+T$_{1}$ = (3,1), T$_{2}$ = (10,4) job aperiodico A con rilascio 0.1 e durata 0.8.\\
+\includegraphics[scale=0.3]{images/SERT2210_5.png}\\
 \subsubsection{Schedulazione di job aperiodici soft RT interrupt-driven}
-Esegui job aperiodici nel mo,mento in cui li rilasci, algortimo non è corretto ma è ottimo: job aperiodici finiscono nei tempi minimi, ma task periodici possono mancare le scadenze.
+Esegui job aperiodici nel mo,mento in cui li rilasci, algortimo non è corretto ma è ottimo: job aperiodici finiscono nei tempi minimi, ma task periodici possono mancare le scadenze.\\
+\includegraphics[scale=0.3]{images/SERT2210_6.png}\\
 \subsubsection{Schedualzione di job aperiodici soft RT con slack stealing}
 Algoritmo esegue i job aperiodici in anticipo rispetto a quelli periodici finché c'è uno slack globale positivo.\\ È corretto perché i job periodici non perdono le scadenze. È ottimale, solo per job aperiodico in cima alla coda. Svantaggio è che tenere uno slack globale in uno scheduler priority divern è difficile.
-Job aperiodico riprende quando lo slack torna positivo.
+Job aperiodico riprende quando lo slack torna positivo.\\
+\includegraphics[scale=0.3]{images/SERT2210_7.png}\\
 \subsubsection{Schedulazione di job aperiodici soft RT con polling}
-Algoritmo basato su polling, ovvero nel sys di task periodici introduco server di polling, a cui do un certo periodo p$_{s}$ e tempo di esecuzione e$_{s}$ e gli do priorità massima,così da ridurre i tempi di risposta dei job aperiodici. Server controlla coda job aperiodici, se vuota si auto-sospende fino a prossimo tick, altrimenti esegue per al più
-e$_{s}$ unità di tempo, per poi auto-sospendersi.\\ È corretto se dimensiono il poller in modo tale che il suo fattore di utilizzazione non ecceda quello dell'algoritmo di schedulazione;come aggiungere un task periodico. \\ Non è ottimale, job aperiodico può arrivare subito dopo esecuzione del poller. Nell'esempio forse potevo anticipare l'esecuzione del job A senza far mancare le scadenze. Posso migliorare le capacità del server? Sì.
+Algoritmo basato su polling, ovvero nel sys di task periodici introduco server di polling o poller, a cui do un certo periodo p$_{s}$ e tempo di esecuzione e$_{s}$ e gli do priorità massima,così da ridurre i tempi di risposta dei job aperiodici. Server controlla coda job aperiodici, se vuota si auto-sospende fino a prossimo tick, altrimenti esegue per al più
+e$_{s}$ unità di tempo, per poi auto-sospendersi.\\ 
+\includegraphics[scale=0.3]{images/SERT2210_8.png}\\
+È corretto se dimensiono il poller in modo tale che il suo fattore di utilizzazione non ecceda quello dell'algoritmo di schedulazione, è come aggiungere un task periodico che ha worst case pari ad e$_{s}$. \\ Non è ottimale, job aperiodico può arrivare subito dopo esecuzione del poller. Nell'esempio forse potevo anticipare l'esecuzione del job A senza far mancare le scadenze. Posso migliorare le capacità del server? Sì.
+\subsubsection{Server periodici}
+I server periodici sono una classe di task periodici aventi:
+\begin{itemize}
+\item periodo p$_{s}$
+\item budget e$_{s}$
+\item dimensione u$_{s}$ = $\frac{e_{s}}{p_{s}}$
+\end{itemize}
+Hanno due regole:
+\begin{itemize}
+\item regola di consumo che dice come il budget viene consumato
+\item regola di rifornimento: come il budget viene ripristinato
+\end{itemize}
+Server di dice impegnato quando ha del lavoro da svolgere, ovvero la coda dei job aperiodici non è vuota, idle nel caso contrario. È eleggibile, pronto o schedulabile se è impegnato ed il suo budget è $>$ 0. Il poller può essere descritto come server periodico, è impegnato se la coda dei job non è vuota, la regola di consumo è che sottrae il tempo impiegato ad eseguire il job aperiodico dal budget; le coda dei job aperiodici è vuota il budget viene azzerato.\\ Budget rifornito del suo valore massimo e$_{s}$ all'inizio di ogni periodo p$_{s}$.
+\subsection{Algoritmi a conservazione di banda}
+Problema del server di polling è che se si svuota la coda, il server ha budget azzerato. Se subito dopo arriva un job che potrebbe essere subito  dal server non può farlo: questo comporta ritardo di esecuzione. VOlgio un algoritmo in cui un budget non venga azzerato se la coda è vuota, in modo da migliorare tempi di risposta se arrivano job aperiodici. Esistono molti algoritmi a conservazione di banda.3 di cui parleremo:
+\begin{itemize}
+\item Server procrastinabile
+\item Server sporadico
+\item Server a utilizzazione costante
+\end{itemize}
+Sono già molto sofisticati, usarne di più sofisticati comporterebbe overhead computazionale elevato. Questi algoritmi usati anche altrove, es gestione code di pacchetti.
+\subsection{Server procrastinabile}
+Server più semplice possibile. Devo definire le regole di consumo e riferimento, premesso che ho consumo p$_{s}$ e budget p$_{s}$. Regola di consumo: budget è decrementato di 1 per ogni unità di tempo in cui il server è in esecuzione (è proporzionale, quindi se è meno di 1 unità perdo meno di 1 unità). Non viene azzerato il budget se la coda dei job aperiodici è vuota.\\ Regola di rifornimento: ad ogni istante multiplo di p$_{s}$, il budget è impostato ad e$_{s}$. Nota bene: il budget non si accumula, quello che non spendo viene perso.
+\includegraphics[scale=0.3]{images/SERT2310.png}
+\\ stesso esempio di prima, all'istante 0 coda è vuota e quindi scheduler seleziona qualcun altro, quando a 0.1 arriva job aperiodico, questo interrompe job di T$_{1}$ ed esegue per 0.5 che è il budget massimo. Questo tipo di server minimizza tempo di risposta del job aperiodico. esempio: schedulazione a priorità fissa\\
+\includegraphics[scale=0.3]{images/SERT2310_1.png}.\\ All'inizio server non ha nulla da fare, va in esecuzione job di T$_{2}$, le cose cambiano quando all'istante 2.8 arriva il job aperiodico di durata 1.7, server ha priorità superiore, budget è positivo quindi è eleggibile e quindi esegue fino a 3. All'istante 3 cade il periodo del server, quindi budget è rifornito ad 1 ed esegue fino anche non finisce.Va eseguito altro, rimetto dentro il job di T$_{1}$, dopo di che non succede nulla: processore è idle anche se avrebbe qualcosa da fare, job aperiodico non è finito, ma algoritmo continua a non schedulare job. All'istante 6 termino job aperiodico e tutto procede. È vero che l'algoritmo cerca di anticipare esecuzione dei job aperiodici, ma non è perfetto. Non è ad esempio come un slack stealing, ho dei limiti: intervallo in cui processore è idle.\\ Posso fare la stessa schedulazione con EDF, in questo caso server non ha la priorità più grande: la priorità è data dalla scadenza assoluta che è data implicitamente dai periodi del server.Schedulazione simile a quella di prima, ci anche sono degli istanti in cui il processore è idle.\\ È possibile applicare condizioni di schedulabilità a sistemi a priorità fissa con server procrastinabile? La difficoltà è che il caso peggiore non è più vero, perché il server procrastinabile non ha un comportamento simile agli altri task periodici. Se il server è eleggibile e nessun task di priorità maggiore è in esecuzione viene subito eseguito, ma qui non appena arriva job aperiodico task diviene eleggibile, ma non so in che istante arriva il job: server con budget $>$ 0 può diventare eleggibile in qualunque momento. esempio: T$_{DS}$=(3,1.2), T$_{1}$=(3.5,1.5), r$_{1,c}$=10, r$_{A}$=10, e$_{A}$ $>$ 3, budget(10)=1.2, fase=2.2\\ All'istante 10 viene rilasciato job di T$_{1}$, ma all'istante 10 sto anche eseguendo job molto lungo aperiodico, questo job viene eseguito fino allo scadere del budget. Caso peggiore vuole che a 11.2 c'è scadenza del periodo del server, quindi budget è nuovamente incrementato, quindi esegue per un altro tempo e si azzera a 12.4, ma a 12.4 non c'è più abbastanza tempo per eseguire job di T$_{1}$. Assunzione non più vera: job arriva in un qualsiasi momento, configurazione è tale per cui job continua ad eseguire per un tempo più lungo di quello che doveva ed intacca job regolare.
+\subsubsection{Istanti critici per server procrastinabili}
+Sistema di task periodici indipendenti e interrompibili, e priorità fissa con D$_{i}$ $\leq$ p$_{i}$ ed un server procrastinabile (p$_{s}$, e$_{s}$) con priorità massima, un istante critico di un task T$_{i}$ si verifica all'istante t$_{0}$ se 
+\begin{itemize}
+\item a t$_{0}$ è rilasciato un job di tutti i task T$_{1}$,...,T$_{i}$
+\item a t$_{0}$ il budget del server è e$_{s}$
+\item a t$_{0}$ è rilasciato almeno un job aperiodico che impegna il server da t$_{0}$ in avanti
+\item l'inizio del successivo periodo del server è t$_{0}$ + e$_{s}$
+\end{itemize}
+Nelle ipotesi del lemma, quanto tempo di processore occupa al massimo il server nell'intervallo (t$_{0}$, t]. Devo aggiungere questo tempo alla funzione di tempo necessario di T$_{i}$. Tempo totale: devo considerare anche il periodo troncato prima di t perché il server ha priorità massima, ho sicuro un e$_{s}$, poi ho e$_{s}$ per il numero di intervalli:
+e$_{s}$ + $\lceil \frac{t-t_{0}-e_{s}}{p_s}\rceil \cdot e_s$.\\ Ora posso modificare la funzione di tempo necessario per tenere conto del server procrastinabile:\\ 
+w$_{i}$(t) = e$_{i}$ + b$_{i}$ + e$_{s}$ + $\lceil \frac{t-t_{0}-e_{s}}{p_s}\rceil \cdot e_s$ + $\sum\limits_{k = 1}^{i-1}\lceil \frac{t}{p_{k}}\rceil \cdot e_k$ per 0 $<$ t $\leq$ p$_{i}$.\\ Il test controlla se w$_{i}$(t) $\leq$ t per i valori di t $\leq$ D$_{i}$ tali che t = h $\cdot$ p$_{k}$ oppure t = e$_{s}$ +  h $\cdot$ p$_{s}$, oppure t = D$_{i}$(h=0,1,...)\\ Stesso avviene per il test di schedulabilità generale:\\ j$\cdot$ e$_{i}$ + b$_{i}$ + e$_{s}$ + $\lceil \frac{t-t_{0}-e_{s}}{p_s}\rceil \cdot e_s$ + $\sum\limits_{k = 1}^{i-1}\lceil \frac{t}{p_{k}}\rceil \cdot e_k$ per 0 $<$ t $\leq$ p$_{i}$ per (j-1)$\cdot$ p$_{i}$ $<$ t $<$ w$_{i,j}$(t).\\ L'esempio nel caso precedente mostra che il task T$_{1}$ non è schedulabile.\\ Posso anche realizzare un sistema in cui server non ha priorità massima, condizione mi da risultato pessimista ma la condizione è solo sufficiente (può dare falsi negativi).
+\subsubsection{Condizione di schedulabilità RM con server procrastinabile}
+Teorema: un server procrastinabile con periodo p$_{s}$ e budget e$_{s}$ ed n task periodici indipendenti ed interrompibili , con p$_{i}$ = D$_{i}$ e tali che:\\ p$_{s}$ $<$ p$_{1}$ $<$... $<$ p$_{n}$ $<$ 2p$_{s}$ e p$_{n}$ $>$ p$_{s}$ + e$_{s}$ sono schedulabili con RM se l'utilizzazione totale è:\\
+U$_{RM/DS}$(n) = $\frac{e_s}{p_s}$ + [$(\frac{e_s + 2p_s}{p_s +2e_s})^{\frac{1}{n}}$ -1]. Molto simile alla formula di Liu-Layland, facile verificare che se e$_{s}$ = 0, ottengo esattamente U$_{RM}$(n), ma ora $\lim_{x \to inf}$ U$_{RM/DS}$(n) = $\frac{e_s}{p_s}$ + ln($\frac{e_s + 2p_s}{p_s +2e_s}$).\\ Mi dice quanto è il carico massimo che posso dare al sistema quando c'è server procrastinabile in modo da garantire le scadenze, valgono però le ipotesi molto forti.\\ Se le condizioni non si verificano, bisogna effettuare analisi task per task:
+\begin{itemize}
+\item Server non ha alcuna influenza sui task con periodo minore di p$_{s}$
+\item Server è schedulabile se lo è il corrispondente task periodico
+\item Per i task di priorità inferiore devo prevedere che il server può bloccare per un tempo e$_{s}$ in più, aggiungo alla formula il tempo di blocco aggiuntivo:\\ $\sum\limits_{k = 1}^{i-1} \frac{e_k}{p_k}$ + $\frac{e_s}{p_s}$ + $\frac{e_s + b_i}{p_i}$ $\leq$ U$_{RM}$(i+1).\\ Aggiungo anche ritardo e$_{s}$ in più che è il primo intervallo, il ritardo dovuto al fatto che nell'istante critico per T$_{1}$ vengo rallento di un istante in più rispetto al tempo normale. Confronto al limite di Liu-Lyland per i+1 task perché includo anche il server.
+\end{itemize}
+\subsubsection{Condizione di schedulabilità di EDF con server procrastinabile}
+Un task periodico T$_{i}$ in un sistema di n task indipendenti ed interrompibili è schedulabile con EDF insieme ad un server procrastinabile (p$_{s}$, e$_{s}$) se:\\ $\sum\limits_{k = 1}^{n} \frac{e_k}{min(D_k, p_k)}$ + $\frac{e_s}{p_s}$ $\cdot$ (1 + $\frac{p_s - e_s}{D_i}$) $\leq$ 1.\\ Dim: per D$_{k}$ $\leq$ p$_{k}$. Suppongo che un job di T$_{i}$ rilasciato a r$_{i}$ manca la scadenza a t; t' $<$ t è l'ultimo istante in cui il processore è idle o esegue un job a priorità inferiore. Ma allora r$_{i}$ $\geq$ t', questo significa che l'istante t in cui manco la scadenza assoluta meno t' è maggiore o uguale alla scadenza relativa. Ma quindi, invertendo: $\frac{1}{t-t'}$ $\leq$ $\frac{1}{D_i}$. Quando tempo viene rubato dal server procrastinabile tra t' e t: $e_{s}$ + $\lfloor \frac{t - t'- e_s}{p_s}\rfloor \cdot e_s$, la parte intera è inferiore perché se t cade nel mezzo vuol dire che il server procrastinabile avrà una scadenza che sarà dopo, la frazione va scartata in quanto non ruberà tempo.\\
+\includegraphics[scale=0.3]{images/SERT2310_3}\\
+Quindi t-t' $<$ $\sum\limits_{k=1}^{n} \frac{e_k}{p_k} \cdot (t-t')$ + $\frac{e_s}{p_s}$ $\cdot$ (t-t'-p$_s$-e$_{s}$). L'intervallo non è sufficiente a fare tutto il lavoro: il lavoro è eseguire tutti i job periodici, in più il tempo del server procrastinabile nell'intervallo t-t' ed in più +p$_{s}$ - e$_{s}$, togliendo la parte intera. Ma sto dicendo che la sommatoria + il resto è $>$ 1, ovvero se la condizione è $\leq$ 1 il task periodico rispetterà la scadenza.
+\subsection{Server sporadici}
+Un server procrastinabile può ritardare i task di priorità minore più di un task periodico con identici parametri. Vorrei avere un server con impatto su schedulabilità del sistema uguale a quello di un qualsiasi task periodico: server sporadico, shcedulabilità del sistema si studia semplicemente, ne esistono vari tipi: differenza sta nelle regole di consumo/rifornimento.
+\subsubsection{Server sporadici in sistemi a priorità fissa}
+Sistema di task periodici T a priorità fissa, ho un server sporadico T$_{s}$=(p$_{s}$, e$_{s}$), con priorità $\pi_{s}$. Definisco l'insieme T$_{H}$, che è l'insieme dei task con priorità maggiore di $\pi_{s}$.\\ Definisco l'intervallo totalmente occupato di un insieme di task:
+\begin{itemize}
+\item prima dell'intervallo tutti i job sono stati completati
+\item all'inizio dell'intervallo viene rilasciato almeno un job
+\item la fine dell'intervallo è il primo istante in cui tutti i job rilasciati entro l'intervallo sono completati
+\end{itemize}
+Definisco alcuni parametri e variabili:
+\begin{itemize}
+\item t$_{r}$: l'ultimo istante in cui è stato aumentato il budget, ovvero l'ultimo istante in cui è stata applicata la regola di rifornimento del server.
+\item t$_{f}$, che è il primo istante dopo t$_{r}$ in cui il server è in esecuzione.
+\item t$_{e}$ è invece una variabile che serve per indicare quando ci sarò il prossimo rifornimento, tipicamente sarà t$_{e}$ + $\pi_{s}$.
+\item BEGIN: variabile che per ogni t, considera l'ultima sequenza di intervalli totalmente occupati contigui dei task T$_{H}$ iniziata prima di t. BEGIN è esattamente l'inizio del primo intervallo totalmente questa sequenza.
+\item END è la fine, ma solo se la fine è precedente a t, altrimenti è $\infty$.
+\end{itemize}
+\subsubsection{Server sporadico semplice}
+Regola di consumo: in ogni istante maggiore di t$_{r}$, il budget è decrementato di una unità per ogni unità di tempo se una delle seguenti condizioni è vera:
+\begin{enumerate}
+\item Il server è in esecuzione
+\item Il server è stato in esecuzione dopo t$_{r}$ ed inoltre END $<$ t.
+\end{enumerate}
+Se le condizioni sono false, il budget si conserva. Il server consuma budget più in fretta del server procrastinabile, stiamo cercando di ridurre l'impatto che ha sui task di priorità inferiore.\\  Regole di rifornimento:
+\begin{enumerate}
+\item Ogni volta che faccio rifornimento, il budget è settato ad e$_{s}$, t$_{r}$ viene associato all'istante corrente
+\item All'istante t$_{f}$:
+\begin{itemize}
+\item se END = t$_{f}$, allora associa a t$_{e}$ il max(t$_{r}$, BEGIN)
+\item se END $<$ t$_{f}$, associa a t$_{e}$ il valore di t$_{f}$.
+\end{itemize}
+\item Il prossimo rifornimento sarà a t$_{e}$+p$_{s}$, ma con due eccezioni:
+\begin{itemize}
+\item se t$_{e}$+p$_{s}$ $<$ t$_{f}$, il budget sarà rifornito non appena esaurito
+\item il budget sarà rifornito ad un certo momento t$_{b}$ $<$ t$_{e}$+p$_{s}$ se esiste un intervallo [t$_{i}$, t$_{b}$) in cui nessun task di T è eseguibile, ed un task di T comincia l'esecuzione a t$_{b}$
+\end{itemize}
+\end{enumerate}
+Significato della regola di consumo 1: nessun job del server esegue per un tempo maggiore di e$_{s}$ in un periodo p$_{s}$\\ Significato di C2: il server conserva budget se un task di T$_{H}$ è eseguile oppure il server non ha mai eseguito t$_{r}$; altrimenti il budget è consumato.\\ Significato di R2: se nell'intervallo (t$_{r}$, t$_{f}$) sono stati sempre in esecuzione task di T$_{H}$, il prossimo rifornimento sarà a t$_{r}$+p$_{s}$. Ma se questo non è vero il prossimo rifornimento sarà a t$_{e}$+p$_{s}$ dove t$_{e}$ è l'ultimo istante di (t$_{r}$, t$_{f}$] in cui non esegue un task di T$_{H}$.\\ Significato di R3a: il job del server ha atteso per più di p$_{s}$ unità di tempo prima di iniziare l'esecuzione, quindi il job continua nel prossimo periodo (serve il test di schedulabilità generale).\\ R3b: il budget è rifornito nell'ostante iniziale di ogni intervallo totalmente occupato di T. \\ esempio di schedulazione RM con server sporadico semplice:\\
+\includegraphics[scale=0.3]{images/SERT2310_4.png}\\
+Da 3.5 comincio T$_{f}$ e consumo il budget, ma ora devo anche capire t$_{e}$, che qui è 3. Questo mi dice anche quando sarà il prossimo rifornimento, che sarà ad 8 (3+5). All'istante 5.5 termina il job aperiodico, e qui lo scheduler da il controllo al job di T$_{3}$, ma il budget continua ad essere consumato fino a diventare 0: non sono più nelle condizioni in cui il budget si preserva, e qui sta eseguendo un job con priorità minore del server. All'istante 7 arriva il 2° job aperiodico ma non posso eseguirlo perché il budget è 0, quindi devo aspettare 8. A 9.5 termina l'intervallo totalmente occupato, quindi posso eseguire job aperiodici.
+\subsubsection{Server sporadico background}
+Variante del server sporadico (ne esistono di verse via via sempre più costose da implementare). Ogni volta che nessun job periodico è eseguibile, il server esegue un job aperiodico.\\ Regola di consumo è identica a quella del server sporadico semplice, tranne che se nessun task periodico è eseguibile il budget è uguale a e$_{s}$. \\ regola di consumo è uguale tranne che per R3b: il budget è ripristinato all'inizio di ogni intervallo in cui nessun task periodico è eseguibile; t$_{r}$ (ed eventualmente t$_{f}$) è la fine dell'intervallo.\\ Conviene sempre implementare questo server, perché questo tende ad abbassare il tempi di risposta dei job aperiodici, l'unico caso in cui non conviene usarlo è quando si utilizzano più server sporadici per differenti tipi di job aperiodici.\\ esempio precedente:\\
+\includegraphics[scale=0.3]{images/SERT2310_5.png}\\ 
+Da un certo punto in poi budget rimane sempre al valore massimo, per un motivo o per un altro.
+\subsection{Constant Bandwidth server}
+Server inventato da L. Abeni e G. Buttazzo (1998). Server abbastanza recente, importante per diversi motivi:
+\begin{itemize}
+\item Server abbastanza facile da integrare in uno scheduler a priorità fissa a livello di job
+\item Schedulazione di job aperiodici con i vantaggi di EDF rispetto a RM/DM
+\item server è work conserving: non lascio mai processore idle se c'è almeno un job da eseguire.
+\item occupazione del processore non supera mai una frazione di tempo predefinita: permette di isolare il comportamento del server dal comportamento dei task aperiodici
+\end{itemize}
+Caratteristiche:
+\begin{itemize}
+\item periodo p$_{s}$
+\item budget massimo e$_{s}$
+\item budget corrente c$_{s}$
+\item scadenza assoluta d$_{s}$: questo perché il server va schedulato in un algoritmo di tipo EDF, devo confrontare la priorità con quella degli altri task che è basato su scadenza assoluta.
+\end{itemize}
+Il rapporto u$_{s}$ = $\frac{e_s}{p_s}$ è la bandwidth del server.\\ Il server CBS viene schedulato con EDF insieme agli altri task periodici considerando la scadenza assoluta corrente d$_{s}$.\\ Un sistema di task periodici ed un server CBS sono schedulabili con EDF se U$_{T}$ + u$_{s}$ $\leq$ 1.\\ Funzionamento del server:\\
+\begin{itemize}
+\item Regola di aggiornamento della scadenza:
+\begin{itemize}
+\item inizialmente d$_{s}$ = 0
+\item non appena budget corrente si azzera, la scadenza diviene pari a d$_{s}$+p$_{s}$, la priorità viene diminuita in modo da dare spazio agli altri task del sistema
+\item Se ad un certi istante t viene rilasciato job aperiodico ed il server non è impegnato (la coda dei job aperiodici è vuota) , vado a verificare se c$_{s}$ $\geq$ (d$_{s}$-t) $\cdot$ u$_{s}$, perché se questo avviene rischio di prendere più tempo del processore del dovuto e quindi setto d$_{s}$ a t+p$_{s}$.
+\end{itemize}
+\item Regola di rifornimento e di consumo:
+\begin{itemize}
+\item all'inizio imposto il valore di c$_{s}$ ad e$_{s}$
+\item c$_{s}$ viene decrementato proporzionalmente all'esecuzione dei job periodici del server.
+\item se c$_{s}$ di azzera, c$_{s}$ viene rifornito ad e$_{s}$ immediatamente
+\end{itemize}
+Non esiste mai un intervallo di tempo $>$ 0 in cui il server ha un budget nullo.
+\end{itemize}
+esempio EDF con server CBS:\\
+\includegraphics[scale=0.3]{images/SERT2310_6.png}
+\subsection{Schedulabilità di job aperiodici hard real-time}
+Concetto di densità del job aperiodico con istante di rilascio r e tempo massimo di esecuzione e e scadenza la sua densità è: $\frac{e}{d-r}$.\\ Vale questo teorema: Un sistema di job aperiodici, indipendenti e interrompibili è schedulabile con EDF se la densità totale di tutti i job attivi (nell'intervallo tra rilascio e scadenza) è in ogni istante $\leq$ 1.\\ In ogni istante di tempo la densità totale di tutti i job rilasciati e non ancora conclusi deve essere $\leq$ 1; è una condizione sufficiente, teorema permette di realizzare anche un test di accettazione. Dim: un job manca la scadenza a t, t' è l'ultimo momento in cui il processore non ha eseguito un job con scadenza $\leq$ t $\Rightarrow$ $\sum\limits_{i} e_i$ $>$ t-t'. Partiziono l'intervallo fra (t',t] in (t$_{1}$,t$_{2}$],(t$_{2}$,t$_{3}$].... dove t$_{k}$ è l'istante di rilascio o scadenza per qualche job, in ciascuno dei quali l'insieme dei job attivi è differenze. Considero X$_{k}$ l'insieme dei job attivi in (t$_{k}$,t$_{k+1}$] e $\Delta_k$ la loro densità:\\ $\sum\limits_{i} e_i$ =  $\sum\limits_{j = 1}^{l} (t_{j+1} - t_j)$ $\cdot$ $\sum\limits_{J_{k} \in X_{i}} \frac{e_k}{d_k - r_k}$ $\leq$ $\sum\limits_{j = 1}^{l} \Delta_{j}(t_{j+1} - t_j)$ $\leq$ t-t'. Vedo la somma di e$_{i}$ come la densità per quell'intervallo moltiplicata per la lunghezza dell'intervallo. Ma il risultato è in contraddizione col fatto che qualcuno ha mancato la scadenza. esempio: \\
+Considero job aperiodici J$_{1}$=(r=0, e=1,d=2), J$_{2}$=(r=0.5, e=1,d=2.5), J$_{3}$=(r=1, e=1,d=3)\\
+\begin{table}
+\begin{tabular}{||c c c||}
+\hline\hline
+intervalli & job attivi & densità\\
+\hline
+(0, 0.5] & J$_{1}$ & 0.5\\
+\hline
+(0.5,1] & J$_{1}$J$_{2}$ & 1.0\\
+\hline
+(1,2] & J$_{1}$J$_{2}$J$_{3}$ & 1.5\\
+\hline
+(2,2.5] & J$_{2}$J$_{3}$ & 1.0\\
+\hline
+(2.5,3] & J$_{3}$ & 0.5
+\end{tabular}
+\end{table}
+Nell'intervallo (1,2] la densità totale è $>$ 1, quindi il teorema non si applica. Schedulabilità con EDF? Sì, il teorema è solo sufficiente: metto J$_{1}$ in (0,1], J$_{2}$ in (1,2] e J$_{3}$ in (2,3] ed ottengo la mia schedulazione.
+\section{Controllo d'accesso alle risorse condivise}
+Sono partito da modello di carico nel sistema in cui tutti i job erano semplificati, task rilasciavano i job in maniera regolare e tutti i job erano indipendenti ed interrompibili. Mano a mano rilassato queste ipotesi, estendendo il modello. Continuo ad avere singolo processore, sciolgo vincolo di indipendenza dei job nel senso delle risorse condivise. Risorse condivise: accedervi significa vietare a qualunque altro job l'accesso finché il lavoro non è concluso.\\ Nel modello dico che esistono una serie di risorse riciclabili R$_{1}$, R$_{2}$,...., R$_{\rho}$ e ciascuna risorsa R$_{i}$ ha $\nu_{i}$ unità di risorsa indistinguibili assegnabili, non posso assegnare la stessa unità di risorsa a più job ma più job può acquisire più unità di risorsa.\\ Se R$_{i}$ ha un numero $\infty$ unità di risorsa non vale la pena considerarla nel modello,  considero quindi $\nu_{i}$ sempre finito.\\ esempi: semafori, mutex, spin lock, stampanti erc..., si parla di risorse passive: l'unica cosa che conta è che siano disponibili, non sono importanti le loro caratteristiche interne.\\ Come modello una risorsa R che può essere utilizzata da un numero finito di job n $>$ 1: R ha $\nu$ unità esclusive, ovvero nessun job può ottenere più di 1 unità. \\ Come modello invece risorsa R che ha una intrinseca dimensione finita (es una memoria): capisco qual'è l'unità di assegnazione della memoria, ad esempio un pagina di memoria, e faccio corrispondere a $\nu$ il più piccolo blocco di risorsa assegnabile.
+\subsection{Richieste e rilasci di risorse}
+Un jbo che deve acquisire un certo n° $\eta$ di unità della risorsa R$_{i}$ procede ad effettuare la richiesta L(R$_{i}$, $\eta$). La richiesta è atomica: o ottiene tutte  le $\eta$ unità, altrimenti il job è bloccato (la sua esecuzione è sospesa).Termine blocco è giustificato nel contesto: se non posso ottenere la risorsa, vuol dire che un job a priorità minore di me ha la risorsa. Quando job non ha più bisogno della risorsa fa un rilascio U(R$_{i}$, $\eta$).\\ Spesso il controllo di accesso è affidato a primitive software di tipo lock/unlock. Spesso la risorsa R$_{i}$ ha una sola unità disponibile ($\nu_i$ = 1), abbrevio quindi con L(R$_{i}$) ed U(R$_{i}$). È una semplificazione, ama algoritmi che studio sono facilmente adattabili ad un situazione con $\eta$ variabile.\\ Conflitto di risorse: due job hanno un conflitto di risorse se potenzialmente possono chiedere una risorsa dello stesso tipo. Due job si contendono una risorsa se uno dei due richiede una unità di risorsa che è già posseduta dall'altro job.
+\subsection{Sezioni critiche}
+Si definisce sezione critica un segmento di esecuzione di jon che inizia con L(R$_{i}$, $\eta$) e termina con U(R$_{i}$, $\eta$). Le richieste di risorse di un job possono essere annidate, ma assumiamo che i rilasci sono sempre LIFO.\\ Una sezione critica non contenuta in alcun'altra sezione critica è detta esterna.\\ La notazione [R$_{1}$, $\eta_1$;e$_{1}$[R$_{2}$,$\eta_2$;e$_{2}$]] corrisponde a:\\ L(R$_{i}$, $\eta_1$) L(R$_{2}$, $\eta_2$) U(R$_{2}$, $\eta_2$) U(R$_{1}$, $\eta_1$) rispettivamente la lunghezza di e$_{2}$ è contenuta nella la lunghezza di e$_{1}$ (ovvero nella regione critica di R$_{1}$ viene fatta la richiesta di R$_{2}$). Quando un certo job richiede una certa risorsa? Non c'è l'indicazione, ragiono sul worst case. esempio:\\
+schedulazione con EDF con una unità di risorsa (notazione: freccia bassa è richiesta di risorsa, freccia alta è rilascio).\\
+\includegraphics[scale=0.3]{images/SERT2410_1.png}\\\
+Le inversioni di priorità causata dal possedere la risorsa causa anomalie di schedulazione: se ad esempio riduco la durata della regione critica d T$_{3}$, quindi apparentemente i job di priorità più alta dovrebbero essere favoriti, ma non è così:\\ 
+\includegraphics[scale=0.3]{images/SERT2410_2.png}\\
+quando job di T$_{3}$ rilascia la risorsa, il job di T$_{1}$ non è ancora stato rilasciato e quindi entra job di T$_{2}$, quindi T$_{1}$ otterrà la ricorsa troppo tardi. Le inversioni di priorità possono causare anomalie di schedulazione, devo tenerne conto nell'analisi di schedulabilità.
+\subsection{Controllo d'accesso alle risorse condivise}
+Algoritmi per il controllo di accesso sono necessari:
+\begin{itemize}
+\item Le inversioni di priorità devono essere controllate, altrimenti sarebbero arbitrariamente lunghe.esempio: J$_{3}$ acquisisce risorsa e poi viene bloccato da J$_{1}$ che vuole acquisire risorsa. Ma ora entra job di J$_{2}$ e può essere deciso dallo scheduler di metterlo nel processore, perché a priorità maggiore di J$_{3}$: J$_{2}$ rallenta sia J$_{3}$ che J$_{1}$. Il ritardo che J$_{3}$ infligge a J$_{1}$ non è solo la lunghezza della regione critica fra J$_{3}$ e J$_{1}$ va misurata nel momento in cui nessuno interrompe J$_{3}$, se ci sono processi che interrompono J$_{2}$ a priorità maggiore che prendono il posto di J$_{3}$ non so quanto sarà lungo il blocco di J$_{1}$ (posso avere molteplici job nel mezzo che rallentano). Questo fenomeno si chiama inversione di priorità non controllata.
+\item Deadlock: altro grave problema. J$_{2}$ chiede R$_{1}$, J$_{1}$ chiede R$_{2}$. A quel punto J$_{1}$ chiede R$_{1}$ ma è bloccato, J$_{2}$ continua ed ad un certo punto richiede R$_{2}$. Sono in una situazione di deadlock.
+\end{itemize}
+\subsubsection{Grafi di attesa}
+Mutua relazione tra job e risorse è modellabile con grafi di attesa: i nodi dono i job, altri nodi le risorse. Un arco da un nodo di tipo risorsa ad un di tipo job indica che il job ha allocato un certo n° di unità della risorsa. Il viceversa indica che job ha richiesto un certo numero di unità della risorsa ma questa non può essere soddisfatta. Un ciclo del grafo rappresenta un deadlock:\\
+\includegraphics[scale=0.3]{images/SERT2410_3.png}
+\subsection{Protocollo NPCS}
+Il più semplice protocollo di accesso alle risorse condivise, Nonpreemptive Critcial Section: un job avente una risorsa assegnata non può essere interrotto.\\ Questo risolve tutti i problemi, posso avere deadlock? No, solo a condizione che il job non si auto-sospenda quando ha la risorsa: se job ottiene risorsa e non può essere interrotto non può esserci deadlock, job di priorità superiore non potrà richiedere altra risorsa perché non potrà andare in esecuzione. Se job si auto-sospende tutto il discorso cade: processore è libero e qualcuno può essere schedulato, richiedere una risorsa ed alla fine causare un deadlock.\\ esempio precedente,  schedulazione con NPCS:\\
+\includegraphics[scale=0.3]{images/SERT2410_4.png}\\
+Non ci sono deadlock e non c'è inversione di priorità incontrollata: al massimo J$_{1}$ sarà bloccato da J$_{3}$ per una durata pari alla regione critica.
+\subsubsection{Tempo di blocco per conflitto di risorse}
+Sia b$_{i}$(rc) il tempo di blocco dovuto ad un conflitto di risorse. Per NPCS con task a priorità fissa T$_{1}$,....,T$_{n}$:\\
+b$_{i}$(rc) = $\underset{i+1 \leq k \leq n}{max}$(c$_{k}$), dove c$_{k}$ è il tempo di esecuzione della più lunga sezione critica di T$_{k}$. Misuro il ritardo che subisce T$_{i}$, i job di priorità superiore non mi danno blocchi, se io voglio una risorsa e la trovo bloccata è per via di job a priorità minore, quelli a priorità superiore non mi fanno neanche entrare nel processore; questo in un modello a singolo processore e senza auto-sospensione.\\ Potrei subire un ritardo perché uno dei job a priorità inferiore alla mia è dentro la regione critica e quindi non può essere interrotto secondo NPCS.\\ Blocco per conflitto di risorse in NPCS è dovuto al fatto che un job a priorità inferiore è dentro la sezione critica.\\ Formula per b$_{i}$(cs) con schedulazione EDF, teorema di Baker: un job J$_{i}$ può essere bloccato da J$_{j}$ solo se d$_{i}$ $<$ d$_{j}$ e r$_{i}$ $>$ r$_{j}$, ossia D$_{i}$ $<$ D$_{j}$.\\ Quindi b$_{i}$(rc) = max\{c$_{k}$: k tale che D$_{k}$ $>$ D$_{i}$\}.\\ Limite del protocollo NPCS: un job può essere bloccato da un job a priorità inferiore anche quanto non ci sono contese o conflitti su alcune risorse. Svantaggioso, quindi si cerca di evitar questo protocollo. D'altra parte, il protocollo è molto diffuso perché è semplice da implementare, non richiede dati sull'uso delle risorse dei job e può essere usato sia per sistemi a priorità fissa che dinamica.
+\subsection{Protocollo priority-inheritance}
+Protocollo adatto ad ogni scheduler priority-driven, non si basa sui tempi di esecuzione dei job e riesce ad evitare il fenomeno dell'inversione di priorità incontrollata.\\ Idea: cambiare le priorità se esistono delle contese sulle risorse per evitare che un job blocca un altro job di priorità più alta sia rallentato da job di priorità intermedi fra i due. esempio di prima: quando J$_{1}$ richiede la risorsa, poi J$_{3}$ torna normalmente in esecuzione, poi arriva J$_{2}$ che rallenterebbe J$_{3}$, ma ora il fatto che J$_{3}$ sta bloccando J$_{1}$ al sua priorità sarà innalzata fino a quella di J$_{1}$. In questo modo evito che si possano inserire job di priorità intermedia.\\ In pratica: i job sono schedulati in modo interrompibile secondo la loro priorità corrente. inizialmente la priorità corrente $\pi$(t) di un job J rilasciato al tempo t è quella assegnata dall'algoritmo di schedulazione.\\ Quando un job J richiede una risorsa R al tempo t:
+\begin{itemize}
+\item Se R è disponibile, R vine assegnata a J
+\item Se R non è disponibile, J è sospeso (bloccato)
+\end{itemize}
+Quando un job J viene bloccato a causa di una contesa su una risorsa R, il job J$_{l}$ che blocca J eredita la priorità corrente $\pi$(t)  di J finché non rilascia R; a quel punto, la priorità corrente di J$_{l}$ torna ad essere la priorità $\pi_{l}$(t') che aveva al momento t' in cui aveva acquisito la risorsa R.\\ esempio: schedulazione a priorità fissa con priority-inheritance, qui supponiamo che la risorsa venga chiesta dopo un'unità di tempo dal rilascio.\\
+\includegraphics[scale=0.3]{images/SERT2410_5}\\
+Limiti:
+\begin{itemize}
+\item Non evita i deadlock
+\item Introduce nuovi casi di blocco: un job a priorità corrente $\pi$(t) può bloccare ogni job con priorità assegnata minore di $\pi$(t).
+\item Non riduce i tempi di blocco dovuti ai conflitti sulle risorse al minimo teorico possibile. esempio: ho un job a priorità alta: il job ha sotto di se molti job a priorità inferiore, usa molte risorse annidate. Se tutte le risorse sono assegnate: se accede ad un certo numero v di risorse ed ha conflitti con k job di priorità inferiore assegnata può bloccare per un min(k,v) volte.\\ Devo dimensionare il sistema in modo molto pessimista
+\end{itemize}
+\subsection{Protocollo priority-ceiling}
+Adatto a scheduler con priorità fissa.È basato sulle richieste di risorse dei job prefissati, evita inoltre tutti e due i problemi.\\ Idea: associare ad ogni risorsa R il valore priority ceiling $\lceil\rceil$(R) pari alla massima priorità dei job che fanno uso di R. Dato che sa quale task userà quale risorsa, ad ogni risorsa è possibile associare il priority ceiling. Inoltre, il protocollo definisce il current priority ceiling $\lceil\rceil$'(R) che è apri a:
+\begin{itemize}
+\item La massima priorità $\lceil\rceil$(R) fra tutte le risorse del sistema correntemente in uso al tempo t
+\item al valore convenzionale $\Omega$ di priorità  inferiore a quella di qualunque task se nessuna risorsa è in uso.
+\end{itemize}
+Confrontando le priorità, $\pi$(t) $>$ $\pi'$(t) significa che $\pi$(t) ha maggiore priorità di $\pi'$(t); così se a valore inferiore corrisponde priorità superiore, $\pi$(t) = 1 e $\pi'$(t) = 2 implica che $\pi$(t) $>$ $\pi'$(t).\\ Regola di schedulazione: job schedulati in modo interrompibile secondo la loro priorità corrente.\\ Se al tempo t un job J con una certa priorità corrente $\pi$(t) richiede una risorsa R, R è allocata a J sole se è disponibile d inoltre:
+\begin{itemize}
+\item $\pi$(t) $>$ $\lceil\rceil$(t)
+\item J possiede una risorsa il cui priority ceiling è uguale a $\lceil\rceil'$(t)
+\item altrimenti J è bloccato.
+\end{itemize}
+Se J$_{l}$ blocca J, J$_{l}$ eredità la priorità corrente $\pi$(t) di J finché J$_{l}$ non rilascia l'ultima risorsa R tale che $\lceil\rceil$(R) $\geq$ $\pi$(t); a quel punto la priorità di J$_{l}$ torna ad essere la priorità $\pi_{l}$(t') che aveva al momento t' in cui aveva acquisito la risorsa R.\\ esempio:\\
+\includegraphics[scale=0.3]{images/SERT2410_6.png}\\
+Stabilisco prima i priority ceiling delle risorse. Ho un blocco: il motivo per cui J$_{4}$ non può continuare perché è bloccato da J$_{5}$, quindi J$_{5}$ eredita la priorità di J$_{4}$.\\ In quanti casi diversi un job J$_{l}$ può bloccare un job J$_{h}$ con priorità $\pi{l}$ $<$ $\pi{h}$:
+\begin{itemize}
+\item Blocco diretto: J$_{h}$ richiede una risorsa R assegnata a J$_{l}$.
+\item Blocco dovuto a priority-inheritance: la priorità corrente di J$_{l}$ è maggiore di quella di J$_{h}$, perché J$_{l}$ sta bloccando direttamente un job che ha priorità maggiore di J$_{h}$.
+\item Blocco dovuto al priority ceiling (o avoidance blocking): J$_{h}$ ha richiesto una risorsa R ma J$_{l}$ possiede un'altra risorsa R' tale che $\lceil\rceil$(R') $\geq$ $\pi_{h}$.
+\end{itemize}
+I deadlock possono essere evitati se tutti i job acquisiscono le risorse annidate rispettando un unico ordinamento globale delle risorse; metodo principale usato nei sistemi operativi.\\ I priority ceiling non definiscono un ordinamento globale delle risorse, bensì parziale ma che basta ad evitare i deadlock. esempio:\\
+\includegraphics[scale=0.3]{images/SERT2410_7.png}\\
+Sono esposto ad un deadlock, ma con priority ceiling non avverrà: al tempo 2.5 J$_{2}$ richiede R$_{2}$, ma la richiesta viene rifiutata anche se R$_{2}$ è libera, così si evita un possibile deadlock con J$_{3}$. I job con priorità corrente maggiore di $\lceil\rceil'$(t) possono acquisire risorse sezna rischiare deadlock con le risorse già assegnate.\\ Posso avere molti job e risorse: ho J$_{1}$, che usa R$_{1}$,R$_{2}$, poi ho J$_{2}$ che usa R$_{3}$,R$_{4}$, userà anche R$_{1}$,R$_{2}$ ma non è un problema, perché il priority ceiling di R$_{1}$,R$_{2}$ è quelli di J$_{1}$ e così via per i vari livelli:\\
+$\lceil\rceil$(R$_{1}$) = $\lceil\rceil$(R$_{2}$) = $\pi_{1}$\\
+$\lceil\rceil$(R$_{3}$) = $\lceil\rceil$(R$_{4}$) = $\pi_{2}$.
+e così via \\ Suppongo che $\lceil\rceil'$(t$_{0}$) sia ad un certo livello $\pi_{k}$: questo vuol dire che sono assegnate nel sistema solo risorse al di sotto di questo livello. Se al tempo t$_{0}$ un job richiede un risorsa e la sua priorità $\pi_{J}$(t$_{0}$) $>$ $\lceil\rceil'$(t$_{0}$):
+\begin{itemize}
+\item J non richiederà mai alcuna risorsa già assegnata al tempo t$_{0}$. Quindi non avrò nessun deadlock con le risorse già assegnate
+\item Nessun job con priorità maggiore di $\pi_{j}$(t$_{0}$) chiederà alcuna risorsa già assegnata la tempo t$_{0}$ , quindi nessun job che già possiede una risorsa al tempo t$_{0}$ portà interrompere J e richiedere R.
+\end{itemize}
+Il risultato è che il protocollo priority-ceiling evita i deadlock.
 \end{document}
