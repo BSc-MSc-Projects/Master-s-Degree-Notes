@@ -439,4 +439,81 @@ e così via \\ Suppongo che $\lceil\rceil'$(t$_{0}$) sia ad un certo livello $\p
 \item Nessun job con priorità maggiore di $\pi_{j}$(t$_{0}$) chiederà alcuna risorsa già assegnata la tempo t$_{0}$ , quindi nessun job che già possiede una risorsa al tempo t$_{0}$ portà interrompere J e richiedere R.
 \end{itemize}
 Il risultato è che il protocollo priority-ceiling evita i deadlock.
+\subsubsection{Proprietà del protocollo priority-ceiling}
+Come visto sopra:
+\begin{itemize}
+\item al tempo t un job possiede tutte le risorse assegnate aventi priority ceiling uguale a $\lceil\rceil'$(t).
+\item se un job sta per ottenere un risorsa $\pi$(t) $>$ $\lceil\rceil'$(t), nessun job di priorità uguale o superiore ha richiesto o richiederà le risorse già assegnate
+\item Se un job sta per ottenere una risorsa $\pi$(t) = $\lceil\rceil'$(t), il job è il possessore di tutte le risorse assegnate aventi priority ceiling uguale a $\lceil\rceil'$(t).
+\item i deadlock sono dunque evitati: priorità assegnate all risorse definiscono in un certo modo un ordinamento non totale tra le risorse.
+\end{itemize}
+Se al tempo t$_{0}$ un job J richiede una risorsa R e $\pi$(t$_{0}$) $>$ $\lceil\rceil'$(t): 
+\begin{itemize}
+\item J non richiederà mai alcuna risorsa già assegnata aò tempo t$_{0}$
+\item Nessun job a priorità $\geq$ $\pi$(t${0}$) chiederà una risorsa già assegnata al tempo t$_{0}$.
+\end{itemize}
+Quindi priority ceiling evita i deadlock.\\ Non basta questa proprietà per giustificare la complessità di priority ceiling: basterebbe programmare bene i job nel sistema per evitare i deadlock.\\ In priority-ceiling, ho 3 blocchi possibili: blocco diretto, priority-inheritance, priority-ceiling.\\ C'è un teorema:\\ utilizzando il protocollo priority-ceiling un job può essere bloccato al massimo per la durata di una sezione critica.Teorema vuol dire che su un job subisce blocco a causa di una risorsa condivisa lo farà una volta sola, non subirà blocchi consecutivi. Inoltre blocco non sarà per un tempo costituito da annidamento di diverse sezioni critiche, ma per un tempo pari a solo la durata di una sezione critica.2 proprietà:
+\begin{itemize}
+\item Se un job viene bloccato, è bloccato da un solo job
+\item Non esiste blocco transitivo: non si verifica mai il caso J$_{3}$ blocca J$_{2}$ e J$_{2}$ blocca J$_{1}$.
+\end{itemize}
+Unicità del job bloccante:\\ ho 3 job di priorità variabili.
+\includegraphics[scale=0.3]{images/SERT2910_1.png}\\
+J$_{h}$ è bloccato sia da J$_{m}$ che da J$_{l}$. Perché non può avvenire in priority ceiling:\\ $\pi_{h}$ $>$ $\pi_{m}$ $>$ $\pi_{l}$ $\Rightarrow$ $\lceil\rceil$(R$_{1}$) $\geq$ $\pi_{h}$ e $\lceil1rceil$(R$_{2}$) $\geq$ $\pi_{h}$.\\ Ora: $\lceil\rceil'$(t$_{0}$) $\geq$ $\lceil\rceil$(R$_{1}$) $\geq$ $\pi_{h}$. Il requisito per l'allocazione a t$_{0}$ deve essere $\pi_{m}$ $>$ $\lceil\rceil$(R$_{1}$) $\geq$ $\pi_{h}$. Ma questo non è verificato e quindi il priority ceiling nega l'assegnazione della risorsa a J$_{m}$.\\ Se J$_{m}$ acquisisce una risorsa a t$_{0}$, nessun job con priorità maggiore o uguale può richiedete una risorsa già in uso a t$_{0}$.\\ Impossibilità del blocco transitivo:\\
+\includegraphics[scale=0.3]{images/SERT2910_2.png}\\
+J$_{l}$ sta bloccando J$_{m}$ e J$_{m}$ sta bloccando J$_{h}$. Perché non può verificarsi:\\ $\pi_{h}$ $>$ $\pi_{m}$ $\pi_{l}$ $\Rightarrow$ $\lceil\rceil$(R$_{1}$) $\geq$ $\pi_{m}$ e $\lceil\rceil$(R$_{2}$) $\geq$ $\pi_{h}$.\\ Quindi $\lceil\rceil'$(t$\_{0}$) $\geq$ $\lceil\rceil$(R$\_{1}$) $\geq$ $\lceil\rceil'$t$_{0}$; quindi l'allocazione non può avvenire.\\
+\subsubsection{Tempo di blocco per conflitto di risorse}
+È il massimo tempo di ritardo un job del task T$\_{i}$ causato da un conflitto di risorse.\\ Come faccio per calcolarlo: ho 3 tipi di blocco, quindi devo calcolarlo per tutti e 3  tipi, mi il teorema mi dice che il job può essere bloccato per al massimo una sezione critica, quindi considero il massimo.esempio:\\ J$_{1}$:[R$_{1}$;0.8], J$_{2}$, J$_{3}$:[R$_{2}$;0.2], J$_{4}$:[R$_{1}$;1].\\ 
+\includegraphics[scale=0.3]{images/SERT2910_3.png}\\
+J$_{4}$ può bloccare direttamente J$_{1}$ per 1 unità di tempo $\Rightarrow$ b$_{1}$(rc) = 1. J$_{4}$ può bloccare anche J$_{2}$ e J$_{3}$, quando acquisisce R$_{1}$ $\Rightarrow$ b$_{2}$(rc) = b$_{3}$(rc) = 1: può bloccare per priority inheritance. Sto facendo analisi pessimista: J$_{4}$ chiede la risorsa e subito dopo la chiede J$_{1}$. Il job per J$_{4}$ è b$_{4}$(rc) = 0, perché il job di priorità più bassa.\\ Per esempi più complessi, conviene avere un algoritmo automatico per derivare i tempi di blocco:
+\includegraphics[scale=0.3]{images/SERT2910_4.png}
+\begin{itemize}
+\item Costruisco una tabella dei tempi di blocco diretti. Su entrambe le colonne avrò i nomi dei job, ciascuna componente rappresenta il tempo di blocco diretto che il job della colonna fa subire al job della riga.\\ Le righe hanno i 5 job di priorità superiore mentre le colonne i 5 di priorità inferiore
+\item Metto asterisco sugli elementi della "diagonale", ovvero le righe e colonne con lo stesso job, so che sotto la diagonale il blocco non può avvenire, quindi avrò valore 0.
+\item Riempio le componenti sopra gli asterischi: vedo chi è in conflitto sulle varie risorse.
+\end{itemize}
+Posso derivare in maniera automatica la tabella per i blocchi dovuti all'inheritcance: 
+\includegraphics[scale=0.3]{images/SERT2910_5.png}
+\\avviene in caso di contesa, quindi quando un job nel blocca un altro viene trasferita la priorità. J$_{3}$ blocca J$_{1}$ per 6 unità di tempo. Ma allora il job di priorità intermedia può essere bloccato per 6 unità di tempo, quindi il 6 scende di una posizione nella tabella. Blocco tra J$_{2}$ e J$_{4}$, questo danneggia i job di priorità intermedia, ovvero J$_{3}$, il 5 scende fino alla riga di J$_{3}$.\\ J$_{6}$: blocca per inheritance anche tutti i job di priorità intermedia tra lui e J$_{1}$, e quindi tutti gli altri. Voci scendono sempre fino all'asterisco. Ad un certo punto, trovo che J$_{6}$ sta bloccando direttamente anche J$_{3}$, quindi per inheritance J$_{3}$ è bloccato per 2 unità di tempo, ma poi J$_{4}$ sarebbe bloccato per 2 unità di tempo a causa della contesa con J$_{1}$ ma anche per 4 unità per via della contesa con J$_{3}$. Devo considerare il worst case: ora è 4, quindi è il 4 a propagarsi verso il basso.\\ Infine ho la tabella per il blocco per priority ceiling:\\
+\includegraphics[scale=0.3]{images/SERT2910_6.png}\\
+Questo diventava simile al blocco per inheritance: J$_{4}$ può essre danneggiato da J$_{6}$ perché J$_{6}$ richiede risorsa che innalza il priority ceiling, caso peggiore è il max fra la lunghezza della regione critica fra R$_{1}$ ed R$_{2}$ (per J$_{6}$). Siccome J$_{5}$ non richiede risorse, manca il valore perché J$_{5}$ non può mai essere bloccato in quanto non richiede risorse.\\ A questo punto posso definire B$_{i}$(r,c) = max\{B$_{d}$(j, c): 1 $\leq$ j $\leq$ r-1\}.\\ Se le priorità dei job sono tutte diverse, B$_{c}$ = B$_{i}$, tranne che per i job che non utilizzano risorse.\\ b$_{i}$(rc) = max$_{k}${B$_{d}$ B$_{i}$(j, k), B$_{c}$(i, k)}: considero il valore massimo per ciascuna riga, perché priority ceiling mi dice che blocco al massimo 1 volta. Cosa cambiare se i job possono avere priorità identiche?
+\subsection{Schedulabilità con priority ceiling}
+Ho i tempi di blocco, li considero tra i tempi di blocco totali dei task, lo faccio task per task:\\
+b$_{i}$ = b$_{i}$(ss) + (K$_{i}$ + 1)$\cdot$b$_{i}$(np) + (K$_{i}$ + 1)$\cdot$b$_{i}$(rc), con K$_{i}$ massimo numero di auto-sospensioni di un job del task T$_{i}$. Il fatto dell'unicità del job bloccante vale solo se i job non si auto-sospendono. Devo anche tenerne conto all'overhead su cambi di contesto: e$_{i}$' = e$_{i}$ + 2$\cdot$(K$_{i}$ + 1)$\cdot$CS + 2$\cdot$(K$_{i}$ + 1)$\cdot$CS, ma solo se il job usa le risorse condivise.
+\subsection{Protocollo stack-based priority-ceiling}
+Baker, 1991. È una semplificazione del protocollo priority-ceiling, motivato da un esigenza particolare: la condivisione di un unico stack da parte dei job. Usare uno stack unico comporta problemi: stack è LIFO, ogni volta che arriva un job sopra, interrompe quello sotto. Se un job arriva e richiede una risorsa, ma poi arriva una altro job che interrompe: comincia ad usare lo stack, in una zona contigua a quel job interrotto. Quando il job si conclude, toglie dallo stack tutte le informazioni che aveva introdotto. Ma se il jbo richiede la stessa risorsa del job che ha interrotto: per priority ceiling deve tornare in esecuzione il job interrotto. Probelma: il job non può togliere le info dallo stack ed ora il job che torna si trova una parte dello stack occupato.\\ Questo porta al fatto che nessun job deve bloccare o auto-sospendersi.\\ Per ogni risorsa R, $\lceil\rceil$(R) definito come nel protocollo priority-ceiling. C'è regola di aggiornamento che  è la stessa. \\ Regola di schedulazione: non appena rilasciato, un job J con priorità maggiore assegnata $\pi$ non può essere eseguito finché non è vera la condizione $\pi$ $\leq$ $\lceil\rceil$'(t). I job eseguibili sono schedulati in modo interrompibile in accordo alle priorità assegnate.Non c'è priority inheritance\\ Regola di allocazione: quando un job richiede una risorsa, la richiesta è soddisfatta.\\ Un job di priorità alta può interrompere un job di priorità bassa, e quest'ultimo non può tornare in esecuzione finché il primo non ha finito. Potrebbe farlo se il job bloccasse, ma questo non succede perché risorsa è libera o se si auto-sospendesse, ma qui questo non avviene. Quando un job comincia l'esecuzione tutte le risorse di cui ha bisogno sono libere: difatti inizia solo se la sua priorità diviene uguale o maggiore del priority ceiling del sistema.\\ Non ci sono mai deadlock: le risorse sono sempre libere quando le richiedo. Job non i auto-sospendono: il controllo d'accesso è effettuato solo al rilascio di un job e assume che il job non venga sospeso.\\ esempio di schedulazione:\\
+\includegraphics[scale=0.3]{images/SERT2910_7.png}
+\subsection{Ceiling priority}
+Usato nel Real-time System Annex di Ada95: linguaggio molto usato negli USA. È stato definito dal governo per lo sviluppo del sw in tutte le commesse militari.\\ Regola di schedulazione:
+\begin{itemize}
+\item Se un job non possiede alcuna risorsa, la sua priorità è quella rassegata dallo scheduler
+\item Se un job possiede una risorsa, la sua priorità è uguale al massimo priority ceiling di tutte le risorsa assegnate al job.
+\end{itemize}
+Job con priorità identica sono schedulati in modo FIFO.\\ Regola di allocazione: quando un job richiede una risorsa la ottiene. Risorsa è sempre libera: se fosse occupata, il job che la sta usando avrebbe priorità almeno uguale a quello che la sta richiedendo.\\ Differenza fra stack-based e ceiling priority? Senza auto-sospensione le schedulazioni prodotte sono identiche. Però in ceiling-priority è possibile modificare le regole per permettere auto-sospensione.\\ Confronto tra i protocolli: Teorema(Baker, 1911): I tempi di blocco massimi b$_{i}$(rc) dovuti ai conflitti di risorse per priority-ceiling e per stack-based priority-ceiling sono identici. Quindi scheduler che usano stack-based o ceiling-priority sono più semplici ed efficienti, in più hanno meno context-switch. Però i cambi di prioirtà dinamiche sono meno frequenti in priority-ceiling, che ci sono solo in caso di contesa.\\ Trade off, ma spesso vincono gli ullimi due
+\subsection{Controllo d'accesso per job con auto-sospensione}
+I vari protocolli vanno adattati all'auto-sospensione:
+\begin{itemize}
+\item NPCS: non è possibile auto-sospendersi in una sezione critica
+\item Priority-inheritance: se un job J è bloccato su una risorsa posseduta da un job J' auto-sospeso, la priorità dinamica di J' è aggiornata solo se $\pi$(t) $>$ $\pi$(t')
+\item Priority-ceiling: non funziona più unicità del blocco
+\item Stack-based: non esiste
+\item Ceiling-priority; se un job si auto-sospende in una sezione critica, nessun job di priorità inferiore o uguale può essere eseguito. È come se nullificasse i vantaggi dell'auto-sospensione nelle sezioni critiche
+\end{itemize}
+esempio: auto-sospensione\\
+\includegraphics[scale=0.3]{images/SERT2910_8.png}\\
+Tempi di blocco per autosospensione
+\begin{itemize}
+\item NPCS: b$_{i}$ = b$_{i}$(ss) + (K$_{i}$ + 1)$\cdot$max\{b$_{i}$(np), b$_{i}$(rc)\}
+\item priority ceiling e ceiling priority: b$_{i}$ = b$_{i}$(ss) + (K$_{i}$ + 1)$\cdot$ (b$_{i}$(np) + b$_{i}$(rc)). Qui i tempi di blocco b$_{i}$(rc) vanno calcolati anche pensando che mentre sono in sezione critica posso auto-sospendermi, quindi debo considerare anche il tempo massimo di auto sospensione e moltiplicare per il numero di volte in cui mi auto-sospendo.
+\end{itemize}
+\subsection{Priorità dinamica}
+È possibile applicare i protocolli priority-ceiling e ceiling-priority a sistemi con priorità dinamica. Il valore del priority ceiling di una risorsa non è costante, ma dipende dalla priorità dinamica che potenzialmente fanno uso della risorsa. Il priority ceiling può cambiare, ad esempio con EDF ogni volta che rilascio un nuovo job, questo ha una prioirtà dovuta alla scadenza assoluta che fa cambiare i valori di priorità di tutti ti job del sistema, quindi i, pririty ceiling delle risorse e quindi il current priority ceiling del sistema. Molto poco applicabile nella realtà. Quando schedulo con algoritmi a priorità dinamica uso o NPCS o priority inheritance o altri sistemi per evitare deadlock come allocare risorse in tempi predefiniti.\\ esempio di priority ceiling con EDF:\\
+\includegraphics[scale=0.3]{images/SERT2910_9.png}
+\subsection{Accesso alle risorse di job aperiodici}
+Problema: un server procrastinabile che sta eseguendo un job aperiodico esaurisce il budeget mentre il job è in sezione critica:
+\begin{itemize}
+\item Esecuzione all'interno della sezione critica rende il server non interrombilile anche se il budgrt finisce
+\item Se ho accumulato ritardo, rifornisco meno budget.
+\item Problema di schedulabilità e ritardi aggiuntivi, devo aggiungere anche la lunghezza della sezione critica dei job aperiodici. Questo comporta difficoltà nello studio, ma è modellabile
+\end{itemize}
 \end{document}
