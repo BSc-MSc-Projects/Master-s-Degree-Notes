@@ -516,4 +516,138 @@ Problema: un server procrastinabile che sta eseguendo un job aperiodico esaurisc
 \item Se ho accumulato ritardo, rifornisco meno budget.
 \item Problema di schedulabilità e ritardi aggiuntivi, devo aggiungere anche la lunghezza della sezione critica dei job aperiodici. Questo comporta difficoltà nello studio, ma è modellabile
 \end{itemize}
+\section{Real-time su multiprocessore}
+Ho rimosso man mano le limitazioni complicando il modello, rilasso l'ipotesi di avere un singolo processore(ultima limitazione rimasta).\\ Sistema multiprocessore ha 2 o più processori, ciascuno può eseguire job in maniera indipendente.\\ Processori possono essere dello stesso tipo o di tipo diverso:
+\begin{itemize}
+\item diversi microprocessori mutli-core
+\item diverse schede di rete
+\item diverse schede PCI con controllori DMA
+\end{itemize}
+In un certo senso, per cercare di modellare il sistema avrò $\mu$ tipi di processori quanti processori m$_{i}$ ci sono per i $\leq$ i $\leq$ $\mu$, anche su quali tipi di processore si può eseguire ciascun job. Semplifico supponendo che tutti i processori sono dello stesso tipo.\\ Ci si è resi conto molto presto che aggiungere processori complicava le cose: molto più complesso che schedulare su singolo processore.
+\subsection{Sistemi statici}
+Un sistema real-time è statico se ciascun job è assegnato perennemente ad uno specifico precessore. Partiziono i task nel sistema tale che ciascun job o task è eseguito forzatamente da uno specifico precessore: posso effettuare la schedulazione normalmente, ciascuno ha una lista di job e mi riconduco al caso del singolo processore (non proprio così).\\ 2 tipi di sistemi statici:
+\begin{itemize}
+\item L'assegnazione dei job è effettuata manualmente dal progettista una volta per tutte in fase di progettazione del sistema. Problema: devo conoscere tutti i parametri dei task, non posso gestire nuovi task che arrivano a run time
+\item L'insieme dei task è assegnato ad uno specifico processore dal SO (o scheduler) durante la fase di creazione del task. Scheduler partizionati.
+\end{itemize}
+In entrambi i casi, lo scheduler non decide su quale processore sarà eseguito un job appena rilasciato.\\ esempio di schedulazione:\\
+\includegraphics[scale=0.3]{images/SERT3010_1.png}\\ I job hanno delle dipendenze: questo fa capire che il sistema non è analogo a tanti sistemi mono-processore, non ci sarebbero vincoli fra job su processori diversi. Ogni scheduler decide i job assegnati ai processori, ma i vincoli di dipendenza sono grosse complicazioni.\\ Vantaggi:
+\begin{itemize}
+\item Si può analizzare la schedulabilità su  ciascun processore usando i risultati teorici validi per il caso mono-processore
+\item Se un job va in overrun (impiega più tempo del previsto) può ritardare l'esecuzione dei soli task che sono sul suo stesso processore (se job sono indipendenti tra di loro)
+\item Se un job è interrotto, siccome il sistema è statico riprenderà l'esecuzione sullo steso processore, evito i costi dovuti alla migrazione
+\item La coda di esecuzione è relativa al singolo processore ed è quindi più piccola
+\end{itemize}
+\subsection{Sistemi dinamici}
+Un sistema real-time è dinamico se lo scheduler assegna dinamicamente un job ad un qualunque processore disponibile
+3 varianti:
+\begin{itemize}
+\item Con job interrompibili
+\item Con job interrompibili e non migrabili: anche se interrotto, job è salvato in una struttura locale del processore e potrà recuperare l'esecuzione solo si quel processore
+\item COn job interrompibili e migrabili: job può essere migrato se interrotto, ha un costo
+\end{itemize}
+Una algoritmo di schedulazione per un sistema dinamico è globale perché stabilisce quale processore eseguirà quale job. \\esempio:\\
+1° caso: job interrompibili e migrabili:\\
+\includegraphics[scale=0.3]{images/SERT3010_2.png}\\
+2° caso, job non interrompibili:
+\includegraphics[scale=0.3]{images/SERT3010_3.png}\\ Il momento in cui l'ultimo job completa il lavoro è uguale nel caso dei job migrabili a quello della schedulazione nel sistema statico $\Rightarrow$ anomalia di schedulazione.\\ Vantaggi:
+\begin{itemize}
+\item Hanno tipicamente meno cambi di contesto: quando viene rilasciato un job, in un sistema statico se c'è in esecuzione job di priorità minore devo interrompere e fare context swtich. In sistema dinamico posso avere processori free, quindi metto in esecuzione lì.
+\item Se un job esegue per meno tempo di quello che è il suo worst case, il tempo liberato sul processore può essere utilizzato potenzialmente da tutti i task de sistema (nel caso del sistema statico è usato solo da quelli locali al processore).
+\item Se un job impiega più tempo (overrun) la probabilità che questo comporti la mancanza di una op più scadenze è minore. Non è contrapposizione con 2: sistema può usare tutti i processori per cercare di porre rimedio al tempo in più per cui il job ha eseguito
+\item Per ogni task del sistema che è creato a run-time, assegnazione e bilanciamento del carico sono "automatici" e determinati dall'algoritmo di schedulazione globale
+\end{itemize}
+\subsection{Algoritmi di schedulazione multiprocessore}
+Gli algoritmi clock-driven sono in generale utilizzabili senza problemi, infatti la schedulazione avviene offline e validata una volta per tutte.Metodo però poco flessibile, ma non è immediato applicare algoritmi prioirty-driven, devo studiare bene come fare: devo risolvere diversi problemi
+\begin{itemize}
+\item Efficienza degli algoritmi, effetto Dhall
+\item Predicibilità del sistema
+\item Test di schedulabilità.
+\end{itemize}
+\subsection{Effetto Dhall}
+Teorema (Dhall \& Liu): Per ogni numero di processori m $\geq$ 2, esistono insieme di task con utilizzazione bassa che non sono schedulabili con RM, DM o EDF.\\ Considero T$_{1}$=81, 2$\epsilon$), T$_{2}$=(1,2$\epsilon$,....,T$_{m}$=(1,2$\epsilon$), T$_{m+1}$?(1+$\epsilon$, 1). Utilizzazione globale = 2$\epsilon$ $\cdot$ m + $\frac{1}{1+ \epsilon}$ $\rightarrow$ 1 se $\epsilon$ $\rightarrow$ 0. Basterebbe uno o al massimo due processori per eseguire tutti questi task.\\ Ho una schedulazione fattibile: esempio per m=2\\
+\includegraphics[scale=0.3]{images/SERT3010_4.png}\\
+Problema è che la schedulazione non è RM né DM né EDF: se schedulo con EDF vincono le scadenze assolute, quando tutti i job vengono rilasciati due job hanno priorità sugli altri, quindi quando i processori si liberano uno dei job manca la scadenza; stesso vale per RM e DM.\\ Questo risultato ha scoraggiato per tanti anni la ricerca su sistemi multiprocessore real-time, riprende quando siatemi multiprocessore si sono largamente diffusi da costringere a riguardare il problema: 2001, effetto Dhall esiste solo con sistemi di task in cui uno dei task ha un utilizzazione molto alta. Se task hanno utilizzazione non uguale ad 1 non si verifica l'effetto Dhall.
+\subsection{Anomalie di schedulazione}
+Comportamene di un algoritmo tale che, a fronte di variazione apparentemente vantaggiose dei parametri si hanno dei peggioramenti delle prestazioni. Esempi:
+\begin{itemize}
+\item Aumentano il periodo di un task
+\item Aumento n° processori
+\item Diminuisco il tempo di esecuzione di un task
+\end{itemize}
+Anomalie di schedulazione si verificano se task sono non interrompibili o indipendenti, nei sistemi uni-processore.\\ Nei sistemi multiprocessore? Mi metto nelle ipotesi che non ci siano vincoli di dipendenza:\\
+\begin{itemize}
+\item Sistema statico, job non interrompili: posso avere anomalie
+\item Sistema statico, interrompibili: non ho anomalie
+\item Sistema dinamico, job non interrompibili: posso avere anomalie
+\item Sistema dinamico, job interrompibili ma non migrabili: sì
+\item Sistema dinamico, job interrompili e migrabili: sì.
+\end{itemize}
+Perché le anomalie complicano la validazione? Non esiste un worst case a cui ricondursi, bisogna cercare un modo per tenere sotto controllo le anomalie.\\ esempio: anomalie di schedulazione con job non migrabili\\
+\includegraphics[scale=0.3]{images/SERT3010_5.png}\\
+anomalie di schedulazione con job migrabili:\\
+\includegraphics[scale=0.3]{images/SERT3010_6.png}
+\subsection{Schedulabilità}
+Istanti critici in schedulazioni globali: c'è un teorema che mi dice che usando uno scheduler globale a priorità fissa a livello di task, l'istante in cui un job di un task T$_{i}$ è rilasciato contemporaneamente ai job di tutti i task di priorità superiore T$_{1}$,....,T$_{i-1}$ non è necessariamente un istante critico di T$_{i}$\\ esempio:\\
+\includegraphics[scale=0.3]{images/SERT3010_7.png}\\ No ho modo di usare il test di schedulabilità.\\ Fattore di utilizzazione per multiprocessore: (thm) dato un sistema di task periodici con scadenze uguali ai periodi ed m processori, se X è un qualsiasi algoritmo di schedulazione partizionato con priorità fissa a livello di task:\\
+U$_{X}$ $\leq$ $\frac{m + 1}{1 + 2^{\frac{1}{m +1}}}$. In pratica: se ad esempio uso RM, che ha su mono processore U$_{X}$ $\simeq$ 0.69, considerandolo partizionato il fattore di utilizzazione è limitato, non può in nessun modo utilizzarlo.\\ Teorema(2001): dato un sistema di task periodici con scadenze implicite ed m processori, sia X:
+\begin{itemize}
+\item un qualsiasi algoritmo di schedulazione partizionato
+\item un qualsiasi algoritmo di schedulazione globale con priorità fissa a livello di job
+\end{itemize}
+allora per il fattore di utilizzazione di X si ha: U$_{X}$ $\leq$ $\frac{m + 1}{2}$.\\ Man mano che aumento il numero di processori, devo lasciarne sempre di più liberi. Sto quindi lavorando in perdita: se voglio aumentare di un processore il mio sistema, ne devo aggiungere 2 e cos' via...\\ Corollario: nessun algoritmo di schedulazione globale con priorità fissa a livello di job è ottimale su multiprocessore. Non posso sfruttare al 100\% tutti i processori del sistema.\\ esempio:\\
+\includegraphics[scale=0.3]{images/SERT3010_8.png}\\ Come si vede nell'esempio, schedulazione non EDF ottimale esiste.\\ Esistono algoritmi ottimali di schedulazione dinamica a livello di job che hanno fattore di utilizzazione pari ad m, esempio LST che però è complicato da implementare. Non esistono algoritmi on-line ottimali se gli istanti di rilascio dei job non sono esattamente prefissati.\\ Classe di algoritmi ottimali su multiprocessore è derivata dall'algoritmo Pfair:
+\begin{itemize}
+\item basati sul concetto di schedulazione fluida. Ogni task progredisce in modo proporzionale alla sua utilizzazione.
+\item tempo diviso in quanti: allo scadere di ogni quanto, lo scheduler assegna i task ai processori in modo che per ogni task T$_{i}$, il lavoro compiuto sia $\lceil \frac{te_i}{p_i}\rceil$ o $\lfloor\frac{te_i}{p_i}\rfloor$.\\ Più è piccolo il quanto di tempo, più mi avvicino ad una schedulazione fluida, come in un SO in cui processi si alternano per quanti piccoli: sembra come se processi facessero progressi contemporaneamente
+\end{itemize}
+Gli algoritmi dinamici a livello di job sono molto costosi in termini di overhead dello scheduler. quindi non sono adottati.
+\subsection{Schedulazione partizionata}
+Nei sistemi real-time multiprocessore statici, l'algoritmo di schedulazione è partizionato. Non parlo di algoritmi in cui il progettista fissa i task ai processori, serve descrivere due componenti:
+\begin{itemize}
+\item Algoritmo che assegna i task ai processori (problema NP hard, non ammette algoritmo ottimale efficiente, tempi esponenziali nell'istanza del problema)
+\item Algoritmo che schedula i task su ciascun processore
+\end{itemize}
+\subsubsection{Allocazione dei task}
+Dato un sistema di task periodici,partizionare i task in sottoinsiemi tali che ciascun sottoinsieme può essere schedulato in modo fattibile su un singolo precessore utilizzando un determinato algoritmo do schedulazione.\\Un sistema di n task indipendenti è schedulabile con n processori (purché ciascun task abbia densità inferiore ad 1).\\ Non esiste algoritmo polinomiale che possa capire il più piccolo n° di processori per schedularlo. Gli algoritmi di schedulazione dei task possono solo calcolare soluzioni approssimate (non ottimali):
+\begin{itemize}
+\item Non riescono ad associare i task ai processori in modo da sfruttarli nel miglior modo possibile
+\item Non riescono a determinare schedulabilità fattibili per ogni possibile insieme di task schedulabile
+\end{itemize}
+Limiti che non sono superabili.\\ Metriche di bontà:
+\begin{itemize}
+\item Rapporto di approssimazione: è il massimo valore $\frac{m}{m_0}$, dove m è il numero di processori usato dall'algoritmo di allocazione ed m$_{0}$ è  il minimo numero teoricamente necessario, considerando ogni possibile sistema di task. Buono se n° task è piccolo, m$_{0}$ non è facile da determinaste
+\item Fattore di accelerazione: quanto è necessario aumentare la velocità di esecuzione degli m$_{0}$ processori per schedulare fattibilmente ogni possibile sistema di task le assegnazioni determinate dall'algoritmo di allocazione.
+\item Fattore di utilizzazione: il valore di soglia per cui i sistemi di task con fattore di utilizzazione totale inferiore o uguale sono sempre schedulabilità utilizzando l'algoritmo di allocazione dei task.
+\end{itemize}
+\subsubsection{RMFF}
+Il più semplice (Rate Monotonic First Fit), passi:
+\begin{itemize}
+\item ordina i task per periodi non decrescentisi T${1}$,...,T${n}$
+\item ordina arbitrariamente i processori: P${1}$,...
+\item comincia da T${1}$, assegna ciasun task T${i}$ al primo processore P${j}$ tale che l'insieme dei task già assegnati a P${j}$ insieme a T${i}$ risulta ancora schedulabile tramite RM.
+\end{itemize}
+U${RMFF}$ = m $\cdot$ ($\sqrt[2]{2}$ - 1).\\ Fattore di approssimazione: 2.23, usa un numero di processori che è 2.33 $\cdot$ numero ottimale (più del doppio). Non può essere usato come algoritmo on-line: siccome ordino per periodo non decrescenti, se arriva un nuovo task a run-time devo rifare tutto e quindi anche le assegnazioni, il che è impossibile. Usabile solo se conosco tutti i task in anticipo.
+\subsubsection{FFDU}
+Passi:
+\begin{itemize}
+\item ordina i task per periodi non decrescentisi T${1}$,...,T${n}$
+\item ordina arbitrariamente i processori: P${1}$,...
+\item cominciando da T$_{1}$, assegna ciascun task T$_{i}$ al primo processore P$_{j}$ tale che l'insieme dei task già assegnati a P$_{j}$ insieme a T$_{i}$ risulta ancora schedulabile tramite RM.
+\end{itemize}
+U$_{FFDU}$ = m $\cdot$ ($\sqrt[2]{2}$ - 1)\\ Fattore di approssimazione: 1.67. Poiché richiede di ordinare i task, comunque non è on-line.
+\subsubsection{RM-FF}
+Una variante di RMFF, che non effettua l'ordinamento dei task prima dell'allocazione:
+\begin{itemize}
+\item ordina arbitrariamente i processori: P${1}$,...
+\item assegna ciascun task T$_{i}$ al primo processore P$_{j}$ tale che l'insieme dei task già assegnati a P$_{j}$ insieme a T$_{i}$ risulta ancora schedulabile secondo RM
+\end{itemize}
+U$_{RM-FF}$ = m $\cdot$ ($\sqrt[2]{2}$ - 1)\\ Fattore di approssimazione: 2.33.\\ A differenza di RMFF, RM-FF può essere usato on-line.
+\subsubsection{EDF-FF}
+Lo stesso algoritmo di RM-FF, ma schedulo il singolo processore con EDF:
+\begin{itemize}
+\item ordina arbitrariamente i processori: P${1}$,...
+\item assegna ciascun task T$_{i}$ al primo processore P$_{j}$ tale che l'insieme dei task già assegnati a P$_{j}$ insieme a T$_{i}$ risulta ancora schedulabile secondo EDF
+\end{itemize}
+U$_{EDF-FF}$ = $\frac{\beta \cdot m + 1}{\beta + 1}$, $\beta$ = $\lfloor \frac{1}{\underset{k}{max}\frac{e_k}{p_k}}\rfloor$.\\ Fattore di approssimazione: 1.7 (meno del doppio del n° processori ottimali). È un algoritmo ottimale fra tutti gi algoritmi ottimali:\\ per $\beta$ = 1 $\Rightarrow$ U$_{EDF-FF}$ = $\frac{(m + 1}{2}$, ovvero nel caso peggiore ho il limite superiore nel caso in cui c'è un task di dimensione 1. Posso convivere con l'effetto Dhall, pagando processori in più. Se $\beta \rightarrow \infty$ $\Rightarrow$ U$_{EDF-FF}$ $\rightarrow$ m, per task di dimensioni infinitesima e quindi schedulabili in maniera fluida, l'algoritmo riesce a raggiungere il 100\% di utilizzazione dei processori del sistema.
 \end{document}

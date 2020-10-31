@@ -958,4 +958,29 @@ Soliti operatori di de/referenziazione \& e *; gestione automatica dello spazio 
 \item delete(m, key) cancella chiave
 \item elem, ok = m[key] è un test per vedere se elemento è presente (ok avrà valore di errore in caso non c'è l'elemento).
 \end{itemize}
+Range: costrutto che permette di iterare su un ampio insieme di elementi di strutture dati: elementi di array, di slice, mappe etc... \\ \_ : indica che non mi interessa un indice in for, altrimenti se poi non uso l'indice dichiarato ottengo un errore di compilazione.
+\subsection{Aspetti di OO}
+Ci sono aspetti di orientamento agli oggetti, ma non c'è concetto di classe. Tuttavia supporta concetto di metodi definiti su struct.\\ Metodo: una funct che ha un metodo in più chiamato receiver e che è posizionato prima del nome della funzione.\\ Il recevier appare nella lista degli argomenti. È possibile anche definire le interfacce, un tipo di interfaccia è una signature di metodi, a cui do nomi e tipi di ritorno.
+\subsection{Concorrenza in Go}
+goroutine: thread leggero gestito dal supporto a run time di Go. Si lancia anteponendo alla funzione "go". Le goroutines sono thread leggere (implementazione leggera in termini di SO), che condividono lo spazio di indirizzamento, quindi bisogna sincronizzare l'accesso alla memoria.\\ Canale: meccanismo di comunicazione che permette a due goroutine di comunicare fra loro. È un canale che permette invio/ricezioni di valori. Implementato come coda thread-safe gestita da Go, strumento di comunicazione molto potente che permette di nascondere molti dettagli relativi alla comunicazione tra thread.\\ IL canale internamente usa concetti di mutex e semaforo per gestire la concorrenza tra thread. Canale non è esclusivamente ad utilizzo di un thread mittente e di un thread ricevente, ma da molteplici routine: utile per implementare notifiche, multiplexing etc...\\ Ricordare che solo una goroutine può chiudere il canale e nessuno può più inviare. Per definire canale in Go si usa l'operatore di canale $<-$: ch $<-$ v (invia v sul canale ch), i dati affluiscono in direzione della freccia. v:= $<-$ ch, inizializza v col dato ricevuto da ch. Per inizializzare canale si usa costrutto make (chan $<$tipo dato$>$. Nell'utilizzo del canale, visto che è una coda thread safe, le goroutine non devono usare meccanismi di sync. espliciti.\\ Canali possono avere un buffer, posso assegnare la dimensione come parametro all'atto dell'inizializzazione con make. Vantaggio di usare canale bufferizzato si blocca solo se canale è pieno (se non specifico nulla, canale ha dimensione pari ad 1).\\ Receivers possono testare se canale è aperto o chiuso: passo un secondo parametro di ok: v, ok := $<-$ ch, riceverò false se il canale è chiuso, anche possibile usare range per ricevere valori continuativamente.\\ Possibile usare select per attenere messaggi fra molteplici canali: costrutto prevede di definire tanti case quanti sono i canali.
+\subsection{Gestione errori}
+Go usa codici di errore per determinare stati anormali. Per convenzione è l'ultimo valore restituito da una funzione. nil: nessun errore.\\ C'è interfaccia built-in per errore che è Error, ha metodo Erro() string: ottengo stringa corrispondente all'errore verificato.
+\subsection{RPC in Go}
+Nel package net/rpc.\\ TCP ed HTTP come protocolli di trasporto supportati, realizzazione di micro-servizi in Go che usano RPC in Go si sta diffondendo.\\ Ci sono dei vincoli:
+\begin{itemize}
+\item metodo rpc può avere solo due argomenti in input, il secondo serve proprio per la gestione stessa della RPC.
+\item errore sempre ritornato
+\end{itemize}
+func(t *T) MathodName(argType T1, replyType *T2) error. \\ per marshaling(encode)/unmarshaling(decode) c'è package gob o framework GRPC.\\ Lato server:
+\begin{itemize}
+\item Devo registrare metodo esposto come RPC. SI usa Register o RegisterName: pubblico metodo sull'interfaccia del server RPC di default e permetterà ai client di chiamare i metodi così esporti. 
+\item Register ha come param interfaccia (collezione di metodi), possibile associare un nome con metodo RegisterName.
+\item Si usa Listen per annunciare l'indirizzo locale di rete.
+\item Usa Accept per ricevere richieste del servizio, è bloccante quindi se non voglio che il server rimanga bloccato uso keywork go per far si che venga eseguita in un thread. 
+\end{itemize}
+Lato client:
+\begin{itemize}
+\item Dial: si connette a server RPC, rida puntatore per le successive chiamate RPC o nil se c'è errore (DialHTTP per usare HTTP).
+\item Call è  chiamata sincrona, oppure Go per chiamata asincrona: nel secondo caso arriverà un messaggio per confermare ricezione della risposta.
+\end{itemize}
 \end{document}
