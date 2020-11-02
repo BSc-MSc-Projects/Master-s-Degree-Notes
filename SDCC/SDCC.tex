@@ -971,7 +971,7 @@ Nel package net/rpc.\\ TCP ed HTTP come protocolli di trasporto supportati, real
 \item metodo rpc può avere solo due argomenti in input, il secondo serve proprio per la gestione stessa della RPC.
 \item errore sempre ritornato
 \end{itemize}
-func(t *T) MathodName(argType T1, replyType *T2) error. \\ per marshaling(encode)/unmarshaling(decode) c'è package gob o framework GRPC.\\ Lato server:
+func(t *T) MathodName(argType T1, replyType *T2) error. \\ per marshaling(encode)/unmarshaling(decode) c'è package gob, package jsonrpc o framework grpc.\\ Lato server:
 \begin{itemize}
 \item Devo registrare metodo esposto come RPC. SI usa Register o RegisterName: pubblico metodo sull'interfaccia del server RPC di default e permetterà ai client di chiamare i metodi così esporti. 
 \item Register ha come param interfaccia (collezione di metodi), possibile associare un nome con metodo RegisterName.
@@ -983,4 +983,35 @@ Lato client:
 \item Dial: si connette a server RPC, rida puntatore per le successive chiamate RPC o nil se c'è errore (DialHTTP per usare HTTP).
 \item Call è  chiamata sincrona, oppure Go per chiamata asincrona: nel secondo caso arriverà un messaggio per confermare ricezione della risposta.
 \end{itemize}
+\subsection{gRPC}
+Framework di nuova generazione, molto usato per realizzazione di applicazioni basate sullo stile architetturale a micro-servizi.\\ Tipi di utilizzo:
+\begin{itemize}
+\item connettività efficiente per servizi poliglotti, ovvero sapplicazioni in cui servizi sono scritti in diversi linguaggi di programmazione. Supporto a C++, Python, Go, Java etc...
+\item connessione di device mobili, browsers a servizi di back-end
+\item generazione efficiente di librerie lato client
+\end{itemize}
+Tra gli utenti più noti di gRPC c'è Netflix, primo big provider ad usare stile architetturale a micro-servizi (applicazioni composte da migliaia di micro-services).\\ Da un punto di vista di RPC, gRPC sfrutta il proxy pattern, quindi ci saranno stub che interagiscono fra di loro\\
+\includegraphics[scale=0.3]{immagini/SDCC211_1.png}\\ Particolarità è nel "Proto": gRPC utilizza i protocol buffer come IDL: protocol buffer è IDL sviluppato da Google, molto più efficiente di XML e di Json.Permette di avere scambio binario di dati. Usa largamente HTTP 2.0, caratteriscihe struttate da gRPC:
+\begin{itemize}
+\item supporto a framing binario
+\item supporto a header compression
+\item supporto al multiplexing: permetto scambio di più msg da parte di client/server, in modo da portare a  regime la connessione TCP.
+\end{itemize}
+\subsubsection{Protcol buffer}
+Gestisce in maniera efficiente scambio di strutture dati scambiandole in formato binario: ho file .proto in cui definisco le mie strutture, avrò message nome\_messaggio con i campi e i rispettivi tipi di dato.\\ Uso un compiler per l'IDL, che è protoc, che permette di generare classi per l'accesso ai dati nel linguaggio preferito.
+\subsection{Comunicazione orientata ai messaggi}
+RPC ed RMI migliroano la trasparenza della distribuzione, ma sono sincroni:
+\begin{itemize}
+\item sincronia nel tempo
+\item sincronia nello psazio
+\item funzionalità e comunicazione sono accoppiate
+\end{itemize}
+Considero comunicazione orientata ai messaggi: avrò che funzionalità di client e server sono disaccoppiate dalla comunicazione di messaggi.\\
+\subsubsection{MPI}
+Libreria per lo scambio di messaggi tra processi in esecuzione su diversi nodi (molto usata nel calcolo parallelo), specifica una serie di primitive per la comunicazione di messaggi tra processi, primite di due classi:
+\begin{itemize}
+\item punto-punto: invio ricezione tra due specifici processi
+\item comunicazione collettiva, ovvero verso tutti i nodi che fanno parte di un comunicatore
+\end{itemize}
+Principali primitive sono classiche send e receive (bloccante) ma anche comunicazione bloccante che implementa dei buffer.\\ Esistono diversi supporto per la comunicazione sia bloccante che non bloccante.
 \end{document}
