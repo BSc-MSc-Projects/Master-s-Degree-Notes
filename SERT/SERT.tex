@@ -650,4 +650,229 @@ Lo stesso algoritmo di RM-FF, ma schedulo il singolo processore con EDF:
 \item assegna ciascun task T$_{i}$ al primo processore P$_{j}$ tale che l'insieme dei task già assegnati a P$_{j}$ insieme a T$_{i}$ risulta ancora schedulabile secondo EDF
 \end{itemize}
 U$_{EDF-FF}$ = $\frac{\beta \cdot m + 1}{\beta + 1}$, $\beta$ = $\lfloor \frac{1}{\underset{k}{max}\frac{e_k}{p_k}}\rfloor$.\\ Fattore di approssimazione: 1.7 (meno del doppio del n° processori ottimali). È un algoritmo ottimale fra tutti gi algoritmi ottimali:\\ per $\beta$ = 1 $\Rightarrow$ U$_{EDF-FF}$ = $\frac{(m + 1}{2}$, ovvero nel caso peggiore ho il limite superiore nel caso in cui c'è un task di dimensione 1. Posso convivere con l'effetto Dhall, pagando processori in più. Se $\beta \rightarrow \infty$ $\Rightarrow$ U$_{EDF-FF}$ $\rightarrow$ m, per task di dimensioni infinitesima e quindi schedulabili in maniera fluida, l'algoritmo riesce a raggiungere il 100\% di utilizzazione dei processori del sistema.
+\subsubsection{EDF-FFDD}
+È possibile estendere gli algoritmi partizionati basati su "first fit" anche a task sporadici con scadenze arbitrarie.\\ EDF-FFDD:
+\begin{itemize}
+\item Ordina arbitrariamente P$_{1}$,P$_{2}$,...
+\item Ordina i task sporadici per densità $\frac{e_i}{min(p_i, d_i)}$ decrescenti
+\item Assegna ciascun task T$_{i}$ al primo processore P$_{j}$ tale che l'insieme dei task già assegnati a P$_{j}$ inseme a T$_{i}$ risulti ancora schedulabile secondo EDF
+\end{itemize}
+Condizione di schedulabilità:
+\begin{itemize}
+\item $\Delta_T$ $\leq$ m - (m-1)$\cdot$ $\Delta_{max}$ se $\Delta_{max}$ $\geq$ $\frac{1}{2}$
+\item $\Delta_T$ $\leq$ $\frac{m}{2}$ + $\Delta_max$ se $\Delta_{max}$ $\leq$ $\frac{1}{2}$
+\end{itemize}
+\subsection{Scheduler multiprocessore globali}
+Ha senso considerare scheduler globali non partizionati? Assumo tutti i job indipendenti, migrabili, interrompibili e senza auto-sospensione.\\ Ci sono anomalie di schedulazione, ma è utile rispetto ad EDF partizionato? Questo raggiunge l'ottimo, quindi mi chiedo se ne vale la pena, problema inoltre di istanti critici ed effetto Dhall.\\ Anomalie di schedulazione: il tempo di esecuzione dei task è worst case, teorema del 1994: sistemi di task periodici interrompibili e migrabili su multiprocessore schedulati con algoritmi a priorità fissa (a livello di task o job) sono predicibili, ovvero non presentano anomalie di schedulazione dipendenti dal tempo di esecuzione dei job.\\ Risolvo la più grave anomalia, ce ne sono altre.\\ Utilità rispetto ad EDF partizionato: so che EDF partizionato può ottenere l'ottimo, quindi perché considera algoritmi globali.\\ EDF ottimale tra gli scheduler partizionati basati su priorità fissa, ma non on senso assoluto: esistono algoritmi globali a priorità dinamica che raggiungono l'ottimo m, esempio Pfair.\\ Teorema: un sistema di task sporadici con scadenze arbitrarie è schedulabile con m processori con algoritmo globale a priorità dinamica a livello di job se: \\ $\Delta_T = \sum\limits_{i} \frac{e_i}{min_i{d_i, p_i}} \leq m$ e $\Delta_{max} = max_i \frac{e_i}{min{p_i, d_i}} \leq 1$.\\ Corollario: se le scadenze sono implicite, allora con un sistema di m processori ed un algoritmo globale a priorità dinamica a livello di job posso schedulare se:\\ $U_T = \sum\limits_{i} \frac{e_i}{p_i} \leq m$ e $U_{max} = max_{i} \frac{e_i}{p_i} \leq 1$.\\ Istanti critici: il rilascio in fase di tutti i job non corrisponde necessariamente ad un instante critico. Non posso usare la funzione di tempo necessario per analizzare se un sistema di task è schedulabile su un certo n° di processori. Uso  le condizioni di schedulabilità legate al fattore di utilizzazione o alla densità del task.\\ Effetto Dhall: è un problema che si verifica nei sistemi multiprocessore, per cui dato un qualunque n° di task che hanno utilizzazione totale costante rispetto ad m che non possono essere schedulati né con RM/DM né con EDF. L'effetto Dhall è condizionato dall'esistenza di un task che ha utilizzazione vicina all'unità, quindi posso cercare di correlare l'utilizzazione massima dei vari task con la schedulabilità del sistema.\\ Teorema: un sistema T di task sporadici con scadenze implicite,utilizzazione totale è U$_T$ e suppongo che valore dell'utilizzazione del task a priorità massima è U$_{max}$, allora il sistema è schedulabile con EDF globale su un sistema con m processori se: \\ U$_T$ $\leq$ m - (m-1) $\cdot$ U$_{max}$. Teorema va letto "all'opposto": se U$_{max}$ = $\frac{1}{2}$ allora ho come soglia di utilizzazione $\frac{m +1 }{2}$, ovvero il limite dei sistemi a priorità fissa a livello di job ,partizionati. Qui, se U$_{max}$ è $\leq$ $\frac{1}{2}$, la soglia tende ad m, quindi sistema può essere scheduabile anche se la soglia tende al numero totale di processori del sistema. Casi limite:
+\begin{itemize}
+\item U$_{max}$ = 1 $\rightarrow$ U$_T$ $\leq$ 1, Effetto Dhall
+\item U$_{max}$ = 0 $\rightarrow$ U$_T$ $\leq$ m
+\end{itemize}
+Estensione del teorema per scadenze arbitrarie, teorema: Un sistema di task T, sporadici con scadenze arbitrarie, densità totale $\Delta_T$ e densità massima dei task $\Delta_{max}$ è schedulabile con EDF globale su un sistema con m processori se:\\ $\Delta_T$ $\leq$ m -(m-1)$\Delta_{max}$.\\ Esistono diverse altre condizioni di schedulabilità per EDF globale basate sulla densità dei singoli task e/o sul calcolo del tempo di processore richiesto dai task. È possibile avere algoritmi di schedulazione a priorità fissa (a livello di task o job) migliori di EDF globale per insiemi di task generici?\\ Considero EDF partizionato: ha una garanzia di schedulabilità che è $\frac{m+1}{2}$, certamente migliore della garanzia di schedulabilità di EDF globale, in quanto in quest'ultimo caso la garanzia è 1. Per insieme di task grandi, EDF partizionato va meglio, ma in generale gli algoritmi globali potrebbero andare bene o anche meglio di quelli partizionati per insiemi di task piccoli. Posso trovare algoritmi ibridi che vadano meglio di quelli visti fin ora?
+\subsubsection{EDF-US[zeta]}
+EDF-US[$\zeta$] è un algoritmo ibrido, proposto nel 2002, $\zeta$ è un parametro $\leq$ 1.\\ Una parte dei task ha priorità fissa, questi sono i task T$_t$ tali che $\frac{e_i}{p_i}$ $>$ $\zeta$, quindi sono tutti i task grandi.\\ Tutti hanno identica priorità, perché l'idea è che $\zeta$ è minore del numero di processori del sistema, quindi i task potranno sempre essere seguiti in parallelo.\\ Gli altri task hanno priorità più piccola dei task a priorità fissa e sono schedulati mediate EDF: la priorità non è più del task, ma del job. Hanno però priorità inferiore, quindi verranno sempre interrotti da quelli a priorità fissa. Idea: task grandi prendono sempre i processori disponibili,task piccoli prendono quello che rimane.\\ Non ho effetto Dhall: se ho task grandi, prendo processore, uso algoritmo globale per schedulare i task piccoli, quindi ebito l'effetto Dhall.\\ esempio:\\
+\includegraphics[scale=0.3]{images/SERT711_1.png}\\
+Classico effetto Dhall se schedulo con EDF globale\\
+\includegraphics[scale=0.3]{images/SERT711_2.png}\\ Task T$_3$ ha utilizzazione $>$ $\frac{1}{2}$ ,quindi ha priorità fissa ed averà precedenza.\\ Prestazioni:\\ teorema: Un sistema di task sporadici implicite è  schedulabile secondo EDF-US[$\frac{m}{(2m-2)}$] su m processori è U$_T$ $\leq$ $\frac{m^2}{(2m-2)}$.\\ Corollario: Un sistema di task sporadici con scadenze implicite è schedulabile con EDF-US[$\frac{1}{2}$] su m processori se $U_T$ $\leq$ $\frac{m + 1}{2}$. Ottengo il meglio, continuano a valere le ipotesi del teorema visto in precedenza (Andersson).\\ Posso esistere algoritmi di schedulazione globale a priorità fissa migliori di EDF-US[$\frac{1}{2}$]: non devo confondere la garanzia di schedulazione data da questa condizione con l'effettiva capacità di shedulare sistemi di task generici
+\subsubsection{EDF(k)}
+Algoritmo ibrido, variante del precedente: k è un parametro, $<$ m. Una parte dei task ha priorità fissa, i primi k-1 con fattore di utilizzazione $\frac{e_i}{p_i}$ $>$ più alti; tutti gli altri hanno priorità dinamiche e sono schedulati con EDF.\\ L'idea è sempre la stessa: assegno i task grandi ai processori disponibili, gli altri li schedulo con EDF. Garanzie di schedulabilità:\\ Teorema: Un sistema di task sporadici con scadenze implicite è schedulabile con EDF(k) su m processori se: (k-1) + $\rceil \frac{U_t - u_k}{1 - u_k}\lceil$ $\leq$ m; dove u$_{k}$ è  il fattore di utilizzazione del k-esimo task.\\ Algoritmo EDF(k$_{min}$): Sia fissato m (in numero di processori), e sia k$_{min}$ il minimo valore di k che soddisfa la condizione del teorema precedente. Un sistema di task sporadici con scadenze implicite è schedulabile con EDF(k$_{min}$) se U$_T$ $\leq$ $\frac{m+1}{2}$.\\ Vale quanto detto prima: l'insieme dei task schedulabili con EDF-US[$\frac{1}{2}$] è un sotto-insieme proprio di EDF(k$_{min}$). Se guardo insieme di task con utilizzazione maggiore di $\frac{m+1}{2}$ EDF(k$_{min}$) schedula più job rispetto ad EDF-US[$\frac{1}{2}$], non confondere con la garanzia di schedulabilità.
+\subsubsection{Scheduler globali basati su priorità fissa a livello di task}
+Questo tipo di algoritmi non può essere migliore di algoritmi globali o ibridi a priorità dinamica a livello di task, questo perché l'algoritmo sottostante che uso su un sistema mono-processore non può andare meglio. Ho visto che algoritmi partizionati vanno meglio in generale su insiemi di task generici (per via dell'effetto Dhall) di algoritmi globali. Il discorso della partizione in insiemi di task viene recuperati dagli algoritmi ibridi: ho un certo criterio per assegnare la priorità massima, i restanti task continuo a schedularli con un criterio differente, la priorità è legata all'algoritmo sottostante. Priorità è fissa perché è dovuta ad un condizione specifica, algoritmi globali a priorità fissa soffrono comunque dell'effetto Dhall, non possono andare meglio di algoritmi partizionati, e lo stesso vale per algoritmi ibridi: faccio assegnazione dei task a priorità massima che non dipende dall'algoritmo sottostante, quando schedulo i restanti job, schedulare con priorità fissa non può dare vantaggio rispetto a schedulare co priorità dinamica.\\ Questi algoritmi posso essere adottati:
+\begin{itemize}
+\item Semplici da implementare
+\item Presenti su tutti i SO real-time
+\item Sono più robusti in caso di job che superano il WCET calcolato in fase di design.
+\end{itemize}
+\subsubsection{Scheduler RM globale}
+Teorema: un sistema di task periodici con scadenze implicite tale che U$_{max}$ $\leq$ $\frac{m}{(3m - 2)}$ è schedulabile con RM su m processori se: U$_{T}$ $\leq$ $\frac{m^2}{(3m - 1)}$. Tiene conto dell'effetto Dhall, limita l'utilizzazione del task più ingombrante a $\frac{m}{(3m - 2)}$, se la condizione vale l'effetto Dhall è evitato e posso aumentare il carico del sistema pur di aumentare il n° di pressori, sto andando sempre in perdita.\\ Teorema: un sistema di task sporadici con scadenze implicite è schedulabile globalmente con RM su m processori se U$_T$ $\leq$ $\frac{m}{2} \cdot (1 - U_{max}) + U_{max}$. \\ Posso anche riformulare i teoremi in termini di densità, ma le cose si complicano parecchio.
+\subsubsection{RM-US[zeta]}
+RM-US[$\zeta$] è un algoritmo ibrido analogo a EDF-US[$\zeta$], la differenza è che tutti i task che hanno utilizzazione inferiore alla soglia $\zeta$ sono schedulati con RM. Stessa idea: do priorità massima ai task ingombranti. Prestazioni:\\
+teorema: Un sistena di task peridoti con scadenze implicite è schedulabile con RM-US[$\frac{m}{(2m - 2)}$] su m processori se: U$_T$ $\leq$ $\frac{m^2}{(3m - 2)}$\\ Teorema (2003): Un sistema di task sporadici con scadenze implicite è schedulabile secondo RM-US[$\frac{1}{3}$] su m processori se: U$_T$ $\leq$ $\frac{(m+1)}{3}$. Passare da EDF a RM fa si che $\frac{2}{3}$ dei processori rimangono inutilizzati.\\Il miglior valore di soglia è $\zeta$ = 0.37482, con utilizzazione massima pari a 0.37482$\cdot$(m+1), più restrittivo del 0.3333... del risultato precedente, ma così ho utilizzazione ottima.
+\subsection{Possibile applicabilità degli algoritmi in sistemi real-time}
+Algoritmi sono applicabili, ma problema grande nei sistemi multiprocessore è che gli algoritmi sono basati su ipotesi fondamentali:\\
+indipendenza dei task fra di loro: inserire il discorso dei vincoli di dipendenza complica molto il discorso, non ho grandi risultati già stabiliti e consolidati.Problema è ancora più serio: i vincoli di dipendenza fra task potrebbero essere nascosti. Esempio: sistema reale multiprocessore, diversi core e diversi processori, quindi sistema parallelo con multiprocessore a loro volta mutlicore. Dal punto di vista hw, i core condividono risorse hardware: posso avere unità ALU individuale, am non è detto che non usino una singola MMU, singola cache L2/L3, processori diversi possono avere dipendenze legate ai tempi di accesso alla RAM o al bus di sistema. WCET: tempo massimo fi esecuzione quando job esegue da solo, ma se lo eseguo su sistema multiprocessore, questo verrà comunque rallentato dagli altri job su altri core perché magari c'erano ipotesi di indipendenza sbagliate. Le assunzioni di base sul worst case è falso, se presento sistema multicore a ente certificatore, non verrà mai accettato, perché è falsa assunzione di fondo del fatto che job su processori diversi non abbiano differenze. Punto cruciale della ricerca: realizzazione di sistemi single core equivalent: sistemi che operano sui singoli core come se fossero da soli, ma in realtà sono in un sistema multi-core.\\ Per avere certificazione: nel sistema di task bisogna prevedere task a priorità massima che entri in esecuzione periodicamente e spenga tutti i processori nel sistema tranne 1, non voglio che più di un processore sia attivo, altrimenti no bollino certificazione real-time.\\ Ricerca in divenire, c'è ancora problema di applicabilità in pratica dei risultati.
+\section{Sistemi operativi real-time}
+Obiettivi di un sistema operativo:
+\begin{itemize}
+\item Fa funzionare i driver, interazione con l'hardware, usando apposite procedure detti driver
+\item Controllo dell'uso delle risorse hardware (massimizzazione durata batteria, salva schermo)
+\item Costruzione di un'astrazione dell'architettura fisica, ambiente di esecuzione delle applicazioni
+\item Offrire interfacce di accesso ai dispositivi hardware, utilizzo in maniera controllata
+\item Distribuisce le risorse tra le varie applicazioni/utenti
+\item Implementa servizi di comunicazione tra applicazioni locali o remote
+\item Nei SO multitasking (tutti praticamente ormai) è possibile eseguire contemporaneamente più processi, shcduler assegna CPU di volta 
+in volta.
+\item Consente accesso a più utenti in contemporanea
+\end{itemize}
+Questi sono SO general purpose. In cosa differiscono da un SO real-time? Di fatto, la reale differenza sta nel tipo di applicazioni che i due SO devono eseguire: un applicazione real-time ha dei vincoli temporali da rispettare, ed anche il SO va progettato intorno all'idea che le applicazioni devono poter rispettare questi vincoli. SO real-time devono fare in modo che l'applicazione sia affidabile e predicibile.\\ Talvolta, le applicazioni real-time devono avere dei tempi di risposta rapidi, ma non è una proprietà caratterizzante. Questo non è però il punto cruciale dei SO real-time o delle applicazioni real-time, sono caratterizzate dal fatto che le scadenze vengono rispettate,qualunque esse siano.\\ So che la maggior parte dei sistemi real-time sono embedded, quindi sistemi operativi rea-time devono essere anche embedded, applicazioni devono quindi essere:
+\begin{itemize}
+\item Compatte
+\item Scalabili
+\item Consumo ridotto delle risorse, viste le esigenze dei sistemi embedded
+\end{itemize}
+\subsection{RTOS a microkernel}
+Molti SO per sistemi embedded e RT sono basati su un modello a micro-kernel. SO real-time è un supporto generico ad applicazioni real-time, deve far si che funzioni correttamente e tutti gli altri compiti del SO, ma l'obbiettivo prioritario è il rispetto delle scadenze, quindi spesso molte delle feature del SO general purpose vengono sacrificate.\\ Micro-kernel è un piccolo programma che realizza pochi servizi essenziali, parte del codice del SO che esegue a livello di privilegio più alto possibile. Non tutte le parti del SO eseguono alla priorità massima, alcune potrebbero eseguire a livello di privilegio più basso. Feature del micro-kernel:
+\begin{itemize}
+\item driver dei circuiti, HW di base (tipicamente solo delle periferiche fondamentali)
+\item schedulazione dei processi
+\item comunicazione bi base fra i processi
+\end{itemize}
+Tutti gli altri servizi sono fatti al di fuori del kernel (driver delle periferiche, stack di rete. file system etc...)
+Approccio differente al kernel monolitico: a livello user mode girano librerie di sistema per supporto ad applicazioni, tutto il resto viene eseguito in kernel mode.\\ Vantaggi del micro-kernel ai SO real-time: è approccio elegante, ma di base inefficiente perché applicazione moderna deve fare molte cose: interazione con FS, interazione con la rete etc..., bisogna scambiare informazioni e molti dati fra processi, nell'approccio micro-kernel le applicazioni per fare una semplice cosa devono coinvolgere decine e decine di processi utente separati.\\ Qui la velocità non è più primaria: mentre quando progetto SO general purpose voglio utilizzo efficiente da parte del SO delle risorse, mentre nel SO real-time no, voglio rispettare le scadenze. Il micro-kernel ha poco codice, quindi è più semplice verificarne la correttezza,ma poi devo anche verificare codice es dell'applicazione di rete: ma un conto è verificare il codice alla massima priorità, un conto è partire da kernel corretto e verificare codice a livello utente: uniche ripercussioni sono relative all "gabbia" costruite intorno al processo.\\ Struttura del kernel monolitico: tipici esempi sono tutti i sistemi derivati da Unix, quindi Linux, FreeBSD, SunOS, Solaris.\\ SO a micro-kernel: QNX, GNU Hurd (Mach \& Four, BeOS,...\\ Sistemi ibridi: partiti come micro-kernel, ma dopo avere valutato le prestazioni e aver visto che erano pessime, hanno portato componenti da user mode a kernel mode. Approccio ibrido, esempi: Windows NT, Mac OS X,...
+\subsection{Caratteristiche chiave di un RTOS}
+Un sistema operativo che opera in contesto real-time ed embedded deve offrire:
+\begin{itemize}
+\item Predicibilità: risposte agli eventi esterni predicibile, cura nella gestione degli interrupt hardware.
+\item Risposte efficienti ad eventi esterni, bassa latenza nei tempi di risposta (non nei tempi di risposta dei task dei job).
+\item Gestione affidabile e precisa di eventi temporali:
+\begin{itemize}
+\item gestione dei timer e clock hardware con le relative interruzioni
+\item gestione del tempo di sistema 
+\item gestione di allarmi
+\end{itemize}
+\item Deve poter avere un modo per schedulare i task, deve essere a basso overhead e predicibile:
+\begin{itemize}
+\item implementazione di algoritmi deterministici
+\item supporto al partizionamento dei task in sistemi multiprocessore: problemi teorici legati ai sistemi globali sono ancora in analisi.
+\end{itemize}
+\item Gestione della comunicazione e sincronizzazione dei task:
+\begin{itemize}
+\item memoria condivisa, code, segnali
+\item primitive di sincronizzazione come semafori, lock.
+\end{itemize}
+\item Gestione della memoria
+\begin{itemize}
+\item memoria virtuale: ogni task nel sistema, quando usa indirizzo di memoria fa riferimento ad una cella differente da quella che usa un altro task con lo stesso indirizzo, non è detto sia necessario per sistemi con poca memoria/embedded
+\item protezione dello spazio di indirizzamento, discorso diverso dalla memoria virtuale. L'accesso alla memoria da parte di un task verso le celle di un altro task è proibito, possibile realizzare protezione di memoria senza che ci sia memoria virtuale. Più importante in un sistema real-time rispetto ad avere memoria virtuale
+\end{itemize}
+\end{itemize}
+Spesso le applicazioni embedded per sistemi real-time sacrificano la memoria virtuale e spazi di indirizzi separati: il software deve passare per analisi talmente tanto strette che l'accesso a memoria che non compete sarà semplice da verificare. Problemi più importanti: se verifico che non ci sono indipendenze tra i task ,automaticamente nessuno fa ciò che non deve e quindi altre feature divengono overhead.
+\subsection{Interruzioni hardware}
+Ogni occorrenza di una interruzione hardware deve essere gestita con procedura apposita livello kernel o user mode. Deve essere rapido il modo in cui il SO riconosce l'interrupt ed agisce per gestirlo: quando dispositivo hw genera interrupt, blocca la sua attività, quindi finché CPU non riconosce l'interruzione l'hw è congelato, poi la gestione dell'interrupt può essere fatta in tempi più lunghi.\\ Il tempo richiesto per la completa gestione dell'interrupt dipende dalla periferica hardware:
+\begin{itemize}
+\item La lettura dei dati da un sensore è breve
+\item Traferire di grandi blocchi di dati, ad esempio dalla scheda di rete alla memoria o dalla memoria secondaria alla RAM.
+\end{itemize}
+In ogni caso, le interruzioni devono essere riconosciute nel minor tempo possibile, altrimenti le periferiche HW potrebbero mal funzionare. 1 linea di interruzione fisica di interruzioni in ogni dispositivo, una sola linea verso il processore, l'interruzione arriva al PIC ed il PIC asserisce la linea verso la CPU e dopo la conferma della CPU il PIC conferma la ricezione al dispositivo, il driver del dispositivo gestirà con apposita routine la situazione.\\ Gestione delle interruzioni hardware in più fasi:
+\begin{itemize}
+\item Interrupt handler: 
+\begin{itemize}
+\item Priorità elevata
+\item da conferma della ricezione dell'interruzione al PIC
+\item salva e recupera il contesto di esecuzione del processore
+\end{itemize}
+\item Interrupt service routine (IRS), specifica del dispositivo:
+\begin{itemize}
+\item priorità più bassa (ma generalmente superiore ai processi di sistema)
+\item esegue operazioni specifiche per l'interruzione ed il dispositivo che l'ha generata.
+\end{itemize}
+\end{itemize}
+\subsection{Schedulazione}
+Uno dei punti fondamentali, devo assicurare che le applicazioni real-time rispettino le scadenze. Bisogna usare politiche di schedualzione facili, predicibili, tipicamente EDF.\\ SO real-time non supportano nessun tipo di analisi di schedulabilità o test di accettazione on-line per nuovi task. È il progettista che deve prevedere tutti i possibili carichi del sistema e vedere se qualcuno di questi missa le scadenze.Analisi è fatta dal progettista ed avallata dai test del sistema.\\ Schedulazione tipicamente prehemptive, quindi job interrompibili, perché altrimenti cominciano ad avere anomalie di schedulazione. Possibile specificare che alcuni job non siano interrompibili, di solito non job collaborativi, ovvero rilasciano periodicamente il processore per far si che venga utilizzato da altri job; il codice va analizzato dal progettista. Scheduler quasi sempre clock-driven, va considerato nell'analisi di schedulabilità. Generalmente, ogni SO offre livelli di priorità finiti: se ho più task del numero dei livelli di priorità? Perdita di schedulabilità: devo dire che due task hanno la stessa priorità e questo può comportare problemi.\\ Perdita di schedulabilità:\\ ho modellato un sistema e stabilito che mi servono $\Omega_n$ livelli di priorità, ma nel sistema ne posso avere solo $\Omega_s$ $<$ $\Omega_n$. Devo fare mapping fra le priorità assegnate a quelle di sistema $\pi_1$,...,$\pi_s$ dove: $\pi_i$ $\in$ \{1,2,...$\Omega_n$\} $\forall$ i. I $\pi_i$ sono ordinati in maniera crescente ed indicano come mappo le priorità reali: tutte le priorità assegnate numericamente, minori o uguali a $\pi_i$ sono mappate su $\pi_i$. In generale, tutte le priorità assegnate tra $\pi_{k-1}$+1 e $\pi_k$ sono mappate su $\pi_k$ $\forall$ 1 $<$ k $\leq$ $\Omega_s$.\\ Devo tenere conto di questo mapping nell'analisi di schedulazione, devo farlo task per task:\\ considero task T$_i$, siano T$_E$(i) e T$_H$(i) gli insiemi dei task di priorità uguale (il primo) e superiore a T$_i$, rispettivamente:\\ w$_i$ = e$_i$ + b$_i$ + $\sum\limits_{T_k \in T_E(i)} e_k$ + $\sum\limits_{T_k \in T_H(i)} \lceil \frac{t}{p_k} \rceil e_k$. Aggiungo nel caso peggiore che i task di priorità uguale portano via tempo, resta il fatto che lo scheduler schedula i task in modalità FIFO: se due task hanno pari priorità, uno può essere rallentato dal fatto che arriva dopo ad un altro di pari priorità, ma quando quello ha finito tocca a lui.\\
+w$_{i,j}$(t) = j $\cdot$ e$_i$ + b$_i$ + $\sum\limits_{T_k \in T_E(i)} (\lceil \frac{(j-1)p_i}{p_k} \rceil + 1)e_k$ + $\sum\limits_{T_k \in T_H(i)} \lceil \frac{t}{p_k} \rceil e_k$. Applico lo stesso alla funzione di tempo necessaria per tempi arbitrari, stavolta considero dal rilascio del job che sto guardando in poi. Devo calcolare quanti job con la mia stessa priorità vengono rilasciati nell'intervallo che sto considerando (+1 è rilascio iniziale).\\ Associazione a rapporto costante: lo scheduler potrebbe non distinguere i job di priorità più alta. Si utilizza quindi in genere un'assegnazione  che riserva i livelli di priorità di sistema ai livelli di priorità assegnata più alti e mano a mano accorpa le priorità assegnate di livello più basso.\\ In pratica, si può cercare di mantenere approssimativamente costanti i rapporti: g$_k$ = $\frac{\pi_{k-1} + 1}{\pi_k}$ (1 $<$ k $\leq$ $\Omega_s$), maniera di assegnare le priorità migliore.\\ Teorema: Per l'algoritmo di scheduling RM,  con scadenze relative pari al periodo e numero n di task elevato, usando l'associazione a rapporto costante g = min$_{1 < k < \Omega_s} g_k$,allora U$_{RM}$:
+\begin{itemize}
+\item ln(2g) + 1 - g se g $>$ $\frac{1}{2}$
+\item g se g $\leq$ $\frac{1}{2}$
+\end{itemize}
+La schedulabilità relativa indica la perdita di schedulabilità dovuta ad un numero limitato di livelli di priorità nel sistema: $\frac{U_{RM}(g)}{ln(2}$. Casi limite:\\ per g = 1 $\frac{U_{RM}(g)}{ln(2}$ = 1, quindi nessuna perdita\\ g = $\frac{1}{2}$ $\frac{U_{RM}(g)}{ln(2}$ = $\frac{1}{2ln2}$, quindi perdita del 28\%. Non dare per scontato che adattare il modello al caso reale non possa provocare problemi. Tutti i SO real-time consentono di usare algoritmi a priorità fissa, offrono delle API che consentono di impostare le priorità di task sulla base di deadline relativa. Pochi permettono di usare schedulazione dinamica a livello di task,come EDF: il reinserimento automatico dei task in coda a priorità nella posizione corretta in base alla deadline assoluta è inefficiente: servono strutture dati apposite o gestione di pochi task. È pericoloso gestire strutture dati complesse,quindi per avere efficienza bisogna ridurre numero di task supportati.
+\subsection{Standard per RTOS}
+Standard importanti:
+\begin{itemize}
+\item Portabilità dell'applicazione
+\item Interoperabilità dei sistemi
+\item Possibile cambiare real-time OS
+\end{itemize}
+Diversi standard:
+\begin{itemize}
+\item POSIX, estensione real-time
+\item OSEK/CDX
+\item ARINC/APEX
+\item ITRON
+\end{itemize}
+\subsubsection{POSIX}
+Estensione che definisce API per avere ad esempio:
+\begin{itemize}
+\item mutua esclusione con priority inheritance.
+\item attesa e sincronizzazione tramite varabili condizione
+\item memoria condivisa
+\item code di messaggi a priorità
+\item schedulazione preempitve con priorità fissa
+\item server sporadici
+\item gestione del tempo con alta risoluzione
+\item possibile misurare e limitare il tempo di esecuzione dei task.
+\end{itemize}
+4 profili differenti dello standard:
+\begin{itemize}
+\item Minimal Real-Time System, per piccoli sistemi embedded: solo thread,n non processi e I/O tramite device file nessun file system.
+\item Real-time COntroller, per sistemi robotici: come il precedente, ed in più un file system con ci gestire i file regolari
+\item Dedicated Real-time System: per sistemi avionici, grandi sistemi embedded, multi-processo con meccanismi di protezione degli accessi alle risorse
+\item Multi-purpose Real-time System: per sistemi general purprose con applicazioni sia real-time che non, tutti i servizi POSIX per i sistemi operativi general purpose
+\end{itemize}
+\subsubsection{OSEK/VDX}
+Progetto congiunto di diverse industrie automobilistiche (BMW, Bosh, Opel) e l'università di Karlsruche. Definisce insieme di API per un sistema real-time integrato in un sistema di gestione di rete. Orientato a sistemi di controllo con vincoli real-time hard, alata criticità, grandi volumi di produzione. Tiene in grande considerazione l'ottimizzazione del codice, riduzione dell'occupazione di memoria e miglioramento delle prestazioni del RTOS.\\ Propone interfacce e protocolli ad alto livello per le comunicazioni interne del veicolo ed interfacce e protocolli per l'interoperabilità dei vari sistemi embedded all'interno dell'autoveicolo:
+\begin{itemize}
+\item politiche di accesso
+\item meccanismi per la resistenza ai guasti
+\item procedure di diagnostica della rete e di comunicazione
+\end{itemize}
+Un tipico sistema OSEK è scalabile, può usare diversi tipi di precessori, non prevede protezione di memoria. Deve produrre software portabile: tra l'applicazione ed il SO c'è uno strato di interfaccia scritto in ISO/ANSI-C. In ogni caso non vengono specificate interfacce verso i sistemi I/O.\\ IL progettista può usare degli strumenti di configurazione standard per definire i servizi e l'uso, viene proposto linguaggio OIL (Osek Impelmentation Language). L'allocazione è statica, ovvero tutte le strutture dati del kernel e dell'applicazione sono allocate staticamente.\\ Il supporto per architetture "time triggered" fornisce la specifica di un sistema operativo basato sul tempo.\\ Supporta architetture "time triggered", fornisce una specifica di un sistema operativo basato sul tempo che può essere completamente integrato nel framework OSEK/VDX. Ci sono le specifiche di un sistema real-time in questo stanard per sistema embedded
+\subsubsection{ARINC 653}
+Standard per sistemi avionici, progettazione e certificazione di sistemi safty-critical e real-time. Lo standard consente di definire sistemi IMA (Integrated Modular Avionics), ovvero diversi componenti software con diversi requisiti di robustezza coesistono ed utilizzano le stesse risorse hardware. Le applicazioni real-time interagiscono con i servizi offerti dalla piattaforma ARNIC usando un insieme di API chiamato APEX. Memoria fisica è suddivisa in partizioni, ciascun modulo vive nella propria partizione. Anche il processore viene partizionato con cyclic-executive che divide il tempo di processore in maniera fissa tra le varie partizioni:
+per ciascun sotto sistema non è possibile consumare più tempo di quanto gli viene allocato. Posso mettere qualsiasi cosa in una partizione. Possibile comunicazione tra partizioni differenti mediante scambio di messaggi:
+\begin{itemize}
+\item sampling message: hanno sempre la stessa struttura, ed ogni occorrenza di un certo messaggio sovrascrive la precedente occorrenza, le API non bloccano mai.
+\item queuing messages: possono avere struttura, le API possono bloccare se la coda di messaggi è piena o vuota. Inoltre, il tempo di blocco può essere definito in fase di invio o ricezione del messaggio.
+\end{itemize}
+Standard commerciale, non molte informazioni pubbliche su come realizzare questi standard.
+\subsubsection{ITRON}
+Progetto giapponese del 1984, progetto accademico da cui sono derivati vari standard de facto giapponese ed asiatico. Sono stati derivati diversi stantard:
+\begin{itemize}
+\item ITRON, per sistemi embedded
+\item $\mu$TRON: per sistemi embedded a 8/16 bit
+\item JTRON: variante per Java
+\item BTRON: per computer con interfaccia utente per desktop e tablet
+\item CTORN: per mainframe ed apparati di rete.
+\end{itemize}
+Enorme diffusione in Giappone, la caratteristica è la loose standardization:
+\begin{itemize}
+\item API specificate solo a livello sorgente, non esistono requisiti di compatibilità del codice
+\item Parametri delle API passati separatamente o come unico pacchetto
+\item Le ultime versioni dello standard profile prevede supporto a priorità dei task, code di messaggi, primitive di sincronizzazione ma non ha meccanismi per protezione di memoria.
+\end{itemize}
+\subsection{Caratteristiche comuni dei RTOS}
+\begin{itemize}
+\item Corrispondenza agli standard: generalmente le API sono proprietarie, ma con i RTOS offrono anche compatibilità allo standard RT-POSIX
+\item Modularità e scalabilità: il kernel ha dimensione ridotta e le sue funzionalità sono configurabili
+\item Dimensione del codice: spesso basati su micro-kernel
+\item Velocità ed efficienza: basso overhead per cambi di contesto, latenza delle interruzioni e primitive di sync.
+\item Porzioni di codice non interrompibile: generalmente corte e di durata predicibile
+\item Gestione delle interruzione separata: interrupt handler corto e predicibile, ISR lungo e di varia durata
+\item Gestione della memoria: possibilità di utilizzare la memoria virtuale e protezione degli spazio di indirizzi del kernel, quasi mai si usa la paginazione.
+\end{itemize}
+Nei principali SO real time:
+\begin{itemize}
+\item Almeno 32 livelli di priorità
+\item Possibilità di scelta FIFO e round robin per la gestione dei task nello stesso livello di priorità
+\item Possibilità di cambiare la priorità a run-time
+\item Generalmente non supportano politiche di scheduling a priorità dinamica o server a conservazione di banda
+\item Offrono meccanismi per controllo dell'inversione di priorità: tipicamente priority inheritance , alcun anche priority ceiling.
+\item Risoluzione nominale di un timer e orologi di un nanosecondo, ma l'accuratezza non è mai sotto i 100 ns a causa della latenza nella gestione degli interrupt.
+\end{itemize}
+Alcuni di questi meccanismi posso essere abilitati/disabilitati in fase di progetto.\\ Diversi meccanismi per la comunicazione nel sistema: memoria condivisa, mutex, segnali, semafori, code di messaggi...\\ Standard POSIX descrive come usare questi meccanismi in ambito real-time\\ Per la memoria condivisa, non tutti i SO real-time supportano memoria virtuale, se supportata può anche essere disabilitata.\\ Le applicazioni embedded e real-time sono a memoria contenuta e processano dati di dimensioni fissa, quindi non supportano la memoria virtuale non è un problema, inoltre si risparmia overhead dovuto alla traduzione degli indirizzi.\\ Protezione della memoria: molti SO real-time non prevedono protezione della memoria, alcuni prevedono l'esecuzione dei task in modalità kernel e questo ha come conseguenza particolare efficienza nel passare da un job all'altro. Un unico spazio di indirizzamento implica una maggiore leggerezza e semplicità nel task switching, ovviamente lo sforza degli applicativi è maggiore.
+\subsection{Esempi di sistemi  operativi real-time}
+Esistono molti sistemi operativi real-time, in particolare per sistemi embedded. Numero enorme: molti sono open source, altri commerciali ed alcuni ibridi.\\ Oggi si cerca di usare sistemi operativi comuni, cercando di riusare lo stesso SO: prima ognuno aveva il proprio sistema operativo nel general purpose, poi avvento di Linux; stesso è avvenuto nei SO real-time.
+\subsubsection{VxWorks}
+Basato su micro-kernel Wind, usabile anche su sistemi certificabili di alto livello. Ambienti di sviluppo basato su Eclipse, può essere adattato a sistemi embedded sia real-time, le API sono proprietarie, fornisce interfaccia di compatibilità per interfacce POSIX real-time.
+\subsubsection{LynxOS}
+Linea di sistemi operativi commerciali, derivato ed ispirato a Linux, varie versioni per i diversi scopi.\\ Il cuore delle verisoni è un kernel è LynxOS RTOS, ovver il kernel compatibile con l'ABI(Application BInary Interface) di Linux, ovvero è possibile eseguire compilare ed eseguire native per Linux
+\subsubsection{QNX Neutrino}
+Sistema operativo per automobili, segue standard POSIX, architettura a micro-kernel. È progettato intorno ad un meccanismo di scambio di messaggi e segnali
+\subsubsection{eCos}
+RTOS open source, progettato per sistemi embedded, costruito con licenza GPL compatibile. Fortemente modulare e configurabile. Offre API proprietarie compatibili sia con POSIX che con $\mu$TRON. Kernel è solo uno dei package del sistema,n no è indispensabile per lo sviluppo delle applicazioni in eCos. Scritto in C++ che utilizza compilatore GNU, ma tutti ti dettagli legati all'architettura hardware sono in C ed Assembly
+\subsubsection{FreeRTOS}
+Licenza GPL modificata, supporta oltre 30 architetture HW ed è mollo piccolo: immagine anche di 9KB, gli bastano 256B di RAM, possibile metterlo nel micro-controller di una pennetta USB. Scritto per lo più in C, non include driver delle periferiche, più simile ad una libreria per thread che ad un SO, però è molto usato nelle sue varianti.
+\subsection{Embedded}
+Una serie di sistemi embedded della Microsoft, hanno cambiato diversi nomi, in parallelo sviluppo di Windows mobile, sistemi orientati ai cellulari ma molto simili a sistemi desktop. Non sono versioni leggere di Windows, sistemi operativi basati su kernel monolitici, non compatibili con lo standard POSIX, codice del kernel ha licenza shared-source. Non adatti ad architettura multi-precessori e difficilmente possono essere definiti sistemi real-time: limiti architetturali molto forti, esempio non è possibile creare un task a livello di priorità alto. Lo creo a priorità base, va in esecuzione e cambia la sua priorità, ma non so quando questo avviene.
+\subsection{Zephyr}
+Progetto iniziato da Wind River per IoT. Nel 2016, abbracciato dalla Linux Foundation, sponsorizzato tra gli altri da Facebook, Google e Intel.\\ È un sistema completo che comprende kernel, librerie e driver. Ha un singolo spazio di indirizzamento ma con meccanismi di protezione della memoria. Ci sono scheduler a priorità fissa, ma c'è round robin opzionale. Supporta multiprocessore asimmetrico (i vari processori fanno tutte operazioni diverse) e simmetrico. È un sistema altamente modulare e configurabile. Implementa inoltre un sottoinsieme delle API POSIX, chiamato OSAL, su cui vari sistemi operativi real-time si stanno orientando.\\ Punto di forza: integra molti protocolli di comunicazione tra cui IPv4, IPv6, OMA, LWM2M,cBluetooth Low Energy; è uno dei SO real-time su cui convergeranno la maggior parte delle risorse dell'ICT.
 \end{document}

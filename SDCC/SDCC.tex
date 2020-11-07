@@ -991,6 +991,7 @@ Framework di nuova generazione, molto usato per realizzazione di applicazioni ba
 \item generazione efficiente di librerie lato client
 \end{itemize}
 Tra gli utenti più noti di gRPC c'è Netflix, primo big provider ad usare stile architetturale a micro-servizi (applicazioni composte da migliaia di micro-services).\\ Da un punto di vista di RPC, gRPC sfrutta il proxy pattern, quindi ci saranno stub che interagiscono fra di loro\\
+HTTP2: è più efficiente dal punto di vista delle connessioni TCP, ogni messaggio è diviso in frame (unità minima), è un protocollo binario e c'è layer posto sopra lvl4 che fa framing del messaggio lvl5 e comprime binary stream, come anche compressione header. Questo rende trasmissione molto più efficiente.
 \includegraphics[scale=0.3]{immagini/SDCC211_1.png}\\ Particolarità è nel "Proto": gRPC utilizza i protocol buffer come IDL: protocol buffer è IDL sviluppato da Google, molto più efficiente di XML e di Json.Permette di avere scambio binario di dati. Usa largamente HTTP 2.0, caratteriscihe struttate da gRPC:
 \begin{itemize}
 \item supporto a framing binario
@@ -999,7 +1000,7 @@ Tra gli utenti più noti di gRPC c'è Netflix, primo big provider ad usare stile
 \end{itemize}
 \subsubsection{Protcol buffer}
 Gestisce in maniera efficiente scambio di strutture dati scambiandole in formato binario: ho file .proto in cui definisco le mie strutture, avrò message nome\_messaggio con i campi e i rispettivi tipi di dato.\\ Uso un compiler per l'IDL, che è protoc, che permette di generare classi per l'accesso ai dati nel linguaggio preferito.
-\subsection{Comunicazione orientata ai messaggi}
+\section{Comunicazione orientata ai messaggi}
 RPC ed RMI migliroano la trasparenza della distribuzione, ma sono sincroni:
 \begin{itemize}
 \item sincronia nel tempo
@@ -1014,4 +1015,101 @@ Libreria per lo scambio di messaggi tra processi in esecuzione su diversi nodi (
 \item comunicazione collettiva, ovvero verso tutti i nodi che fanno parte di un comunicatore
 \end{itemize}
 Principali primitive sono classiche send e receive (bloccante) ma anche comunicazione bloccante che implementa dei buffer.\\ Esistono diversi supporto per la comunicazione sia bloccante che non bloccante.
+\subsection{Sistemi publish subscribe e sistemi a code di messaggi}
+Fin ora visto supporto per RPC, che migliora la trasparenza rispetto alla programmazione di socket, ma non è ancora possibile avere asincronia tra le entità che interagiscono. Cerco di migliorare la flessibilità dell'applicazione.
+\subsubsection{Middleware orientato ai messaggi}
+Middleware di comunicazione che permette di realizzare comunicazione persistente. Permette di avere:
+\begin{itemize}
+\item disaccoppiamento spaziale e temporale
+\item componenti possono essere anonimi
+\item a seconda del framework può essere supportata disaccoppiamento di sincronia
+\item usati tipicamente in applicazioni serverless e a micro-servizi: applicazioni cloud cercano di passare da una struttura monolitica ad una struttura con vari componenti che realizzano le varie funzionalità e sono laicamente accoppiate fra loro
+\end{itemize}
+Due pattern principali:
+\begin{itemize}
+\item Coda di messaggi sistemi a code di messaggi
+\item Publish/subscribe: sistemi publish/subscribe
+\end{itemize}
+Alcuni sistemi soddisfano entrami i pattern, ma è importante capire le differenze fra i due.
+\subsubsection{Pattern a coda di messaggi}
+Ho a disposizione una coda che permette di memorizzare in modo persistente dei messaggi e rimangono lì finché sono prelevati ed eventualmente cancellati dai destinatari (dipende dalla semantica di comunicazione). Elemento distintivo è che un singolo messaggio viene consegnato una sola volta ad un singolo consumatore, realizzo pattern di comunicazione 1-a-1 (point-to-point), possiameo mettere in comunicazione un producer ed un consumer andandoli a disaccoppiare temporale (non necessariamente c'è disaccoppiamento spaziale o di sincronia).\\ Ho il producer A ed il consumer B: A manda un messaggio a B, per farlo consumerà risorse e farà locking di aree di memoria. Una volta che messaggio è stato preso in carico dalla coda producer  rilascia le risorse precedentemente acquisite. Consumer prende messaggio, processa e manda risposta. Il messaggio di risposta viaggia su una coda differente rispetto a quella del messaggio da A a B.\\ Nel momento in cui A manda il messaggio, può anche scollegarsi dal sistema poiché il messaggio sarà comunque memorizzato in maniera persistente dalla queue.\\ Tipicamente l'API della coda è:
+\begin{itemize}
+\item put: appende msg ad una coda
+\item get: ricezione bloccante, che blocca finché coda non è vuota ed a quel punto consumer preleva messaggio che viene cancellato dalla coda. Può prelevare primo messaggio dalla coda con politica di tipo FIFO, politiche permettono altri tipi di lettura (es matching di alcuni parametri)
+\item poll: non bloccante, viene ricercato messaggio nella coda e viene rimosso o il primo in assoluto o il primo che matcha il pattern di ricerca.
+\item notify: permette di realizzare comunicazione asincrona, viene installato un handler e funzione di callback chiamata autenticamente quando viene messo in coda un messaggio che corrisponde alle specifiche indicate dal consumer.
+\end{itemize}
+\subsubsection{Publish/subscribe pattern}
+Messaggio inviabile uno-a-molti, componenti possono pubblicare messaggi asincroni o dirsi interessati a ricevere dei messaggi facendo subscription.\\ Subscriber possono essere interessati a topic con o senza filtri, le sottoscrizioni sono raccolte da un eventi dispatcher, responsabile di mandare tutti gli eventi ai subscriber interessati. Alto grado di disaccoppiamento tra i componenti. Differenza fondamentale tra i due è che il secondo è come una generalizzazione del primo, in quanto permette di effettuare comunicazione one-to-many.\\ API tipica:
+\begin{itemize}
+\item publish(event): pubblica evento, può essere di ogni tipo supportato dalla specifica implementazione del sistema, può contenere anche metadati
+\item subscribe(filter expr, notify:cb, expiry) $\rightarrow$ sub handle: possibile specificare filtri per gli eventi a cui un subscriber è interessato. Possibile specificare una scadenza per la sottoscrizione ed un riferimento ad una funzione di notify, invocata per la gestione dell'evenot una volta che viene consegnato
+\item unsubscribe(sun handle): cancella sottoscrizione
+\item notify(sub handle, event): manda notifiche per un evento corrispondente ai filtri specificati dai subscrivere per un determinato evento. 
+\end{itemize}
+\subsubsection{Funzionalità MOM}
+C'è bisogno di una componente di routing, per instradare i messaggi verso i subscriber o i consumer ed una componente di trasformazione, che permetta di applicare trasformazioni ai messaggi veicolati dal middleware. Devo sempre avere in mente che i componenti che comunicano possono essere eterogenei, ad esempio nella rappresentazione dei dati.
+\subsubsection{Semantiche di comunicazione}
+Diversi pattern per la semantica di comunicazione: si distingue tra ricezione e consegna, ricezione si suppone lato recevier a livello di trasporto, consegna si intende a livello applicativo
+\begin{itemize}
+\item at least once: Almeno una consegna di messaggio. meccanismo principale che MOM deve avere per garantire successo della ricezione è retx. Sender non si vede arrivare ack, quindi allo scadere di un TO lo rimanda. Può accadere che destinatario abbia ricevuto più volte lo stesso messaggio, quindi se uso MOM con questa semantica di comunicazione il messaggio lato recevier può essere duplicato quindi il componente deve essere tollerante alla ricezione dei messaggi duplicati.
+\item exactly once: esattamente una consegna. Devo avere filtro di messaggi duplicati, in modo che non siano consegnati al destinatario (messaggi hanno id univoco, usato per filtrare), ma non basta. Serve anche tolleranza ai guasti (ci sono middleware che non garantiscono tolleranza ai guasti per tutte le situazioni).
+\end{itemize}
+Ci sono anche altre due semantiche di comunicazione:
+\begin{itemize}
+\item Consegna basata su transazione: il sistema MOM assicura che i messaggi vengano consegnati dalla coda dei messaggi soltanto quando sono stati effettivamente ricevuti dal destinatario con successo. Incapsulo transazione ACID nel messaggio: quando recevier ha ricevuto messaggio, invia ack alla coda di messaggi e solo alla ricezione dell'ack il messaggio viene cancellato dalla coda.\\ Semantica più forte dell' at least once: lì l'ack viene mandato se messaggio viene ricevuto ma non ancora processato, qui invece è cancellato dopo il processamento. Invio e ricezione fanno parte di una transazione con proprietà ACID.
+\item Consegna basata su timeout: messaggio cancellato dalla coda dai messaggi quando è stato correttamente ricevuto almeno una volta ( diverso da sopra). Producer invia messaggio, che diviene visibile nella coda. Può essere quindi consumato da un recevier, lo preleva ed il messaggio non è subito cancellato dalla coda ma viene impostato come invisibile: è nella coda ma non può essere prelevato da altri consumer (impostato così per un timeout). Una volta che messaggio è stato processato invia ack alla coda, se timeout non è scattato e l'ack viene ricevuto allora messaggio viene cancellato. Se ack è ricevuto dopo il TO on no viene ricevuto, allo scadere del TO messaggio torna ad essere visibile e potrà essere ricevuto da un altro consumer. Introduco maggiore tolleranza ai guasti. At lest once perché l'ack potrebbe arrivare successivamente al timeout, quindi potrebbe essere letto due volte dallo stesso recevier, o da un altro recevier.
+\end{itemize}
+\subsubsection{Routing dei messaggi}
+Modello generale: rounitng avviene su diverse code, ciascuna gestita da un manager delle code, supporta l'idea di overlay network formata dai gestori delle code.\\ L'overlay network viene usata per fare il routing dei messaggi, usando routing table che sono gestite e salvate dai queue manager (a seconda della specifica implementazione del sistema di MOM). La rete di overlay deve essere manutenuta nel tempo: può esserci manutenzione manuale oppure dinamica, più complicato nel secondo caso in quanto serve mapping dinamico tra le code e la loro locazione.\\ Oltre al routing, altra componente fondamentale è la capacità di trasformare i messaggi in modo da permettere eterogeneità dei dati, soluzione qui è del message broker: componente del sistema che si occupa di gestire l'aspetto di eterogeneità dei dati.\\ Si occupa di:
+\begin{itemize}
+\item convertite formato messaggi in input in formato atteso in output
+\item possibile specificare regole per la trasformazione dei messaggi
+\item realizzato in maniera distribuita per far si che sia scalabile e robusto
+\end{itemize}
+Molti framework che realizzano sistema a code di messaggi, anche servizi cloud per sistemi MOM.
+\subsubsection{Casi d'uso di MOM}
+\begin{enumerate}
+\item Utilizzo base: producer che produce messaggio ed un consumer che lo consuma, classico uso del pattern a coda di messaggi.
+\item Uso un sistema a coda di messaggi per distribuire un compito tra molteplici worker. Invece di contattarli direttamente, la fa via coda di messaggi: master produce il task che deve essere eseguito dai worker, che sono in attesa sulla coda. Uno di questi preleva il task e lo esegue.\\ Possibile distribuire in modo round robin il carico di lavoro tra i worker
+\item Code di messaggi per realizzare pattern publish/subscribe: nel caso di Rabbit MQ, il pattern pub/sub viene realizzato con una coda per ogni possibile consumer.Siccome messaggio va inviato presso molteplici consumer, c'è invio sus tutte le code a cui sono sottoscritti i consumer.
+\item Ricezione selettiva di messaggi: producer invia messaggio ad un exchange, che seleziona la coda in base al contenuto del messaggio.
+\item Uso di MQ con pattern stile RPC, ma asincrono: publisher è client, consumer è server. HO due code per gestire messaggi di richieste/risposte: client invia richiesta, server elabora e manda risposta nella coda rispettiva. Vantaggio rispetto ad RPC è che comunicazione diventa persistente.
+\end{enumerate}
+esempio: Rabbit MQ, è sistema a code di messaggi che usa dei broker per gestire le code di messaggi, ciascuna coda può essere gestita da più broker, in AMQP (uno dei protocolli di messaggistica offerti da RabbitMP) ci sono punti di exchange che mandano i  messaggi verso la giusta coda.\\
+esempio 1:
+\begin{itemize}
+\item producer: uso Dial per chiamare la coda di messaggi, gestendo eventuali errori se server di RabbitMQ non sia up\&running. Apro canale di comunicazione con Channel() e dichiaro le caratteristiche della coda:
+\begin{itemize}
+\item nome: il nome deve corrispondere a quello usato nel recevier
+\item durable: da la persistenza della coda rispetto a crash del server. Se false: se viene inviato messaggio e server crasha, messaggio viene perso; se è true accade che se il server è riuscito a fare flushing del messaggio su disco prima del crash, al riavvio è in grado di recuperare lo stato dei messaggi.
+\item delete when unused: cancello messaggio se non prelevato
+\item exclusive: prelevabile da un solo destinatario
+\item altri param... 
+\end{itemize}
+\item invio del messaggio, API di RabbitMQ espone publish per invio del messaggio
+\item lato recevier: in modo speculare, recevier si collega al server di RabbitMQ con la Dial() del package AMQP.
+\item preleva messaggio
+\end{itemize}
+Possibile applicare al borker una politica di scelta round-robin, in modo che ogni task sia assegnato ad ognuno dei consumer collegati. Versione 2 del consumer: modifica al parametro di consume, in cui prima il parametro di auto-ack era settato a True. Lo stetto false in modo che l'ack ed invio un ack esplicito una volta che il consumer ha effettuato il processamento esplicito. Passo da una semantica at most once (nel caso precedente il consumer non ha completato al processamento) ad una at least once.
+\subsubsection{IBM MQ}
+I messaggi sono trasferiti tra le code, e trasferiti poi sul canale richiesto. Ad ogni end-point del canale c'è un message channel agent. Questi ultimi sono responsabili di:
+\begin{itemize}
+\item Tirare su il canale
+\item Mandare/ricevere messaggi
+\item Fare encryption dei messaggi.
+\end{itemize}
+Canali di comunicazione sono uni-direzionali, se serve comunicazione bidirezionale serve installare due canali. Sono gestiti dagli agenti, che vengono avviati automaticamente quando arriva un messaggio da gestire sul canale.IBM MQ mette a disposizione la possibilità di creare rete di overlay frai queue manager.Le rotte sono settate manualmente, routing avviene con nomi logici assegnati alle code.
+\subsubsection{Amazon SQS}
+I messaggi all'interno delle code hanno durata limitata (configurabile), vengono cancellati solo se sono stati ricevuti correttamente. Permettono flessibilità in quanto è possibile avere i diversi nodi dell'applicazione scritti con linguaggi diversi.Semantica di comunicazione può essere timeout based, se messaggi non viene ricevuto entro lo scadere del timeout di visibilità, il messaggio torna ad essere visibile.\\ L'API che viene esposta:
+\begin{itemize}
+\item Creazione, cancellazione, listato della coda
+\item Invio/ricezione dei messaggi: taglia max del messaggio è 256KB, per inviare messaggi più grossi, posso mettere il payload su un altro servizio (es S3) e mando solo link al bucket S3 sulla coda.
+\item Cancellazione del messaggio
+\item Controllo del valore del periodo di visibilità
+\item Controllo impostazioni della coda
+\end{itemize}
+esempio: applicazione cloud per processamento/modifica di foto. 2 macro-componenti: front-end verso l'utente, parte back-end. Due code: una che permette di inviare le foto alla parte di back-end dal font-end ed una che vada nel verso opposto (rimandando la foto trans-codificata). Siccome foto pesano, nel messaggio metto URL della foto memorizzata su S3. Posso pensare di replicare su EC2 il componente di processamento, quindi posso usare la coda per fare load balancing tra le varie istanze del server di processamento. Siccome gestisco la coda con semantica basata su time-out, posso essere tollerante ai guasti: se server subisce un crash mentre sta processando, allo scadere del periodo di visibilità la foto torna disponibile e può essere processata da un altro server.
+\subsection{Apache Kafka}
+Sistema publish-subscribe che può funzionare anche come sistema a code di messaggi, uno dei progetti più popolari dell'Apache Software Foundation.\\ Originariamente sviluppato da LinkedIn, usato da Netflix, Uber etc... Scritto in Scala, scalabile orizzontalmente, tollerante ai guasti con alto ingestion throughput.\\ Da un punto di vista architetturale, Kafka è composto da un cluster di broker, che mettono a disposizione un log distribuito per la gestione dei dati. Espone a producer/consumer die topic: un topic può avere 1 procuder che pubblica su un topic e 0-1-più consumer che si sono sottoscritti al topic e ricevono messaggi da quel topic; i broker gestiscono i topic.\\ Il topic è una categoria nella quale viene pubblicato il messaggio, in ogni topic il cluster Kafka contiene un log partizionato che è una struttura dati (non il classico file log) che permette di memorizzare una sequenza di record ordinati temporalmente e le scritture avvengono solo in modalità append, ovvero solo alla fine del log. Log viene mantenuto totalmente ordinato (rel. d'ordine totale). Topic deve essere accessibile da parte di più producer e consumer contemporaneamente per favorire la scalabilità, quindi viene suddiviso in partizioni, che definisce la quantità minima per il parallelismo sul topic. Ogni partizione, per migliorare la scalabilità e la tolleranza ai guasti + replicata tra i molteplici broker del cluster.\\ I producer pubblicano i record sulle partizioni del topic, all'atto della pubblicazione la partizione viene scelta con politica round-robin o con partizionamento basato su chiave, ade esempio in base ad un hash calcolato sulla base del messaggio. \\ Consumer possono leggere le varie partizioni, ciascuna partizione è ordinata,numerata ed immutabile su cui avvengono solo operazioni di append per l'inserimento. Ciascun record è numerato con un sequence number, detto offset: nell'effettuare una lettura i consumer specificano l'offset del record da leggere.\\ Le partizioni sono suddivise tra molteplici broker, questo per scalabilità così che più producer/consumer in modo concorrente possano agire sullo stesso topic e sulle sue partizioni. Ciascuna partizione è replicata per tolleranza ai guasti ed aumento del throughput. Ciascuna partizione può essere replicata, per le diverse repliche della partizione viene identificato un broker (server Kafka) che svolge ruolo di leader e 0 o più follower. Leader gestisce operazioni di lettura/scrittura, mentre i follower sono delle copie di backup della partizione del leader e possono subentrare tramite meccanismo di elezione se server che svolge ruolo di leader subisce fallimento.\\ Kafka distribuisce tra i diversi broker il compito di leader tra le partizioni: ciascun leader sarà leader per certe partizioni e follower per altre. I broker poggiano su un servizio che è Apache ZooKepeer.\\ Producer: sorgenti dei dati in Kafka, pubblicano messaggi sui topic di loro scelta, invio tra producer e server Kafka è diretto, invio al leader della partizione. I producer inoltre sono responsabili di scegliere a quale partizione viene assegnato un determinato record. Sono anche responsabili di scegliere quale record assegnare a quale partizione del topic: può avvenire con scelta basata su chiave, se ad esempio lo user id è la chiave, tutti i dati dell'utente saranno mandati sulla stessa partizione.
 \end{document}
