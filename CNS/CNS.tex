@@ -725,5 +725,182 @@ Tutti i messaggi precedenti alle frecce grige sono in chiaro, aggiungo header di
 \item Minor version
 \item Length
 \end{itemize}
-Poi c'è payload del messaggio.
+Poi c'è payload del messaggio.\\ esempio: mi collego ad una banca, prima di inserire in miei dati solo la banca si autentica a me, io mi autenticherò passando username e password. Scambio TLS v1:
+\begin{itemize}
+\item Primo messaggio è mandato dall'utente al sito della banca, che è il Client Hello. Incapsulato su TCP/IP, la parte di TLS: 
+\begin{itemize}
+\item v1.0 (SLL 0301)
+\item length
+\item handshake type
+\item 32 byte di nonce, contiene sia timestamp che random bytes. Ora deprecato il timestamp, non è autenticato quindi non è detto che sia un timestamp vero, quindi ora sono 32 byte du random e non più 28+4.
+\item (Session id lenght, session id): può servire se voglio riusare una sessione precedente.
+\item Parte della negoziazione: cipher suites e compression ): in TLS, la prima cosa da fare è condividere il segreto, si fa con asymmetric crypto, anche detta public key cryptography. Devo scegliere l'algoritmo da usare: in TLS tutto va negoziato (no hardcode nel protocollo), possibilità di negoziare il public key algorithm: esempio TLS\_RSA: uso di RSA come algoritmo asimmetrico. C'è anche una seconda parte: TLS\_RSA\_WITH\_ algoritmo da usare per symmetric encryption ed integrity, quindi cosa userò quando comincia l'encryption dei dati. esempio: TLS\_RSA\_WITH\_RC4\_128\_MD5.\\ Oggi la lista di ciphers è estesa (è possibile specificare NULL per la parte dell'algoritmo di encryption e richiedere solo integrity, conferma del fatto che i due servizi sono diversi).\\ La parte importante è che il protocollo non sia legato intrinsecamente al crypto algorithm.
+\item Versione di Aprile 2012: negoziazione anche del compression algortihm (prima di CRIME), ora hardcoded NULL.
+\end{itemize}
+Nel Client Hello do una lista di possibili algoritmi i supportati), ed il server ne sceglie una. Se il server è vecchio, può scegliere l'algoritmo peggiore (le opzioni sono messe in ordine crescente per livello di sicurezza). Negoziazione: client offre, server sceglie.
+\item Server Hello: 
+\begin{itemize}
+\item Handshake type
+\item versione del protocollo: anche la versione di TLS viene negoziata, anche questo è fondamentale. Per questo è presente la versione nel client: appariva in due parti, nel record protocol e nell'handshake. Nell'handshake c'è la proposta di quale versione usare, quindi il server può anche sceglierne una diversa se non supportata.
+\item Nonce del server, 32 byte(4 TS + 28 random).Server risponde 3 ore dopo? No, il timestamp probabilmente è considerato diversamente sui due sistemi, quindi 4 byte di TS erano uno spreco perché non c'era una time reference precisa.
+\item Ho un session ID ora
+\item Cipher suite: server risponde con un protocollo diverso da quelli che aveva il client come priorità
+\end{itemize}
+\end{itemize}
+Ho appena visto la negoziazione della versione, downgrade attack (arma grande, difficile da fixare): client usa TLS v1.0 (SSL v3.1), server anche supporta TLS v1.0 ed assumo che la versione sia sicura.\\ Assumo che l'attacker non possa rompere TSL v1.0 ma possa rompere SSL v2.0\\ Attacker prende Client Hello, è in plaintext e senza integrity perché non ho un segreto shared, quindi non posso criptarlo, messaggio molto vulnerabile.\\ Vado nella parte del messaggio dove c'è a versione e cambio: cambio due byte, da 0301, metto 0200.\\ Server vede che versione è più bassa, ed accetta la connessione (oggi non è possibile scendere sotto TLS v1.0, poodle attack: downgrade di TLS + padding oracle). Ora attacker rigira la risposta al client, così che questo creda che il server abbia supporto alla versione di TLS/SSL più vecchia.\\ Agreement sulla versione di SSL v2.0, convinti che questa è l'unica versione usabile; è un problema fondamentale di tutte le negoziazioni.
+\subsubsection{Public key cryptography}
+Esempio di problemi risolti da asymmetric encryption: comunicazione tra l'app ed il server è essere criptata, ma il problema è dov'è la chiave. Se ho una SIM card, ho lì l'encryption key. Ma come risolvo problema del downaload di un applicazione: scarico e mando encrypted traffic, ma dove metto la chiave? Se metto nel codice, male: hacker wannabe 101 cerca pattern nel codice, faccio regex (della chiave) e guardo nel binary code dove il charset è ristretto a base64, quindi ho trovato la chiave. O predo la chiave da una comunicazione separata, ma come faccio: se devo chiederlo al server devo poterla trasferire.\\ Asymmetric cryptography: differenza con le simmetric key è che la chiave usata per criptare è diversa da quella usata per decriptare. Solitamente: prendo plaintext, applico una trasformazione che deve essere reversibile, ed ho il mio ciphertext. Ho visto stream e block cipher, ma si basano entrambi su una chiave preshared.\\ 1970: schema dove
+\begin{itemize}
+\item La chave usata per encryption è diversa da quella per decrypt.
+\item Impossibile derivare una chiave dall'altra: se ad esempio conosci quella per encrypt non puoi trovare quella usata per decriptare
+\end{itemize}
+Se ho questo schema: user cripta i dati con una chiave, trasferisce ma la destinazione usa una chiave differente.\\ Problema risolto nel 1977 Rivest, Shamir, Adleman, RSA.\\ Le chiavi devono poter essere linkate, siccome sono asimmetriche e conosco K$_{ENC}$, K$_{DEC}$ è nascosta, quindi come corollario posso avere K$_{ENC}$ pubblica. Come faccio quindi a risolvere il problema di sopra: scarico l'applicazione, che contiene anche K$_{ENC}$. Tutti vedranno K$_{ENC}$, è in plaintext. L'utente vede K$_{ENC}$, tutti lo vedono quindi chiunque può criptare qualcosa: ma nessuno vede la chiave K$_{DEC}$. Quindi, se uso la K$_{ENC}$ per criptare i dati da mandare la server, nessuno potrà decriptarli.\\ Public key = K$_{ENC}$, private key = K$_{DEC}$ (conosciuta solo da 1).\\ Perché continuo ad usare symmetric key:
+\begin{itemize}
+\item Risolvono due problemi diversi, non posso dire che una è meglio dell'altra
+\item entrambe possono essere sicuri o non sicuri
+\item Asymmetric è più flessibile, ma servono protocolli più complessi.
+\item (Algoritmi noti sono rotti dal quantum computing, symmetric no).
+\item Asymmetric è da 3-5 OOM (order of magnitude) più computazionale complessa.
+\end{itemize}
+Nessuno usa asymmetric encryption per trasferire dati, si fa questo: user ha la K$_{ENC}$, deve trasferire i dati, prima di fare questo genera una chiave k simmetrica, trasferisce ENC$_{K_{ENC}}$(k).  Solo il server può leggere, quindi ricava la chiave k simmetrica ed usa un algoritmo apposito (AES) per trasferire i dati.\\ Due possibili approccio fino a TLS1.2 per fare key management:
+\begin{itemize}
+\item Key transport (es RSA, ora non più usata): 
+\begin{itemize}
+\item server manda una key pubblica, che sarà nel certificate message (non può essere trasmessa in plaintext), client può anche salvarla se sa che la riuserà
+\item Client genera un segreto random, che critpa usando la chiave pubblica del server e trasportato al server
+\item Ora è possibile fare symmetric key encryption.
+\end{itemize}
+\item Key agreement (DH algorithm), successo nel trasferire lo stesso segreto alle due side:
+\begin{itemize}
+\item Tutti e due generano una chiave privata e pubblica, es Y, $g^{Y}modp$ ed  X, $g^{X}modp$,se conosci $g^{Y}modp$ non puoi ricavare Y (vedi su la lezione sulle cripto hash)
+\item Client e server si mandando le chiavi pubbliche, l'attacker non riesce a ricavare facilmente X ed Y. Ma non è difficile per gli end: se ho $g^{X}$ ed Y posso fare $(g^{X})^{Y}$, quindi ho $g^{XY}$ e posso ricavare le chiavi.
+\item Se l'attacker li moltiplica, ottiene $g^{YX}?$?, No è la somma $g^{Y+X}$.
+\end{itemize} 
+\end{itemize}
+Quindi TLS può usare uno o l'altro modo, anche questo viene negoziato.\\ TLS handshake:
+Client manda Client Hello, server risponde con Server Hello e qui è stata negoziata la versione del protocollo TLS.\\ Ora con RSA per esempio: dopo il Client Hello, server manda una chiave pubblica certificata (attacker non può cambiarlo). Ora client applica key transport mechanism: genera segreto k shared e lo trasferisce al server criptato con K$_ENC$,  non può essere modificato (o meglio lo assumo, rotto nel 2018). Server riceve il messaggio ed estrae il segreto shared. C'è altro trick: metto nel messaggio del client anche il codice della SSL version per prevenire il downgrade attack: se l'attacker l'ha modificato, io non mi fido e invece di essere d'accordo rimando la versione che avevo scelto inizialmente invece di quella accordata: ricordo di nuovo al server che potevo usare una versione più recente di SSL, ma lui ha detto di usare una versione più bassa. 2 byte di overhead. Ora l'attacker non può modificare i messaggi: né quello con la chiave pubblica né quello con la chiave shared dal client per il server. Quindi, il server si accorge che qualcosa è andato storto: mi rendo conto che il client mi ha rimandato la vecchia versione proposta e non quella accordata, quindi stoppo la connessione. Metodo fondamentale per risolvere downgarde atttack, nel momento in cui da un certo punto in poi la cripto è up: da quando è up, ripeto quello che ho negoziato. In un protocollo non posso essere sicuro di quello che accordo in plaintext.\\ Ma riguardo cipher attack? Attacker potrebbe convincermi ad usare altro protocollo di encryption, etc... Sto proteggendo solo la versione, inoltre cosa cambia tra i dure approcci: in DH non posso trasferire informazioni nei messaggi, ho delle quantità fisse, non è un public key crypto system, usa asymmetric crypto ma non è un crypto system così com'è: non posso trasferire qualcosa, come ad esempio la versione di TLS.
+\subsection{Asymmetric cryptography}
+Nell'encryption asimmetrica: prendo plaintext, uso chiave chiamata encryption key (algoritmo di derivazione della chiave noto), ottengo ciphertext e mando alla destinazione. Qui si una una chiave per decriptare che è diversa da quella usata per l'encryption, sono ovviamente collegate l'un l'altra ma non si può derivare una conoscendo l'altra (a meno di conoscere altri dettagli). Spesso K$_{ENC}$ = public key e K$_{DEC}$ = private key: chiunque può criptare ma una sola persona può decriptare.\\ HTTPS/TLS:
+\begin{itemize}
+\item nella fase di handshake, viene mandata una segreto shared. 
+\item Nella seconda fase si usa key derivation functions per derivare dal segreto shared la chiave di encyption e di integrity.
+\item Refresh della symmetric encryption e message authentication usando sempre lo stesso segreto della prima fase (nel caso di nuova sessione?).
+\end{itemize}
+Hybrid encyption, spesso applicata. non voglio mettere su una connessione TLS, ma voglio fare encryption di un dato, esempio un e-mail ed uso una chiave pubblica, ad esempio quella dell'utente a cui voglio inviarla. Ma il messaggio è lungo:
+\begin{itemize}
+\item genero una chiave K simmetrica, random number
+\item Uso un cipher ordinario, come AES, ed encrypto messaggio usando la chiave K ed AES $\rightarrow$ symmetric encryption.
+\item Prendo k e la cripto con asymmetric cipher, e lo mando col messaggio. Mando un messaggio in cui nell'header ho asymmetric encryption della chiave, che è la chiave simmetrica usata per fare enctyption, più il  campo dati. Sfrutto la velocità e scalabilità dell'asymmetric encryption.
+\end{itemize}
+\subsubsection{PubKey crypto}
+Encryption e decryption sono una l'inverso dell'altra: DEC(ENC(M)) = M, quindi posso fare in questo ordine: public key encryption, un crypto system in cui sto criptando i dati in modo che tutti possano criptarli ma sono uno possa decriptarli. Assumo che l'operazione sia commutativa: ENC(DEC(M)) = M, ha senso dal punto di vista algoritmico (ma non semantico). Ha senso per fare la digital signature, è la duale del public key enrcyption: nel caso della digital signature
+\begin{itemize}
+\item Prendo la mia chiave privata, prendo un messaggio M ed applico D$_{A}$(M), posso applicarla solo io perché solo io ho la chiave. Chi può invertirla? Tutti, quindi se trasmetto M, D$_{A}$(M): chiunque può vedere il messaggio, l'extra information TAG (AUTH) e quindi se applico al TAG la trasformazione inversa, ovvero lo encrypto posso verificare se ottengo il messaggio originale o altro $\rightarrow$ creo integrity ma con asymmetric crypto.
+\end{itemize}
+Posso quindi creare due applicazioni diverse: usa è per l'encryption di dati, una per la digital signature. Devo trasmettere un messaggio: applico asymmetric crypto del primo caso. Applico una hash function crypto, comprimo ed ottengo digest e nessuno può ottenere lo stesso hash con un messaggio diverso. Quindi quello che faccio è la cosa seguente: ho messaggio compresso, trasformo usando l'operazione di decryption (che usa la chiave segreta), quindi trasmetto il messaggio più uno short tag. Per verificare se messaggio è vero o no: uso la public key per invertire l'encryption dell'hash computato prima. Quindi faccio hash del messaggio verifico se i due hash combaciano. Un attacker può solo scoprire cosa c'è nel tag invertendo con la chiave pubblica, ma non può in nessun modo ricavare un messaggio m' che mi generi lo stesso hash. L'hash del messaggio ha due obiettivi:
+\begin{itemize}
+\item Restringere il messaggio così da applicare trasformazioni su un singolo "blocco".
+\item Sicurezza: se non uso un hash, il sistema è vulnerabile, non solo per ottimizzare le perfomance, avrei un problema di malleability
+\end{itemize}
+Message integrity con authentication alla sorgente: in MAC, ho una sorgente, messaggio M ed il tag(K,M), ma se K è shared non posso autenticare la sorgente, non sono sicuro che l'abbia generato la sorgente, può averlo fatto anche la destinazione. Non c'è la non repudiation property (source authentication). Nella digital signature il concept è lo stesso, ma la chiave K usata nel TAG è privata ed è della sorgente.\\ Attacker può comunque prendere messaggio, sostituire la sua HASH + enc del messaggio e spacciarsi per la sorgente e rendere il messaggio valido.
+\subsubsection{Basic Algorithms}
+Pionieri: Diffie-Hellman key agreement, problema dell'asymmetric cryptography, vera soluzione 1977 da Riverst, Shamir, Adelman, RSA cryptosystem. Problema di usare l'approccio di DH in crypto systems fu risolto nel 1985 da El Gamal.\\ Problema generale: trovare un problema asimmetrico difficile in una direzione e facile nell'altra. esempio: hash function è un problema asimmetrico (da hash a digest facile, da digest ad hash è undefined).\\ Diffie ed Hellman trovarono problema: computazione del logaritmo discreto, ma non poterono costruire un crypto system su questo. RSA: non trovarono un modo di adattare il problema, ma trovarono altro problema:\\ ho p e q primi molto grandi, è facile fare il prodotto di p e q. Ma se ho n  = p$\cdot$q, è difficile trovare p e q, problema di fattorizzazione, approccio per trovarli è brute force (tento tutte le possibilità).\\ Ho un primo p ed un "numero" g (generator, poi scoprirò). Prendi x: $g^{x}modp$ p è di 1024 bit, x anche può essere grande. Operazione è veloce o no? Se devo elevare $g^{132412394533242543}$, ma c'è trick per renderla più veloce. Devo computare $g^{1437}modp$. Prendo l'esponente e lo traduco in forma binaria: 1437 = 10110011101$_{2}$.Lo metto in colonna in ordine inverso (dal bit meno significativo al più significativo) e creo square e multiply.
+\begin{table}
+\begin{tabular}{||c c c||}
+\hline\hline
+bit & Square & Multiply\\
+\hline
+1 & g & g \\
+\hline
+0 & $g^2$ & g \\
+\hline
+1 & $g^4$ & $g^5$ \\
+\hline
+1 & $g^8$ & $g^13$ \\
+\hline
+1 & $g^16$ & $g^29$ \\
+\hline
+0 & $g^32$ & $g^29$ \\
+\hline
+0 & $g^64$ & $g^29$ \\
+\hline
+1 & $g^128$ & $g^157$ \\
+\hline
+1 & $g^256$ & $g^413$ \\
+\hline
+0 & $g^512$ & $g^413$ \\
+\hline
+1 & $g^1024$ & $g^1437$ \\
+\end{tabular}
+\end{table}
+La prima linea è di inizializzazione, nel caso ci fosse 0, metterei 1 nel multiply (altrimenti metto g). Nelle seguenti linee: se ho un 1, nella multiply moltiplico il valore di Multiply della riga sopra per il valore della Square della riga corrente, mentre nella Square faccio una operazione, ovvero il quadrato della componente precedente.\\ Quante operazioni compio: 10 operazioni di Square + 6 Multiply, passo dalle 1436 operazioni iniziali a 16. Risultato generale: $log_2(numero)$ + le Multiply: $log_2(numero)$ nel caso peggiore, 0 nel caso migliore, avg: $\frac{log_2(numero)}{2}$ quindi in totale = 1.5 $\cdot$ $log_2(numero)$. Calo da complessità esponenziale a complessità logaritmica: lineare con la taglia in bit del numero. Dlog è complesso perché, dato un y = $3^xmod104729$, e chiedo di trovare un x tale per cui y = 33490. Se la funzione fosse monotona potrei applicare algoritmi molto efficienti per trovare il valore di x. Ma in questo caso non è così, la complessità rimane esponenziale. Quindi ho il problema che volevo trovare.\\
+Diffie-Hellman, protocollo di key agreement, permette di settare tra client e server un segreto shared, non trasferendolo da una parte ad un'altra, bensì usando computazioni: asimmetrico nel modo in cui ricavo il segreto shared, scambio dei valori pubblici.
+\begin{itemize}
+\item Alice genera una quantità random, x. Bob genera y, random.
+\item Alice manda a Bob $g^xmodp$, si computa facilmente. Bob manda $g^ymodp$
+\item Alice prende $(g^y)^xmodp$ ed ottiene k. Bob fa lo stesso, ed ottiene la stessa chiave k. Ho applicato di nuovo modular exponentiation, veloce.
+\item L'attacker ha visto lo scambio, ma non può computare la chiave perché deve invertire il dlog. Da $g^x$ e $g^y$ è difficile computare $g^{xy}$. Bob ed Alice hanno i "segreti" x ed y, quindi per loro è facile fare la computazione.
+\end{itemize}
+esempio: p = 29'996'224'275'833, g = 3 (sono parametri). x = 123456789, y = 234567890. Alice computa $g^xmodp$, Bob $g^ymodp$. Poi, alice farà $(g^{y})^{x}modp$, mentre Bob farà $(g^{x})^{y}modp$, ed avranno la stessa chiave K. In Diffie-Helmann: numeri di almeno 1024 bit.\\ La sicurezza dell'algoritmo si basa sul fatto che l'attacker deve per forza invertire uno dei due dlog: se conosco di più, ovvero x o y, allora posso riuscire a ricavare k: questa è la proprietà di asimmetria.\\ Limiti di DH:
+\begin{itemize}
+\item Non implementa un crypto system: risolve un problema, ora che ho la chiave K shared, posso usare AES-128$_K$(data), quindi ho risolto il problema pratico di trasferire i dati su un canale non sicuro. Ma non risolve la challenge originale: prendi un messaggio M, criptalo con una chiave K$_{ENC}$ e decriptalo con K$_{DEC}$
+\item Non posso derivare facilmente una digital signature, non posso usare la chiave SK per la DS (non avrei la non repudiation property)
+\end{itemize}
+1977: RSA per risolvere il problema (ora non si usa più perché non ha implementazione efficiente su curve ellittiche).
+\subsubsection{RSA Algorithm}
+Algoritmo i Rivest, Shamir e Adelman; patented fino al 2000.\\ Problema asimmetrico difficile: dato N = p$\cdot$q, è difficile fattorizzare N; p e q devono essere numeri primi grandi.\\ Operazioni di encyption e decyption sono semplici, e sono modular exponetiation. Questo può supportare sia l'encryption che la digital signature: posso modellare un crypto system ed avrò i due servizi a seconda dell'ordine delle operazioni.\\ Principio dietro RSA:\\ $m^xmodN$, c è un numero, quindi ogni messaggio viene tradotto in un numero, deve avere taglia $\leq$ N.\\ La funzione è periodica: se considero $3^xmod10$ = \{3,9,7,1,3,9,7,1,....\}.Il periodo è lungo 4, se provo a cambiare m, la lunghezza periodo è uguale o minore: ese. $9^xmod10$ = \{9,1,9,1,..\}, worst case period = 4.\\ Teorema di Eulero: computazione del max di $m^xmodN$, è la funzione $\Phi$(N), più formalmente se m è co-primo con N (GCD(m,N) = 1), allora vale che $m^{\Phi(N)}modN$ = 1.\\ Computazione $\Phi$(p):
+\begin{itemize}
+\item se p è primo, $\Phi$(p) = p-1.
+\item se N = p$\cdot$q, con p e q primi, avrò che $\Phi$(p$\cdot$q) = $\Phi$(p)$\cdot$ $\Phi$(q) = (p-1)$\cdot$(q-1).
+\item Numero primo $p^k$, $\Phi$($p^k$) = (p-1)$\cdot$ $p^{k-1}$.
+\end{itemize}
+Conseguenza della periodicità: $m^xmpodp$ è periodica con periodo $\Phi$(N)s. Prendo ad esempio $mod11$, quindi $\Phi$(11) = 10.\\ Mi rendo conto che 9$\cdot$7$mod11$ = $2^6 \cdot 2^7 mod11$ = $2^{13}mod11$. Quindi posso lavorare sull'esponente facendo mod $\Phi$(N): $2^{13mod10}$ = 8 = $2^{3mod10}$ = $2^3$.\\ Conseguenza: $m^x = m modN$ se x = $1 mod\Phi(N)$, in questo esempio x = 1 + k$\Phi$(N).\\ Quando $3^xmod10$ = 3? $3^5mod10$ = 3, ma l'equazione si risolve ogni volta che x = $1mod\Phi(N)$.\\ Costruzione di RSA:
+\begin{itemize}
+\item Genero p e q primi grandi e li tengo segreti.
+\item Computo N = p$\cdot$q e lo rendo pubblico, trovare la fattorizzazione è difficile (escludendo quantum computing la complessità cresce esponenzialmente con il numero di bit di N)
+\item Computo $\Phi$(N) = (p-1)$\cdot$(q-1), non posso computarlo conoscendo solo N, devo conoscerne la fattorizzazione. Ma ora ho il problema del mio recevier: la sicurezza di RSA risiede nel fatto che nessuno può computare $\Phi$(N).
+\item Genero una public key e: 1 $<$ e $<$ $\Phi$(N), e deve essere co-primo con $\Phi$(N). (e è sempre dispari perché N è pari)
+\item Genero chiave privata d tale che e $\cdot$ d = $1mod\Phi(N)$. Quindi $(m^{e})^dmodN$ = m.
+\item Per risolvere: $m^x$ = $m mod N$ devo risolvere x = $1mod\Phi(N)$, ora ho $(m^e)^d$ = $m mod N$, devo risolvere $e \cdot d$ = $1 mod\Phi(N)$. Se conosco $\Phi$(N) il problema è facile,altrimenti no.
+\end{itemize}
+Assunzione di sicurezza: dato N deve essere difficile trovare i fattori p e q, inoltre nno deve essere possibile computare $\Phi$(N), e senza $\Phi$(N) è difficile computare d ed e.\\ d è la chiave di decrypt (privata), mentre la chiave di encrypt (pubblica) è la coppia (N,e).\\ Perché funziona: se ti do N,e ed un messaggio cryptato $m^emodN$, è difficile trovare x tale che $(m^e)^xmodN$ = m. Unico modo è fare brute force a meno che non conosci $\Phi$(N). Problema dell'aritmetica $modN$: le frazioni non si considerano, le soluzioni sono tutte intere.\\ esempio: p = 11, q = 17 (segreti), computo N = p$\cdot$q, 11$1cdot$17 = 187. $\Phi$(N) = 10$\cdot$16 = 160 (segreto). Prendo e = 7, che è pubblico e primo con 160.\\ Ora, cerco d tale che e$\cdot$d = 1mod160, in questo caso d = 23.\\ CHi computa ha la trapdoor (conosce $\Phi$(N) che è quel qualcosa in più), rende pubblico N ed e. Per criptare M: C = $M^7mod187$, per fare decyption faccio $(M^7)^23mod187$.\\ Come funziona: sono la banca, genero p e q localmente e li moltiplico per avere N. Ora genero e e siccome ho computato io N, conosco $\Phi$(N) e posso generare d. Dico all'utente di usare \{N,e\} come chiave pubblica, una volta fatta l'operazione mi tengo solo \{N,e\} d in privato. L'attacker può vedere il ciphertext, ma non può decriptare $m^emodN$.\\ NB: messaggio numerico deve essere più corto di N (in termini di digits).\\ L'attaccante deve cercare tutti i numeri possibili: se riprova con e, ottiene qualcosa di diverso (non è symmetric encr, a meno che non conosca la fattorizzazione p e q), mentre per la banca è semplice perché ha la chiave privata d per decypt.\\ N è grande, p e q anche. e può essere piccolo, mentre d è sempre grande: è utile spesso selezionarli entrambe grandi ma è possibile selezionare e piccolo (es = 3, così l'encryption è veloce). La probabilità che d sia piccolo è infinitesima, di solito si fissa una chiave pubblica e, da cui poi tanto si computerà d, non posso selezionare entrambe.\\ (Non raccomandato scegliere la chiave e piccola perché posso esserci attacchi, per ottimizzazione si può scegliere piccola, ma si apre a delle vulnerabilità).\\ Perché RSA funziona, trapdoor funciton: diventa facile computare $(m^e)^dmodN$ = m, con algoritmo di Euclide esteso:\\ assumo di avere due numeri coprimi, esempio 51 ed 11; GCD[51,11] = 1. Devo trovare a e b $\in$ Z tali che 51$\cdot$a + 11$\cdot$b = 1.\\
+1x51 + 0x11 = 51\\
+0x51 + 1x11 = 11\\
+Divido 51 per 11, segnando il resto: 4, r = 7. Prendo l'ultima riga, la moltiplico per 4 e la sottraggo a quella sopra:\\
+1x51 - 4x11 = 7.\\ Ora divido 11 per 7, ottengo 1 con r = 4.\\ -1x51 + 5x11 = 4.\\
+2x51 - 9x11 = 3.\\ -3x51 +14x11 = 1.\\ Ho trovato (a,b) = (-3, 14); complessità logaritmica, efficiente dal punto di vista computazionale.\\ Applico per computare l'inverso modulare: \\ ho e = 13 e $\Phi$ = 60, devo computare l'inverso di e: so che è co-primo con $\Phi$(N), devo cercare $\Phi$ $\cdot$a + e$\cdot$b = 1. Applico l'algoritmo di Euclide esteso e trovo (a,b)=(5, -23). La riscrivo isolando 13$\cdot$(-23)  = 1 - 60$\cdot$5, ma l'uguaglianza vale anche per il modulo: $13\cdot(-23)mod\Phi(N)$ = $1mod(\Phi)(N)$, quindi ho trovato che d = -23 = 60 -23 = 37, quindi ora per decryptare mi basta elevare il ciphertext alla d.
+\\RSA signature: prendo messaggio, faccio hash ed applcia DEC(H(M)). Quindi neòl caso di RSA faccio $H(M)^dmodN$, e mando il messaggio, la chiave pubblica e il TAG. L'altro end prende TAG, lo eleva alla e quindi ottiene $(H(M)^d)^emodN$ = H(M) e può controllarlo facendo hash del messaggio.
+\subsection{Digital certificates and public key infrastrucutures}
+Digital signature: so come generare chiave pubblica e privata. Creo H(M) sul messaggio che voglio inviare, lo faccio perché la condizione per fare aritmetica $modN$ il messaggio deve avere taglia più piccola di N, così lo ottengo. Trasformo il dato (encyption è termine improprio qui) facendo H(M)$^dmodN$: solo io posso fare questa computazione, ma chiunque può fare la trasformazione inversa (H(M)$^d$)$^e$ che mi fornirà H(M), ora computo di nuovo H(M) e controllo se torna con quello ricavato.
+\subsubsection{Problemi}
+Un attacker cerca di rompere la costruzione: prende q' e p', scelti da lui, computo N', genero chiave pubblica e' e chiave privata d', posso farlo perché conosco $\Phi(N')$. Modifico il messaggio M, faccio hash del così ottenuto M' e lo firmo con la mia chiave segreta d'. È vero che l'utente iniziale ha la chiave privata, ma l'utente finale deve avere la chiave pubblica e:
+L'utente finale ha già la chiave e salvata, ma come posso avere salvato ad esempio la chiave pubblica per un utente che non conosco? Devo per forza ottenerla dalla rete. Attacker può intercettare la comunicazione, dire di essere l'utente originale e rimpiazzare la chiave pubblica con la sua, e'. Quindi verificando il messaggio, questo è autentico ed è un problema.\\
+Altro problema, RSA key transport: voglio connettermi alla banca con TLS, mando Client Hello e la banca deve mandarmi la chiave pubblica, scelgo una quantità random k e la trasferisco usando la chiave pubblica della banca.\\ Ma quando la banca mi manda la chiave pubblica, l'utente può mettersi nel mezzo e sostituirsi alla banca. Può farlo perché la comunicazione è attualmente in chiaro , quindi quando l'utente sceglie la random k, la manda criptata con la chiave dell'attacker, quindi attacker lo decrypta, lo legge e lo riencrypta con la chiave pubblica della banca rimandandolo a quest'ultima.\\ Ora l'attacker sa che il data exchange sarà criptato con la chiave k.\\ Problema anche in Diffie-Hellman: i due utenti Alice e Bob scelgono due chiavi e si mandano $g^xmodp$ e $g^ymodp$. Attacker si mette nel mezzo: sceglie una chiave z random, ferma la trasmissione di $g^xmodp$ e genera $g^zmodp$. Dall'altra parte, manda anche all'altro end $g^xmodp$, quindi lo manda sia a Bob che a Alice.\\ Alice computerà una chiave K$_{1}$ = $g^{xz}modp$, Bob computerà K$_2$ = $g^{yz}modp$. Ma l'attacker li ha entrambi: ha intercettato i due messaggi $g^xmodp$ e $g^ymodp$ quindi può elevarli alla z, che ha generato lui; attacker agisce da proxy.\\ Quindi ogni applicazione dell'asymmetric cryptography ha il problema del certificato della chiave pubblica: o ho TUTTE le chiavi salvate, oppure se devo recuperare la chiave dalla rete sono vulnerabile ad un MITM.\\ 3 scenari differenti, stesso problema: ho un nome a cui è associata una chiave pubblica, tutti gli attacchi rompono l'associazione e cambiano una delle due parti. Bisogna legare, in termini di cryptographic bind tra il nome e la chiave pubblica.
+\subsubsection{Digital certificate}
+Digital certificate: qualcosa che mi permette di legare (in senso molto stretto) una chiave pubblica ad un soggetto, soggetto può essere persona, compagnia, entità legale. Devo fari si che l'associazione sia crypto binded, non rompibile.\\ Non si può risolvere il problema a meno di aggiungere un trick extra: non ho la crittografia attivata: i messaggi sono in chiaro, devo ancora attivare la crittografia.\\ Mi riferisco ad una terza parte fidata (certification authority), a cui chiedo : il nome è associato alla chiave pubblica?\\ Ma se la risposta avviene on-line, c'è il problema del MITM di prima.\\ Prendo il nome, la chiave pubblica e chiedo di firmare digitalmente il messaggio che contiene sia il nome che la chiave pubblica: es Flavia $|$ 123456 diviene un unico messaggio digitally signed dalla certification authority, l'assunzione immancabile è la fiducia nella certification authority.\\ Certificato:
+\begin{itemize}
+\item Fase 1: sono una banca e voglio generare chiave pubblica e privata, devo farlo offline, non voglio trasmettere online nulla.Genero in locale e salvo in locale la chiave pubblica.\\ A questo punto, offline, chiedo alla certification authority di firmare il nome della banca e la chiave pubblica.\\ La CA è sicura che sia la banca a richiedere la digital signature: devi presentarti lì di persona, mostrando documenti etc..., fase complessa con aspetti legali.\\ Infine, mi arriva il certificato CERT = (Bank\_Name, BankPK)$_{CA_sign}$, l'integrità del messaggio è garantito dalla digital signature della CA.
+\item Fase 2: un customer si collega alla banca, e questa mi manda il certificato, che contiene il nome e la pubblic key. In TLS avrò client hello, server hello e poi il certificato che contiene nome e public key che sono cryptographically bounded. Ora il customer deve assicurarsi che il CA sia trusted, nel PC c'è lista trustata: controlla nella lista e se è trustata deve controllare la correttezza della signature. Come faccio per fidarmi della digital signature: Browser - settings - security - manage certificates, si apre un box che contiene la lista di certificati fidati. Quindi cosa vuol dire fidarsi di una CA: la CA firma il messaggio che contiene (nome,PK) della banca, quindi c'è un messaggio e questo messaggio ha un HASH, e se uso RSA questo hash sarà elevata alla private key della CA, la chiave non è dell'entità d i cui si fa il crypto binding ma quella della CA. Quindi per invertire il TAG mi serve la chiave pubblica della CA, ma deve essere pre-installata nel PC, altrimenti sono soggetto ad un MITM. Quindi fidarsi della CA è molto forte: anche la public key della CA è nella forma di un certificato, quindi avrò crypto binding tra il nome della CA e la chiave pubblica. Ma chi firma questo crypto binding? Può essere self-signed, in quanto ci sono root authorities che non possono fare altro se non firmarsi il certificato da sole. In principio non bisognerebbe fidarsi della self-signed certificate a meno che non è firmato da una root authority.\\ Trick per sito che vuole un certificato può essere self-signed, ma questo non vuol dire che sia vero.\\ 
+spazio utile: ssllabs per testare certificati dei siti.\\  
+\end{itemize}
+Ma sono sicuro che sto parlando con la banca? Fin'ora ho solo verificato che la chiave pubblica inclusa nel certificato è associata al nome incluso nel certificato, ma chi mi di dice che il certificato me lo ha mandato la banca? Non è questo il ruolo del certificato: non mi garantisce che sto parlando con quel nome. Un attacco di questo tipo ha senso? Può avere ripercussioni il problema che chi sta dietro il certificato non è l a banca reale?\\ Quando l'utente manda la chiave pubblica, prima si è riferito al CA che ha fatto il crypto biding della coppia (nome $|$ public key). Ora l'utente può prendere il messaggio e fare replay, ma non può sostituire il nome o la chiave e firmarlo, dovrebbe avere la chiave dell'utente. Quindi il certificato è sicuro: il messaggio è stato prodotto usando la chiave segreta associata al segreto, ovviamente l'attacker non può mandarti un certificato valido perché deve fare verifica off-line burocratica.\\ Attacker non può più sostituire nulla nel crypto binding: l'associazione è forte, quindi risolve problemi della digital signature.\\ Risolve l'altro problema? Devo provare che l'entità con cui sto parlando possiede la chiave privata associata alla chiave pubblica. Come fare a dimostrare che possiedo la chiave privata associata al certificato? Chiedo all banca di firmare qualcosa di fresco oppure chiedo alla banca di decryptare qualcosa di fresco. Quindi:
+\begin{itemize}
+\item Banca mi manda certificato con chiave e chiave pubblica, di cui verifico la certezza (è firmato dal CA). Posso ottenere ora la chiave pubblica della banca, e sono sicuro  che sia autentica.
+\item Mando una nonce alla banca e chiedo  di firmarlo
+\item Banca ritorna la nonce firmata con la sua signature.
+\item Ora applico la chiave pubblica ricavata prima per invertire la nonce che è stata modificata dalla banca per vedere se mi torna.
+\end{itemize}
+Ma ora faccio la duale:
+\begin{itemize}
+\item Banca mi manda il certificato
+\item Io trasformo la nonce usando la chiave pubblica della banca, chiedendo il risultato
+\item Ora, la banca mi manda il risultato pulito usando la sua chiave privata
+\end{itemize}
+Quindi, i certificati non garantiscono che la persona sia reale, ma un protocollo deve includere l'uso di certificati per poter provare l'autenticità dell'entità, in TLS uso i due meccanismi appena visti uno server side ed uno client side.\\ Approccio di TLS con RSA key transport:
+\begin{itemize}
+\item Ricevo il certificato dalla banca
+\item Non genero la nonce, bensì la chiave simmetrica che userò dopo in encryption. Mando la chiave criptata con la chiave pubblica.
+\item Ora posso scambiare dati criptati usando AES-128$_{K}$: quindi se eri la banca bene, puoi decyptare, altrimenti non puoi.
+\end{itemize}
+Difficile però includere diverse root authorities in un singolo PC, idea è di avere fiducia in una catena di certificati: mi voglio connettere alla banca, mi manda certificato firmato da un CA non in lista, quindi posso avere una gerarchia di CA, così vedo il certificato del CA che ha firmato quello della banca e vedo se è trusted.
 \end{document}

@@ -1112,4 +1112,314 @@ I messaggi all'interno delle code hanno durata limitata (configurabile), vengono
 esempio: applicazione cloud per processamento/modifica di foto. 2 macro-componenti: front-end verso l'utente, parte back-end. Due code: una che permette di inviare le foto alla parte di back-end dal font-end ed una che vada nel verso opposto (rimandando la foto trans-codificata). Siccome foto pesano, nel messaggio metto URL della foto memorizzata su S3. Posso pensare di replicare su EC2 il componente di processamento, quindi posso usare la coda per fare load balancing tra le varie istanze del server di processamento. Siccome gestisco la coda con semantica basata su time-out, posso essere tollerante ai guasti: se server subisce un crash mentre sta processando, allo scadere del periodo di visibilità la foto torna disponibile e può essere processata da un altro server.
 \subsection{Apache Kafka}
 Sistema publish-subscribe che può funzionare anche come sistema a code di messaggi, uno dei progetti più popolari dell'Apache Software Foundation.\\ Originariamente sviluppato da LinkedIn, usato da Netflix, Uber etc... Scritto in Scala, scalabile orizzontalmente, tollerante ai guasti con alto ingestion throughput.\\ Da un punto di vista architetturale, Kafka è composto da un cluster di broker, che mettono a disposizione un log distribuito per la gestione dei dati. Espone a producer/consumer die topic: un topic può avere 1 procuder che pubblica su un topic e 0-1-più consumer che si sono sottoscritti al topic e ricevono messaggi da quel topic; i broker gestiscono i topic.\\ Il topic è una categoria nella quale viene pubblicato il messaggio, in ogni topic il cluster Kafka contiene un log partizionato che è una struttura dati (non il classico file log) che permette di memorizzare una sequenza di record ordinati temporalmente e le scritture avvengono solo in modalità append, ovvero solo alla fine del log. Log viene mantenuto totalmente ordinato (rel. d'ordine totale). Topic deve essere accessibile da parte di più producer e consumer contemporaneamente per favorire la scalabilità, quindi viene suddiviso in partizioni, che definisce la quantità minima per il parallelismo sul topic. Ogni partizione, per migliorare la scalabilità e la tolleranza ai guasti + replicata tra i molteplici broker del cluster.\\ I producer pubblicano i record sulle partizioni del topic, all'atto della pubblicazione la partizione viene scelta con politica round-robin o con partizionamento basato su chiave, ade esempio in base ad un hash calcolato sulla base del messaggio. \\ Consumer possono leggere le varie partizioni, ciascuna partizione è ordinata,numerata ed immutabile su cui avvengono solo operazioni di append per l'inserimento. Ciascun record è numerato con un sequence number, detto offset: nell'effettuare una lettura i consumer specificano l'offset del record da leggere.\\ Le partizioni sono suddivise tra molteplici broker, questo per scalabilità così che più producer/consumer in modo concorrente possano agire sullo stesso topic e sulle sue partizioni. Ciascuna partizione è replicata per tolleranza ai guasti ed aumento del throughput. Ciascuna partizione può essere replicata, per le diverse repliche della partizione viene identificato un broker (server Kafka) che svolge ruolo di leader e 0 o più follower. Leader gestisce operazioni di lettura/scrittura, mentre i follower sono delle copie di backup della partizione del leader e possono subentrare tramite meccanismo di elezione se server che svolge ruolo di leader subisce fallimento.\\ Kafka distribuisce tra i diversi broker il compito di leader tra le partizioni: ciascun leader sarà leader per certe partizioni e follower per altre. I broker poggiano su un servizio che è Apache ZooKepeer.\\ Producer: sorgenti dei dati in Kafka, pubblicano messaggi sui topic di loro scelta, invio tra producer e server Kafka è diretto, invio al leader della partizione. I producer inoltre sono responsabili di scegliere a quale partizione viene assegnato un determinato record. Sono anche responsabili di scegliere quale record assegnare a quale partizione del topic: può avvenire con scelta basata su chiave, se ad esempio lo user id è la chiave, tutti i dati dell'utente saranno mandati sulla stessa partizione.
+Kafka copre anche settore dei data storage, non solo offre API di messaggistica, ma anche processamento ed analisi dati, rappresenta come sistema di messagistica uno dei componenti fondamentali di un'architettura distribuita per analisi dei dati in quanto viene usato per la fase di data injection (iniezione dei dati nel componente che farà poi processamento). All'atto della creazione del tipic specifico il nome (univoco), in numero di partizioni del topic ed il grado di replicazione di ciascuna partizione del topic.\\ Kafka usa modello basato su pull: è il consumer che prende i dati prodotti. Il modello push è invece usato su RabbitMQ: in questo caso i broker spingono attivamente i messaggi verso i consumer.Questo complica la realizzazione del broker,deve poter gestire diversi tipi di consumer che possono avere diverse capacità computazionali e quindi ricevere i dati a ratio differente. Inoltre decidere se mandare i dati subito o accumularli e mandare un batch.\\ Nel modello pull, è consumer parte attiva nel reperimento dei messaggi, deve tener traccia dell'offset del log, per sapere fino a che punto ha scaricato i messaggi e quale è il prossimo messaggio da scaricare. Vantaggio dell'approccio pull è che si pone meno carico sui broker e si ha una maggiore flessibilità, perché i singoli consumer determinano il tasso con cui fanno pull dei messaggi, non è il borker a doversi adattare alle diverse velocità dei, consumer. \\ Contro: nel caso in cui consumer non trova dati, perché producer non li ha ancora prodotti rimane in busy waiting attendendo i dati in arrivo.\\ Consumer group: consumer possono essere raggruppati, all'occhio di Kafka appare come unico subscriber logico. In questo modo miglioro scalabilità e tolleranza ai guasti: i consumer possono leggere parallelamente su diverse partizioni.\\ Offset ha ruolo fondamentale nell'identificazione del punto del log a partire dal quale il consumer deve leggere, quindi è tenuto dai consumer. Vantaggio del meccanismo basato su offset è che consumer riutilizzando l'offset può riottenere messaggi scritti su una partizione, che aveva richiesto in precedenza ma non aveva potuto processare ad esempio a causa di un fallimento.\\ Messaggi vengono inseriti con append, consumer vedono i record nell'ordine di memorizzazione nella partizione. Topic può essere suddiviso in più partizioni, garanzia sull'ordinamento viene offerta non a livello di topic, ma solo a livello di partizione; non può preservare ordinamento tra dei messaggi tra diverse partizioni (per solito principio del keep it simple). Garanzie di consegna di Kafka:
+\begin{itemize}
+\item At-least-once: default, garantisce che non ci siano perdite ma non che non ci siano duplicati (devo essere tollerante a questo)
+\item Exactly-once: garantisce che non ci ci siano perdite né duplicati, ma richiede utilizzo di un protocollo transazionale distribuito che impatta sulle prestazioni di Kafka; dipende anche da qual'è l'applicazione consumer
+\end{itemize}
+Utente può anche implementare una semantica at-most-once, facendo in modo che sul producer disabilito le ritrasmissioni e facendo commit dell'offset prima che il consumer abbia processato il messaggio.\\ Kafka replica le partizioni per tolleranza a guasti, il messaggio è disponibile ai consumer solo dopo che tutti i follower hanno terminato la scrittura ed hanno fatto ack al leader di partizione, quindi messaggi possono non essere subito disponibili, priorità alla consistenza piuttosto che alla disponibilità. Kafka mantiene i messaggi per un periodo di tempo configurato, così che se il consumer fallisce i messaggi possono essere riottenuti grazie a questa persistenza a tempo.\\ Zookepeer: sistema di storage di tipo key-value , distribuito e con architettura gerarchica. Ampiamente usato in SD open scource, Kafka lo usa per vari scopi:
+\begin{itemize}
+\item Elenco dei broker attivi nel sistema
+\item Elenco consumer e dei loro fofest e dove sono arrivati a leggere; i consumer salvano l'offset a cui sono arrivati
+\item Elenco dei producer: prodcuer ottengono indirizzo dei broker da Zookeeper.
+\end{itemize}
+Usato anche nel caso in cui broker leader subisce fallimento, viene eseguito un algoritmo di elezione distribuito per eleggere il nuovo leader (Paxos).\\ API per gli utenti:
+\begin{itemize}
+\item Producer API: permette alle applicazioni producer di pubblicare record su Kafka
+\item Consumer API: leggere record dalle partizioni in cui è suddiviso il topic
+\item Connect API: serve per collegare producer e consumer a Kafka, ad esempio se ho un DB e voglio interagire con Kafka. Posso collegare applicazioni già esistenti a dei topic su Kafka. Connettori per S3, altri sistemi message queue (pipeline di sistemi)
+\item Streams API: permette la trasformazione di stream di dati da topic di input su topic di output. Kafka diventa anche piattaforma di processamento di dati in tempo reale.
+\end{itemize}
+API di Kafka supportano solo Java e Scala, ma ci sono librerie lato client per il supporto di altri linguaggi: Sarama per Go, Kafka-Python e libreria per NodeJS.
+\subsection{Protocolli per MOM}
+Esistono diversi protocolli, implementati con standard aperti, tra questi i 3 più usati sono:
+\begin{itemize}
+\item AMPQ (presente anche in Go)
+\item MQTT: molto usato in ambito IoT, più leggero rispetto ad AMQP, meno configurabile ma più adatto a dispositivi IoT semplici. COme AMQP è un protocollo binario
+\item STOMP: è di tipo testuale.
+\end{itemize}
+Basati su standard aperti, obiettivo comune è fornire soluzioni di messaggistica indipendenti dalla piattaforma o dal vendor ed offrono interoperabilità fra di versi sistemi MOM.\\ Spesso usati nell'IoT: usati per mandare dati da sensori verso broker di messaggistica che poi li invia a framework per farli processare. Sfruttano i vantaggi dei sistemi MOM:
+\begin{itemize}
+\item disaccopiamento
+\item resilienza, ho uno storage di dati temporaneo
+\item premette di disaccoppiare producer dal consumer, quindi posso gestire picchi di carico. Se ho picco, memorizzandoli posso far si che sistema non perda i dati se non riesce a far fronte col processamento in tempo reale al carico.
+\end{itemize}
+\subsubsection{AMQP}
+Basato su standard aperto, largamente supportato dalle aziende nel settore. Approvato come standard internazionale nel 2014. È protocollo di livello applicativo che si basa su TCP (motivi di affidabilità), permette di supportare tutte e 3 le semantiche di consegna. Caratteristica interessante è che è un protocollo programmabile, posso definire schemi di routing con cui instradare i messaggi tra le diverse code. Supportato da diversi framework di messaggistica, tra cui RAbbitMQ. Componenti principali:
+\begin{itemize}
+\item Publisher
+\item Subscriber
+\item Broker AMQP: diverse entità nel broker:
+\begin{itemize}
+\item Code
+\item Exchange: punti di scambio, ricevono i messaggi dai publisher
+\item Binding: definisce come exchange è collegato alle code. messaggi pubblicati qui, che instrada opportunamente i messaggi alle code. Regole con cui exchange scambiano messaggi fra le code, una volta nelle code il modo in ui messaggi sono letti dipende dall'implementazione della coda (in RabbitMQ push, in Kafka pull)
+\end{itemize}
+\end{itemize}
+Binding sono programmabili, possono essere di diverso tipo:
+\begin{itemize}
+\item Direct exchange: messaggi consegnati alle code basandosi su chiavi di routing.
+\item Fanout exchange: punto di exchange replica il messaggio su tutte le code a cui è collegato
+\item Topic exchange: scambio del topic, viene fatto matching sul topic, consegnando messaggio ad una o più code sulla base del matching. Può essere utile se bisogna realizzare applicazione che riceva dati dipendenti dal contesto, esempio relativi a specifica locazione geografica.
+\item Header exchange: (slides)
+\end{itemize}
+Permette di definire due tipi di messaggi:
+\begin{itemize}
+\item Bare: messaggi dei producer
+\item Annotated: aggiunte ricevute durante il transito
+\end{itemize}
+L'header ha diversi parametri di consegna, a seconda del tipo di messaggio avrò un certo header.
+\subsection{Comunicazione multicast}
+Schema di comunicazione in cui di dati sono inviati verso molteplici destinatari, broadcast è un caso particolare.\\ Vari esempi di multicast one-to-many o many-to-many: servizi di conferenza, giochi multiplayer, etc...\\ Comunicazione unicast non scala: per unicast ogni utente deve ricevere il contenuto, mentre con multicast replico il messaggio sollo dove necessario.\\ Multicast può essere a livello di rete o a livello di applicazione.\\
+A livello di rete: nel protocollo IP è presente IPMC, basato su gruppi ovvero un insieme di host interessati alla stessa applicazione. Uso limitato perché scarsamente supportato a larga scala, pochi autonomous systems lo implementato ed è difficile tener traccia dei gruppi. Inoltre viene in alcuni casi disabilitato perché soggetto a broadcast storm.
+\subsection{Multicast applicativo}
+Multicast invia un messaggio verso un set di destinatari, one-to-many o many-to-many.\ Idea di base: organizzo nodi in una overlay network su cui diffondere i messaggi. Per la realizzazione della overlay network posso usare approccio strutturato o non strutturato:
+\begin{itemize}
+\item Strutturato: soluzioni p2p già viste, creazione di percorsi di comunicazione dell'overlay network
+\item Non strutturato: basato su flooding o su gossiping.
+\end{itemize}
+\subsubsection{Multicast applicativo strutturato}
+Mi focalizzo su multicast one-to-many: prima struttura dati che mi viene in mente è l'albero, unico percorso tra coppie di nodi. Radice è mittente, foglie i destinatari. \\ Altra soluzione è mesh o rete a maglia, dove ho molti percorsi tra ogni coppia di nodi, quindi maggiore tolleranza ai guasti.\\ multicast con albero: uso sistema basato sulla distributed hash table PASTRY, costruzione in Scribe. Scribe è sistema publish/subscribe con struttura decentralizzata basato su PASTRY.
+\begin{itemize}
+\item Il nodo che inizia la sessione multicast genera l'identificatore del gruppo di multicast, sarà il nodo mid.
+\item Usa PASTRY per cercare nella rete overlay il nodo responsabile per il mid.
+\item Tale nodo diviene la radice dell'albero di multicast
+\item Se il nodo P vuole unirsi all'albero di multicast identificato dall'id mid: il nodo invia la richiesta di join. Suppongo che la richiesta arrivi al nodo Q:
+\begin{itemize}
+\item Q non ha mai ricevuto richieste di join per mid, quindi Q diventa forwarder, P diventa figlio di Q e Q inoltre la richiesta di join verso la radice
+\item Se Q è già forwarder, P diviene figlio di Q ma Q non deve inoltrare la richiesta di join in quanto fa già parte dall'albero.
+\end{itemize}
+\end{itemize}
+\subsubsection{Multicast applicativo non strutturato}
+Posso usare due soluzioni:
+flooding: già esaminato, P invia messaggio ai suoi vicini, che se non hanno già trattato il messaggio lo inoltreranno.\\ Soluzione con gossiping
+\subsubsection{Protocolli di gossiping}
+Approccio probabilistico: un nodo che riceve il messaggio potrà inoltrare il messaggio solo ad un sotto-insieme di nodi che conosce, scelto in modo casuale, a sua volta ogni nodo farà l'invio con lo stesso meccanismo\\ Permettono rapida diffusione delle informazioni in reti a larga scala.\\ Origini: definiti del 1987 Demers in un lavoro sulla consistenza di database replicati su vari server. Idea di base: assumendo che non vi siano conflitti di scrittura (aggiornamenti indipendenti):
+\begin{itemize}
+\item Le operazioni di aggiornamento sono eseguite inizialmente su una o più repliche
+\item Una replica comunica il suo stato aggiornato ad un numero limitato di vicini
+\item La propagazione dell'aggiornamento è lazy
+\item Al termine, ogni aggiornamento dovrebbe raggiungere tutte le repliche
+\end{itemize}
+Svariati vantaggi nell'utilizzo:
+\begin{itemize}
+\item Semplicità degli algoritmi di gossiping
+\item Mancanza di controllo centralizzato e di bottlenecks
+\item Scalabilità, in quanto ogni peer manda solo un numero limitato di messaggi, indipendentemente dalla grandezza del sistema
+\item Affidabilità e robustezza, per via della ridondanza di messaggi.
+\end{itemize}
+Usati largamente: es Amazon S3, che usa protocollo di gossiping per diffondere informazioni all'interno di S3, questo permette tolleranza ai guasti di server Amazon.\\ Altro esempio è servizio Dynamo di Amazon, usato per gestire il carrello. Usa gossiping per diffondere nella rete i nodi che hanno subito fallimento, quindi usato per failure detection.
+\subsection{Modelli di propagazione del gossiping}
+Modello di gossiping puro e di anti-entropia, che potenzia il precedente.\\
+Gossiping puro: un peer che è satto appena aggiornato contatta un altro peer scelto a caso inviandogli il proprio aggiornamento.\\ Anti-entropia: periodicamente ciascun peer sceglie casualmente un altro peer ed i due peer si scambiano gli aggiornamenti, giungendo al termine ad uno stato simile su entrambi. Obiettivo: minimizzare entropia del sistema, ovvero differenza di informazioni possedute dai diversi nodi.\\ Gossiping puro: un peer P manda il suo aggiornamento ad un altro nodo Q a caso appena è stato aggiornato. Se Q ha già ricevuto l'aggiornamento, P perde interesse verso Q, quindi con probabilità $\frac{1}{k}$ smette di contattare altri peer. Se s è la frazione di peer non ancora aggiornati, si dimostra che s = $e^{-(k-1)(1-s)}$. Al crescere di km, aumenta la probabilità che l'aggiornamento si diffonda. Combino col modello di anti-entropia.
+\subsubsection{Anti-entropia}
+DUe nodi possono scambiarsi informazioni in due modi:
+\begin{itemize}
+\item Modello push: P invia soltanto i suoi aggiornamenti a Q
+\item Modello pull: P richiede gli aggiornamenti a Q
+\item push-pull: i due nodi si scambiano gli aggiornamenti reciprocamente.
+\end{itemize}
+Delle diverse strategie, la push-pull risulta essere la più veloce: è possibile dimostrare che, con N peers nel sistema server un ordine di O(log(N)) round per propagare un aggiornamento agli N nodi. Round: intervallo di tempo in cui ogni peer ha preso almeno una volta l'iniziativa di scambiare aggiornamenti.\\ Usando solo la strategia push-pull c'è comunque bisogno di vari round, quindi si pensa di combinare con anti-entropia.
+\subsubsection{Schema generale del protocollo di gossiping}
+Considero due nodi P e Q, P ha scelto a caso Q per scambiarsi l'informazione. Considero che lo pseudo-code sia eseguito ad ogni round, quindi ogni $\Delta$ d tempo:
+\begin{itemize}
+\item selectPeer(\&Q)
+\item selectToSend(\&bufs)
+\item sendTO(Q, bufs)
+\item receiveFrom(Q, \&bufr)
+\item selectToKeep(cache, bufr)
+\item processData(cache)
+\end{itemize}
+\begin{enumerate}
+\item receiveFromAny(\&P, \&bufr)
+\item selectToSend(\&bufs)
+\item sendTo(P, bufs)
+\item selectToKeep(cache, bufr)
+\item processData(cache)
+\end{enumerate}
+\subsubsection{Implementazione del protocollo}
+Oltre ad implementare l'algoritmo, bisogna affrontare vari problemi:
+\begin{itemize}
+\item membership: come i peer possono conoscersi fra loro e quanti conoscenti avere
+\item consapevolezza della rete: come far riflettere l'overlay network sulla rete fisica.
+\item gestione del buffer: quali informazioni scartare quando la memoria è piena. Ciascun nodo memorizza le informazioni degli altri nodi in una memoria apposita, bisogna occuparsi di come gestirla nell'implementazione.
+\item filtraggio dei messaggi: come considerare l'interesse per il messaggio da parte dei peer e ridurre la probabilità che ricevano informazioni a cui non sono interessati.
+\end{itemize}
+esempio: flooding vs gossiping\\ nel flooding un nodo contatta i nodi che conosce e gli invia il messaggio, nel round successivo questi invieranno ai loro vicini etc... Nel caso del gossiping contatto solo alcun nodi, con prob p: posso vedere che per la stessa struttura invio meno messaggi e con meno messaggi contatti quasi tutti i nodi.\\ Gossiping è quindi protocollo probabilistico che prende decisioni locali, ma che hanno impatto globale sul sistema. È più leggero in quanto scambia meno messaggi ed è robusto e tollerante ai guasti. Flooding permette di avere copertura maggiore della rete e riduce la quantità di  informazione scambiata, ma il numero di messaggi scambiati nella rete è molto maggiore. \\Obiettivo degli algoritmi di gossiping: ridurre il numero trasmissioni, cercando di raggiungere il maggior numero di nodi; sono però algoritmi probabilistici e ci mettono più tempo a diffondere l'informazione della rete.
+\subsubsection{Altre applicazioni del gossiping}
+Diverse applicazioni nei SD:
+\begin{itemize}
+\item peer sampling: forniscono a ciascun peer una lista di peer da contattare
+\item per monitoraggio di risorse in SD a larga scala.
+\item computazioni distribuite per l'aggregazione di dati, in particolare in sensor network: per computazione di valori aggregati, ad esempio calcolo della media. Per calcolo della media, se ho due nodi con ad esempio due valori di temperatura: all'atto del round di gossiping, i due nodi usano strategia push-pull, quindi alla fine del round i due nodi avranno l'informazione aggiornata, ovvero la media. Applicando a tutti i nodi della rete, dopo un certo numero di round il valore della media risulterà diffuso a tutti i nodi.
+\end{itemize}
+Due esempi di protocolli:\\
+Blind counter rumor mongering: rumor mongering è la diffusione del pettegolezzo, quindi gossiping. Blind: ad un certo punto un nodo che sta diffondendo l'informazione perde interesse nella diffusione a prescindere da quale sia l'informazione, mente il counter per via del fatto che dopo F contatti un nodo perde interesse nel diffondere un'informazione agli altri nodi (F parametro del protocollo). Cosa fa un nodo: 
+\begin{itemize}
+\item inizia diffusione dell'informazione inviando un messaggio a B dei suoi vicini
+\item Se nodo p ha ricevuto messaggio non più di F volte lo propaga, altrimenti smette di propagare il messaggio.
+\item P manda il messaggio m a B nodi scelti casualmente, scegliendo quelli che non lo hanno già ricevuto, in base a quello che lui sa.
+\item P sa che R ha già ricevuto il messaggio solo se o P glielo ha già inviato o se P ha ricevuto il messaggio da R.
+\end{itemize}
+Difficile trovare un espressione analitica in forma chiusa per descrivere il comportamento dell'algoritmo, quindi si utilizzano dei prototipi ad esempio con esperimenti.\\ Bimodal multicast: anche detto pbcast(probabilistic broadcast), implementato in diverse librerie. proposto alla fine dei 90'. Obiettivo è quello di effettuare in una rete un invio multicast in una rete, in modo che l'invio risulti affidabile. Composto in due fasi
+\begin{itemize}
+\item distribuzione del messaggio: un processo invia in multicast un messaggio agli altri nodi senza particolari garanzie di affidabilità. Invia con IP multicast se possibile, oc on multicast livello applicativo
+\item Gossip repair: uso del gossiping per migliorare l'affidabilità del multicast. una volta che processo ha ricevuto un messaggio, chiede agli altri nodi cosa hanno ricevuto, confronta con cosa ha lui e se si rende conto di non avere ricevuto qualche messaggio, chiede agli altri nodi i messaggi che non ha.
+\end{itemize}
+Periodicamente, ogni nodo invia un digest, che descrive il suo stato, ad alcuni nodi scelti a caso. Se un nodo, confrontando il suo stato con i digest ricevuti si accorge di non avere dei messaggi, richiede una copia di ogni messaggio dal processo che ha inviato il digest. Proposte diverse ottimizzazioni dell'algoritmo, che è comunque semplice ed elegante.\\ Perché il nome: multicast perché l'invio è multicast. Perché bimodale: non è  dovuto alle due fasi, ma al comportamento modale dell'algoritmo: si può vedere che l'algoritmo permette di consegnare in quasi tutti i casi il messaggio o a quasi tutti o soltanto a pochi processi. Se vedo probabilità che il messaggio venga consegnato ai nodi: o non viene consegnato a quasi nessuno, o quasi a tutti (sono queste le probabilità più alte); può non essere recapitato a nessuno perché il mittente fallisce.\\ Un secondo motivo del comportamento è legata alle latenze sperimentate nella consegna dei messaggi: se arriva subito latenza è bassa, se nodo invece non riceve subito il messaggio servono un certo numero di gossip repair perché tutti i nodi abbiano i messaggi.
+\section{Virtualizzazione}
+Una delle realizzazioni del concetto di indirezione: consente di ottenere astrazione di risorse computazionali, presentando un vista logica diversa da quella fisica. Permettono di usare risorse hw e sw del sistema in modo differente, disaccoppiamento dell'architettura del sistema reale dal comportamento hardware e software che l'utente percepisce: viene interposto un layer di virtualizzazione che sarà collocato a diversi livelli, a seconda di cosa si vuole virtualizzare. Obiettivi diversi: ambienti di esecuzione multitenant, affidabilità, prestazioni, sicurezza etc...\\ Possibile virtualizzare qualsiasi tipo di risorse:
+\begin{itemize}
+\item Virtualizzazione di risorse di sistema
+\item Virtualizzazione di storage
+\item Virtualizzazione di rete (VLAN, VPN)
+\end{itemize}
+FOndamentale introdurre prima distinzione dei componenti dell'ambiente virtualizzato:
+\begin{itemize}
+\item Guest: ospite, componente del sistema virtualizzato che interagisce con il layer di virtualizzazione piuttosto che con l'host
+\item Layer virtualizzazione: livello di indirezione che permette di astrarre le risorse fisiche e software che l'host mette a disposizione
+\item Host: ambiente originale
+\end{itemize}
+\subsection{Macchina virtuale}
+Una macchina virtuale (VM) permette di rappresentare le risorse hw e sw diversamente da quello che sono in realtà. Posso avere vista logica della CPU, schede di rete etc... diversa dalla vista fisica delle effettive risorse, posso emulare su una macchina senza GPU la presenza di un GPU, eseguire un'abbiente di esecuzione di CUDA (principale ambiente di esecuzione delle GPU Nvidia) anche se la GPU non è presente.\\ Posso anche avere SO diverso dal SO presente nell'ambiente host; possibile avere molteplici VM sulla stessa macchina fisica. Virtualizzazione è concetto degli anni 60', ma in contesto diverso in quanto non c'era ancora rete Internet, contesto completamente centralizzato: soluzione per eseguire software legacy su dei nuovi mainframe e condividere le risorse fisiche tra i diversi utenti.\\ È una delle tecnologie abilitanti del cloud computing. 
+\subsection{Vantaggi della virtualizzazione}
+Permette facilmente la compatibilità, portabilità, interoperabilità e migrazione di applicazioni ed ambienti, rende il tutto indipendente dall'hw, principio del Create One, Run Anywhere.\\ Permette inoltre il consolidamento dei server in un data center, con vantaggi economici, gestionali ed energetici:
+\begin{itemize}
+\item Multiplexing di molteplici VM sullo etsso server
+\item Obiettivo: ridurre il numero totale di server usati, usandoli in modo efficiente
+\item Riduce i costi, consumi energetici, spazio occupato.
+\item Semplice nella gestione
+\end{itemize}
+Virtualizzazione consente di rendere le applicazioni più sicure, in quanto è possibile isolare semplicemente componenti guasti o sotto attacco, in quanto macchine virtuali differenti non possono accedere sulle rispettive risorse.\\ Permette di isolare le prestazioni di diverse VM, tramite lo scheduling delle risorse fisiche che sono condivise tra molteplici VM in esecuzione sulla stessa macchina fisica. È anche possibile spostare la VM in esecuzione da un server ad un altro, permette quindi di bilanciare carico sui server.\\ Svariato suo:
+\begin{itemize}
+\item Ambito personale e didattico: per eseguire più SO sulla stessa macchina, semplificazione dell'installazione del software.
+\item Ambito professionale: debugging, testing e sviluppo di applicazioni.
+\item Ambito aziendale: consolidare l'infrastruttura del data center, garantire business continuity incapsulando interi sistemi in singoli file (system image) che possono essere replicati, migrati o reinstallati su qualunque server. 
+\end{itemize}
+\subsection{Livello di virtualizzazione}
+Possibile realizzarla a vari livelli:
+\begin{itemize}
+\item A livello di ISA
+\item A livello di interfaccia tra hw e sw
+\item A livello di system call (ABI = Application Binary Interface)
+\item A livello di APIs
+\end{itemize}
+Possiamo introdurre 5 livelli diversi di virtualizzazione:
+\begin{itemize}
+\item Emulazione del livello ISA: interpretazione delle istruzioni o interpretazione dinamica del codice binario
+\item Hardware level: basati su virtual machine monitor o hypervisor: identificano il layer di virtualizzazione
+\item A livello di SO, containers
+\item A livello di librerie
+\item A livello di applicazioni utente
+\end{itemize}
+\subsubsection{Process Virtual Machine vs OS Virtual Machine}
+A livello applicazioni utente astraggo risorse virtuali per un processo (es JVM), una piattaforma virtuale che esegue processi individuali.\\ Fornisce un ambiente ABI o API vortuale per le applicazioni utente. Qui non si pone il problema di andare a virtualizzare le chiamate privilegiate, SO è lo stesso per tutte le risorse\\ Con virtualizzazione del SO, posso avere molteplici SO diversi: il virtual machine monitor gestisce insieme di risorse hardware condivise con altre VM e offre isolamento rispetto alle altre. In questo caso la VMM si fa da tramite per l'esecuzione di istruzioni privilegiate o operazioni che interagiscono direttamente con l'hardware condiviso: quando VM vuole eseguirne una, VMM la prende, ne checka la correttezza.
+\subsubsection{System-level virtualization}
+Host: piattaforma sulla quale vengono eseguite le VM, include la macchina fisica, il possibile OS ed il VMM.\\ Guest: il SO guest e le applicazioni eseguite nella VM.\\ Classificazione delle possibili soluzioni di virtualizzazione:
+\begin{itemize}
+\item Dove è possibile fare deploy del VMM: System VMM o Hosted VMM
+\item Come virtualizzare le istruzioni privilegiate, in particolare un sotto-insieme che sono le istruzioni sensitive non virtualizzabili: Full virtualizzazion vs Para-virtualization
+\end{itemize}
+Dove è possibile collocare il VMM nella macchina host:
+\begin{itemize}
+\item Direttamente sull'hardware: VMM di sistema o bare metal. In questo caso ambiente host non presenta SO, è formato da hardware e VMM.
+\item Sopra il SO host: VMM ospitato, host è rappresentato da hardware, SO host e dal VMM
+\end{itemize}
+Confronto tra le due soluzioni:
+\begin{itemize}
+\item Prestazioni migliori sul VMM di sistema, eseguo hypervisor direttamente sull'hardware. È una sorta di SO semplificato, invece di effetuare scheduling delle risorse hardware tra i processi, questo effettua scheduling delle risorse tra le VM. In termini di architettura del VMM, questo può avere architettura a mirco-kernel, avrà quindi un layer thin con poche funzionalità, o monolitica. Esempi: Xen, KVM, VMware, ESX, Hyper-V
+\item VMM host: hypervisor si colloca al di sopra del SO. Più seplice la realizzazione: è possibile sfruttare tutte le feature offerte dal SO host, scheduling di risorse più facile: tutto sarà visto come processi da schedulare dal SO host. L'hypervisor interagisce direttamente tramite ABI col SO e devo solo emulare l'ISA di hardware per i SO guest. Può quindi sfruttare scheduling del SO per le risorse di I/O, altro vantaggio è che non è necessario modificare il SO host per sia in grado di interagire col VMM, in alcune soluzioni affinché SO guest possano essere eseguiti al di sopra dell'hypervisor (solo nel caso di para-virtualizzazione) è necessario modificare il SO guest perché dovrà essere in grado di colloquiare con l'hypervisor. Svantaggio è che c'è degrado di prestazioni, essendo VMM in un livello più alto.\\ esempi: Bochs
+\end{itemize}
+Modalità di dialogo tra VM ed il VMM per l'accesso alle risorse fisiche, ovvero le istruzioni privilegiate:
+\begin{itemize}
+\item Virtualizzazione completa: il VMM presenta ad ogni VM un interfaccia hardware simulata che è funzionalmente identica a quella della sottostante macchina fisica. I SO guest interagiscono con l'hypervisor come se interagissero con il bare metal, quindi non devbono essere modificati perché l'interfaccia che vendono è quella che si sarebbero aspettati in un ambiente virtualizzato.\\ Le istruzioni invoca dai SO guest vengono gestite dall'hypervisor, che intercetta la richiesta di accesso privilegiato all'hardware e ne emula il comportamento atteso. esempi: KVM, VMware, Microsoft Hyper-V. Vantaggi: non occorre modificae il SO guest, c'è isolamento completo tra le istanze di VM, quindi più sicurezza, facilità di emulare le diverse architetture. Svantaggio: layer di virtualizzazione (VMM) è più corposo, inoltre per avere prestazioni più efficienti bisogna necessariamente avere la soluzione assista dall'hardware. È necessaria la collaborazione del processore per un'implementazione efficace.
+\item Para-virtualizzazione: il VMM espone ad ogni VM un interfaccia hardware simulata che è funzionalmente simile. Questa volta il SO guest deve sapere che ciò che ha al di sotto non è più l'hardware ma l'hypervisor, quindi i SO guest devono essere modificati per poter colloquiare con l'hypervisor. Il VMM creerà strato minimale di software per gestire le diverse VM e per tenerle isolate fra loro, layer di virtualizzazione deve svolgere meno compiti, saranno usati direttamente device driver del sistema guest. esempi: Xen, OracleVM (basato su Xen), PikeOS.
+\end{itemize}
+\subsubsection{Problemi da affrontare}
+Problemi da affrontare per realizzare virtualizzazione: architettura del processore opera su almeno due livelli (ring) di protezione: supervisor e user. In x86 ci sono 4 ring:\\ user application: livelli minimi di privilegi.\\
+SO: ring 0, privilegio massimo.\\
+Con la virtualizzazione, monitor della VM deve per forza operare nel ring 0, perché diviene gestore dell'hardware sottostante. Ma in questo caso il SO guest è nel ring 3 o 1: quindi non può più eseguire istruzioni privilegiate, problema del ring deprivileging. Inoltre c'è problema del ring compression: SO guest opera nello stesso ring dell'applicazione, va protetto lo spazio del sistema operativo guest.\\ Soluzioni per ring deprivileging, in virtualizzazione completa:
+\begin{itemize}
+\item Trap-and-emulate: quando SO guest cerca di eseguire istruzione privilegiata (es lidt x86) interviene il VMM, notifica di eccezione al VMM (trap) e controllo viene trasferito al VMM. Questo controlla la correttezza dell'operazione e la esegue andandone ad emulare il comportamento. Può essere a livello hardware o software
+\item Istruzioni non privilegiate sono eseguite direttamente dal SO guest.
+\end{itemize}
+Meccanismo può essere realizzato sia a livello hardware che software: per realizzarlo a livello hardware la macchina fisica deve fornire un supporto per la virtualizzazione. Si usa meccanismo a livello software se processore non fornisce supporto hardware alla virtualizzazione (introdotto nel codice macchina una chiamata all hypervisor)
+\subsubsection{A livello hardware}
+Forma di virtualizzazione a livello hardware è stata introdotta circa 10 anni fa, tipicamente i processori che supportano il meccanismo hanno una V nel nome.\\ Processori introducono due nuove forme di modi operativi della CPU: root e non root mode, ciascuno dei quali supporta tutti e 4 gli anelli di protezione. Monitor della VM si fa operare in root mode, nel ring 0, mentre SO guest opera nel non root mode nel ring 0, così che il SO sia in esecuzione nell'anello corretto, ma se deve eseguire istruzione non privilegiata, viene inviata notifica al VMM per la gestione della chiamata.\\ Risolvo il problema della compressione del ring ed anche del ring deprivileging; meccanismo mette anche a disposizione dell'hypervisor delle strutture dati memorizzate nella RAM. Ma come virtualizzo architettura che non supporta tale meccanismo? Soluzione a livello software
+\subsubsection{Fast binary translation}
+Introduco meccanismo di eccezione nel codice eseguito dal SO guest: il monitor della VM scansiona il codice che deve essere eseguito e sostituisce blocchi di codice che contengono esecuzione di istruzioni privilegiate con blocchi per notifica di eccezioni per la VMM. Nel momento in cui SO guest deve eseguire tale istruzione, se ne fa carico il VMM, overhead della scansione introduce degrado delle prestazioni, legato al fatto di dover scansionare codice prima della sua esecuzione.\\ Per cercare di ridurre overhead, blocchi tradotti vengono conservati in cache per poterli recuperare se necessario, questo però richiede gestione cache con le eventuali politiche.\\ In termini di hypervisor questo ne comporta una maggiore complessità, diventa layer più spesso.
+\subsubsection{Paravirtualizaztion}
+Layer di virtualizzazione espone ai SO guest un'interfaccia funzionalmente simile all'hardware sottostante, ma non uguale. Non è più soluzione trasparente ai SO guest, per potervi colloquiare SO guest deve essere modificato, per poter in particolare invocare API dell'hypervisor.\\ Le istruzioni privilegiate non virtualizzabili vengono sostituite da chiamate alla API virtualizzata esposta dall'hypervisor, che prendono il nome di hypercalls.\\ Con le hypercalls si realizza meccanismo di trap\&emulate, sono usa specie di chiamata di sistema dal SO gest verso l'hypervisor.\\ Vantaggi rispetto a virtualizzazione completa:
+\begin{itemize}
+\item Avere hypercall all'hypervisor è implementazione relativamente più semplice del meccanismo della fast binary translation, introduce overhead più ridotto, non devo più tradurre e sostituire i blocchi.
+\item Non richiede supporto hardware, posso realizzare hypervisor che non richiede hardware di ultima generazione o che supporti la virtualizzazione.
+\end{itemize}
+Contro:
+\begin{itemize}
+\item Per realizzare l'hypercall devo modificare il SO guest, src code dei SO che vengono para-virtualizzati  deve essere disponibile. SO difficilmente portati, tipo Windows possono usare meccanismo di para-virtualizzazione usando device ad hoc di per rimappare hypercall
+\item C'è costo di manutenzione che si aggiunge per SO para-virtualizzati e non posso più eseguirli sull'hardware.
+\end{itemize}
+\subsection{Architetture per VMM}
+3 componenti fondamentali del SO che suppoprta la virtualizzazione:
+\begin{itemize}
+\item Dispatcher: si interfaccia con istante delle VM in esecuzione ed ha il compito di fare da interfaccia per le istruzioni privilegiate e di distribuirle agli altri 2 componenti del sistema
+\item Interprete: esegue routine apposita quando la VM chiede di eseguire una istruzione privilegiata
+\item Allocatore: decide come assegnare risorse hardware alle VM.
+\end{itemize}
+\subsubsection{Scheduler}
+Scheduler VMM introduce layer addizionale di scheduling: nell'ambiente tradizionale non virtualizzato sono abituato a scheduler di CPU che deve schedulare i diversi processi alle CPU. COn virtualizzazione aggiungo layer in più perché bisogna assegnare le CPU virtuali viste dai SO guest sulle CPU fisiche della macchina fisica. Scheduler del SO guest si occupa di schedulare processi sulle 	CPU virtuali, mentre scheduler delle CPU fisiche realizza scheduling dellle CPU virtuali.
+\subsection{Virtualizzazione di memoria}
+In ambiente non virtualizzato ho distinzione fra memoria fisica e memoria virtuale, con meccanismo di traduzione (paginazione) ho mapping fra le due memorie, ed all'interno dell'architettura hardware del calcolatore ho due elementi per ottimizzare traduzioni che sono MMU e TLB, per ridurre aggravio di prestazioni legate al concetto di memoria virtuale.\\ In ambiente virtualizzato situazione si complica: ho molteplici VM che condividono la memoria fisica. Hypervisor deve partizionare la meoria fisica fra le diverse VM, c'è la necessità di introdurre ulteriore livello di mapping in mood che nella macchina virtuale ci sia traduzione da memoria virtuale guest a memoria fisica guest a memoria fisica host. Distinguo tra memoria virtuale del guest, memoria fisica del fuest e memoria virtuale dell'host:
+\begin{itemize}
+\item Memoria virtuale guest: memoria vista dalle applicazioni del SO guest
+\item Memoria fisica del guest: visibile al SO guest
+\item Memoria fisica host: memoria realmente a disposizione nell'host.
+\end{itemize}
+Il mapping avverà: guest virtual address $\rightarrow$ guest physical address $\rightarrow$ host machine address; il guest physical address è diverso dall'host machine address.
+\subsubsection{Shadow page table}
+Per evitare degrado di performance, hypervisor mantiene una sua tabella delle pagine, detta shadow page table: nel SO host, ci sono page table e TLB, hypervisor usa SPT oer accelerare mapping, in quanto permette di evitare livello di mapping in quanto contiene mapping VA guest $\rightarrow$ MA host.\\ Per ciascun frame fisico della memoria fisica host il VMM mappa una entry nella SPT, problema: bisogna mantenere consistente le informazioni nella SPT, quindi quando il SO geust cambia mapping tra memoria host fisica e memoria guest fisica anche la SPT deve essere aggiornata.\\ Supporto della virtualizzazione di memoria non è affatto banale da realizzare nell'hypervisor, in quanto richiede si meccanismo di traduzione degli indirizzi (devo dare al SO guest l'illusione di avere spazio di memoria fisico che inizia da 0).\\ Shadow pgate table è complessa in quanto va gestita ed aggiornata correttamente. Vengono ovviamente introdotti overhead non trascurabili per gestione delle SPT, che sono in memoria e quindi occupano dello spazio disponibile che può essere non trascurabile.
+\subsubsection{Supporto hardware per virtualizzazione}
+Implementazione che richiede supporto hardware, realizzata con meccanismo di second level address translation: soluzione hardware introdotta ad hoc nelle architetture hardware che supportano virtualizzazione così da realizzare in hardware le SPTs. Usare questa soluzione imprime performance significative, circa 50\% in più sotto benchmark intensi, ovviamente che siano memory-intensive (se lo fai I/O intensive o CPU intensive non lo vedi).
+\subsection{Case study: Xen}
+L'esempio più noto di para-virtualizzazione. Considerato in quanto:
+\begin{itemize}
+\item Non abbiamo tempo per esaminare diverse soluzioni
+\item È open source, caso interessante di para-virtualizzazione (forse caso più importante)
+\end{itemize}
+Xen è hypervisor di tipo 1: monitor di VM eseguito su bare metal, hypervisor con architettura a micro-kernel. Offre al SO guest un'interfaccia virtuale, chiamata API delle hypercall che SO guest può invocare per accedere alle risorse fisiche della macchina. Nato come supporto del meccanismo della para-virtualizzazione, ma nel corso degli anni modificato per supportare anche virtualizzazione supportata dall'hardware. Usato dai grandi provider di servizi cloud come Alibaba, Amazon, Rackspace etc...
+Pro e contro di Xen:
+\begin{itemize}
+\item Hypervisor thin: circa 300k loc su x86 e 65k su Arm.
+\item Occupa poca memoria, piccola footprint (circa 1MB)
+\item Scalabile fino a 4096 CPU con 16TB RAM
+\item Più sicuro e robusto rispetto ad altri hypervisor in quanto espone superficie di attacco minore avendo meno loc, ma comunque vulnerabile ad alcuni attacchi.
+\item Continuamente migliorato
+\item Offre possibilità di adattamento all'architettura
+\item Overhead limitato che non supera il 2\% anche nelle situazioni peggiori
+\item Supporta le VM live migration: spostare VM in esecuzione da un macchina fisica all'altra
+\item Prestazioni in I/O rimangono comunque sfidanti, problema sotto sforzo con benchmark intenso.
+\end{itemize}
+Sviluppato dall'università di Cambridge, prima release pubblica nel 2003, esigenza di sviluppare nuova soluzione di virtualizzazione in quanto era necessaria soluzione di VMM scalabile per circa 100 VM running senza modifiche all'ABI (fine anni 90' c'era solo fast binary tanslation).\\ Architettura a mircokernel, tutto può essere para-virtualizzato con Xen:
+\begin{itemize}
+\item Dischi ed interfacce di rete
+\item Interrupt e timers
+\item Istruzioni privilegiate e tabelle delle pagine
+\end{itemize}
+Hypervisor di Xen si occupa dello scheduling, della gestione della memoria, degli interrupt e del device control. Inoltre tiene traccia dei domini ospitati al di sorpa dei Xen e delle CPU viste dai dominii.\\ Dominio è un'istanza di VM, ciascuna avrà dei processi in esecuzione ed un SO proprio, vengono eseguiti su CPU virtuali.\\ Ci sono domini U, quindi unpriviledged all'interno dei quali sono eseguiti SO guest. Domini completamente isolati dall'hardware.\\ Dominio 0 è speciale, lo scopo è eseguire istruzioni privilegiate ed istruzioni di controllo, viene avviato al boot di Xen. Dom0 contiene driver per tutti i dispositivi e contiene 3 componenti per gestione di compiti specifici. A differenza dei domini U, dom0 può accedere direttamente all'hardware host e può interagire con le altre VM. All'interno del dom0:
+\begin{itemize}
+\item XenStore: spazio di storage che è comdiviso tra di diversi dominii ed è gestito da un demone in esecuzione su dom0. Serve a mantenere  informazioni sullo stato delle diverse VM U e sulla loro configurazione. Informazioni salvate in forma di key-value, se c'è cambiamento del valore viene notificato la VM che possiede la relativa chiave. Può comunicare con i domU con memoria condivisa, sfruttando i privilegi che è in esecuzione sul dom0 che ha tutti i privilegi.
+\item Toolstack: permette a dom0 di gestire ciclo di vita delle VM: dalla creazione, messa in pausa, migrazione su altro host e spegnimento.\\ Se user vuole creare VM, può fornire file di confirguazione in cui spiega n° virtual CPU e memoria + dispositivi di I/O per la VM. Toolstack parsa le informazioni e le scrive nello XenStore, Toolstack sfrutta i privilegi del dom0 e quindi può effettuare mapping della memoria, caricare kernel e setuppare il canale di comunicazione per far comunicare XenStore con le altre VM.
+\end{itemize}
+Xen hypervisor usa le hypercall: domU in esecuzione nel ring1, applicazioni in ring 3 e hypervisor+ dom0 nel ring 0.\\ Scheduling delle CPU in Xen: lo scheduler deve scegliere tra le vCPU quali saranno eseguite sulle CPU fisiche. Stesso obiettivo dello scheduler di CPU: dare illusione ai processi di poter utilizzare sempre la CPU, introduce ulteriore livello di scheduling, Xen permette di scegliere diverse politiche di scheduling. Default è credi scheduler, assegna crediti a vCPU per usare CPU fisiche. Goal degli algoritmi di scheduling: 
+\begin{itemize}
+\item Assicurarsi che tutti i dominii abbiano allocazione di quote nell'uso di CPU fair. Algoritmo del credit scheduler permette di allocare la CPU fisica in modo proporzionale alle diverse VM, alloca CPU fisica proporzionalmente alla quantità di share (peso) assegnato alla VM.
+\item Tenere la CPU impegnata, algoritmo work-conserving, che evita stato di idle della CPU
+\item Non introdurre overhead nell'operazione di scheduling
+\end{itemize}
+Algoritmo credit scheduler:
+\begin{itemize}
+\item Ogni VM ha un peso ed un parametro, detto cap; sono entrambi configurabili. Peso: quantità di allocazione di CPU per dominio, 256 per default. Cap è max quantità di CPU che un dominio può usare: se pari a 0 ma vCPU non ha da fare può eseguire la VM, se invece cap è diverso da 0 limita CPU ricevibile
+\item Scheduler trasforma il peso in credito per allocazione per ogni vCPU. Se consuma tutto e cap = 0 può avere allocazione extra, altrimenti no.
+\item Per ciascuna pCPU, lo scheduler mantiene vCPU e sceglie di schedulare quella con credito più basso. Bilancia automaticamente il numero di vCPU nel caso di più CPU fisiche.
+\end{itemize}
 \end{document}
