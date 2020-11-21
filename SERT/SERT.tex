@@ -986,7 +986,7 @@ Hacker del MIT hanno dato il maggiore contributo al IT.
 \subsection{Software libero}
 All'acquisto di un calcolatore, assumo la proprietà della macchina: posseggo l'hardware, nel caso del software le cose sono differenti. Se acquisto il software, non assumo la proprietà del codice: il software è trattato generalmente come le altre opere dell'ingegno (opere letterarie, musicali etc...). Alla base c'è diritto di autore o copyright, in modo da garantire il giusto compenso all'autore o detentore dei diritti dell'opera.\\ In genere il software non viene acquistato, nel senso che non vengono trasferiti i diritti sull'opera, ossia il copyright. SI paga la licenza d'uso, ovvero la possibilità di usare il software. Brevetto: in molti paesi esiste anche un'altra possibilità per protegge il software, ovvero il brevetto: meccanismo legale che impedisce l'utilizzo di una invenzione tecnologie non autorizzato da parte dell'inventore. In molti paesi, gli uffici brevetti sono inondati da centinaia di migliaia di richiesti di brevetti già visti o non innovativi, già solo controllare che i requisiti siano rispettati è un lavoro difficile, quindi il rilascio del brevetto avviene troppo facilmente. Amazon ha potuto brevettare la tecnologia one-click. Ogni azienda dell'IT possiede un proprio portafoglio di brevetti che usa come arma contro altre aziende di IT (sia offensiva che difensiva). Brevetti non sono più usati come un modo per incentivare la ricerca, usate come armi per cercare di mettere fuori dal mercato un'altra azienda, aberrazione dell'uso del brevetto.\\ Si comincia a capire l'andazzo del mondo dell'IT all'inizio degli anni 80': l'idea di software che avevano gli hacker del MIT viene messa in crisi: una volta scritto software non c'era necessità di tenere per se il software. Cause nei tribunali per Unix, inoltre nuova legge del copyright del 76' negli USA: si comincia a capire che l'economia si basa sul valore del software e non dell'hardware.\\ Licenze strette sull'utilizzo del software, altra cosa che mette in crisi è che molti ricercatori del MIT lasciano il movimento per andare a lavorare in aziende di software.
 \subsubsection{GNU}
-Situazione colpisce in particolare un ricercatore del MIT, Richard Stallman (GCC, emacs etc...) fermamente convinto della libertà di uso del software. Ideatore del progetto GNU: GNU's Not Unix, Unix non era visto bene e Unix era fatto coincidere con Unix System V che AT\&T voleva far usare a tutti per guadagnare.Idea è scrivere un sistema operativo libero da diritti d'autore e licenze. Rende SO compatibile con Unix, di modo da poter usare software scritto per altro sistema su GNU. Sviluppo del progetto è rapido: completato in meno di 10 anni, costruito SO partendo da 0 e senza violare copyright, si è avuto cura che si possa dimostrare in tribunale che sia così. Manca solo il nucleo del SO: kernel GNU ad oggi non ancora completato. Se usato kernel Unix BSD, poteva accadere che qualche azienda in futuro rivendicasse diritti su GNU.\\ La licenza BSD permette di includere il codice in prodotti commerciali "closed-source". Nuovo kernel da 0, Hurd hce è prodotto open-source con architettura a micro-kernel. Progetto GNU riscuote comunque grande successo.\\ 1985: Stallman fonda la free software foundation, che promuove la scrittura e diffusione di software libero. Alla base c'è licenza GNU GPL, la più diffusa licenza usata per software libero. Motivazioni etiche: utente deve avere accesso al source code, idea è libera. Software libero sotto licenza GPL deve garantire:
+Situazione colpisce in particolare un ricercatore del MIT, Richard Stallman (GCC, emacs etc...) fermamente convinto della libertà di uso del software. Ideatore del progetto GNU: GNU's Not Unix, Unix non era visto bene e Unix era fatto coincidere con Unix System V che AT\&T voleva far usare a tutti per guadagnare.Idea è scrivere un sistema operativo libero da diritti d'autore e licenze. Rende SO compatibile con Unix, di modo da poter usare software scritto per altro sistema su GNU. Sviluppo del progetto è rapido: completato in meno di 10 anni, costruito SO partendo da 0 e senza violare copyright, si è avuto cura che si possa dimostrare in tribunale che sia così. Manca solo il nucleo del SO: kernel GNU ad oggi non ancora completato. Se usato kernel Unix BSD, poteva accadere che qualche azienda in futuro rivendicasse diritti su GNU.\\ La licenza BSD permette di includere il codice in prodotti commerciali "closed-source". Nuovo kernel da 0, Hurd che è prodotto open-source con architettura a micro-kernel. Progetto GNU riscuote comunque grande successo.\\ 1985: Stallman fonda la free software foundation, che promuove la scrittura e diffusione di software libero. Alla base c'è licenza GNU GPL, la più diffusa licenza usata per software libero. Motivazioni etiche: utente deve avere accesso al source code, idea è libera. Software libero sotto licenza GPL deve garantire:
 \begin{itemize}
 \item Esecuzione per qualunque scopo
 \item Libertà di leggere e studiare il source code
@@ -1006,5 +1006,199 @@ Chi modifica programma sotto licenza GPL, deve rilasciarlo sotto licenza GPL. GP
 \subsubsection{Open Source Initiative}
 Idee di Stallman sono molto radicali, altri gruppi pensano a varianti di distribuzione del software libero, 1998: OSI, fondazione che vuole presentare una variante alla FSF che non sia così radicale (nascono anche liti fra le fondazioni).\\ Uno degli obiettivi è quello di fare avere all'utente finale il codice sorgente ma ci sono alcune possibilità come avere licenze free ma non open-source e vice versa.\\ Nella stragrande maggioranza dei casi i progetti che sono software libero sono open-source e viceversa.\\ Idea è cercare di convincere le aziende che avere il src code del progetto aiuta a creare un prodotto migliore: tutti possono dare il loro contributo, si evitano situazioni di vendor lock-in e può essere commercialmente vantaggioso.
 \subsection{La nascita del kernel Linux}
-Ho GNU, ma non ho un kernel per portarlo su un calcolatore. Agosto 1991, appare mail su newnet (tipo mailing list): Linus Torvalds dice che sta sviluppando un SO libero for fun (mazza pensa se lo faceva sul serio) e vuole feedback su minix, in quanto il SO ricorda minix. Torvalds ha il kernel che manca sui PC IBM, MINIX è SO simile a Unix, creato dal professore Andrew Tanenbaum del 1987 come ausilio per un testo di SO, sviluppato per l'IBM PC e per l'IBM AT. Sorgente disponibile per scuole ed università, all'acquisto del libro del prof. c'era la licenza per il sistema. In effetti il controllo sul SO era strettamente di Tanenbaum, non accettava consigli per migliorarlo: voleva SO semplice in modo che studenti potessero capirlo.\\ Topo affermazione di Linux, Tanenbaum cambia la licenza di MINIX ed oggi è estremamente permissiva.
+Ho GNU, ma non ho un kernel per portarlo su un calcolatore. Agosto 1991, appare mail su newnet (tipo mailing list): Linus Torvalds dice che sta sviluppando un SO libero for fun (mazza pensa se lo faceva sul serio) e vuole feedback su minix, in quanto il SO ricorda minix. Torvalds ha il kernel che manca sui PC IBM, MINIX è SO simile a Unix, creato dal professore Andrew Tanenbaum del 1987 come ausilio per un testo di SO, sviluppato per l'IBM PC e per l'IBM AT. Sorgente disponibile per scuole ed università, all'acquisto del libro del prof. c'era la licenza per il sistema. In effetti il controllo sul SO era strettamente di Tanenbaum, non accettava consigli per migliorarlo: voleva SO semplice in modo che studenti potessero capirlo.\\ Topo affermazione di Linux, Tanenbaum cambia la licenza di MINIX ed oggi è estremamente permissiva. Progetto era per cloni AT, per processori i386(486), SO usato era Microsoft DOS.\\ Linus Trovalds: studente di informatica, con esperienza di programmazione relativamente ristretta.\\ Progetto inizialmente focalizzato sull'architettura 808386, quindi PC IBM. Alternativa a Microsoft esisteva, era GNU a cui mancava però il kernel. Quando Torvalds dice che sta scrivendo il kernel, questo genera grande impressione non solo per chi era interessato al mondo del PC IBM, ma anche per chi usava architetture alternative: si stava ancora aspettando scrittura del kernel GNU, che non arrivava mai.\\ Linus risponde che non può essere portabile, perché progetto è fortemente legato al 386 (lo stava usando anche per imparare l'architettura del 386), usava segmentazione propria del 386, ed anche paginazione.\\ Per favorire la portabilità del kernel si è messo mano al progetto ed è stata rimossa la segmentazione, usando solo la paginazione.\\ Man mano comincia ad accettare patch che arrivano da tutto il mondo, pubblica i sorgenti sui vari newsgroup: Linus continua a sviluppare ma accetta gli sviluppi degli altri utenti. Processo è volontario, idea degli hacker del MIT: offro qualcosa che ho realizzato agli altri; prima versione nel 91', prima stabile nel 94'.\\ Kernel assume quindi sembianze di kernel minix, legame però diventa sempre più lasco nel tempo e si cerca sempre di più di costruire sistema POSIX compilant.
+\subsubsection{Linux oggi}
+Nel 91': 76 file, 512KB, circa 8500 loc. Oggi: 70500 file, 930 MB su disco, 27 milioni di loc in C e Assembly, 42 milioni totali.\\ Successo estremo di Linux, trova ampio impiego nel mondo dell'IT. Quali sono stati i meriti del successo di Linux e come:
+\begin{itemize}
+\item versioni stabili: 1.0, 1.2, 2.0,2.2... numeri pari
+\item  versioni di sviluppo: 1.1,1.3.1.99,2.1..., sviluppate in contemporanea alle versioni stabili.
+\end{itemize}
+Sviluppo procede in parallelo. Dal 2005, ci si rende conto che le il modello di sviluppo funziona male, c'è quindi non solo cambio di numerazione ma anche cambio di mentalità degli sviluppatori: versioni di sviluppo sono branch per fare test o proposte innovative.\\ Sviluppatori ora lavorano sempre sull'ultima versione, integrando cambiamenti etc... semplifica molto la gestione di come venivano effettivamente realizzate le distribuzioni di Linux, piccolo nucleo di sviluppatori dedicati alla risoluzione di bug nelle versioni stabili.\\ Prima del 2005 grossa variabilità nel numero div versioni di Linux prodotte ogni anno, dal 2005 in poi molte meno versioni maggiori (circa 11 versioni maggiori l'anno). Per capire evoluzione di Linux, si può anche vedere evoluzione del codice sorgente: la dimensione di per se non da indice di qualità, sicuramente però la gestione sarà impegnativa. Dimensione del source code è legata alla complessità del kernel ed alla difficoltà di gestione del progetto.\\ Molte metriche per valutare il kernel Linux, come numero di loc, numero di funzioni etc..., qualunque guardo mi da grafici equivalenti.\\ Regole strette già da subito: non esistono funzioni che sono blocchi di più pagine, non esistono file sorgente troppo grande ... Regole imposte fin dall'inizio hanno portato ad avere le metriche equivalenti fra di loro.\\ Numero di loc cresce esponenzialmente di anno in anno, un programmatore esperto ha come media di scrittura 5 istruzioni/giorno.
+\subsubsection{Diffusione di Linux}
+Nei sistemi embedded:
+\begin{itemize}
+\item Linux 60\%
+\item Windows 10\%
+\item Altro 30\%
+\end{itemize}
+Linux ha la maggioranza, in SE di fascia alta (in grado di supportare Linux).\\ Smartphones:
+\begin{itemize}
+\item Linux (Android) 49\%
+\item Apple iOS 19\%
+\item Blackberry 13\% (oggi forse scomparsi)
+\item MS Windwos 11\%
+\item Altro 8\%
+\end{itemize}
+Oggi la statistica andrebbe aggiornata, ma di sicuro se la contendono Linux e iOS.\\ Mercato dei table vinto da iOS, ma Linux comunque combatte e si difende.\\ Tutto di rovescia nel mercato laptop e desktop:
+\begin{itemize}
+\item MS Windwos 92.2\%
+\item Apple OS X 6.4\%\\
+\item Linux 1.4\%
+\end{itemize}
+Dovuto al predominio di Windows, ma oggi non c'è una difficoltà reale tra l'usare Windows o Linux.\\ Rimane problema del modello di vendita: all'acquisto del laptop/desktop c'è già installato Windows.\\ Server di rete:
+\begin{itemize}
+\item Linux 60\%
+\item Windows 35\%
+\end{itemize}
+Linux più usato per implementare server di rete .\\ Nell'ambito dei mainframe, per esmpio per applicazioni gestionali di grande portata:
+\begin{itemize}
+\item Linux 95\%
+\item alti 5\%
+\end{itemize}
+Nelle mani di IMB, che vende SO Linux.\\ Fascia dei super-calcolatori (per High Performance Computing): 100\% dominato da Linux.
+\subsubsection{Chiavi del successo di Linux}
+Fenomeno di Linux durerà? È ormai diffuso in tutto il mondo, può accadere che nascerà un SO innovativo che soppianterà Linux, ma in 25 anni Linux è ancora al centro del mondo (25 anni so molti).\\ Ragioni del successo:
+\begin{itemize}
+\item Licenza di utilizzo GPL
+\item Flessibilità del kernel
+\item Responsabilità delegate dagli sviluppatori
+\item Personalità dei kernel hacker, programmatori più "anziani"
+\item Contributo dell'industria IT allo sviluppo di Linux
+\end{itemize}
+Tutte le ragioni sono fortemente correlate fra loro.
+\subsubsection{La licenza GPL}
+Successo di Linux è radicato nel progetto GNU di Stallman, per un SO free (nel senso della libertà di parola). Il progetto GNU ha portato allo sviluppo di molti strumenti essenziali: GCC, standard C, comandi di sistema...\\ Tutto il software ricade sotto licenza GPL, ma ruolo chiave è stato quello di far ricadere lo stesso kernel Linux sotto licenza GPL: chiunque può leggere e modificare i sorgenti del kernel a condizione che le modifiche siano resi disponibili con la stessa licenza GPL.\\ Ha impedito che qualche grande industria si impossessasse del src code di Linux e cominciasse a distribuire il prodotto col codice modificato senza fornire il src code.
+\subsubsection{Velocità di evoluzione del kernel}
+Codice viene modificato a ritmi impressionanti: una major release ogni 66 giorni. Sono paragonabili alle versioni major di un SO commerciale: in questo caso la frequezna è molto più bassa di quella del kernel Linux. Kernel che si trasforma velocemente implica che un supporto per device driver appare prima che l'hardware esca, stesso vale per il supporto di nuove CPU etc...\\ Quanti sviluppatori ci sono, per poter cambiare codice così velocemente: file CREDITS nel sorgente di Linux include circa 550 nomi, stima è  che ci siano migliaia di commit per ciascuna versione del kernel.\\ Ad oggi, si stima che ci siano più di 10000 membri nella community Linux, ma quindi come avviene la gestione di tutti  questi sviluppatori: sviluppo dell'open source viola tutte le teorie di management conosciute. Il codice sorgente del kernel è modulare: ci sono componenti centrali, bus di sistema, stack di rete che sono logicamente separati ed hanno interfacce ben definite.\\ Kernel è monolitico, ma a livello di software il src code è organizzato in moduli ben definiti e ben separati fra loro.\\ Circa 1500 maintainer del kernel Linux, ciascuno segue uno specifico componente del sottosistema del kernel. Ogni responsabile coordina un certo numero di programmatori che lavorano sul componete, come regola generale le modifiche ad un componente o sottosistema debbono essere proposte a Torvalds dal responsabile interessato.\\ Alcuni responsabili generali hanno compiti più particolari. Tipicamente gli sviluppatori e Torvalds non analizzano a fondo le singole modifiche, bensì solo quelle alle aree più critiche. Il resto delle modifiche passa al vaglio dei responsabili e quindi dipende dalla qualità del lavoro dei programmatori.
+\subsubsection{Linux e l'industria}
+In origine, Linux è passato da uno studente ad una community di programmatori. Oggi piccole e grandi aziende supportano Linux, assumendo programmatori full time per gestire kernel Linux. Ogni anno nel kernel Linux sono integrate migliaia di modifiche per le aziende.\\ Vari motivi per contribuire in Linux:
+\begin{itemize}
+\item Aziende basano il loro core business in Linux
+\item Per garantire che i prodotti hardware funzionino a dovere con Linux. Scrittura driver serve.
+\item Adattamento e specializzazione del kernel in accordo ai propri requisiti.
+\end{itemize}
+Ciascuna azienda ha forte interesse nell'ottenere che i propri contributi siano integrati nel sorgente del kernel ufficiale, così che il codice evolva di pari passo con il resto del kernel.\\ Aziende devono stare al passo con le modifiche del kernel, perché altrimenti le patch diventano obsolete. Ci sono meccanismi per cui il codice prodotto dai programmatori dell'azienda deve essere revisionato prima di essere inserito nel kernel, quindi dopo varie revisioni il programmatore ha imparato a scrivere codice di qualità, c'è guadagno per tutti.\\ SI stima che l'80\% dei contributi al kernel Linux derivano dall'industria.
+\subsubsection{Chi progetta Linux}
+Modifiche al kernel sono pilotate dall'industria, ma nessuno progetta l'evoluzione di Linux: le modifiche che vengono effettuate sono frutto della particolare necessità delle aziende, le modifiche sono dettate dal modo in cui evolve il mondo dell'information technology.\\ Nessuno ormai sviluppa più sistema in proprio: per tenere al passo coi tempi un sistema bisogna pagare troppe teste. Chi decide cosa accadrà nel kernel Linux sono le aziende, non serve pianificare cosa accadrà. Questa è la ragione principale del successo di Linux, non è pilotato bensì è un qualcosa che si evolve.\\ Torvalds e gli altri sviluppatori sono arbitri: garantiscono che ogni modifica al kernel Linux sia tecnicamente corretta e,soprattutto, potenzialmente vantaggiosa per la comunità di Linux e non solo per la singola azienda che l'ha proposta.\\ Linus Torvalds ha impiego a tempo pieno presso la Linux Foundation: consorzio no profit che è finanziato da molte aziende dell'IT che ha due scopi:
+\begin{itemize}
+\item Promuovere la crescita di Linux
+\item Finanziare Torvalds ed altri manager in modo che siano indipendenti dalle altre aziende dell'IT.
+\end{itemize}
+Linux foundation sovvenzionata da molteplici aziende, tra cui anche Microsoft (che sta proprio tra le platinum, cioè quelle che cacciano 500M all'anno).
+\section{Linux in ambito real-time}
+È possibile usare SO Linux nell'ambito dei sistemi real-time: tutte le fasce di CE usano Linux, problema di fondo è che Linux non è SO real-time dalla nascita, ha una serie di scelte progettuali che ne complicano l'uso in ambito real-time.\\ È ottimizzato per fare in modo che hardware (in particolare i processori) siano usati per il maggior tempo possibile, e minimizzare i tempi medi di risposta.\\ Questi non sono gli obiettivi di un SO real-time: questo richiede la predicibilità del sistema ed il rispetto delle scadenze. La proprietà deve essere inserita fin dal progetto del SO per poter garantire che le applicazioni real-time possano rispettare le scadenze. Sembra quindi che Linux non possa essere usato in ambito real-time, ma Linux ha delle caratteristiche interessanti per l'ambito real-time:
+\begin{itemize}
+\item Buona gestione dei timer software e del tempo
+\item Gestione separata delle interruzioni
+\item Schedulazione e gestione delle priorità dei task
+\item Supporto alle politiche di accesso alle risorse condivise
+\item Consente interruzione dei task anche in kernel mode, quindi è possibile sostituire il processo in esecuzione con uno a priorità maggiore
+\item Facile creare task in kernel mode, ovvero processi che non hanno controparte eseguita in user mode. Questo velocizza cambi di contesto e gestione della memoria quando avvengono solo tra task in kernel mode
+\item Supporto alla memoria virtuale e protezione della memoria per i task in user mode
+\item Possibilità di configurare il kernel a grana fine (in fase di compilazione è possibile decidere cosa includere/escludere)
+\item Kernel è monolitico, ma il codice è open e quindi modificabile, è modulare per ottenere occupazione di memoria (footprint) ridotta, posso sfruttare questa cosa nel sistema finale
+\item È il SO con il maggior numero di architetture supportate
+\item È il SO con il maggior numero di driver di periferiche disponibili
+\item Costituito da una comunità di sviluppatori, supportato da comunità attiva
+\end{itemize}
+\subsection{Limiti di Linux come hard RTOS}
+Linux già oggi non ha problemi in ambito soft real-time, grosso problema è per l'hard real-time: devo certificare che il sistema risponderà a certe caratteristiche, serve quindi predicibilità temporale del kernel e delle applicazioni. Questo perché:
+\begin{itemize}
+\item Kernel non è completamente interrompibile
+\item Le interruzioni sono disabilitate nelle sezioni critiche (ad esempio quelle protette da mutex o semaforo) perché altrimenti potrebbero essere eseguiti flussi di codice che richiedono le stesse primitive di sincronizzazione della sezione critica, quindi si può essere esposti a deadlock.
+\item Le interruzioni possono essere risolte, se ad esempio riesco a scrivere sezioni che non durano più di un tot. Ma anche se posso avere un controllo su quali sono le sezioni critiche nel kernel, ma non posso dire lo stesso delle ISR (Interrupt Service Ruotine), che fanno parte dei driver delle periferiche. Questi sono scritti nella parte "bassa" della gerarchia dei developer, quindi qualità del codice è solitamente più bassa.
+\item Gestione delle interruzioni non usa meccanismi di priorità 
+\end{itemize}
+È possibile rimediare a questi limiti, si sta cercando di porvi rimedio ed esistono alcune strade che permetto di modificare kernel Linux rendendolo predicibile, così da poterlo usare in ambito hard real-time in modo da ottenere certificazione almeno dal punto di vista teorico.
+Kernel è monolitico, ha senso impiegarlo in ambito real.time? Sì, perché kernel è estremamente configurabile, in modo da ridurre drasticamente le sue dimensioni. Non è adatto per sistemi embedded di fascia più bassa (es firmware della chiavetta USB).
+\subsubsection{Gestione delle interruzioni in Linux}
+Molti problemi legate alla gestione delle interruzioni:
+\begin{itemize}
+\item Le interruzioni hanno priorità più elevata dei processi, possono rallentare applicazione hard real-time: non so quando periferiche hardware possono alzare un'eccezione
+\item Si utilizza una gestione "separata", a 3 livelli:
+\begin{itemize}
+\item La prima parte, o top half. si compone di interrupt handler e la parte immediata dell'ISR. Interrupt handler salva i registri sullo stack e li recupera dopo, inoltre prenota una esecuzione del bottom half, quindi verrà eseguita dopo
+\item La parte di bottom half può compiere operazioni lunghe e generalmente interrompibili. È costituita da una procedura da eseguire quando nessun altro top half è in esecuzione, quindi o viene eseguita immediatamente prima di tornare ad eseguire un processo oppure si esegue per mezzo di un kernel thread.
+\end{itemize}
+\item C'è anche problema dovuto al fatto che interruzioni possono interrompersi fra di loro, che è un problema perché le interruzioni non hanno priorità. Se ad esempio ho in esecuzione una interrupt di un processo a priorità maggiore, questa può essere interrotta.. Soluzione ouò essere non permettere interruzioni, ma non è una buona soluzione, perché potrei impedire ad una interruzione di priorità più alta di essere subito eseguita (interrompendo una a priorità minore)
+\end{itemize}
+\subsubsection{Schedulazione in Linux}
+Lo scheduler è sofisticato e modulare: 
+\begin{itemize}
+\item È basato su classi di schedulazione, ovvero gerarchie di moduli che implementano differenti politiche di gestione dei processi\
+\item Scheduler generale si limita ad interrogare le classi in ordine di priorità, chiedendo i processi da porre in esecuzione
+\item Ci sono politiche di schedulazione real-time che sono definite nella classe di schedulazione a priorità massima.
+\item In generale, tutte le classi di schedulazione supportano sistemi multi-processore ed hanno overherad essenzialmente indipendente dal numero di processi attivi nel sistema
+\end{itemize}
+Per la schedulazione real-time, la classe a priorità più alta implementa uno scheduler di default interrompibili a priorità fissa, la classe dei processi real-time è quasi completamente distinta rispetto dai processi non real-time. Due algoritmi di schedulazione: FIFO e Round-Robin. Scheduler è basato su una coda di processi eseguibili singola, con 100 livelli di priorità (può essere problema per più di 100 processi, ma si può risolvere).\\ Non è problema implementare algoritmi come RM o DM per scheduler a priorità fissa. Esiste però meccanismo di sicurezza, per evitare che processo real-time che non termina mai mandi in blocco il processo: se processo real-time non rilascia mai la CPU, non può essere nemmeno killato perché bisogna interagire con shell. Il meccanismo quindi riserva una piccola percentuale di CPU ai processi in user mode (è possibile disabilitarlo accedendo ad appositi file "virtuali").\\ Altra classe di schedulazione importante, SCHED\_DEADLINE, con priorità intermedia tra quelle real-time e SCHED\_NORMAL. Introdotta da due ricercatori italiani. sviluppata dal 2009 al 2014. Classe introduce una schedulazione con priorità dinamica a livello di task, quindi EDF: processi Linux non hanno concetto di priorità, idea è stata quella di utilizzare il meccanismo dei server CBS. Ad ogni task deadline associo budget, periodo e scadenza relativa. Quando vado a schedulare uso EDF, ma sulla stessa classe deadline. Scadenze assolute sono calcolate con lo stesso criterio del CBS, tempo di esecuzione è il budget e lo stato di ogni task è descritto da una deadline assoluta e dal tempo di esecuzione residuo. Non è stato implementato EDF puro perché processi Linux non hanno concetto di scadenza relativa o assoluta nativa, ma in ogni caso la cosa che più interessa è definire qual'è la frazione fissata che ciascun task userà del tempo di processore. Nell'impelementazione della SCHED\_DEADLINE:
+\begin{itemize}
+\item Ogni task avrà e $\mu$s ogni p $\mu$s per la sua esecuzione
+\item Alla sua invocazione, lo scheduler aggiorna le scadenze e sceglie usando EDF
+\item Quando task termina il budget, viene sospeso fino alla deadline usata per la schedulazione
+\end{itemize}
+Ho quindi una schedulazione EDF con isolamento temporale dei task, non è però un'implementazione canonica di un server CBS.\\ Meccanismi hanno comunque dei problemi:
+\begin{itemize}
+\item Un processo real-time può comunque essere interrotto e quindi rallentato dai gestori delle interrupt
+\item Linux implementa meccanismi di bilanciamento del carico sui processori: processo attivo su un processore poterebbe essere migrato su un altro processore. Problema è che attualmente non si considera la priorità del processo, ma solo il carico che il processo darà a quel processore, quindi non sono considerate le priorità dei processi.\\ La migrazione può quindi aumentare la latenza di esecuzione ed aumenta la latenza a causa dei context switch, inoltre potrei avere delle inversioni di priorità non dovute.
+\end{itemize}
+In effetti è possibile risolvere problema della non predicibilità del carico: c'è meccanismo dell'affinità di CPU. Posso legare un task ad una determinata CPU, ogni processo ha una bitmap  che specifica su quali processori su cui il processo può essere eseguito.\\ Bitmap viene ereditata dai figli, impostabile mediante syscall o tramite comando (taskset). Posso realizzare sistema statico, partizionato ed in  cui non si ha mai bilanciamento del carico.\\ Che soluzioni posso usare per risolvere gli altri problemi:
+\begin{itemize}
+\item APprocio mono-kernel: modifica radicale del kernel per eliminare le cause di impredicibilità
+\item Approccio dual-kernel: cerco di fare minori modifiche possibili al kernel. ma impedisco accesso diretto ai dispositivi hardware tramite inserimento di uno stato di software intermedio tra kernel e l'hardware. C'è una parte effettivamente real-time, realizzo sistemi mixed criticality: attività sia real-time che non.
+\end{itemize}
+\subsection{Approccio mono-kernel}
+In questo approccio, codice del kernel va modificato in maniera pesante:
+\begin{itemize}
+\item Kernel deve essere interrotto quasi sempre
+\item Consentire una gestione predicibile delle interruzioni
+\item Protezione dei processi real-time dall'esecuzione dei gestori delle interruzioni
+\item Servono meccanismi di priority-inheritance per accesso a risorse condivise
+\end{itemize}
+Ci sono diversi prodotti:
+\begin{itemize}
+\item MontaVista Hard Hat Linux (commerciale)
+\item TimeSys Linux (commerciale)
+\item Linux con patch PREEMPT\_RT (open source)
+\end{itemize}
+\subsection{Approccio dual kernel}
+Meno invasivo per le modifiche effettuate, che sono minime, si cerca poi di affiancarlo ad altri programmi per realizzare RTOS. Obiettivo è quello di far coesistere sullo stesso hardware Linux ed un RTOS, chiave è quella di introdurre uno strato intermedio tra hardware e il SO, si tenta di virtualizzare il minimo e indispensabile dell'hardware, tipicamente solo le interruzioni. Alcuno approcci:
+\begin{itemize}
+\item RTAI (open)
+\item Xenomai (open)
+\item RT-Linux (open, ma un po' abbandonato oggi)
+\item e molti altri commerciali...
+\end{itemize}
+Approccio dual-kernel: due SO a priorità differente sullo stesso hardware +  strato di virtualizzazione software che è IRQ manager che decide, quando arriva interruzione hardware, a quale dei due sistemi passarla. Priorità del RTOS è maggiore di Linux, quindi quest'ultimo è attivo solo quando non ci sono processi real-time in esecuzione. Strato intermedio intercetta interrupt e le consegna a Linux solo quando questo è in esecuzione. Strato intermedio sostituisce sempre la gestione iniziale delle interruzioni: Linux deve interagire con l'IRQ manager, virtualizzo l'interrupt controller. Vantaggio è che in realtà è possibile implementarlo con i meccanismi di Linux, è possibile scrivere moduli che saranno RTOS e IRQ manager che attivo dopo l'inizializzazione di Linux.\\ Vantaggi di mono-kernel rispetto a questo:
+\begin{itemize}
+\item Applicazioni real-time sono applicazioni Linux, quindi posso usare standard POSIX
+\item Può usare stack di rete etc..., sviluppo di applicazioni è facilitato
+\item Interazione con periferiche hardware possono usare driver già esistenti
+\item Le modifiche per adattare Linux nell'ambito real-time, gradualmente sono incorporate nel kernel standard. Oggi è quasi possibile includere le patch PREEMPT\_RT nel kernel Linux, quindi sarà possibile dire di integrare soluzioni per real-time nel kernel standard.
+\end{itemize}
+Vantaggi dell'approccio dual kernel:
+\begin{itemize}
+\item Prestazioni real-time non dipendono dal kernel Linux, quindi sono drasticamente migliori, garanzie di predicibilità e schedulabilità migliori
+\item È possibile realizzare RTOS specifico diverso da Linux, ovvero realizzare l'applicazione real-time senza supporto di alcun RTOS.
+\item Il processo di certificazione del sistema real-time è limitato allo stato intermedio di astrazione dell'hardware ed ai componenti software real-time
+\item Non è necessario effettuare modifiche pesanti al kernel Linux, quindi è facile seguire l'evoluzione del kernel.
+\item Molte certificazioni richiedono comunque partizionamento spaziale e temporale del sistema.
+\end{itemize}
+\subsection{Sistemi partizionati}
+Molti sistemi real-time devono essere partizionati in modo spaziale, ovvero dividere le risorse del sistema tra più applicazioni o SO in modo che ciascuno di essi non possa interferire con il funzionamento di tutti gli altri.\\ Ad esempio, ciascuna partizione può essere associata ad una determinata porzione di RAM, generalmente questo partizionamento è realizzato da un programma chiamato separation kernel, che deve costruire "gabbie" per le applicazioni da cui esse non possono uscire. \\ Partizionamento temporale avviene sul tempo, ovvero della frazione di tempo delle CPU. Tipicamente un separation kernel fa una schedulazione ciclica delle partizioni, i SO e le applicazioni in esecuzione in ciascuna partizione non possono influenzare i tempi d'esecuzione delle altre partizioni, né possono ritardare la loro schedulazione.\\ Differenza dalla schedulazione di un RTOS: qui la schedualzione è essenzialmente in meccanismo software influenzabile da politiche di scheudlazione, priorità etc..., in una partizione di un sistema real-time può essere "contenuto" un intero SO e tutte le sue applicazioni. Scheudulazione temporale è qualcosa di rigido, non flessibile.
+\subsection{RTAI e ADEOS}
+RTAI è un SO real-time ed anche separation kernel nel quale è implementato il RTOS, sviluppato dal politecnico di Milano, sistema nasce dall'esigenza di avere RTOS a basso costo che permettesse di usare l'unità in virgola mobile in kernel mode. Inizialmente basato su GNU-DOS, oggi su Linux\\ È costituito da due componenti:
+\begin{itemize}
+\item Separation kernel, che è versione modificata di ADEOS
+\item Modulo di Linux che costituisce SO
+\end{itemize}
+ADEOS è un getto indipendente, nano-kernel che introduce virtualizzazione tra hardware e SO. In RTAI le periferiche non sono pilotate da ADEOS, ma dai SO. ADEOS intercetta le interrupt hardware ed usa meccanismo per trasmetterle ai vari SO, interessati. Nei SO reali ormai tutte le interruzioni sono asincrone, se SO non riceve interrupt non può agire con la periferica; quindi se SO non riceve da ADEOS l'interrupt non può interagire.\\ C'è hardware, ADEOS: Linux ed RTAI interagiscono con hardware perché hanno driver delle periferiche a cui sono interessati, ma la gestione iniziale delle interrupt passa tramite ADEOS: questo virtualizza le interrupt e le passa ai dominii interessati. Ci sono due tipi di domini: quelli parzialmente consapevoli di ADOES (Linux), che non possono usare direttamente il controller delle interruzioni, e quelli consapevoli, come RTAI, che possono anche controllare in maniera più esplicita come le interrupt sono propagate lungo la catena. Ogni dominio ADEOS è associato ad una priorità, ogni dominio è inserito in una catena in base alla priorità. Ogni singola interrupt viene propagata lungo tutta la catena, ciascun dominio può accettare l'interruzione ed a quel punto questa viene gestita lì mediante hardware del dominio. Dominio può anche bloccare l'interrupt, quindi il procedimento lungo la catena.\\ Se dominio è consapevole può scegliere di ignorare l'interrupt oppure gestirla/bloccarla, mentre dominii parzialmente consapevoli ricevono solo interrupt virtuali (propagate da ADEOS).\\ Sia ADEOS che RTAI sono moduli del kernel Linux, RTAI dominio di massima priorità in ADEOS, Linux è di priorità minore. Occorre aggiungere un supporto per la gestione della catena delle interrupt in Linux.\\ RTAI usa ADEOS modificato, scorciatoie per cui alcune interruzioni possono essere gestire direttamente da RTAI o da Linux senza passare per ADEOS.\\ Schedulazione in RTAI:
+\begin{itemize}
+\item Scheduler è sia clock che event driven
+\item Meccanismo entra in esecuzione se riceve interrupt di timer, o all'uscita di una ISR o alla sospensione spontanea di un task.
+\end{itemize}
+In RTAI è possibile schedulare processi Linux (LXRT), che quindi vengono promossi a processi hard real-time e sottratti allo scheduler Linux. Processi non possono usare syscall di Linux perché diventano processi RTAI.\\ È facile far dialogare Linux ed RTAI: applicazione multi-threaded, con almeno un thread RTAI ed uno Linux. Ciascun thread verrà schedulato da Linux o da RTAI, ma condividono comunque spazio di memoria, ma questo viola principio di separazione spaziale.\\ Ci sono task nativi RTAI, una specie di kernel thread schedulati solo da RTAI, che quindi offrono cambi di contesto veloci. Possibile afr si che utilizzino memoria fisica specifica modificando a priori lo spazio di memoria che userà Linux da quello che userà RTAI, ma i kernel thread non potranno usare syscall kernel Linux; tipicamente si affianca a task LXTR.\\ RTAI supporta sistemi multi-processore, tipicamente però ogni task è forzato ad eseguire su una sola CPU, lo decide o il progettista o RTAI stesso. Supporto ad algoritmi di schedulazione FIFO, Round Robin, EDF e RM come anche alcuni meccanismi di priority inheritance.
+\subsection{Linux PREEMP\_RT}
+Patch che nasce come progetto open-source, ex dipendente di MontaVista. Scopo era di rendere il kernel predicibile, interrompibile in ogni momento. Patch viene modificata di pari passo al kernel Linux standard, i meccanismi vengono gradualmente introdotti nel kernel standard.Ci sono due obiettivi principali:
+\begin{itemize}
+\item ridurre le dimensioni (in termini di durata di esecuzione) delle sezioni non interrompibili del kernel
+\item permettere l'esecuzione dei gestori delle interruzioni in un contesto schedulabile con priorità come quelle dei processi.
+\end{itemize}
+Meccanismi di PREEMP\_RT, idea fondamentale consiste nella sostituzione di alcuni meccanismi di sincronizzazione base del kernel, in quanto queste di base disabilitano l'interrompibilità ed iterano in un ciclo aspettando che variabile di condizione cambi stato. Meccanismo degli rt-mutex, a metà tra spinlock e semaforo: cominciano a comportarsi come spinlock, se variabile non cambia stato la primitiva diviene un semaforo (passa da attiva a passiva).\\ Gli rt-mutex hanno anche protocollo di priority-inheritance, inoltre l'operazione di acquisizione di uno spinlock può essere interrotta, quindi non basta disabilitare le interruzioni, è solo idea generale.\\ Altro concetto fondamentale è che tutte le ISR sono gestite da kernel thread, le priorità quindi confrontate con quelle dei task real-time, kernel thread è entità schedulabile quindi assegno una priorità alle ISR delle interruzioni hardware e quindi a renderle schedulabile. Però interruzioni hardware possono ancora rallentare i processi real-time perché vanno ancora eseguite le top half, parte di gestione che fa attivare il kernel thread e quindi processo real-time può essere interrotto un n° impredicibile di volte che però sarà operazione piccola, quindi impatto minore.\\ Alcune interrupt, che per loro natura sono gestite in maniera "tradizionale", ma sono predicibili. Questo meccanismo serve per i driver di tutte le periferiche del sistema. scritti da altri developer senza garanzie.\\ Nei sistemi multi-processori il metodo migliore per garantire la predicibilità è partizionare, si può fare anche con PREEMT\_RT. La patch PREEMPT\_RT mette mano al bilanciamento del carico delle CPU:
+\begin{itemize}
+\item Non è possibile migrare processo mentre è in esecuzione
+\item Il bilanciamento viene fatto o prima dell'esecuzione o dopo interruzione/terminazione
+\item Il kernel cerca di non sovraccaricare un processore con processi di priorità elevata
+\item Quando processo ad alta priorità si sveglia e dovrebbe interrompere un processo corrente, si valuta un'euristica per decidere se è meglio migrarlo su un altro processore.
+\end{itemize}
+Patch valuta quindi questi 3 aspetti principali.
 \end{document}

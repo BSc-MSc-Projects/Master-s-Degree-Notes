@@ -1422,4 +1422,139 @@ Algoritmo credit scheduler:
 \item Scheduler trasforma il peso in credito per allocazione per ogni vCPU. Se consuma tutto e cap = 0 può avere allocazione extra, altrimenti no.
 \item Per ciascuna pCPU, lo scheduler mantiene vCPU e sceglie di schedulare quella con credito più basso. Bilancia automaticamente il numero di vCPU nel caso di più CPU fisiche.
 \end{itemize}
+\subsubsection{Performance degli hypervisor}
+La virtualizzazione ha avuto forte sviluppo negli ultimi anni, costi ridotti della virtualizzazione a livello di sistema, ma ci sono ancora overhead non trascurabili quando vengono distanziate più VM sulla stessa macchina fisica che competono per accesso alle risorse.\\ Riassunto: non c'è hypervisor che è migliore per qualsiasi carico di lavoro o per qualsiasi situazione, le prestazioni differiscono al variare del carico di lavoro.\\ Risultati di overall in studio (vedi slides): performance variano tra il 3\% ed il 140\% a seconda del tipo di risorsa, ma nessun hypervisor ha performance migliori di tutti gli altri in qualunque tipo di test.\\ In caso di benchmark CPU intensive o memory intensive overhead risulta essere minimale, mentre per benchmark I/O intensive o network intensive ho overhead maggiori e ci sono differenze più marcate tra gli hypervisor (tra questi Xen soffre di più.
+\subsection{Portabilità e migrazione}
+Immagine di una VM: copia della VM, che contiene un SO, file dati ed applicazioni, ogni VM ne ha una associata.Come si importano / esportano le immagini di VM per evitare vendor lock-in? SI usa formato comune, l'OVF (Open Virtualization Format) che è uno standard aperto per il packaging e la distribuzione delle VMs. La configurazione della VM è specificata in XML all'interno del file. Supportato da molti, ma non tutti, i prodotti di virtualizzazione.\\ Migrazione di VM: ci sono due tecniche utili per deployare e gestire ambienti virtualizzati a larga scala:
+\begin{itemize}
+\item Dynamic resizing: come faccio vertical scaling (sia up che down)
+\item Live migration: sposto la VM su differenti macchine fisiche senza stopparla
+\end{itemize}
+\subsubsection{Dynamic resizing}
+Dynamic resizing: meccanismo a grana fine per controllo delle caratteristiche della VM rispetto alla soluzione di migrare la VM su un altro server o farne il reboot. es: appl. su VM comincia a consumare risorse, VM comincia ad essere a corto di memoria o a over-usare CPU virtuali. Quindi come soluzione posso pensare di ridimensionare la VM in  modo da darle più memoria o vCPU.\\ Vantaggi: soluzione a basso cost, di ed evita il reboot (devo spegnere, cambiare file di configurazione con param di allocazione, riavvio). Contro: non è supportato da tutti i prodotto di virtualizzazione e da tutti i SO guest.\\ Se supporto è offerto, le risorse hw di cui si può fare resizing dinamicamente sono n° vCPU e quantità di memoria assegnata.\\ Per quello che riguarda CPU, hce supportano hot-plug/unplug, posso modificare n° CPU agendo sulle informazione contenute in un file system virtuale (sysfs) che contiene file virtuale che contiene info sui processori a disposizione. Agisco sulla directory dove ci sono i file, uno per ogni CPU vista dal SO guest e posso modificare il numero di CPU viste: posso "accendere/spegnere" le vCPU viste dal SO guest.\\ Altra risorsa di cui si può fare resizing a run time è la memoria: tecnica basata sul memory balooning. VI è quantità massima di memoria assegnata alla singola VM, la quantità di memoria massima può essere ridotta e aumentata a run time con un "palloncino" che perette, nel caso in cui è sgonfio, di avere una certa quantità di memoria in più, o di ridurre memoria "sgonfiando" il palloncino: quando si gonfia palloncino: situazione di swap su disco, inoltre palloncino non può superare valore max assegnato come parametro per la VM (per farlo devo spegnere VM e cambiarlo). Tecnica usata da diversi hypervisors (KVM, Xen VMware etc...).
+\subsubsection{Migration in LAN}
+Vantaggi della migrazione:
+\begin{itemize}
+\item utile in cluster e data center virtuali
+\item Maggiore flessibilità nei failover
+\item Bilancio del workload
+\end{itemize}
+Svantaggi e problemi:
+\begin{itemize}
+\item Supporto da parte del VMM
+\item Overhead non trascurabile
+\item Migrazione in ambito WAN non banale
+\end{itemize}
+Per migrare VM ci sono due approcci:
+\begin{itemize}
+\item Spengo VM, trasferisco l'immagine su server di destinazione e lì riavvio la VM. Svantaggio: tempo tra spegnimento ed up\&running nuovo può essere lungo (circa min per shutdown/restart). Inoltre se VM pesa molto, può essere problematico spostarla al server di destinazione.
+\item Live migration: sposto mentre VM è in esecuzione e voglio tenerla attiva per il maggior tempo possibile. Soluzioni cercano di ridurre tempo effettivo per cui VM non è raggiungibile.
+\end{itemize}
+Soluzione live è largamente utilizzata dai maggior cloud provider (Google circa 1M di migrazioni al mese nei suoi data center).\\ Fasi della migrazione:
+\begin{itemize}
+\item Set up: scelgo VM da migrare e host su cui la migrerò. Posso scegliere in base a soluzione di problema di ottimizzazione o su base di un'euristica, come bilancio carico di lavoro, tolleranza a guasti etc...
+\item Ora so quale VM migrare e dove migrarla, cosa devo spostare in migrazione live: la memoria, lo storage, e le connessioni di rete.\\ Obiettivo e farlo in modo che le applicazioni che sono in esecuzione sulla VM non se ne accorgano, quindi in modo trasparente. (ci sarà downtime per le applicazioni sulla VM in cui non saranno disponibili).
+\end{itemize}
+Migrazione dei componenti:
+\begin{itemize}
+\item Migrazione dello storage:
+\begin{itemize}
+\item Storage condiviso dalla scr machine alla dest machine, potrei avere una SAN (Storage Area Network), n NAS(Network Attached Server) o file system distribuito (come NSF, GlusterFS o CEPH).
+\item Se non ho storage condiviso: il VMM sorgente salva tutti i dati della VM sorgente in un file immagine, che viene trasferito sull'host di destinazione.
+\end{itemize}
+\item Per la migrazione delle connessioni di rete:
+\begin{itemize}
+\item La VM sorgente ha un IP virtuale (eventualmente anche MAC virtuale), il VMM conosce quindi il mapping tra IP virtuale e MAC
+\item Se host src e dest sono sulla stessa sotto-rete IP: non occorre fare forwarding sulla sorgente, disabilito ARP, in modo da evitare che nel momento in cui ho spostato la VM sull'host di dest risponda l'host src ad una richiesta ARP, aggiorno quindi tabelle usate dal protocollo ARP. Invio di ARP reply per avvisare che IP è satto spostato.
+\end{itemize}
+\item Migrazione memoria: devo migrare memoria ram, contenuto di registri e cache e contenuto dei device driver. Esistono 3 soluzioni per migrare la memoria. Approccio più usato è il pre-copy: 
+\begin{enumerate}
+\item fase di pre-copy: monitor della VM in modo iterativo copia le pagine usate dalla VM alla macchina VM di destinazione e lo fa mentre VM è in esecuzione.
+\item fase di stop-and-copy: la VM sorgente viene fermata e vengono copiate pagine dirty(pagine sporcate dopo l'ultima iterazione), stato della CPU, stato dei device driver. Applicazioni in esecuzione sulla VM non sono disponibili
+\item fase di commitment e reactivation: la VM di destinazione carica lo stato e riprende l'esecuzione; la VM sorgente viene rimossa (ed eventualmente l'host sorgente viene spento)
+\end{enumerate}
+\end{itemize}
+Approccio pre-copy: memoria è copiata e migrata prima che la VM sia avviata sull'host di destinazione; soluzione tipicamente usata. Svantaggio del pre-copy è che se carichi di lavoro sono CPU/memory intensive la fase di downtime è lunga. Altre soluzioni, che cercano di ridurre il tempo di down-time durante la migrazione:
+\begin{itemize}
+\item Soluzione post-copy: fa copia posticipata rispetto all'attivazione della VM sull'host di destinazione. Sposta l'esecuzione sull'host di destinazione all'inizio del processo di migrazione e in background trasferisce le pagine di memoria usate dalle applicazioni sulla macchina sorgente, man mano che vengono richieste dalle VM.\\ Vantaggio è che viene ridotto tempo di downtime, ma problema è che se devo trasferire molte pagine l'esecuzione delle applicazioni risulterà più lenta, perché devo trasferire via rete le pagine di memoria. Altro svantaggio è che non posso spegnere VM finché non ho trasferito tutte le pagine, quindi non è molto tollerante ai guasti.
+\item soluzione hybrid: ibrido delle prime due, attua post-copy ma è preceduta da una prima fase di pre-copy. Idea è di trasferire in pre-copy le pagine di memoria più utilizzate, far partire la VM di destinazione e trasferire via via le altre pagine di memoria.\\ Si riduce tempo di downtime
+\end{itemize}
+Implementazioni non ufficiali di post-copy e hybrid.
+Migration in WAN di storage e rete:\\
+Storage:
+\begin{itemize}
+\item Shared storage: non ho problemi, ma gli accessi possono essere lenti
+\item On-demnad fetching: trasferisco solo alcuni blocchi a destinazione e fetcho i restanti qudno richiesti,  non tollerante a guasti
+\item Pre-copy/write throttling: faccio pre-copy dell'immagine di disco della VM a destinazione mentre la VM continua a girare, tiene traccia delle operazioni di scrittura sulla sorgente.. (vedi slides)
+\end{itemize}
+Per le connessioni di rete:
+\begin{itemize}
+\item IP tunneling: set up di un tunnel IP fra il vecchio IP address sull'host sorgente ed il nuovo IP sull'host di destinazione. Uso il tunnel per effettuare forward dei pacchetti dalla src alla dest. Appnea migrazione è stata effettuata e destr è pronta a rispondere ai pacchetti, modifico DN server auth., facendo puntare al nuovo indirizzo IP ed attenendo propagazione della modifica al DN server; a quel punto tiro giù il tunnel.
+\item Set up VPN 
+\item Uso soluzioni di SDN
+\end{itemize}
+\subsection{Virtualizzazione a livello di SO}
+Eseguo molteplici ambienti di esecuzione che sono i container, tra di loro isolati, tutti nello stesso SO che quindi condividono il kernel del SO. Ambienti di esecuzione detti container, ma anche jail,zone, o VE (Virtual Execution Environment). Ogni container ha il proprio insieme di processi, file system, utenti, interfacce di rete con IP, routing table etc... A differenza della virtualizzazione a livello di sistema, dove ho il SO guest,che usa diversi GB di memoria, qui ho lo stesso SO, quindi primo vantaggio è che l'immagine dei container è tipicamente più piccola dell'immagine delle VM.\\ Meccanismi per la realizzazione dei container:
+\begin{itemize}
+\item chroot: change root directory, nei sistemi Unix/Linux like, comando per cambiare root di riferimento dei processi in esecuzione. Comando per avere differenti root directories per i differenti container. Non basta solo questo, servono meccanismi di isolamento per isolare risorse hardware e software viste dall'insieme di processi visti 
+\item cgroups: control groups, meccanismo di SO Linux per limitare, misurare ed isolare utilizzo di risorse hardware di un insieme di processi
+\item namespaces: meccanismo per isolare ciò che l'insieme di processi all'interno del container può vedere dell'ambiente operativo (processi, porte, stack di rete), sono 6 in Linux.
+\end{itemize}
+Vantaggi della virtualizzazione a livello di SO:
+\begin{itemize}
+\item Minore overhead legato alla virtualizzazione. Per supporto alle istruzioni privilegiate, ad esempio, ci si rivolge direttamente al SO; il kernel è sempre lo stesso.
+\item Tempo di avvio/spegnimento di container: nel caso in cui immagine del container sia già disponibile, in questo caso avrò tempi più rapidi.
+\item Densità elevata: possibile avere diverse istanze di container sulla stessa macchina fisica.
+\item Immagine di dimensione minore, in quanto non comprende il kernel di SO. Occupo meno spazio di storage
+\item Possibilità di condividere pagine di memoria tra molteplici container in esecuzione sulla stessa  macchina
+\item Maggiore portabilità ed interoperablità per applicazioni cloud, l'applicazione nel container è indipendente dall'ambiente di esecuzione.
+\end{itemize}
+Ci sono alcuni svantaggi:
+\begin{itemize}
+\item Minore flessibilità, in quanto non si possono eseguire contemporaneamente kernel di SO diversi sulla stessa macchina fisica, ed inoltre si possono usare solo applicazioni native per il SO supportato
+\item Minore isolamento, soprattutto nelle prime versioni di Docker c'erano bug 
+\item Maggior rischio di vulnerabilità, superficie esposta è kernel del SO (maggior linee di codice esposte rispetto all'hypervisor)
+\end{itemize}
+Windows e Mac OS offrono supporto per la virtualizzazione basata su container, c'è Docker desktop ed in alternativa si può installare hypervisor, installare VM con Linux come SO guest e in questa VM usare virtualizzazione con Docker, ma performance saranno disastrate.
+\subsubsection{Container e DevOps}
+I container sono diventati strumento importante nell'ambito dell'ingegneria del software: costruzione, impacchettamento condivisione e deploy di applicazioni. Transizione verso il DevOps, dove c'è continuo interazione tra sviluppo e deploy, container abilitano la CI e Cd (continous deployment). Ciclo continuo di develop, deploy e monitoring: possibile rilasciare facilmente successive versioni dell'applicazione cambiando immagine del container. Container permettono di realizzare in modo agevole l'interazione tra development e release. MOlti framework utili: Docker per i container, Kubernetes per orchestrazione di container su molteplici nodi(Docker compose per orchestrare sulla stessa macchina fisica).
+\subsubsection{Docker}
+Docker è un'abbiente di virtualizzazione a livello di SO, open source in cui è stata posta attenzione ad alcuni aspetti di sicurezza. Permette di creare container che introducono livello minimale di overhaed nell'applicazione eseguite su container.\\ Ciascun container include le applicazioni e tutte le dipendenze di cui essa ha bisogno, molteplici container condividono tra di loro il kernel del SO. Eseguiti come processi isolata all'interno dello user space sul SO host, i container non sono vincolati ad una struttura: servo solo che ci sia layer di containerizzazione disponibile sulla macchina sulla quale si vuole istanziare il container (cambio dei comandi a seconda del SO). Docker è sviluppato in Go, Docker al suo iinterno sfrutta meccanismi offerti dal kernel Linux per realizzare container: control groups e namespaces, prime versioni di Docker usavano Linux Container, poi sviluppato ambiente di esecuzione detto libcontainer.\\ Oltre ad usare cgroups e namespaces, vengono usati altri meccanismi per gestire sicurezza e controllo degli accessi.\\Componenti fondamentali: è architettura di tipo client/server:
+\begin{itemize}
+\item Demone di sistema che riceve comandi
+\item Builder: definire il contenuto dell'immagine del container tramite docker file. Immagine definibile tramite riga di comando, specificando istruzioni, oppure (se struttura è più complicata) usando Dockerfile.
+\item Engine di docker per istanziare il container corrispondente ad una immagine.
+\item Registry esterno, che permette di registrare container, in particolare di ottenere da repo esterni immagini di container, quindi di realizzare la fare di share.
+\end{itemize}
+Analisi dei vari componenti:
+Docker engine: applicazione client/server, composto da:
+\begin{itemize}
+\item Server, detto coker deamon
+\item REST API che specifica le interfacce che i programmi possono usare per controllare ed interagire con il deamon
+\item client CLI 
+\end{itemize}
+Possibile gestire immagini e container, creare rete interna al Docker engine per collegare molteplici container e farli comunicare fra di loro (stessa PM). Inoltre è possibile gestire volumi esterni per avere persistenza di dati, in quanto i container sono stateless.
+Docker deamon permette di costruire container a partire o da comandi da CLI o tramite Dockerfile, è anche possibile gestire immagini e gestire ciclo di vita del container. Permette anche di interagire con registry esterni per la distribuzione dei container.Client e deamon comunicano tramite socket o REST API.
+\subsubsection{Docker image}
+Strumento template read-only che permette di distribuire l'applicazione ,incorpora tutte le dipendenze e le configurazioni necessarie per runnare applicazioni, eliminando la necessità di scaricare ed installare package etc...\\ Unico requisito è avere la macchina su cui installo l'immagine con Docker engine installato. Docker può costruire immagini automaticamente leggendo istruzioni da un DOckerfile, che è file con sintassi semplice e ben definita.\\
+Usando Docker pull posso ottenere container da repository remota pubblica, push è upload; nome di un'immagine ha sintassi [registry/][user]name[:tag] (tutto opzionale tranne name), valore di default del tag è latest che indica l'ultima versione disponibile dell'immagine, però può essere utile per discriminare fra le varie versioni.\\ Componenti fondamentali:
+\begin{itemize}
+\item Dockerfile: istruzioni per assemblare l'immagine
+\item Contesto: set di file (esempio applicazioni e librerie). Solitamente, l'immagine è stratificata su più livelli, quindi immagini possono essere basate su altre immagini.
+\end{itemize}
+Dockerfile è file di testo, in cui ci sono una serie di operazioni da eseguire: lettere maiuscole indicano i comandi:
+\begin{itemize}
+\item FROM: qual'è l'immagine a partire dalla quale sto costruendo la mia immagine (dopo i : specifico la versione), è mandatorio.
+\item RUN: permette di eseguire istruzioni all'interno del container.
+\item EXPOSE: permette di specificare la porta di ascolto del container
+\item CMD: permette di indicare il comando da eseguire all'interno del container quando questo verrà avviato.
+\item ENV: setta le variabili d'ambiente.
+\end{itemize}
+Per buildare Dockerfile: docker build [OPTIONS] PATH $|$ URL $|$ -.\\ Immagine in Docker consiste in una serie di layer sovrapposti uno sull'altro. Docker usa union file system per comporre i layer e far apparire l'immagine come un tutt'uno, ciascun layer è identificato da un ID, e può avere dimensioni differenti. Union file system sono basati sul principio del copy on write: layer verrà scritto nel file system union solo se sarà modificato.\\ Vantaggi del layering:
+\begin{itemize}
+\item Condivisioni e riutilizzo di layer tra diverse immagini
+\item Risparmio spazio di memorizzazione locale
+\item Facilita software specializations: se uso ubuntu tra i layer del container, non devo riscaricarlo ma lo riuso direttamente,  salvando spazio su disco e banda di rete.
+\end{itemize}
+Container tipicamente stateless, quindi scrivo tipicamente il minimo dei dati, nel momento in cui viene rimosso vengono persi. Se ho bisogno di scrivere/leggere in modo persistente i dati, posso attaccare un volume Docker, in modo da poter avere i risultati direttamente disponibili.\\ Lo storage driver (overlay2) controlla come le immagiin ed i container sono memorizzati e gestiti nell'ambiente host, ce ne sono differenti come AuFS (che salvano a livello di file), Device Mapper (salvataggio a livello di blocco).\\ Docker container: istanza in esecuzione di un'immagine in Docker, possibile fare la run, stop, kill etc... da REST API o CLI. Container è parte run d Docker, (immagine è parte di build) sono stateless.\\ Ultimo componente è Docker registry, che permette di distribuire immagini Docker (quindi non solo Docker file ma anche eventuali file di supporto).
 \end{document}

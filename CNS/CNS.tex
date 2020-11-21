@@ -903,4 +903,87 @@ Quindi, i certificati non garantiscono che la persona sia reale, ma un protocoll
 \item Ora posso scambiare dati criptati usando AES-128$_{K}$: quindi se eri la banca bene, puoi decyptare, altrimenti non puoi.
 \end{itemize}
 Difficile però includere diverse root authorities in un singolo PC, idea è di avere fiducia in una catena di certificati: mi voglio connettere alla banca, mi manda certificato firmato da un CA non in lista, quindi posso avere una gerarchia di CA, così vedo il certificato del CA che ha firmato quello della banca e vedo se è trusted.
+\subsection{Public key certificate}
+Public key certificate è una struttura dati che fa binding tra una chiave pubblica ed il suo legittimo proprietario. Approccio base: mi affido alle CA, che rilasciano CERT$_ID$ = binding del nome e della public key. esempio: sito web protetto con TLS: voglio proteggere l'URL del sito. Mi fido del certificato che mi viene fornito perché è rilasciato da un CA di cui mi fido. esempio: certificato di Bob: contiene chiave pubblica, CA identity CA$_id$, CA signature del certificato di Bob.\\ Devo anche verificare che il server che mi manda questo certificato abbia la private key: mando challenge (nonce) e questa nonce viene firmata con la chiave privata del server.\\ Ora il protocollo di sicurezza può partire, questo ad esempio avviene in TLS.
+\subsubsection{Public key infrastructure}
+Un PKI consiste è il set di tools che serve per creare, distribuire, revocare un certificato per chiavi pubbliche.\\ Formato tipico per un certificato è X.509, ma per definire un PKI servono molti altri meccanismi: Public key Cryptographic standards, ogni PCKS\#n è riferito ad un determinato servizio.\\ Formato del certificato X.509, definisce tutti i campi ed encoding per un certificato per chiave pubblica:
+\begin{itemize}
+\item version, altri dati: specifica la versione del protocollo (3 è l'ultima) e definisce altre cose:
+\begin{itemize}
+\item validity period: il certificato è valido per un certo periodo di tempo
+\item Serial number del certificato: ogni certificato deve essere unico, identificato con un serial number unico per la CA (è locale quindi per la singola CA)
+\item Altre estensioni: posso inserire nel certificato altri parametri, esempio l'uso della chiave nel certificato.
+\end{itemize}
+\item CA identity: chi è il CA che ha rilasciato il certificato. Rappresentato in modo gerarchico
+\begin{itemize}
+\item Issuer: è in forma gerarchica, CN è l'ultimo livello, in questo caso è il full name della CA.
+\item Subject: CN è URL del sito web che sto certificando (se ad esempio certifico un web server)
+\end{itemize}
+\item User identity
+\item User public key: public key, formato dipende dall'algoritmo per cui sto certificando la chiave pubblica. Ad esempio se è RSA avrò i parametri pubblici di RSA, quindi l'esponente ed il modulo N. In DH: avrò quei parametri pubblici.
+\item CA digital signature: CA prende l'intero certificato e fa hash del certificato e lo firma con la sua private key: è quella legata alla public key della CA. La cosa importante è verificare l'autenticità del certificato: devo esponenziare questo campo con la chiave pubblica della CA e verificare.
+\end{itemize}
+Mi collego alla banca: mando HTTP GET in chiaro, ma invece di passare il messaggio direttamente a TCP lo passo a TLS (che è user library in user space) per criptarlo. Quindi parte TLS handshake.\\ Esponente RSA fissato: è provato che se seguo pattern binario la sicurezza è la stessa ma le prestazioni sono migliori (5 esponenti fissati).
+\subsubsection{Certificate Signing Request}
+Una certificate signign request è un messaggio mandato da un applicante ad una CA per avere certificato sulla digital identity.\\ Posso avere come approccio la generazione di tutte le chiavi fatta dalla CA, quindi anche la mia coppia private,public (cosa che succede nelle VPN), ma non funziona.\\ Il formato più comune per CSR è PKCS\#10. Come funziona:
+\begin{itemize}
+\item L'applicant genera chiave pubblica e privata
+\item Genero CRS che contiene informazioni che identificano l'applicant, l'X.509 subject feild, le  estensioni e la prova che posseggo la chiave privata. Quindi firmo con la mia chiave privata
+\item CA deve verificare che posso chiedere un certificato per il dominio che richiedo, non è una cosa standard:
+\begin{itemize}
+\item Manda e-mail all'e-mail trovata come maintainer del domain, c'è un link di verifica
+\item CA mi richiede di creare qualcosa sul dominio che mantengo, esempio creare un record .txt per quel dominio
+\end{itemize}
+CA verifica la signature che ho fatto usando la mia chiave privata. Se tutto va bene crea certificato X.509, potrebbe inserire estensioni (a partire dalla versione 3): authority key identifier, subject key identifier, key usage (posso usare la chiave pubblica solo per una specifica azione), alternative names, basic costraint extension (molto importante).
+\end{itemize}
+\subsubsection{Root certificates}
+Come certifico le CA? Anche la CA ha un suo certificato, e chi fornisce il certificato è un'altra CA. Struttura gerarchica, la root CA è il livello più alto della certification chain: è una CA che si auto-certifica l'identità. Un root certificate è un certificato in cui subject ed issuer sono lo stesso. Come posso fidarmi di un self signed  certificate? Chiunque potrebbe farlo, quindi come faccio a capirlo: root certificates sono built in nel sistema operativo e non possono essere rimossi da utenti senza privilegi.
+\subsubsection{Certificate chains}
+In molti scenari reali, il certificato non è rilasciato dalle root CA, che sono poche quindi approccio non scalabile.\\ Uno o più CA intermedie:  ho una catena di certificati, nella catena non ho per forza le stesse entità intermedie. Certificate chain è una lista di certificati che è formata da uno o più CA con una serie di proprietà (solitamente  inizia con una end-entity certificate):
+\begin{itemize}
+\item L'issuer di ogni certificato matcha il subject del certificato successivo della lista
+\item Ogni certificato 
+\end{itemize}
+A volte web server non mandano root certificate (perché può non essere nel SO).\\ Ma il chaining è pericolo? Ho una catena di certificati validi, posso generarne uno fake: creo un certificato fake ma legittimo e lo firmo con il CA finale (che sarebbe ad esempio il mio server).\\ Non è possibile: c'è un check, il basic constraint extension. Se nel campo certificate authority c'è NO (false) (e questo c'è nel certificato dell'end user) vuol dire che con la coppia chiave pubblica$|$privata non posso firmare altri certificati.
+\\Wildcard certificate:
+Certificato valido per tutti i sotto dominii di tutto un dominio, esempio *.google.com perché in pratica una compagnia ha diversi servizi associati ai vari sub domains.\\ Periodicamente, le CA devono rilasciare una lista di revoca dei certificati, che gli utenti possono controllare. Come faccio ad ottenerla: inserisco la lista in una estensione specifica, distribution point da cui è possibile scaricarla.
+\subsubsection{Let's build our own authority}
+OpenSSL x.509: OpenSSL è toolkit crittografico composto da 3 componenti (librerie scritte in C). openssl ha variante di RSA basato sul teorema cinese del resto.\\ Alcune applicazioni vogliono un unico Ca certificate bundle con tutti i certificati: quindi metto tutti i file in uno solo, concatenando il root e l'intermediate.\\Ora voglio provare ad usare Apache2 per configurare l'uso del certificato: proteggo il server http con i certificati che ho creato.\\ Apache2 supporta il meccanismo del virtual host: se voglio installare più web server su un unica macchina, avrei bisogno di più ip. Oggi posso avere più siti web su un unico web server con i virtual host.\\ ServerName è un field importante, serve per abilitare il virtual host.\\ Mi collego via browser e ricevo un warning: il certificato è valido, il browser/SO non ha la chiave pubblica della CA. Devo specificare esplicitamente https, nei siti noti c'è redirect automatico, voglio averlo anche io: lo metto nel file configurazione di apache2.\\
+\subsubsection{HTTPS Downgrade Attack}
+Siti ibridi, homepage in HTTP e login in HTTPS e questo era una vulnerabilità, homage non protetta è vulnerabile ad un impersonification attack: mi metto nel mezzo tra server e vittima, performo HTTPS con il server ma HTTP con la vittima.\\ Posso pensare ad un downgrade attack: identifico la vittima:
+\begin{itemize}
+\item Mi metto in mezzo alla vittima ed il default gateway.
+\item Faccio redirect dei pacchetti che hanno l'IP del sito localmente.
+\item La vittima si collega a me e replico con una versione del website.
+\item Faccio fare l'autenticazione
+\end{itemize}
+HSTS: Http Strict Transport Security: se provo a collegarmi ad un server con http, il server mi risponde di usare HTTPS, risponde con un cookie che specifica che devo usare https ed ha un tempo di fine (1h). Prima query è in chiaro, quindi da un punto di vista teorico la vulnerabilità rimane.\\ Alcuni browser web hanno incluso una lista di siti che contiene i siti più noti che supportano HSTS.\\ Non tutti i client supportano HSTS e c'è comunque vulnerabilità a DNS Spoofing Attack.\\
+\subsection{Diffie Helmann protection}
+Anche qui avevo il problema del MITM: Alice e Bob hanno g, p, e fanno exponentiation della loro chiave privata random x ed y.\\ Attacco è possibile: attacker selezione z e manda ad entrambi $g^zmodp$ e quindi entrambi mandano la loro chiave all'attacker, quindi il data exchange passa per l'attacker nel mezzo (può ricavarsi tutte e due le chiavi per cifrare i messaggi e mandarli ai due end).\\ Senza dare nulla, l'approccio DH può essere attaccato via MITM ed è detto Anonymous DH.\\ IETF, protocollo BTNS (versione light di IPsec, Bettern Than Nothing Security), che è il DH Anonymous: so che c'è una vulnerabilità ma è meglio che non sapere nulla. Approccio base di DH è questo, quindi vorrei fixare il protocollo: 
+\begin{itemize}
+\item Alice e Bob scelgono x ed y e chiedono alla CA di certificare i valori. Ovvero ottengo crypto binding tra il nome ed il valore di chiave pubblica. Ma x non è una chiave pubblica, bensì una quantità pubblica che corrisponde ad una quantità privata che solo loro hanno.
+\item Chiedo alla CA di ricevere qualcosa che è [Alice, $g^xmodp$]$_CA$ e Bob, $g^ymodp$]$_CA$.
+\item Ora attacker può generare z, ma non può sostituirsi ad Alice o Bob, perché non può ottenere il certificato. 
+\end{itemize}
+Questo è il fixed DH exchange. Ho un altro problema: i valori $g^xmodp$ e $g^ymodp$ ora sono fissati, suppongo che mi collego alla banca nel 2018. Quando mi collego, avviene scambio dei certificati, il segreto che computo è $g^{xy}modp$. Mi collego nel 2020, ma non posso cambiare quantità x, perché il certificato è valido per una durata di anni (è processo legale che richiede vari step, non puoi farlo in 5 min): ogni volta che mi collego, computo sempre lo stesso segreto, quindi la chiave è sempre la stessa. Questo può o non può essere un problema, ma non è una best practice: ci sono nazioni che fanno attacchi severi, si salvano il tuo traffico per anni. Log del traffico dei cittadini: è criptato, ma aspetto per un tempo ragionevole e portò rompere la chiave privata dal tuo pc e scoprire il tuo traffico criptato.\\ Protocollo che non permette questo soddisfa la proprietà perfect forward secrecy.\\ vorrei non usare quantità fisse: se non faccio nulla, sono vulnerabile (DH anonymous), se certifico, ho fermato il MITM ma uso sempre lo stesso segreto nell'agreement ($g^{xy}$). Cosa posso fare: Alice genera chiave pubblica standard usata in una digital signature e ha il certificato della CA. Ma ora posso dire che il DH public coefficient ed la mia identità e firmarla da solo. Bob può prendere il certificato, prendere chiave pubblica di Alice, che si aspetta sia certificata dalla CA. Non è un certificato self signed: Bob riceve due quantità da Alice, uno è il certificato vero e l'altro è la DS del coefficiente pubblico di DH.\\ Così:
+\begin{itemize}
+\item Evito MITM: l'attacker non può computare nessuno dei due certificati.
+\item Posso generare un segreto fresh ogni volta.
+\end{itemize}
+Ephemeral DH: ho due certificati (A, $g^xmodp$)$_Ska$, che è dinamico, viene generato localmente e il Ska cambia sempre; (A, Pka)$_{CA}$. Garantisce perfect forward secrecy? Trump mi fa rompere la CA, può vedere le mie connessioni passate? No, perché anche se qualcuno frega la chiave privata della CA, il segreto $g^xmodp$ va perduto perché le x ogni volta cambiano.\\ Quindi anche se la chiave privata viene scoperta, la sicurezza degli scambi precedenti è sicura.\\ Non c'è un singolo DH, ma 3 versioni:
+\begin{itemize}
+\item DH, MITM probelm
+\item Fixed, long term secret
+\item Ephemeral, la migliore
+\end{itemize}
+In TLS:\\
+DH senza nulla è la versione fixed, ma devo specificare l'algoritmo usato per la digital signature dalla CA: può essere RSA, DSS etc...
+\subsection{Symmetric vs Asymmetric}
+Nell'handshake, quando viene mandato il certificato:
+\begin{itemize}
+\item In DH non c'è certificato, solo 1 messaggio
+\item In fixed DH mando dopo il server hello il certificato e poi verifica di client
+\item In RSA key transport: mando il certificato e niente altro.
+\item Solo in ephemeral DH uso tutti e due i messaggi: mando certificato della Pk ed nel server key exchange mando $g^x$ firmato da me.
+\end{itemize}
 \end{document}
