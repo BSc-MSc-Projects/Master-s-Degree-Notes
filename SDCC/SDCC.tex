@@ -1518,7 +1518,7 @@ Ci sono alcuni svantaggi:
 Windows e Mac OS offrono supporto per la virtualizzazione basata su container, c'è Docker desktop ed in alternativa si può installare hypervisor, installare VM con Linux come SO guest e in questa VM usare virtualizzazione con Docker, ma performance saranno disastrate.
 \subsubsection{Container e DevOps}
 I container sono diventati strumento importante nell'ambito dell'ingegneria del software: costruzione, impacchettamento condivisione e deploy di applicazioni. Transizione verso il DevOps, dove c'è continuo interazione tra sviluppo e deploy, container abilitano la CI e Cd (continous deployment). Ciclo continuo di develop, deploy e monitoring: possibile rilasciare facilmente successive versioni dell'applicazione cambiando immagine del container. Container permettono di realizzare in modo agevole l'interazione tra development e release. MOlti framework utili: Docker per i container, Kubernetes per orchestrazione di container su molteplici nodi(Docker compose per orchestrare sulla stessa macchina fisica).
-\subsubsection{Docker}
+\subsection{Docker}
 Docker è un'abbiente di virtualizzazione a livello di SO, open source in cui è stata posta attenzione ad alcuni aspetti di sicurezza. Permette di creare container che introducono livello minimale di overhaed nell'applicazione eseguite su container.\\ Ciascun container include le applicazioni e tutte le dipendenze di cui essa ha bisogno, molteplici container condividono tra di loro il kernel del SO. Eseguiti come processi isolata all'interno dello user space sul SO host, i container non sono vincolati ad una struttura: servo solo che ci sia layer di containerizzazione disponibile sulla macchina sulla quale si vuole istanziare il container (cambio dei comandi a seconda del SO). Docker è sviluppato in Go, Docker al suo iinterno sfrutta meccanismi offerti dal kernel Linux per realizzare container: control groups e namespaces, prime versioni di Docker usavano Linux Container, poi sviluppato ambiente di esecuzione detto libcontainer.\\ Oltre ad usare cgroups e namespaces, vengono usati altri meccanismi per gestire sicurezza e controllo degli accessi.\\Componenti fondamentali: è architettura di tipo client/server:
 \begin{itemize}
 \item Demone di sistema che riceve comandi
@@ -1556,5 +1556,178 @@ Per buildare Dockerfile: docker build [OPTIONS] PATH $|$ URL $|$ -.\\ Immagine i
 \item Risparmio spazio di memorizzazione locale
 \item Facilita software specializations: se uso ubuntu tra i layer del container, non devo riscaricarlo ma lo riuso direttamente,  salvando spazio su disco e banda di rete.
 \end{itemize}
-Container tipicamente stateless, quindi scrivo tipicamente il minimo dei dati, nel momento in cui viene rimosso vengono persi. Se ho bisogno di scrivere/leggere in modo persistente i dati, posso attaccare un volume Docker, in modo da poter avere i risultati direttamente disponibili.\\ Lo storage driver (overlay2) controlla come le immagiin ed i container sono memorizzati e gestiti nell'ambiente host, ce ne sono differenti come AuFS (che salvano a livello di file), Device Mapper (salvataggio a livello di blocco).\\ Docker container: istanza in esecuzione di un'immagine in Docker, possibile fare la run, stop, kill etc... da REST API o CLI. Container è parte run d Docker, (immagine è parte di build) sono stateless.\\ Ultimo componente è Docker registry, che permette di distribuire immagini Docker (quindi non solo Docker file ma anche eventuali file di supporto).
+Container tipicamente stateless, quindi scrivo tipicamente il minimo dei dati, nel momento in cui viene rimosso vengono persi. Se ho bisogno di scrivere/leggere in modo persistente i dati, posso attaccare un volume Docker, in modo da poter avere i risultati direttamente disponibili.\\ Lo storage driver (overlay2) controlla come le immagini ed i container sono memorizzati e gestiti nell'ambiente host, ce ne sono differenti come AuFS (che salvano a livello di file), Device Mapper (salvataggio a livello di blocco).\\ Docker container: istanza in esecuzione di un'immagine in Docker, possibile fare la run, stop, kill etc... da REST API o CLI. Container è parte run d Docker, (immagine è parte di build) sono stateless.\\ Ultimo componente è Docker registry, che permette di distribuire immagini Docker (quindi non solo Docker file ma anche eventuali file di supporto).
+nota: se ho più comandi dello stesso tipo (es RUN), conviene scriverli tutti in una riga (concateno con \&\& "slash", che non posso mettere perché non so come si fa in LaTeX) perché sennò ad ogni comando singolo corrisponde un layer, quindi l'immagine pesa di più.
+\subsection{Applicazioni Docker multi-container}
+Docker compose per girare su un unico host, per orchestrare più nodi ho Swarm e Kubernetes.
+\subsubsection{Docker compose}
+Semplice specificare la composizione, si fa in file di supporto scritto in yaml: specifico i container che vanno istanziati e quali sono le relazioni fra essi.\\  Nella terminologia di compose, i container sono chiamati servizi, per ognuno indico l'immagine da cui derivano, il nome che assegno al container, comando eseguito, dipendenze e collegamenti.
+\subsubsection{Vantaggi dei container}
+Uso dei container è quindi molto utile, posso incapsulare tutte le risorse in un unico package.\\ Sono tecnologia abilitante per micro-servizi e serverless computing.\\
+Migrazione: è possibile eseguirla come nel caso delle VM: salvo lo stato del container, lo trasferisco e riavvio. Ho ovviamente un downtime, ma posso usare soluzioni per migrare memoria come nelle VM.\\ Migrazione è più complicata, perché non c'è supporto diretto da parte di Docker engine, ma bisogna usare dei tool appositi: due tool principali sono CRIU e P-Haul:
+\begin{itemize}
+\item CRIU permette di fare dump and restore dello spazio utente
+\item P.Haul è tool eseguito sopra CRIU e eprmette di gestire migrazione di memoria e di file system (usando pre o post copy).
+\end{itemize}
+Nel cloud, container possono essere usati come servizi, il Container as a Service (CaaS):
+\begin{itemize}
+\item Amazon Elastic Container Service
+\item Azure container
+\item Google container engine
+\item ed altri...
+\end{itemize}
+\subsubsection{Hypervisors e container nel CLoud}
+Tipicamente provider IaaS usano soluzione basata su hypervisors, per tutti i vantaggi su sicurezza, isolamento e flessibilità.\\ Con l'avvento del serverless computing, serve poter eseguire le funzioni on-the-fly quindi senza server pronti sempre per eseguire le operazioni, quindi si può pensare di usare i container, ma questi danno minore sicurezza e sopratutto dove eseguirli? Sul bare metal o sul top di un hypervisor?\\ Nuovo trend: combinare la sicurezza e l'isolamento offerti dagli hypervisor con la velocità e flessibilità dei container. Firecracker: nuovo strumento di virtualizzazione presentato da Amazon nel 2019, open source. Light hypervisor, basato su KVM con design minimalista che esegue il workload in una VM leggera, chiamata micro-VMs.
+\subsubsection{Soluzione unikernel}
+Sono partito dalla soluzione classica, SO sull'hardware, poi ho introdotto soluzione con hypervisor di tipo 1 (bare metal) ed in ciascuna VM posso avere diversi SO. Poi soluzione dei container, soluzione nativa in cui container engine è posto al di sopra del SO, container sono posti sopra l'engine (es Docker) e contengono tutte le librerie, dipendenze e codice di qui l'applicazione ha bisogno. Container si può anche istanziare in una VM, combinazione delle due soluzioni precedenti.\\ Altra soluzione è lo unikernel: stack di layer piuttosto ridotto, ha delle limitazioni per l tipologia di applicazioni istanziabili nell'unikernel.\\ Perché soluzioni di virtualizzazione più leggere:
+\begin{itemize}
+\item Nuovi paradigmi:  micro-servizi, componenti dell'applicazione istanziati in container. Scindo applicazione monolitica in tanti micros-servizi. COn serverless avrò funzioni istanziate su necessità
+\item Nuovi scenari di computazione richiedono soluzioni di virtualizzazione che introducono overhead limitato. Nel caso dell'IoT ad esempio uso soluzioni di virtualizzazione perché ho ambiente eterogeneo, quindi voglio renderlo omogeneo, operò hypervisor non è installabile su piccoli device come sensori. Anche ambiente di fog ed edge computing, dove nodi sono soggetti a charn più elevati, servono soluzioni per istanziare velocemente i componenti dell'applicazione sui nodi che vanno e vengono.
+\item Soluzioni di load balancing tramite virtualizzazione di funzioni di rete, che devono essere eseguite in ambienti leggeri.
+\end{itemize}
+Problema di come avere VM minimali, in grado di essere eseguite su hypervisor, avendo alcune caratteristiche dei container. Trend del sistema di virtualizzazione unikernel, o di SO minimali per evitare overhead del classico SO, riduco inoltre superficie d'attacco.\\ SO leggeri vs unikernel:
+\begin{itemize}
+\item SO minimali: architettura del kernel monolitica, rappresentano ambienti minimali per poter lanciare container. esempi: container Linux, Atomic Host. Core OS Container Linux: noto come Fedora Core OS, basato su Linux sfoltendo all'osso, lasciando solo funzionalità necessarie ad effettuare deploy di container. Eseguiti bare metal
+\item Unikernel, anche detti SO di libreria. Idea non recentissima, avere una sorta di VM minimale che sia in grado di eseguire una singola applicazione scritta in un unico linguaggi di programmazione. SO minimale specializzato, set di librerie minimale che eseguono i costrutti dell'applicazione eseguita, tutto nello stesso spazio di indirizzamento. Direzione estremamente specializzata di virtualizzazione leggera.
+\end{itemize}
+Confrontando con le altre soluzioni di virtualizzazione: nell'unikernel ho VM minimali che poggiano su un hypervisor di tipo 1. Footprint unikernel è la più piccola possibile. Vantaggi degli unikernel:
+\begin{itemize}
+\item Ambienti di virtualizzazione con footprint minima
+\item Veloci, no contex switch
+\item Sicuri, piccola superficie d'attacco
+\item Fast boot, in ms
+\end{itemize}
+Contro degli unikernel:
+\begin{itemize}
+\item Funzionano solo per ambienti virtualizzati con hypervisor
+\item Un solo linguaggio di run-time
+\item Difficile fare debug
+\end{itemize}
+Performance a confronto, alcuni studi di performance di tipo qualitativo:
+\begin{itemize}
+\item Overhead dei container in termini di istanziazione è molto minore delle VM. Maggiore dentista dei container, footprint minore etc..
+\item Svantaggio dei container in termini di sicurezza
+\end{itemize}
+Light virtualizaztion, molti esperimenti mostrano tempi medi di startup sono migliori di VM ma peggiori di container in quanto hanno overhead dovuti ad ambiente di virtualizzazione sottostante.
+\subsection{Orchestrazione di container}
+Docker-compose permette di eseguire applicazione multi-container, ma sulla stessa macchina fisica. Orchestrazione permette di configurare, deployare, monitorare e controllare dinamicamente applicazioni containerizzate. Forniscono strumenti per gestire applicazioni basate su container, deployati su doversi nodi del sistema. Esistono diverse, soluzioni, le due più usate per applicazioni non cloud sono Docker swarm e Kubernetes, che possono anche essere messi a disposizione come servii Cloud.
+\subsubsection{Docker swarm}
+Permette di gestire cluster di Docker engines, detto swarm. Nel caso di Docker swarm i container che fanno parte dello stesso servizio sono chiamati task. Feature di Docker swarm:
+\begin{itemize}
+\item Scalare numero di container dell'applicazione
+\item Gestire fallimento dei nodi che ospitano i container
+\end{itemize}
+Swarm: insieme di host che hanno Docker engine installato e che vengono eseguiti in modalità swarm. Nodo è usato per denotare l'istanza di un singolo Docker engine. Per controllare istanziazione di un Docker engine c'è architettura master worker, dove master assegan i container ai diversi worker e di monitorarne il funzionamento, mentre worker eseguono i task. Architettura master-worker è la più usata nei SD, anche se non è la migliore, perché design è semplice. Master diviene single point of failure, quindi va ridondato salvando lo stato del master su dispositivo di memoria persistente, e collo di bottiglia, quindi servono tecniche per alleviare il problema.
+\subsubsection{Kubernetes}
+Sviluppato da Google, primo prodotto open-source che è stato reso disponibile da Google. Aveva già progettato due sistemi, Borg ed Omega da cui è derivato Kubernetes, servivano diversi sistemi di orchestrazione perché c'è stato grande shift verso conteinerizzaizone. Ogni settimana Google lancia più di 2 Miliardi di container.\\ Kubernetes serve per orchestrazioni di applicazioni di cluster multi-container ospitati su più nodi. Automatizza deploy, scaling e gestione delle applicazioni, facendo in modo di scalare dinamicamente in modo che se un container subisce un crash le applicazioni ospitate lì siano portate su altro container o che il container sia riavviato.\\ Caratteristiche:
+\begin{itemize}
+\item Portabilità: eseguibile su cluster di server privato, su cloud ed anche su multi-cloud
+\item Framework estendibile: componenti sono stati progettati con l'ottica di poter essere sostituiti ed estesi
+\item self-healing: si fa auto-placement, auto-restart etc...
+\end{itemize}
+Può essere eseguito su diverse cloud private o pubbliche, offerto anche come servizio cloud di Google.\\ Terminologia di Kubernetes:
+\begin{itemize}
+\item Pod: unità di base schedulata in Kubernetes. Pod è collezione di container che condividono tra di loro spazio di storage, rete e le specifiche su come eseguire quei container. È possibile che due componenti dell'applicazione siano fortemente accoppiati fra loro, quindi conviene metterli nello stesso pod.\\ A ciasun pod kubernetes assegna un IP ed un URL, permette di effettuare bilanciamento del carico tra i pod
+\item Utenti assegnano ai pod delle etichette, che sono coppie chiave-valore. esempio: role=frontend, stage=production.\\ Estrema flessibilità all'utilizzatore di Kubernetes per quello che riguarda il controllo sui pod.
+\end{itemize}
+Architettura di Kubernetes è distribuita, di tipo master-worker: c'è nodo master e worker, chiamati Kubernetes nodes dentro cui sono ospitati i componenti di Kubernetes che sono kube-proxy e kublet.\\ Master è composto da:
+\begin{itemize}
+\item Kube scheduler: si occupa di assegnare lavoro ai diversi nodi worker
+\item kube-controller: gestione da riga di comando
+\item etcd: sistema di storage key-value, usato per mantenere tutti i meta-dati della gestione del cluster. (stesso ruolo svolto da ZooKeeper in Kafka).
+\end{itemize}
+Nodi sono composti dal kubelet, che è l'agente di Kubernetes su ciascun nodo che viene contattato dal master per verificare che sia up\&running così da verificare il corretto funzionamento del nodo.\\ Esiste un componente che è horizontal pod auto-scaler, responsabile di controllare elasticità dei container. Kubernetes implementa come politica di elasticità quella basata su soglia (come quella dei sistemi auto-adattativi).
+\subsubsection{Sharing di risorse in cluster}
+Ho cluster di server, devo usare molteplici framework applicativi. Come faccio per condividere le risorse fra molteplici framework eterogenei che eseguono in maniera concorrente sulle stesse macchine? Soluzione classica: partizioni staticamente il server, soluzione altamente inefficiente: utilizzazione dei diversi framework può variare nel tempo e quindi partizionamento può rivelarsi sbagliato.\\ Apache Mesos: cluster manager open source che offre un layer di controllo delle risorse del cluster (dei diversi server) al di sopra del quale è possibile eseguire i diversi framework applicativi.\\ Obiettivo di Mesos è fornire astrazione delle risorse computazionali all'interno del cluster in modo da permettere la condivisione delle risorse in modo efficiente, andando a partizionare le risorse (tutto l'hardware del server) fra i diversi framework a grana fine, quindi dinamicamente. Assegnazione può variare dinamicamente nel tempo in base alla richiesta di utilizzo da parte dei framework applicativi.Ha architettura distribuita master-worker, il worker (agente) pubblica le risorse disponibili per il master. Il master manda le risorse offerte al framework, l'elezione del master avviene con Zookeeper, in cui si salva stato del master. Master ha repliche a freddo, che vengono elette in caso di fallimento.\\ Accortezza per usare Apache Mesos è usare framework applicativo modificato opportunamente per eseguire su Mesos.\\ Non confrontabile con Kubernetes, infatti  possibile usare Kubernetes al di sopra di Mesos.
+\subsubsection{Kubernetes distributions}
+Ci sono diverse distribuzioni, il src code consente la massima flessibilità.\\ Ci sono anche delle alternative, sopratutto se si vuole installare Kubernetes su più nodi (configurazione di Kubernetes non banale):
+\begin{enumerate}
+\item Distribuzioni pure: Kubrenetes pre-build, esempio Charmed Kubernetes.
+\item Distribuzioni plus: piattaforme che integrano Kubernetes con altre tecnologie 
+\item Kubernetes-as-a-Service: Kubernetes come servizio cloud, utente non deve preoccuparsi di manutenere, configurare il servizio.
+\item Limited-purpose: specifiche per un determinato ambiente di esecuzione.
+\end{enumerate}
+\section{Microservizi e serverless computing}
+\subsection{Microservizi}
+Un "nuovo" stile architetturale per applicazioni distribuite che struttura l'applicazione come una collezione di servizi lascamente accoppiati. SI passa da un'applicazione con struttura tendenzialmente monolitica ad una suddivisione con molte componenti, i micoservizi, che sono poco collegai fra di lor. Pattern di comunicazione sarà RPC (versione moderna) e sistemi publish-subscribe e sistemi a code di messaggi, perché introducono gradi di disaccoppiamento che rispecchia quello tra i servizi del sistema stesso.\\ Stile architetturale non è totalmente nuovo, in quanto deriva dalle SOA, che si è largamente diffuso nei primi anni 2000, ma presente delle differenze significative dai mciroservices.\\ Obiettivo: costruire, gestire applicazioni composte da micro-unità aut-contenute: disaccoppiamento e modularità, applicazione divisa in un insieme di servizi, che possono essere deployati in ambiente run-time, comunicazion tramite RPC o architetture publish/subscribe. Componenti facilmente istanziati e scalati, si applicano le idee di elasticità già viste.\\ Tecnologie di virtualizzazione usata saranno container, ci sarà forte legame fra micro-servizi e container.\\ Ci saranno micro-servizi stateless per favorire l'elasticità, i micro-servizi satefull fa si che è più complesso gestirla. Stato verrà salvato in strumenti, tool e framework dedicati alla persistenza della memoria, si troveranno non solo database relazionali, ma sopratutto datastore di tipo noSQL.\\ 
+\subsection{Service Oriented Achitecture}
+SOA è paradigma architetturale per progettare sistemi software distribuiti,lascamente accoppiati. \\ Definizione del paradigma OASIS: paradigma per l'organizzazione e l'utilizzazione di risorse distribuite che possono essere sotto il controllo di domini di proprietà differenti. Fornisce un mezzo uniforme per offrire, scoprire, interagire ed usare le capacità di produrre gli effetti voluti in modo consistente con presupposti ed aspettative misurabili.\\ Esiste documento di riferimento delle architetture a servizi:
+\begin{itemize}
+\item Viene fornita vista logica
+\item Orientamento ai messaggi e ala descrizione
+\item Granularità dei servizi. orientamento alla rete, neutralità della piattaforma.
+\end{itemize}
+In realtà, componenti delle SOA non sono così densi come quelli delle applicazioni a micro-servizi, ma nel passare ai microservices si è persa la neutralità.\\ 3 entità interagiscono fra di loro:
+\begin{itemize}
+\item Service requestor o conusmer: chi richiede esecuzione del servizio, andrà a cercare il servizio a cui è interessato all'interno di un registro di servizi. Diversi parametri per la ricerca del servizio: basati su QoS, informazioni più relative alla semantica del servizio
+\item Service registry: espone descrizioni dei servizi
+\item Service provider: fornisce il servizio, implementandolo o rendendolo disponibile. Pubblica il servizio sul service registry
+\end{itemize}
+Le 3 entità sono istanziate e gestite da diversi amministratori e su diversi domini. Quando service requestor ha scoperto chi offre un servizio, si collega al provider ed invoca i metodi del servizio esposto.
+\subsubsection{Web services}
+Implementazione più nota è quella dei web services: sistemi software che sono sviluppati per fornire interazione machine to machine su una rete. C'è interfaccia scritta in linguaggio machine-readable e processabile da un macchina, in particolare è stato fornito un linguaggio comune (alla stregua degli IDL o protocol buffer) basato su XML (con tutti gli svantaggi del caso). Inoltre, definiscono anche protocollo di comunicazione tra i servizi, SOAP, per permettere ai requestor di invocare i servizi. Protocollo di tipo applicativo, che solitamente usa HTTP come protocollo di trasporto.\\ Ambiente molto variegato, ci sono più di 60 standard e specifiche, le più usate:
+\begin{itemize}
+\item WSDL: linguaggio basato su XMl per descrivere i servizi
+\item SOAP: protocollo di comunicazione in ambito web services
+\item UDDI: usato per scoprire i servizi disponibili
+\item BPEL e BPMN: usati per definire processi business, definiscono work-flow dell'applicazione a servizi
+\item WSLA: standard per definire SLA nel contesto dei web services
+\end{itemize}
+Numerose tecnologie sviluppate nell'ambito dei web services, ad esempio ESB (Enterprise Service Bus), piattaforma di integrazione che permette iterazione e comunicazione fra i componenti dell'applicazione
+\subsubsection{SOA vs microservices}
+\begin{itemize}
+\item Tecnologie dei SOA sono pesanti: istanziare applicazione a servizi, configurarla, usarla richiede molto tempo. ESB è middleware complesso, lento. I micro-servizi si basano su tecnologie molto più leggere, in cui istanziazione richiede molto meno tempo, comunicazione anche richiede meno tempo perché middleware usati sono più snelli
+\item Protocolli tutti basati su XML, XML è lentissimo ed introduce grande overhead. Microservizi si basano su protocollo più snelli, usano REST ed HTTP direttamente
+\item SOA spesso viste in ambiente enterprise come soluzione di integrazione per applicazioni già esistenti. Microservices tipicamente usati per realizzare nuove applicazioni software, anche se aspetto di riusabilità non è totalmente trascurato
+\end{itemize}
+Heavyweight vs lightweight (se i micro-servizi sono usati bene).
+\subsection{Microservizi}
+Vantaggi:
+\begin{itemize}
+\item Microservizi è piccolo, velocemente deployabile, facile da istanziare e da scalare. 
+\item Tecnologia sottostante ai microservizi è il container, infatti approccio più usato è avere un container per ogni istanza di micro-servizio, questo per tutte le caratteristiche efficienti dei container.
+\item Scalabilità migliorata
+\item Grande autonomia
+\end{itemize}
+I micro-servizi sono complemento ideale della virtualizzazione basata su container, impacchetto ogni micro-servizio come un'immagine di container e deploy come istanza di un singolo container, managing a run rime come scaling e migrazione
+Vantaggi sono quindi:
+\begin{itemize}
+\item Scale in/out dei micro-servizi cambiando numero delle istanze dei container
+\item Isolamento
+\item È possibile limitare le risorse usate dalle istanze
+\item Build e start rapido
+\end{itemize}
+Svantaggi:
+\begin{itemize}
+\item Serve un orchestratore di container per gestire l'applicazione multi-container
+\end{itemize}
+\subsubsection{Come decomporre}
+Non c'è una strategia vincente per decomporre (è tipo un'arte)
+\begin{itemize}
+\item Decompongo in micro-servizi seguendo principio della business capability: tipico case study è sito di e-commerce, esempio di business capability può essere micro-servizio per gli ordini.
+\item Soluzione di decomposizione guidata dal dominio: esempio e-commerce, abbiamo due micro-servizi essenziali come gestione ordini, gestione magazzino, consegna del bene acquistato etc...
+\item Decomposizione per caso d'uso: considero i casi d'uso e definisco servizi responsabili per i singoli casi d'uso, ad esempio definisco micro-servizio responsabile per la consegna
+\item Decomposizione per nomi o risorse: definisco microservice in modo che sia responsabile per tutte le entità e risorse dell'applicazione.
+\end{itemize}
+\subsubsection{Scalabilità}
+Per riuscire a scalare si possono istanziare più repliche dello stesso servizio e fare load balancing, ci sono varie tecnologie per poter riuscire a scalare: framework integrabili con Kubernetes...\\ Altro aspetto fondamentale legato alla scalabilità è che è semplice scalare micro-services stateless. Se micro-servizio ha stato e devo replicarlo, ogni replica avrà il suo valore ma devo partizionare il flusso di dati in ingresso per poter mantenere coerente il valore dello stato. Se invece rendo lo stato un servizio, è più semplice: mi collego a servizio di memorizzazione persistente e si fa dare valore dello stato.\\ C'è anche necessità di fare service discovery, servono componenti per poter identificare il servizio a cui si ci vuole collegare, così da avere un binding dinamico. Ulteriori tool per fare service discovery, scoperta a run time il servizio a cui collegarsi
+\subsubsection{Stateless vs statefull services}
+Servizi stateless più facili da gestire a run-time.\\ Servizio stateless non ha stato nel micro-servizio, viene gestito esternamente salvandolo ad esempio su Redis (datastore esterno), in modo che sarà più semplice replicare il micro-servizio.\\ Servizio statefull ha stato incorporato nel servizio, in caso di scalabilità devo replicare anche lo stato e devo mantenerlo replicato. Buona norma andare a sviluppare quanto più possibile i servizi in modo stateless.
+\subsubsection{Integrazione}
+Comunicazione, dovrebbe essere sincrona o asincrona? I due pattern più usati sono RPC o code di messaggi. Ad eccezione di Go, RPC è comunicazione sincrona,  mente code di messaggi asincrona. La scelta fra le due dipende
+\begin{itemize}
+\item Comunicazione sincrona: si usano richieste HTTP per interfacce REST o gRPC
+\item Comunicazione asincrona: integro middleware che supportano comunicazione asincrona (Kafka, RbbitMQ). Interazione può essere one-to-oneo one-to-many
+\end{itemize}
+Svantaggio della comunicazione sincrona: impatto sulla disponibilità dell'applicazione a micro-servizi, può avvenire solo se entrambi gli end-point sono attivi. Comunicazione asincrona può avvenire anche se altro host non è presente, messaggio viene memorizzato nella coda.
+\\ Due principali schemi per realizzare applicazione a micro-servizi in cui più componenti comunicano fra di loro:
+\begin{itemize}
+\item Orchestrazione: approccio centralizzato, in cui message broker o API gateway coordina interazione fra i differenti servizi. Vi è questa entità centralizzata che permette agli altri microservizi di interagire fra loro, tutto mediato dal broker intermedio.
+\item Coreografia: approccio decentralizzato, descrizione globale di come i servizi interagiscono fra di loro, ciascun servizio sa già con quali servizi interagire e come interagirci. I diversi micro-servizi scambiano direttamente i messaggi.
+\end{itemize}
+Paragone fra i due:
+\begin{itemize}
+\item Orchestrazione è single point of failure e bottleneck, disaccoppiamento più leggero e più traffico di rete e latenza
+\item Coreografia: servizi devono conoscere la coreografia, serve fare lavoro extra per monitoring e track dei servizi. Implementazione dei meccanismi è più complesso
+\end{itemize}
 \end{document}

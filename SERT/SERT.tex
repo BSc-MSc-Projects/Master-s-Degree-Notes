@@ -1201,4 +1201,130 @@ Meccanismi di PREEMP\_RT, idea fondamentale consiste nella sostituzione di alcun
 \item Quando processo ad alta priorità si sveglia e dovrebbe interrompere un processo corrente, si valuta un'euristica per decidere se è meglio migrarlo su un altro processore.
 \end{itemize}
 Patch valuta quindi questi 3 aspetti principali.
+\section{Tecnologie per sistemi embedded}
+Spesso sono sistemi real-time e viceversa. Dal punto di vista tecnologico ci si concentra su aspetti diversi quando si parla di uno o dell'altro
+\subsection{Sviluppo dei sistemi embedded}
+Ci sono 3 aspetti fondamentali da considerare:
+\begin{itemize}
+\item Architetture
+\item Applicazioni
+\item Metodologie
+\end{itemize}
+Quando si parla di sistemi informatici general-purpose, si tende a trattarli in maniera separata. Questo non è possibile farlo completamente con i sistemi embedded, inizialmente erano anzi fortemente legati in quanto il sistema embedded è programmabile, ma pensato per una sola applicazione. Penso ad una macchina ottimizzata per quello specifico compito, devo sapere bene cosa farà l'applicazione e considerare i vari aspetti non funzionali.\\ Questa tendenza è in attenuazione, quindi oggi si tenta di avvicinare lo sviluppo dei sistemi embedded a quello dei sistemi general purpose. Obiettivo dei sistemi embedded è realizzare applicazione specifica: esempio, sistema embedded per controllare un proiettore, ci sarà sistema programmabile. L'applicazione determinerà quali saranno i requisiti funzionali: capacità di elaborazione, memorizzazione, comunicazione, prestazioni, consumo di energia e di potenza. Altri aspetti funzionali sono affidabilità e robustezza. Possono anche esserci requisiti non funzionali, come i costo totale, la durata della fase di progettazione etc...\\ Importante definire una metodologia di sviluppo: quando si definisce un sistema embedded serve impiegare alcune capacità, attitudini, che si riflettono in una serie di requisiti che il progetto dovrà avere
+\begin{itemize}
+\item Creatività: serve scoprire nuove soluzioni o adattare vecchie idee. Progetto un componente se non ne esiste un altro che va abbastanza bene per questa applicazione, o se magari lo produce un'azienda concorrente.
+\item Ripetibilità per evitare di ricominciare sempre da 0 il processo di sviluppo di un nuovo prodotto
+\item Rapidità nel rispettare i vincoli sulla durata della fase di progetto
+\item Prevedibilità dei costi di progettazione, di fabbricazione e di manutenzione
+\end{itemize}
+Tutti questi aspetti richiedono una buona metodologia di sviluppo, tranne la creatività. Metodologie di sviluppo non è solo astrazione o teoria, deve essere ben definita in termini di strumenti e risorse disponibili.\\ Difficoltà dello sviluppo: il processo comprende molte fasi differenti e per molte di queste non esiste uno strumento sintetico. È necessario fare analisi e simulazioni, quindi quando vado a progettare un sistema embedded è necessario costruire un simulatore della specifica applicazione embedded. Non è possibile però simulare l'hardware a livelli di precisione accurati, a causa dei vincoli sulla durata della fase di progetto e dei limiti di costo dello sviluppo, potrò simulare fino ad unc erto grado di accuratezza.\\ Spesso sono necessarie funzionalità molto differenti: potranno servire protocolli di comunicazione specifici e quindi un processore specifico per quell'applicazione. Può essere necessario usare strumenti sofisticati per progettare architetture eterogenee.\\ Quando si parla di sistemi embedded, si parla sia di hardware che di software: ci sono differenze sostanziali nell'approccio del problema a seconda di hardware o software.\\ Quale metodologia usare: una soluzione ibrida, che unisca il meglio dei due mondi.
+\subsubsection{Differenze nello sviluppo tra hardware e software}
+Esempio più semplice dello sviluppo del software è a cascata: per progettare un livello parto da quello superiore e scendo a quello sotto. Se devo apportare dello modifiche, questo costa molto: devo risalire di livello, molto costoso apportare modifiche ad un livello superiore mentre si sta definendo un livello inferiore.\\ Altri modelli di sviluppo, come sviluppo a spirale: parto da requisiti semplici, definisco architettura semplice e poi codifico. Man mano andrò ad aumentare la complessità, in ogni ciclo si ottiene una versione sempre più evoluta. È più facile introdurre modifiche e raffinamenti in ciascuna fase.\\ Sviluppo hardware usa tecniche molto sofisticate,c completamente assenti nel progetto software: 
+\begin{itemize}
+\item si usano algoritmi di sintesi dell'hardware basati su tecniche di ricerca.
+\item algoritmi per la stima delle metriche
+\item algoritmi predittivi per la valutazione dei modelli che operano su definizioni incomplete del progetto
+\end{itemize}
+Nel progetto hardware, le metriche di valutazione del prodotto sono obiettive e facili da quantificare. Ciascuna metrica rappresenta quasi sempre un vincolo progettuale molto forte e deve quindi essere ottimizzata. Inoltre, i cicli dell'hardware sono più brevi, software può essere mantenuto per anni. Esperienza della progettazione di circuiti elettrici ed elettronici è molto più matura di quella della progettazione del software.\\ esempio di sviluppo hardware: specifiche descritte ad esempio in RTL (register-transfer language). Da qui si passa con tool automatici alla definizione di macchine a stati finiti, che possono essere minimizzati. Ora, si passa ad una sintesi logica che è indipendente dalla tecnologia. C'è intesi logica che dipende dalla tecnologia, questo è sempre fatto automaticamente e definiranno il circuito in termini della tecnologia effettivamente usata. Fase delicata: piazzamento e percorsi, dalla sintesi logica che mi dice come è fatto il circuito in termini di singole porte occorre piazzare le porte sul circuito integrato, ma anche di effettuare i collegamenti tra le porte. Alla fine arriva il layout finale del circuito, quindi le fasi sono molto più articolate e distinto in fasi ben precise e gerarchicamente organizzato.\\ Co-design: quando progetto sistema embedded serve progettare insieme hardware e software, c'è passaggio fondamentale che è il partizionamento hardware/software. Decisione critica, quale funzionalità del prodotto dovrà essere realizzata direttamente in hardware e quale dovrà essere realizzata dal software di un dispositivo programmabile.\\ esempio del proiettore: funzionalità che controlla la temperatura della luce della lampada. Lampada ad alta potenza, quindi circuiti sono specializzati nel raffreddamento della lampada. Quindi serve meccanismo per evitare che la lampada superi una certa temperatura. Realizzo in hardware o software: 
+\begin{itemize}
+\item In hardware: interruttore con termocoppia, quando scatta spengo la lampada
+\item Interruttore con termocoppia collegata ad ingresso digitale ed un software interroga porta per sapere se temperatura è aumentata di troppo. Se sì, software spegne la lampada.
+\item Circuito in hardware è più sicuro, se c'è bug nel software, la funzionalità non viene eseguita e la lampada si brucia
+\item Funzionalità software è meno costoso, devo mettere hardware dedicato.
+\end{itemize}
+Se sbaglio qualcosa nella scelta, devo rivedere tutto il progetto. Tutte le funzionalità vanno decise prima. Da qui si può partire con metodologia di sviluppo co-design:
+\begin{itemize}
+\item Analizzo requisiti e determino opportuno partizionamento hardware/software
+\item Definisco l'architettura del sistema embedded, ed in particolare l'interfacciamento tra hardware e software
+\item Determino le specifiche di hardware e software, ora si può lavorare in parallelo.
+\end{itemize}
+\includegraphics[scale=0.3]{images/SERT2711.png}\\
+C'è fase di debugging, in cui si cerca di capire cosa non funziona, quando tutto è apposto, si ha il sistema completo.\\ Sempre più spesso sistemi embedded vengono definiti con piattaforme di riferimento. Metodologia comune sono i Systems-on-Chips: la piattaforma è un dispositivo o una architettura di base che può essere facilmente modificata per realizzare nuove funzionalità o modificare quelle esistenti.\\ È utile quando il sistema embedded deve realizzare funzioni definite e regolate da standard. Processo di sviluppo è composto da due fasi: si definisce la piattaforma e poi il prodotto specifico per la piattaforma\\
+\includegraphics[scale=0.3]{images/SERT2711_2.png}
+\subsection{Application Specific Integrated Circuit}
+Si usano circuiti integrati, basata su fabbricazione planare (anni 50'): come dei fogli sottili di silicio sul quale sono ricavati i componenti elettronici, processo litografico per inglobare fogli di silicio dei circuiti integrati. Grado di miniaturizzazione si è alzato sempre, di più negli anni, circuiti integrati sono sempre più piccoli e quindi sempre più veloci (elettroni nei conduttori si spostano a velocità finita).\\ In pratica il progettista ha ampia scelta tra i circuiti integrati:
+\begin{itemize}
+\item COTS: componenti commerciali
+\item microprocessori, micro-controllori e processori specializzati. Possono essere COTS
+\item logiche programmabili
+\item ASIC
+\end{itemize}
+\subsection{Tecnologie per ASIC}
+Se un progettista deve affidare una certa funzione di un prodotto ad un circuito integrato apposito:
+\begin{itemize}
+\item Può usare un circuito integrato commercializzato
+\item Deve progettare da solo il circuito integrato ASIC
+\end{itemize}
+I costi di progettazione e sviluppo di ASIC sono molto alti (anche milioni di dollari), scelta di progettare nuovo ASIC è lecita se
+\begin{itemize}
+\item Si richiedono dimensioni ridotte
+\item SI richiedono altissime prestazioni
+\item Il mercato richiede volumi molto elevati
+\item Nessun COTS è adeguato
+\end{itemize}
+È sopratutto l'enorme costo di sviluppo di nuovi circuiti integrati che ha portato a definire piattaforme di riferimento da cui derivare nuovi prodotti.
+\subsubsection{Tecnologia standard cell: soluzione}
+Introdotta per semplificare la progettazione degli ASIC. Si alza il livello di astrazione con il quale si progettano i circuiti: dal transistor si passa alla cella. Una cella è un circuito digitale completo già progettato e ottimizzato da riutilizzare a piacimento.\\ Le definizioni delle celle sono raccolte in librerie commerciali. Ciascuna libreria contiene migliaia fi celle per realizzare altrettante funzioni Tutte e celle,q quando realizzate nel silicio del circuito integrato hanno la stessa altezza. Esistono programmi che calcolano il piazzamento ottimale delle celle.
+\subsubsection{Tecnologia gate array}
+È simile alla standard cell, nel senso che un venditore fornisce sempre una libreria di circuiti digitali. In standard cell il chip è costruito su un die di silicio puro, mentre in gate array il cihp è parzialmente fabbricato: il silicio è già organizzato in gruppi di transistor organizzati in righe regolari separate da canali di routing.\\ Una variante nota come sea of gates non possiede canali di routing, le interconnessioni sono affidate ad uno strato di metallo posto sopra ai transistor.
+\subsection{Programmable Logic Device}
+Chip che integrano le porte logiche e le linee di interconnessione completamente fabbricate. I chip sono programmabili, nel senso che ciascuna risorsa logica può essere configurata per svolgere una specifica funzione, ciascuna linea di interconnessione può essere collegata o meno a varie risorse logiche. Diversi gradi di programmabilità:
+\begin{itemize}
+\item OTP: la configurazione del chip è irreversibile ed è ottenuta applicando le tensioni elettriche più altre di quelle della normale alimentazione
+\item Ri-programmabili: stabilisco dei bit all'interno di memorie per configurare il circuito. Memoria può essere volatile o persistente.
+\item Ri-configurabili: posso riprogrammare anche quando il circuito è in esecuzione ed in modo selettivo.
+\end{itemize}
+Organizzazione delle PLD, c'è sempre alla base il  concetto di cella. Ad un estremo, la cella è costituita da una o due porte logiche, o da un multiplexer o da un flip-flop. All'altro estremo la cella può essere molto complessa, come una funzione booleana a 4 ingressi, qualche porta logica, uno o due multiplexer.\\ Vantaggio delle celle semplici è che silicio è maggiormente sfruttato, riduco rischio di sottoutilizzo di una cella.\\ Vantaggio delle celle complesse è che servono meno connessioni, perché ho meno celle. Serve cercare un compromesso, basata su cosa la PLD dovrà svolgere.
+\subsubsection{Tipologie di PLD}
+\begin{itemize}
+\item PLA: costruito da zone di porte AND ed OR e zone di interconnessione, erano OTP
+\item PAL, come i PLA ma più semplici in quanto le porte OR non sono configurabili
+\item GAL: include diversi PAL, con multiplexer per retro-azionare le uscite e con flip-flop. Può inoltre essere riprogrammato.
+\item CPLD: basati su celle complesse (GAL) unite da un bus di comunicazione configurabile per mezzo di una memoria EEPROM o Flash.
+\item FPGA: celle complesse e interconnessioni sono distribuite regolarmente nel chip, la configurazione è in memoria generalmente volatile. Sarà utente finale a programmare il chip.\\ Sono la nuova frontiera dell'informatica: permettono di realizzare circuiti elettronici a volontà, è possibile ridefinire qualunque cosa. Ad esempio, è possibile eliminare un'istruzione macchina da microprocessore, realizzo ottimizzazione per la specifica applicazione.
+\end{itemize}
+\subsection{Microprocessori}
+Molti sistemi embedded sono realizzati sfruttando microprocessori più o meno evoluti e specializzati. Vantaggi:
+\begin{itemize}
+\item Flessibilità: il software consente di avere un sistema molto più mantenibile ed estendibile
+\item Se l'applicazione da realizzare è complessa, il sistema basato su microprocessore è alla fine più semplice ed economico.
+\end{itemize}
+Svantaggi:
+\begin{itemize}
+\item Le prestazioni sono peggiori, introduce ritardi rispetto ai circuiti hardware nativi dato che deve interpretare le istruzioni, consuma anche più energia, dissipazione di potenza etc...
+\end{itemize}
+Si possono usare microprocessori general purporse, ma anche dedicati ASP. Ancora una volta, la scelta è frutto del compromesso. Un'altra caratteristica molto importante è la forma in cui acquisire il microprocessore: COTS o IP:
+\begin{itemize}
+\item COTS sono chip fisicamente indipendente da integrare nel sistema
+\item IP sono descrizioni a vario livello di astrazione del circuito:
+\begin{itemize}
+\item SOft-macro: descrizione di circuiti a livello di register transfer in linguaggio VHDL, Verilog
+\item Firm-macro: a livello di gate 
+\item Hard macro: a livello di layout per specifici PLD o ASIC
+\end{itemize}
+\end{itemize}
+\subsubsection{DSP}
+Altra classe di processori specifici per applicazioni sono i DSP, specializzati nell'elaborazione numerica dei segnali. Solitamente nell'elaborazione dei segnali bisogna svolgere una somma con un valore che prevede una moltiplicazione. Hanno delle operazioni MAC già integrate, quindi tipicamente eseguono l'operazione MAC in una singola istruzione\\ Sono ottimizzati per particolare flussi di esecuzione ristretti, ed hanno istruzioni per operare su più dati in parallelo.\\ Generalmente hanno insiemi very large istruction word, hanno gerarchie di memoria che distinguono tra codice e dati, quindi cambia lo spazio di indirizzamento.
+\subsubsection{Network Processors}
+Altra classe di processori dedicati sono i network processors, sono system-on-chip dedicati alla programmazione di rete.\\ Funzioni tipiche:
+\begin{itemize}
+\item Bufferizzazione di pacchetti
+\item Elaborazione delle testate
+\item Ricerca di indirizzi nelle tabelle
+\item Calcolo di codici di controllo
+\end{itemize}
+Architettura di ogni NP è multi.processore, a ciascun canale è dedicato un processore.\\ Alcuni processori RISC si occupano della supervisione e dello smistamento dei pacchetti tra diversi canali. Il collegamento tra i vari processori è dato da un insieme di bus ad altissima velocità (~ 100 Gbps).\\ Generalmente RISC si programmano in C, mentre i CP si programmano in assembler o con linguaggi basati su regole lessicali di pattern recognition
+\subsubsection{Microcontrollori}
+Sono microprocessori che dispongono di molte periferiche ed interfacce sul circuito integrato. Sono parenteralmente adatti per le applicazioni che richiedono poca potenza di calcolo ma stretta interazione con l'hardware. es: penna USB. Microcontrollore dentro circuiti molto piccoli può fare elaborazione di protocolli come usb e dialogo con la cache. Si trova come hardware
+\begin{itemize}
+\item Unità logico aritmetica semplice
+\item Pochi registri, uno "accumulatore"
+\item Un solo bus interno, no pipeline
+\item Memorie integrate persistenti tipo ROM, EEPROM di pochi KB.
+\item Circuiti timer hardware
+\item Piedini programmabili per I/O
+\item Convertitori analogico/digitale e digitale/analogico
+\item Interfacce $I^2C$, SPI, JTAG, UART, PWM.
+\end{itemize}
+Solitamente non possiedono interfacce sofisticare verso la memoria esterna, soprattutto per tenere basso il numero di pin del chip.
 \end{document}
