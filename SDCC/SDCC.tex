@@ -428,7 +428,7 @@ Cis non diverse implementazioni, sia i peer che le risorse sono mappate nello st
 La finger table in CHORD è una tabella di routing mantenuta da ogni nodo, con una struttura ben definita. Se m = \# bit dell'ID, al dimensione della finger table sarà pari ad m. Se indico la finger table di un nodo p con FT$_{p}$ $\Rightarrow$ FT$_{p}$[i]=succ(p+$2^{i-1}$)mod$2^m$, con 1 $\leq$ i $\leq$ m. \\ L'idea della finger table è quella di permettere ad ogni nodo di fare lookup delle risorse avendo informazioni approssimative sulle posizioni più lontane,sapendo quali sono i suoi nodi vicini e che risorse gestiscono.\\ L'algoritmo di routing procede come segue:
 \begin{itemize}
 \item Ho una chiave k, che è l'id di una risorsa e voglio conoscere il succ(k).
-\\ Se p è il nodo che sta effettuando il lookup, fa un controllo per vedere se la risorsa è nella sua zona e se non lo è controlla la prima entry della finger table: se k $\leq$ FT$_{p}$[1] allora inoltra la richiesta. Altrimenti la inoltra ad un nodo q tale che FT$_{p}$[j] $\leq$ k $\leq$ FT$_{p}$[j+1], ovvero cerca di identificare chi è il nodo che conosce che è più vicino alla risorsa cercata.\\ Il costo di lookup è O(logn), con n = n° dei peers.
+\\ Se p è il nodo che sta effettuando il lookup, fa un controllo per vedere se la risorsa è nella sua zona e se non lo è controlla la prima entry della finger table: se k $\leq$ FT$_{p}$[1] allora inoltra la richiesta. Altrimenti la inoltra ad un nodo che ha l'ID più vicino all'ID della risorsa cercata.\\ Il costo di lookup è O(logn), con n = n° dei peers.
 \end{itemize}
 esempio: 0-31 nodi, m=5, quindi la finger table ha dimensione pari a 5., l'indice i $\in$ (1,..,5).
 \subsubsection{Ingresso/uscita di nodi in CHORD}
@@ -685,7 +685,7 @@ Come faccio ad agganciare il client al server:
 \item Binding dinamico: il collegamento effettivo tra client e componente che offre servizio avviene solo al momento dell'esecuzione, collegamento avviene con entità interposta, che fa da smistatore di richieste verso la procedura.\\ Ho maggiore flessibilità e trasparenza, per esempio posso effettuare distribuzione della richiesta, ma pago in termini di overhead.Posso distinguere due fasi:
 \begin{itemize}
 \item Naming: fase statica, client specifica a chi vuole essere connesso, effettuata prima dell'esecuzione.\\ Associo dei nomi unici all'interno del sistema alle operazioni o alle interfacce astratte, quindi collegamento avviene con l'interfaccia specifica del servizio.
-\item Adressing: fase dinamica, a run time, client deve essere realmente collegato al server. Indirizzamento può essere implicito o esplicito: nel caso esplicito mando richiesta broadcast o multicast alle repliche, attendendo la prima risposta.\\ Nel caso di addressing esplicito c'è componente aggiuntivo che permetterà di registrare i servizi e avendo delle tabelle di routing opportune, permette di collegare identificativo astratto del servizio a chi concretamente offre quel servizio.
+\item Adressing: fase dinamica, a run time, client deve essere realmente collegato al server. Indirizzamento può essere implicito o esplicito: nel caso esplicito mando richiesta broadcast o multicast alle repliche, attendendo la prima risposta.\\ Nel caso di addressing implicito c'è componente aggiuntivo che permetterà di registrare i servizi e avendo delle tabelle di routing opportune, permette di collegare identificativo astratto del servizio a chi concretamente offre quel servizio.
 \end{itemize}
 \end{itemize}
 \subsection{Remote procedure call}
@@ -1312,8 +1312,8 @@ Possiamo introdurre 5 livelli diversi di virtualizzazione:
 \item A livello di librerie
 \item A livello di applicazioni utente
 \end{itemize}
-\subsubsection{Process Virtual Machine vs OS Virtual Machine}
-A livello applicazioni utente astraggo risorse virtuali per un processo (es JVM), una piattaforma virtuale che esegue processi individuali.\\ Fornisce un ambiente ABI o API vortuale per le applicazioni utente. Qui non si pone il problema di andare a virtualizzare le chiamate privilegiate, SO è lo stesso per tutte le risorse\\ Con virtualizzazione del SO, posso avere molteplici SO diversi: il virtual machine monitor gestisce insieme di risorse hardware condivise con altre VM e offre isolamento rispetto alle altre. In questo caso la VMM si fa da tramite per l'esecuzione di istruzioni privilegiate o operazioni che interagiscono direttamente con l'hardware condiviso: quando VM vuole eseguirne una, VMM la prende, ne checka la correttezza.
+\subsubsection{Process Virtual Machine vs System Virtual Machine}
+A livello applicazioni utente astraggo risorse virtuali per un processo (es JVM), una piattaforma virtuale che esegue processi individuali.\\ Fornisce un ambiente ABI o API vortuale per le applicazioni utente. Qui non si pone il problema di andare a virtualizzare le chiamate privilegiate, SO è lo stesso per tutte le risorse\\ Con virtualizzazione a livello di sistema, posso avere molteplici SO diversi: il virtual machine monitor gestisce insieme di risorse hardware condivise con altre VM e offre isolamento rispetto alle altre. In questo caso la VMM si fa da tramite per l'esecuzione di istruzioni privilegiate o operazioni che interagiscono direttamente con l'hardware condiviso: quando VM vuole eseguirne una, VMM la prende, ne checka la correttezza.
 \subsubsection{System-level virtualization}
 Host: piattaforma sulla quale vengono eseguite le VM, include la macchina fisica, il possibile OS ed il VMM.\\ Guest: il SO guest e le applicazioni eseguite nella VM.\\ Classificazione delle possibili soluzioni di virtualizzazione:
 \begin{itemize}
@@ -1561,7 +1561,16 @@ nota: se ho più comandi dello stesso tipo (es RUN), conviene scriverli tutti in
 \subsection{Applicazioni Docker multi-container}
 Docker compose per girare su un unico host, per orchestrare più nodi ho Swarm e Kubernetes.
 \subsubsection{Docker compose}
-Semplice specificare la composizione, si fa in file di supporto scritto in yaml: specifico i container che vanno istanziati e quali sono le relazioni fra essi.\\  Nella terminologia di compose, i container sono chiamati servizi, per ognuno indico l'immagine da cui derivano, il nome che assegno al container, comando eseguito, dipendenze e collegamenti.
+Semplice specificare la composizione, si fa in file di supporto scritto in yaml: specifico i container che vanno istanziati e quali sono le relazioni fra essi.\\  
+Comandi di base per Docker-compose: indico la composizione dei container in file yaml, di default ha nome docker-compose.yaml\\ docker-compose up avvia la composizione, mentre per fermarla docker-compose down.\\ File yaml: descrive la composizione dei container, nella terminologia di swarm i container sono chiamati services. Per ciascun container specifico:
+\begin{itemize}
+\item Immagine da cui deriva
+\item Nome del container (facoltativo)
+\item Comando da eseguire, per lanciare il servizio
+\item le dipendenze con gli altri container
+\item Link con gli altri servizi
+\item Specifica delle porte (binding della porta del container con la porta del sistema host)
+\end{itemize}
 \subsubsection{Vantaggi dei container}
 Uso dei container è quindi molto utile, posso incapsulare tutte le risorse in un unico package.\\ Sono tecnologia abilitante per micro-servizi e serverless computing.\\
 Migrazione: è possibile eseguirla come nel caso delle VM: salvo lo stato del container, lo trasferisco e riavvio. Ho ovviamente un downtime, ma posso usare soluzioni per migrare memoria come nelle VM.\\ Migrazione è più complicata, perché non c'è supporto diretto da parte di Docker engine, ma bisogna usare dei tool appositi: due tool principali sono CRIU e P-Haul:
@@ -1612,12 +1621,19 @@ Light virtualizaztion, molti esperimenti mostrano tempi medi di startup sono mig
 \subsection{Orchestrazione di container}
 Docker-compose permette di eseguire applicazione multi-container, ma sulla stessa macchina fisica. Orchestrazione permette di configurare, deployare, monitorare e controllare dinamicamente applicazioni containerizzate. Forniscono strumenti per gestire applicazioni basate su container, deployati su doversi nodi del sistema. Esistono diverse, soluzioni, le due più usate per applicazioni non cloud sono Docker swarm e Kubernetes, che possono anche essere messi a disposizione come servii Cloud.
 \subsubsection{Docker swarm}
-Permette di gestire cluster di Docker engines, detto swarm. Nel caso di Docker swarm i container che fanno parte dello stesso servizio sono chiamati task. Feature di Docker swarm:
+Swarm mode, incluso nativamente in Docker, permette di gestire cluster di Docker engine, andando ad istanziare container su diversi engine. S usa come terminologia il servizio, in Docker swarm i container che fanno parte dello stesso servizio sono detti task.\\ Docker swarm permette di
 \begin{itemize}
-\item Scalare numero di container dell'applicazione
-\item Gestire fallimento dei nodi che ospitano i container
+\item Scalare il numero di task, ovvero il numero di container
+\item Gestire il fallimento dei nodi che ospitano i container, andando a istanziare i container del nodo che ha subito il fallimento su altri nodi
+\item Creare rete di overlay fra i diversi servizi
+\item Load balacing, specificando come distribuire i container sui vari nodi
 \end{itemize}
-Swarm: insieme di host che hanno Docker engine installato e che vengono eseguiti in modalità swarm. Nodo è usato per denotare l'istanza di un singolo Docker engine. Per controllare istanziazione di un Docker engine c'è architettura master worker, dove master assegan i container ai diversi worker e di monitorarne il funzionamento, mentre worker eseguono i task. Architettura master-worker è la più usata nei SD, anche se non è la migliore, perché design è semplice. Master diviene single point of failure, quindi va ridondato salvando lo stato del master su dispositivo di memoria persistente, e collo di bottiglia, quindi servono tecniche per alleviare il problema.
+Swarm: insieme di host con Docker installato, eseguiti in modaltà swarm. Nodo = singolo Docker Engine, swarm controlla l'instanziazione dei Docker engine con architettura master worker:
+\begin{itemize}
+\item Manager o master: assegna i container ai nodi worker, monitora i worker per identificarne i fallimenti
+\item Nodi worker: eseguono i container
+\end{itemize}
+Stessa architettura è presente in Kubrenetes. È la più usata in tutti i SD, anche se non è la migliore, perché segue il principio KISS: cercare di tenere il design del sistema il più semplice possibile.\\ Svantaggio: master è single point of failure e collo di bottiglia, servono almeno tecniche di ridondanza a freddo del master per salvare lo stato, in modo poi da eleggere un nuovo master. Servono anche tecniche che cerchino di alleviare il troppo carico di lavoro.\\ Swarm permette di fare load balancing, principali comandi: istanzio il master col comando docker-swarm init: definisco IP del master. Con docker-swarm join faccio partecipare i worker.
 \subsubsection{Kubernetes}
 Sviluppato da Google, primo prodotto open-source che è stato reso disponibile da Google. Aveva già progettato due sistemi, Borg ed Omega da cui è derivato Kubernetes, servivano diversi sistemi di orchestrazione perché c'è stato grande shift verso conteinerizzaizone. Ogni settimana Google lancia più di 2 Miliardi di container.\\ Kubernetes serve per orchestrazioni di applicazioni di cluster multi-container ospitati su più nodi. Automatizza deploy, scaling e gestione delle applicazioni, facendo in modo di scalare dinamicamente in modo che se un container subisce un crash le applicazioni ospitate lì siano portate su altro container o che il container sia riavviato.\\ Caratteristiche:
 \begin{itemize}
@@ -1730,4 +1746,184 @@ Paragone fra i due:
 \item Orchestrazione è single point of failure e bottleneck, disaccoppiamento più leggero e più traffico di rete e latenza
 \item Coreografia: servizi devono conoscere la coreografia, serve fare lavoro extra per monitoring e track dei servizi. Implementazione dei meccanismi è più complesso
 \end{itemize}
+\subsection{Design pattern per micro-servizi}
+Esaminiamo alcuni design pattern (vedi ISPW) per micro-servizi, ne esistono numerosi
+\subsubsection{Circuit breaker}
+Problema: come evitare che una rete o servizio che fallisce (fallimento può essere del server, della VM, nella comunicazione di rete) causi fallimento in cascata di altri servizi?\\ Soluzione: interrompo il circuito tra il servizio che invoca ed il servizio che dovrebbe fornire la funzionalità. Introduco una sorta di micro-servizio proxy, il circuit breaker: se tutto funziona correttamente il circuit breaker fa da proxy. Se si verifica un errore, il circuito viene aperto, quindi l'interruttore è aperto e si disaccoppia chi invoca il servizio da chi lo offre. Circuit breaker tiene traccia del n° di invocazioni fatte al servizio, se invocazioni non hanno successo e numero di invocazioni consecutive che non hanno successo supera soglia, che di solito è configurata, circuit breaker apre interruttore per un certo periodo di tempo. Client saprà che servizio è inaccessibile, mentre circuit breaker proverà a ricontattare servizio fallito. Una volta che servizio torna ad essere accessibile, il circuit breaker richiude l'interruttore e quindi riprende il normale funzionamento della comunicazione tra il micro-servizio client e quello invocato. Se invece mirco-servizio invocato continua a fallire, viene nuovamente riaperto l'interruttore per un certo periodo di tempo.\\ Tipicamente n° tentativi che vengono effettuati dal circuit breaker è configurato staticamente, così come timeout, si può pensare a soluzioni in cui questi valori siano configurati dinamicamente con controllore adattativo.
+\subsubsection{Database per service}
+Problema: quale architettura di database usare per applicazione a micro-servizi?\\ Soluzione: avere un layer di persistenza realizzato dal database (può essere anche datastore noSQL) privato per singolo, accessibile solo tramite API realizzata appositamente per il singolo micro-servizio.\\ Suppongo di avere applicazione di e-commerce: un micro-servizio gestisce gli ordini ed uno gestisce gli utenti, ciascuno accederà in maniera privata al proprio DB, vuol dire almeno avere le proprie tabelle private a cui ciascun servizio accede (non per forza un intero DBMS a disposizione).\\ Vantaggi:
+\begin{itemize}
+\item Disaccoppiamento tra i servizi
+\item Posso usare il DB più indicato per il tipo di servizio: posso usare un DB relazionale o datastore a documenti per gestire l'ordine ed usare un datastore orientato a colonne per gestire i customer.
+\end{itemize}
+Svantaggi:
+\begin{itemize}
+\item È più complesso implementare le transazioni che coinvolgono più di un servizio, quindi molteplici database o tabelle. Per realizzare transazioni distribuite, c'è a disposizione altro pattern
+\end{itemize}
+\subsubsection{Pattern Saga}
+Pattern più complesso e articolato, permette di gestire transazioni distribuite. Problema: ogni servizio ha il suo DB, ma alcune transazioni coinvolgono più servizi, voglio semantica ACID, ovvero o tutti i micro-services riescono oppure c'è rollback.\\ Soluzione: ciascuna transazione è implementata come una saga, sequenza di transazioni locali. Ciascuna transazione locale aggiorna il DB con l'esito della transazione locale e pubblica il risultato oppure invia un trigger a quella successiva. Nel caso in cui una transazione locale fallisca: la saga fa l'undo dei cambiamenti locali.\\ Come coordinare la saga:
+\begin{itemize}
+\item Coreography: ogni transazione locale pubblica eventi che triggerano le transazioni locali di altri servizi
+\item Orchestration: un orchestratore dice ai partecipanti quale transazione locale deve eseguire
+\end{itemize}
+esempio di Saga con orchestrazione (usato anche pattern event sourcing): arriva richiesta di ordine per un e-commerce. Ciascun micor-servizio gestisce la propria tabella in maniera privata. L'ordine viene inoltrato dal micro-servizio degli ordini all'orchestratore del pattern Saga che avvia il coordinamento della transazione distribuita, andando a memorizzare ciò che sta facendo in un log privato. Quando l'inserimento va a buon fine, viene registrato il fatto che si arriva l'ordine, quindi servizio di ordine porta a compimento la sua transazione locale, viene salvato nella tabella ordini. Questo viene comunicato all'orchestratore, che memorizza nel suo log che il micro-servizio order e da il La al prossimo servizio. Micro-servizio di pagamento registra che il cliente deve pagare tot (c'è un event store in cui ogni servizio ha una tabella privata), quindi servizio memorizza nella tabella privata l'informazione e comunica all'orchestratore. Viene quindi attivata la 3° transazione, relativa al magazzino ed in questo caso non c'è disponibilità del prodotto richiesto. Quindi servizio fallisce, occorre fare annullamento delle transazioni. Viene registrata la transazione all'interno di un abort, ed ora bisogna fare rollback delle due transazioni precedenti, invierà ai due servizi una richiesta di compensazione per l'ordine e per il pagamento, in modo che questi cancellino dall'event store gli eventi relativi alle due transazioni. Quindi termina la Saga relativa alla gestione di questo ordine.
+\subsubsection{Monitoraggio di micro-servizi}
+Per servizi distribuiti a larga scala è difficile effettuare monitoring:
+\begin{itemize}
+\item Performance e latenza
+\item Monitoring di transazioni
+\item Root cause analysis: posso vedere effetto del ritardo su un determinato micro-servizio, ma magari probelma è su un micro-servizio che sta più un alto nella catena.
+\item Service dependency analysis
+\item Distributed context propagation
+\end{itemize}
+Due pattern per fare questo
+\subsubsection{Log aggregation}
+Problema: come fare a capire il comportamento di un'applicazione e fare troubleshooting? \\ Soluzione: introduco servizio di logging centralizzato che aggrega i log di ciascuna istanza di micro-servizio. Gli utenti (admin dell'applicazione) hanno in un repository centralizzato tutto il log, possono andare ad analizzare i singoli log e configurare sistema di alter sul log che triggera degli eventi.\\ Svantaggio: è tutto centralizzato su un singolo servizio e la gestione dei log può essere piuttosto complessa perché volume dei log può essere significativo.
+\subsubsection{Tracing distribuito}
+Servizio di strumentazione che 
+\begin{itemize}
+\item Assegna a ciascuna richiesta esterna un unico ID esterno, in modo che ciascun micro-servizio può registrare nel suo log a quale specifico ordine era relativo un pagamento (sto sempre nell'esempio dell'e-commerce).
+\item L'id esterno viene passato a tutti i servizi che sono coinvolti nella gestione del servizio
+...
+\end{itemize}
+(vedi slides)\\
+Ci sono dei tool per il tracing distribuito, i framework principali per micro-servizi hanno un tracing già predisposto, o è possibile integrarli con dei tool ad hoc.\\ Tool più famoso è Dapper, tool di Google usato in production per tracing distribuito.\\ Ci sono poi vari tool open source. 
+\subsubsection{Esempi di applicazioni a micro-servizi}
+Esempio 1: sock shop. Shop online per la vendita di calzini.\\ DIversi linguaggi di sviluppo, sono applicazioni poliglotte: in questo modo si sfruttano al meglio le varie capacità del linguaggio.\\ Alcuni servizi hanno il loro DB, inoltre cambia il tipo di datastore per i singoli servizi: avrò diverse caratteristiche adatte per la specifica funzionalità del micro-servizio: avrò ad esempio MongoDB (datastore noSQL orientato ai documenti) per ordini carrello etc..., MongoDB sava documenti, tipicamente in formato Json. In questo modo, posso ricercare ad esempio utenti per campi come l'indirizzo etc...\\ Tra il front-end e gli altri micro-servizi non c'è coda di messaggi intermedia, si sfrutta REST API in questo caso, che viene esposta da ogni servizio.\\ Per la gestione della consegna si usa una coda di messaggi.\\ In questo caso, costruito con SpringBoot, Go e Node.js, è applicazione cross-platoform, si può fare deploy su diversi orchestratori. Tutti i servizi comunicano con REST su HTTP.\\ Esempio 2: online boutique di Google, demo per Kubernetes. Composto da vari micro-servizi: sono scritti in diversi linguaggi di programmazione, in particolare Go. Usato redis come DB di backend: datastore di tipo key-value, informazioni del carrello memorizzate in un aggregato che ha unique ID per singolo utente nella sessione di utilizzo. A differenza dell'esempio 2, in questo caso la comunicazione avviene con gRPC, che permette la comunicazione di end-point poliglotti.\\ Spiegato nella documentazione come effettuare il deploy su Kubernetes, altri framework usati tra cui Istio: supporta lo sviluppo di service mash, si integra con Kubernetes per ampliarne alcune feature, tra cui implementazione di soluzioni di load balancing per le repliche dello stesso servizio. OpenCensus: tracing, effettua logging per il singolo micro-servizio.\\
+\subsubsection{Timeline dei microservizi}
+Possiamo identificare 4 generazioni di microservizi
+\begin{itemize}
+\item 1° generazione: virtualizzazione basata su container, framework per service discovery (come Zookeeper) in modo da permettere la comunicazione con binding dinamico. Esempi di framework per service discrovery: Eureka ed etcd.\\ Altra soluzione usata sono framework per il monitoraggio, tra cui ad esempio Prometeus ed InfluxDB (DB orientato alle time series). Inoltre orchestratori, per poter sviluppare applicazioni multi-container su più nodi.
+\item 2° generazione: Servizi di discovery e librerie per la comunicazione tolleranti ai guasti, nella 1° generazione tolleranza ai guasti è a carico dello sviluppatore.\\ Esempi di framework per fault tollerance: Consul, Finagle, Hystrix (sviluppata da Netflix), implementa già dei meccanismi del pattern circuit breaker nella libreria, che permette di evitare failure in cascata.
+\item 3° generazione: tecnologie basate su sidecar, incapsula in un sidecar alcune feature, messi vicino ad ogni micro-servizio. In particolare, sidecar incapsula tecnologie per discovery, fault tollerance e routing del traffico, peremtte riuso di codice e evita che lo sviluppatore debba scrivere queste funzionalità
+\item 4° generazione: serverless computing: sviluppo solo singole funzionalità, senza dovermi occupare della gestione dell'infrastruttura sottostante. Ambiente totalmente gestito dal cloud provider, o dai framework opne source di tipo FaaS (Function as a Service).
+\end{itemize}
+\subsection{Serverless computing e FaaS}
+(slides)
+Caratteristiche del serverless computing:
+\begin{itemize}
+\item Le risorse di computazione usate per servire le richieste sono effimere: tempo di vita delle risorse è breve, può essere breve quanto la durata della singola funzione
+\item Per le singole funzioni l'elasticità è gestita completamente dal cloud privider
+\item Utente può specificare solo dei requisiti su quelle che sono la quantità di risorse allocabili per le singole funzioni. Alcuni cloud provider permettono solo di scegliere la memoria RAM e danno in proporzione la CPU (vedi servizio Lambda di AWS)
+\item Vero pay-per-use: si paga solo l'effettivo tempo di computazione utilizzato.
+\item È event driven: funzioni attivate in seguito di un evento, che può essere generato dalla richiesta di un utente o da un trigger che arriva da un altro servizio di storage o da un sistema a code di messaggi
+\item Semplifica il processo di deployment in production: scalabilità, capacità di planning etc..
+\end{itemize}
+I maggiori cloud provider offrono FaaS: IBM, Google, Azure, Amazon etc...\\ Limiti attuali: serverless è un trend recente, presenta alcune limitazioni:
+\begin{enumerate}
+\item Le funzioni, al momento dell'invocazione, se non esiste container o micro-VM che andrà ad eseguire la funzione, sperimentano tempo di latenza bello greve. Bisogna istanziare container e contesto (tutti i file di librerie etc necessarie all'app) della funzione o la micro-VM (vedi Amazon firecraker). Per evitare che ci siano fenomeni d invocazione continua di funzioni,ed ognuna sperimenti il cold start, una volta che è stato effettuato deployment, il cloud provider mantiene le risorse in stand-by. Vi è però limitazione, tipicamente c'è lifetime all'ambiente di esecuzione della funzione, che varia a seconda del provider, ma è dell'O(Min), per Amazon ad esempio 15 min.
+\item Scelta del linguaggio: cloud provider supportano solo un determinato sotto-insieme dei linguaggi, ho dei vincoli a seconda del cloud provider. A seconda del linguaggio, cambiano le prestazioni.
+\item Limiti delle risorse: bottleneck legati alle operazioni di I/O, nel momento in cui bisogna effettuare operazioni di I/O, dipenderà da dove è stata deployata l'applicazione, all'interno del data center selezionato.
+\item Vendor lock-in: problema importante del cloud, cambia l'API esposta dai singoli provider per l'invocazione delle funzioni
+\item Limiti nella comunicazione tra funzioni differenti
+\item Non c'è hardware specializzato: a differenza di EC2, in cui ad esempio possiamo avere GPU, nel caso del FaaS non è possibile scegliere hardware specializzato su cui effettuare deployment della funzione; per alcuni provider viene offerto slice di CPU hyperthreaded
+\end{enumerate}
+Altro aspetto rilevante è la possibilità di comporre funzioni serverless, ovvero compongo fra loro funzioni semplici componendo pipe di funzioni, con la possibilità di usare nel workflow costrutti specifici, ad esempio invocazioni a seconda dei risultati delle funzioni precedenti, gestire pattern di esecuzione. Diversi framework per FaaS, per realizzarlo anche in ambiente cloud privata:
+\begin{itemize}
+\item Apache OpenWhisk
+\item OpenFaaS
+\item Nuclio
+\item Fission
+\item ...
+\end{itemize}
+Differiscono per il linguaggio supportato, per la possibilità dello scale to 0, ovvero di avere le funzioni pari a 0 come numero di repliche o avere almeno una istanza sempre attiva di ciascuna funzione invocata dagli utenti.
+\subsubsection{OpenWhisk}
+Open source, distribuito. SI basa su container Docker, che saranno orchestrati sul singolo nodo con Docker-compose o con Kubernetes, può essere eseguito su Mesos.\\ I developers devono scrivere la logica delle funzioni, che verranno shcedulate in modo dinamico da OpenWhisk ed attivate in corrispondenza di trigger specifici, ad esempio da eventi esterni o da richieste HTTP. Le funzioni sono componibili, c'è composer ad hoc che permette di gestire la composizione di funzioni usando una API messa a disposizione. OpenWhisk ha al suo interno un proxy, che è Nginx, per fare da dispatcher delle richieste verso gli altri componenti. OpenWhisk usa Kafka per gestire la distribuzione degli eventi e CouchDB come datastore noSQL per gestire aspetti di sicurezza delle funzioni.
+\subsubsection{OpenFaaS}
+Framework che utilizza diversi framework open source, tra cui
+\begin{itemize}
+\item Prometeus: per fare scale in/out
+\item NATS: sistema pub/sub
+\item Gateway: nodo centralizzato che fa da smistatore di richieste. Questo componente centralizzato è un po' il limite di tutte le piattaforme FaaS open source.
+\end{itemize}
+\section{Sincronizzazione e coordinazione nei Sistemi Distribuiti}
+In un SD, c'è necessitò di gestire il tempo: se considero applicazione distribuita e SD ci sono aspetti di comunicazione nel SD, obiettivo è quello di far comunicare i componenti fra loro in modo da portare a termine una computazione. Comunicazione avviene con scambio di messaggi, molti degli algoritmi distribuiti o delle computazioni distribuite richiedono sincronizzazione, ovvero richiedono una nozione comune di tempo per i diversi processi in esecuzione sui vari nodi. Tempo è fattore critico nel SD: in un sistema centralizzato, è possibile stabilire l'ordinamento fra gli eventi basandosi sul clock del nodo centrale.\\ IN un SD, non è possibile avere un unico clock fisico comune a tutti i nodi del sistema, ma comunque l'obiettivo è vedere la computazione portata avanti come un ordine totale di eventi. Soluzioni per affrontare il probelma di gesitoen del tempo sono due
+\begin{itemize}
+\item Nozione di tempo fisico: sincronizzo i clock fisici dei diversi nodi che compongono il SD. In ciascun nodo, in particolare la aprte del middleware di sincronizzazione aggiusterà il valore del proprio clock fisico in modo coerente.
+\item Nozione di tempo logico: sincronizzo gli orologi logici, Lamport ha dimostrato come in un SD non sia necessaria la sincronizzazione degli orologi fisici. Tempo logico è concetto fondamentale nei SD
+\end{itemize}
+\subsection{Modello della computazione}
+Componenti del SD: N nodi e canali di comunicazioni, ogni processo p$_i$ (1 $\leq$ i $\leq$ N) genera una sequenza di eventi
+\begin{itemize}
+\item Eventi interni: eventi che determinano un cambiamento dello stato del processo
+\item eventi esterni: eventi con cui il processo comunica tramite scambio di messaggi con gli altri processi, send or receive di messaggio.
+\end{itemize}
+Notazione per gli eventi: $e_{i}^k$: k-esimo evento evento generato dal nodo p$_i$. L'evoluzione della computazione viene visualizzata su un diagramma spazio-tempo: indico con la freccia ed il pedice i l'esistenza di una relazione di ordinamento tra due eventi di uno stesso processo: e $\rightarrow_i$ e' se e solo se e è avvenuto prima di e' nel processo i.\\ Ogni processo etichetta gli eventi con un timestamp, in modo da realizzare una storia globale del sistema.
+\subsubsection{SD sincroni ed asincroni}
+Differenze fra i due:\\
+SD sincrono, 3 proprietà
+\begin{itemize}
+\item esistono dei vincoli sulla velocità di esecuzione di ciascun processo che fa parte del SD sincrono. Il tempo di esecuzione di ciasun passo della computazione è limitato all'interno di una finestra con upper e lower bound
+\item Ciascun messaggio trasmesso su un canale di comunicazione è ricevuto in un tempo limitato (es in max 200 ms)
+\item Ciascun processo ha un clock fisico ha un tasso di scostamento (clock fisici non sono ideali), tasso di accelerazione  o decelerazione rispetto ad un clock reale si chiama drift rate, reale e conosciuto.
+\end{itemize}
+Sd asincrono: non ha vincoli sulla velocità di esecuzione di ciascun processo, sul ritardo di trasmissione dei messaggi e sul tasso di scostamento dei clock.
+\subsubsection{Soluzioni per sincronizzare i clock}
+Prima soluzione: tentare di sincronizzare i clock fisici con una certa approssimazione, e quindi posso usarlo per far si che un processo etichetti i suoi eventi con timestamp, che risulterà sincronizzato con gli altri eventi degli altri processi. Problema: se SD è asincrono, la certa approssimazione non si riesce più a mantenere limitata i quanto non vale il 3° vincolo che vale nei SD sincroni.
+\subsection{Clock fisico}
+All'istante di tempo reale t, il SO legge il tempo dal clock hardware H$_i$(t) del computer, Produce quindi il clock software C$_i$(t) = aH$_i$(t) + b che approssimativamente misura l'istante di tempo fisico per il determinato processo eseguito su quel nodo. Il valore C$_i$(t) è tipicamente numero a 64 bit che fornisce il tempo in nanosecondi trascorsi fino a quel punto.\\ In generale il clock non è completamente accurato, può essere diverso da t, ma se si comporta abbastanza bene può essere usato come timestamp per gli eventi del nodo. \\ Per poterlo usare, il tempo che intercorre tra due aggiornamenti deve essere: T$_{risoluzione}$ $<$ $\Delta_T$ tra i due eventi.\\ In un SD i clock fisici posso avere diversi valori
+\begin{itemize}
+\item Skew: differenza istantanea fra il valore di due qualsiasi clock
+\item Drift: i clock contano il tempo con frequenze differenti, quindi nel tempo divergono rispetto al tempo reale
+\item Drift rate: differenza per unità di tempo di un clock rispetto ad un orologio reale. esempio: clock con drift rate di 2$\mu$sec/sec vuol dire che il clock si discosta dal valore effettivo che dovrebbe misurare di 2$\mu$sec per ogni secondo.
+\end{itemize}
+In un orologio al quarzo si devia di circa un secondo in 10/11 giorni. Per clock ad alta precisione abbiamo drift rate di $10^{-7}$ o  $10^{-8}$ sec/sec\\ Anche se i differenti clock di un SD vengono sincronizzati inu n certo istante, a causa del drift rate, questi saranno nuovamente de sincronizzati, occorre quindi ri sincronizzare.
+\subsubsection{UTC}
+Universal Coordinated Time, standard internazionale per mantenere il tempo. È basato sul tempo atomico, ma occasionalmente viene corretto usando il tempo astronomico. \\ 1 sec = tempo impiegato dall'atomo di Cesio 133 per eseguire un bel numero di transizioni di stato.\\ I clock fisici che usano oscillatori atomici sono i più precisi ed accurati. \\ Output dell'orologio possono essere inviati in broadcast da stazioni radio su terra e da satelliti. I nodi con ricevitori possono sincronizzare i loro clock con questi segnali, a seconda della fonte del segnale ci sarà una maggiore o minore accuratezza, se arriva da satellite è più accurato.
+\subsubsection{Sincronizzazione del clock fisico}
+Come sincronizzare i clock fisici con gli orologi del mondo reale? Sincronizzazione esterna: se i clock sono sincronizzati con una sorgente di tempo S, questo in modo che $\forall$ C$_i$: $|S(t) - C_i(t)| \leq \alpha$, con $\alpha$ $>$ 0.\\ Sincronizzazione interna: i clock sono sincronizzati l'uno con l'altro. Se considero il clock C$_i$ e C$_j$ questi sono sincronizzati se $|C_i(t) - C_j(t)| \leq \pi$ per tutte le coppie di clock. (vedi slides)\\ Sincronizzazione interna ed esterna non si implicano a vicenda: se c'è sincronia esterna, allora saranno anche sincronizzati internamente, ma non vale il viceversa, perché tutti i clock che sono sincronizzati internamente potrebbero deviare rispetto alla fonte S esterna.\\ Se l'insieme dei processi è sincronizzato internamente con precisione $\alpha$, allora lo è internamente con precisione 2$\alpha$.\\ Clock hardware H è corretto se il suo drift rate si maneitene in un intervallo $\rho$ $>$ 0. Se clock H è corretto, l'errore che si commette nel misurare un intervallo di istanti reale [t, t'] (t' $>$ t) è limitato (vedi slides).\\ Siccome i diversi clock fisici possono essere reaizzati con materiali differenti e quindi avere diverso drift rate, vanno periodicamente sincronizzati. Se due clock hanno lo stesso tasso di scostamento massimo da UTC, che sia pari a $\rho$, quindi dopo $\Delta$t si saranno scostati di 2$\rho$. Per garantire che i due clock non differiscano per più di $\delta$, i clock vanno sync ogni (vedi slides).
+\subsubsection{Sincronizzazione interna in SD sincrono}
+Algoritmo di sincronizzazione interna tra due processi
+\begin{itemize}
+\item Processo 1 manda il suo clock t locale al processo due in un messaggio
+\item Processo 2 imposta il suo clock locale al tempo contenuto nel messaggio + il tempo di trasmissione. Vale il vincolo sul tempo di trasmissione, che sarà limitato (ma non è noto) in t$_{min}$ e t$_{max}$. u = (t$_{max}$ - t$_{min}$), se il processo due imposta il suo clock a t + $\frac{t_{max} - t_{min}}{2}$ il lower bound ottimo sullo skew sarà pari ad $\frac{u}{2}$
+\end{itemize}
+Si può generalizzare per sincronizzare tra n processi e si vede che l'ottimo sullo skew sarà pari a $\frac{u}{1 - \frac{1}{N}}$. IN un SD sincrono, l'algoritmo non è più utilizzabile, in questo caso t$_{trasm}$ = t$_{min}$ + x, con x $\geq$ 0, ma non noto.
+\subsection{Sincronizzazione mediante time service}
+Time service può fornire l'ora con precisione, server dotato di ricevitore UTC o clock accurato.\\ Gruppo di rpocessi che deve sync usa il time service, che può essere realizzato o in modo centralizzato o può essere distribuito.\\ Time service centralizzato
+\begin{itemize}
+\item Request-driven: algoritmo di Cristian
+\item Broadcast-based: algoritmo di Berkeley-UNix
+\end{itemize}
+Time service distribuito: NTP
+\subsubsection{Algoritmo di Cristian} 
+Un time server S, centralizzato e passivo riceve il segnale da una sorgente UTC. Un processo p richiede il tempo con un messaggio m$_r$ e riceve t nel messaggio m$_t$ da S.\\ P imposta il suo clock a t + $\frac{T_{round}}{2}$, dove T$_{round}$ è l'RTT misurato da p. Osservazioni:
+\begin{itemize}
+\item Il tempo di elaborazione sul time server è prossimo sa 0, visto che imposto il tempo come t + $\frac{T_{round}}{2}$
+\item Algoritmo è adatto nel caso in cui valore di RTT è basso ,quindi in rete a bassa latenza (LAN) o introduco errore che può essere importante
+\item Un singolo server potrebbe guastarsi, come soluzione si può introdurre un gruppo di time server sincronizzati
+\item Se time server viene corrotto, invia valore errato del clock e l'algoritmo non ne tiene conto
+\end{itemize} È un algoritmo di sincronizzazione esterna, calcolo l'accuratezza offerta:
+\begin{itemize}
+\item Caso 1: S non può mettere t in m$_t$ prima che sia trascorso un tempo minimo dalla trasmissione del messaggio di chiesta da parte del processo p, dove il tempo min è il tempo che trascorre nella trasmissione del messaggio da p ad S.
+\item Caso 2: S non può mettere il valore di t nel messaggio di risposta dopo il momento in cui m$_t$ arriva a t meno min.
+\end{itemize}
+Calcolo il tempo S quando m$_t$ arriva a p è compreso in [t + min, t + T$_{round}$ - min], ampiezza dell'intervallo è  T$_{round}$ - 2mim; accuratezza sarà $\leq$ +-($\frac{T_{round}}{2}$), permette una certa accuratezza solo se T$_{round}$ è piccolo
+\subsubsection{Algoritmo di Berkeley}
+Sincronizzazione interna di un gruppo di server, di cui uno è il master e gli altri sono i worker. Master fa da time server attivo e coordina la sincronizzazione. All'Avvio dell'algoritmo, master richiede in broadcast il valore del clock, una volta ricevuti i valori dei clock usa l'RTT per stimare i valori dei block dei worker, usando criterio simile all'algoritmo di Cristian: $d_i = (\frac{C_M(t_1) + C_M(t_3)}{2} - C_i(t)$, quindi manderà a tutti i nodi il valore del clock che devono impostare per essere sincronizzati fra loro.\\ Se il valore correttivo richiede un salto all'indietro, il nodo che lo riceve rallenterà in modo da sincronizzarsi (altrimenti i timestamp vecchi verrebbero riconsiderati): rallentare un clock vuol dire quindi mascherare una serie di interrupt, il numero di interrupt mascherati è pari al tempo di slow down diviso il periodo di interrupt del processore.\\ Precisione dell'algoritmo di Berkeley dipende da un RTT nominale massimo, il master non considera valori di clock associati ad RTT superiori al massimo.\\ Algoritmo è più tollerante ai guasti: se master crasha, possiamo usare algoritmo di elezione per eleggere nuovo master, inoltre è anche più robusto per i valori errati dei clock dei worker (che possono farlo in modo malevolo), in quanto questo può considerare un sottoinsieme dei valori dei worker scartando gli outlayer (valori che si discostano troppo dalla media)
+\subsubsection{NTP}
+Netowrk Time Protocol, usato in Internet. Offre sync esterna accurata rispetto ad una sorgente UTC. È un servizio configurato ed attivo sul computer (demone attivo). Aspetto fondamentale di NTP: il time server è distribuito, con architettura composta da molteplici time server, architettura è altamente disponibile e scalabile. Architettura gerarchica, molteplici time server ridondanti e diversi path di comunicazione.
+\begin{itemize}
+\item Time server del primo livello sono i server primari connessi a sorgenti UTC
+\item Livello due ci sono server secondari, sincronizzati rispetto ai primari
+\item Server foglia: eseguiti sulle macchine degli utenti, che si sync rispetto ai server secondari.
+\end{itemize}
+Le sorgenti di tempo sono autenticate, quindi NTP soddisfa requisiti di sicurezza. Architettura è altamente disponibile, perché in seguito a fallimenti si può riconfigurare la gerarchia: se server primario perde la connessione diventa server secondario, mentre se server secondario perde connessione si collega ad altro server di livello 1. È un sistema auto-adattativo che si riconfigura da solo.\\ Supporta 3 modi di sync, usano tutti UDP perché è fondamentale evitare latenze
+\begin{itemize}
+\item Multicast: server sono all'interno di LAN ad alta velocità che invia il suo tempo in multicast agli altri, che impostano il valore ricevuto assumendo un certo ritardo di trasmissione.
+\item Procedure call: un server accetta richieste da altri computer (come nell'algoritmo di Cristian). L'accuratezza è maggiore rispetto al multicast, inoltre   è utile se non è disponibile il multicast.
+\item Simmetrico: coppie di server scambiano messaggi contenenti informazioni sul timing, l'accuratezza è molto alta per i livelli alti della gerarchia
+\end{itemize}
+Scambio in modo simmetrico: in particolare usato nei livelli altri della gerarchia (nel livelli basi si usano gli altri due). I server si scambiano coppie di messaggi (m,m') per migliorare l'accuratezza della loro sync.\\ Ogni messaggio NTP contiene timestamp di eventi recenti
+\begin{itemize}
+\item Tempo locale di send (T$_{i-1}$) del messaggio m'
+\item Tempo locale di send (T$_{i-3}$) e di receive (T$_{i-2}$) del messaggio precedente m.
+\end{itemize}
+Il ricevente di m' registra il tempo locale T$_i$ (conosce quindi una 4-pla di valori), il tempo tra l'arrivo di m e l'invio di m' può essere non trascurabile.\\ Accuratezza: Per ogni coppia di messaggi m ed m', NTP stima l'offset o$_i$ tra i due clock. Assumendo che:
+\begin{itemize}
+\item o: offset reale del clock di B rispetto ad A
+\item t e t': tempi di trasmissione di m ed m' abbiamo
+T$_{i-2}$ =  T$_{i-3}$ + t + o e T$_i$ = T$_{i-1}$ + t' + o
+\end{itemize}
+(vedi slides). \\ Server NTP si scambiano queste coppie di messaggi e usano algoritmo di filtraggio statistico sulle 8 coppie (o$_i$, d$_i$) più recenti, scegliendo come stima di o il valore di o$_j$ corrispondente al minimo d$_j$. Applicano poi un algoritmo di selezione dei peer per modificare eventuale il peed da usare per sincronizzarsi. Accuratezza è di circa 10 ms su Internet e 1 ms in LAN.
 \end{document}
