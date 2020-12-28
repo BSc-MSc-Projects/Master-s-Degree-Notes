@@ -1922,8 +1922,282 @@ Scambio in modo simmetrico: in particolare usato nei livelli altri della gerarch
 Il ricevente di m' registra il tempo locale T$_i$ (conosce quindi una 4-pla di valori), il tempo tra l'arrivo di m e l'invio di m' può essere non trascurabile.\\ Accuratezza: Per ogni coppia di messaggi m ed m', NTP stima l'offset o$_i$ tra i due clock. Assumendo che:
 \begin{itemize}
 \item o: offset reale del clock di B rispetto ad A
-\item t e t': tempi di trasmissione di m ed m' abbiamo
+\item t e t': tempi di trasmissione di m ed m', abbiamo\\
 T$_{i-2}$ =  T$_{i-3}$ + t + o e T$_i$ = T$_{i-1}$ + t' + o
 \end{itemize}
-(vedi slides). \\ Server NTP si scambiano queste coppie di messaggi e usano algoritmo di filtraggio statistico sulle 8 coppie (o$_i$, d$_i$) più recenti, scegliendo come stima di o il valore di o$_j$ corrispondente al minimo d$_j$. Applicano poi un algoritmo di selezione dei peer per modificare eventuale il peed da usare per sincronizzarsi. Accuratezza è di circa 10 ms su Internet e 1 ms in LAN.
+(vedi slides). \\ Server NTP si scambiano queste coppie di messaggi e usano algoritmo di filtraggio statistico sulle 8 coppie (o$_i$, d$_i$) più recenti, scegliendo come stima di o il valore di o$_j$ corrispondente al minimo d$_j$. Applicano poi un algoritmo di selezione dei peer per modificare eventuale il peed da usare per sincronizzarsi. Accuratezza è di circa 10 ms su Internet e 1 ms in LAN, può sembrare ok ma gli eventi avvengono anche nell'ordine del $\mu$sec o nsec.
+\subsubsection{Google's TrueTime}
+Meccanismo di sincronizzazione fisica, definito durante lo sviluppo di spanner. TT si basa su una sync ben ingegnerizzata disponibile per tutti i server grazie a numerosi clock GPS e clock atomici, quinid è richiesto hardware specializzato ed un protocollo di sync proprietario, quindi questo è una cosa non fattibile per molti sistemi. Google usa algoritmo per raggiungere sync tra i server dei suoi data center che sono collegati con rete a fibra ottica ad alto throughput.
+\subsubsection{Tempo nei SD asincroni}
+Nei SD asincroni i tempi di trasmissione non sono sempre predicibili, per questo non è possibile ordinare gli eventi che accadono in processi diversi usando il tempo fisico. Ciò che di solito interessa è che i processi concordino sull'ordine in cui si verificano gli eventi, piuttosto che sul tempo in cui sono avvenuti. Siccome non sono soddisfatti i vincoli che valgono per SD sincroni, qui non è sempre possibile ordinare gli eventi che accadono sui diversi nodi usando tempo fisico
+\subsection{Tempo logico}
+Idea è usare un ordinamento degli eventi basato su due osservazioni
+\begin{itemize}
+\item Due eventi avvenuti sullo stesso processo, l'ordine con cui si verificano è quello con cui il processo li ha osservati
+\item Quando un messaggio viene inviato da un processo p$_i$ ad un processo p$_j$, l'evento send precede sempre quello di receive.
+\end{itemize}
+Lamport introduce concetto di relazione happened-before o relazione causale, possiamo ordinare gli eventi in relazione causa-effetto fra loro. La relazione di happened-before si indica con una freccia $\rightarrow$, per dire che  A $\rightarrow$ B, ovvero A è in relazione con B, si sua il pedice sulla feccia per indicare il processo i-esimo.\\ Relazione è di ordinamento parziale: se e $\rightarrow$ e' valgono le 3 proprietà:
+\begin{itemize}
+\item $\exists$ p$_i$ $|$ e $\rightarrow_i$ e'
+\item e = send(m) ed e' = receive(m) allora e precede e'
+\item $\exists$ e, e', e'' $|$ e $\rightarrow_i$ e' ed e' $\rightarrow_i$ e'', allora c'è transitività
+\end{itemize}
+Data una sequenza di eventi che avvengono su molteplici processi, posso costruire una sequenza di eventi casualmente ordinati rispettando queste proprietà.\\ Presa una qualunque coppia di eventi,non è detto che questi siano legati in una relazione happened-before, quindi diciamo che i due eventi sono concorrenti, indicando col simbolo $||$. È possibile trovare diverse sequenze di relazione happened-before nello stesso insieme di processi.
+\subsubsection{Clock logico scalare}
+Contatore software che cresce in modo monotono, il cui valore non è legato al clock fisico. Ogni processo che interviene nelle computazione distribuita avrò il proprio clock logico e lo userà per applicare il timestamp agli eventi. Denotiamo con L$_i$(e) il timestamp sul clock logico applicato dal processo p$_i$ su e.\\ Proprietà: se e $\rightarrow$ e' allora L(e) $<$ L(e'), ma non vale il viceversa ma dire questo implica che e non precede e'. Introduce una relazione d'ordine parziale degli eventi: nel caso di eventi concorrenti, non posso stabilire quale evento avviene effettivamente prima.\\ Algoritmo di Lamport:
+\begin{itemize}
+\item Ogni processo p$_i$ inizializza il valore di L$_i$ a 0
+\item Il valore viene incrementato se accade un evento esterno o se accade un evento di send or receive. In particolare L$_i$ è incrementato di 1 prima che p$_i$ esegua l'evento, sia interno, sia esterno di send o receive.
+\item Quando p$_i$ invia un messaggio m a p$_j$:
+\begin{itemize}
+\item Incrementa il valore di L$_i$
+\item Allega al messaggio m il timestamp t = L$_i$
+\item esegue l'evento send(m)
+\end{itemize}
+\item Quando p$_j$ riceve m con il timestamp t:
+\begin{itemize}
+\item Aggiorna il clock L$_j$ (vedi slides)
+\end{itemize}
+\end{itemize}
+(vedi slides)
+Usando il clock logico scalare, due o più eventi possono avere lo stesso timestamp, quindi oltre a questo usiamo il numero del processo su cui è avvenuto l'evento. Relazione d'ordine è totale se L$_i$(e) $<$ L$_i$(e') oppure L$_i$(e) = L$_i$(e') e (vedi slides).\\ Problema del clock logico scalare è che la relazione di happened-before e valore del clock logico vale solo verso destra: se e $\rightarrow$ e' allora L(e) $<$ L(e'). Quindi, non è possibile stabilire la concorrenza fra due eventi guardando solo il clock logico scalare, quindi è stato esteso il concetto di clock logico vettoriale
+\subsubsection{Clock logico vettoriale}
+Vettore posseduto da ciascun processo che fa parte della computazione distribuita, dove il clock logico vettoriale ha tante entry quanti sono i processi. Denotato con V$_i$, dove per il processo p$_i$ la componente i-esima sarà il valore del clock locale. Ciascun processo usa il clock vettoriale per assegnare i timestamp agli eventi. Anche in questo caso il valore del timestamp sarà allegato al messaggio, ma questa volta si possono catturare completamente le caratteristiche della relazione happened-before, perché vale il se e solo se: e $\rightarrow$ e' se e solo se V(e) $<$ V(e').\\ Dato il clock logico vettoriale V$_i$:
+\begin{itemize}
+\item V$_i$[i] è il numero di eventi generati da p$_i$
+\item V$_i$[j], con i $\neq$ j, p il numero di processi occorsi a p$_j$ di cui p$_i$ ha conoscenza.
+\end{itemize}
+Come confronto due clock vettoriali
+\begin{itemize}
+\item V = V' se e solo se $\forall$ j: V[j] = V'[j]
+\item V $\leq$ V' se e solo se $\forall$ j: V[j] $\leq$ V'[j]
+\item V $<$ V' se e solo se
+\begin{itemize}
+\item $\forall$ i $\in$ [1,..,N]: V[i] $\leq$ V'[i]
+\item $\exists$ j $\in$ [1,..,N]: V[j] $<$ V'[j]
+\end{itemize}
+\item V $||$ V' se e solo se not(V $<$ V') e not(V' $<$ V) 
+\end{itemize}
+Algoritmo per assegnare clock logico vettoriale:
+\begin{itemize}
+\item Ogni processo p$_i$ inizializza il suo  V$_i$ con  V$_i$[k] = 0 $\forall$ k = 1,2,..,N
+\item Prima d eseguire un evento, il processo  p$_i$ incrementa la sua componente del clock vettoriale,  V$_i$[i]
+\item Quando  p$_i$ invia un messaggio m al processo  p$_j$:
+\begin{itemize}
+\item Incrementa di 1 V$_i$[1]
+\item Allega al messaggio il timestamp =  V$_i$
+\item Esegue la send
+\end{itemize}
+\item Quando  p$_j$ riceve m, aggiorna il suo clock vettoriale  facendo il max componente a componente  V$_j$[k] = max(t[k],  V$_j$[k])
+\item Incrementa di 1 la componente  V$_j$[j]
+\item Esegue evento di receive
+\end{itemize}
+Nel caso del clock logico scalare, ogni nodo ha una conoscenza aggregata, mentre nel caso del clock logico vettoriale si ha una conoscenza complessiva del totale degli eventi avvenuti nel sistema, in più sa anche quanti eventi sono avvenuti su ciascun nodo, ma è una conoscenza non assoluta, conoscerà solo quelli di cui ha ricevuto notifica con i timestamp.\\ Confrontando i timestamp basati su clock vettoriali si può capire se due eventi sono concorrenti o se sono in relazione happened-before. n.b: il clock logico va aggiornato anche in presenza di eventi interni.
+\subsubsection{Applicazioni del clock logico scalare: Multicast totalmente ordinato}
+Risolvo problema del multicast totalmente ordinato: i clock logici sono implementati a livello del middleware, che si occupa di aggiustare i valori del clock logico locale a seconda di eventi send o receive.\\ Problema: ho un DB replicato, in cui ho due repliche su cui gli utenti possono fare sia send che receive. Voglio fare in modo che gli aggiornamenti concorrenti che vengono eseguiti su ciascuna replica vengano visti nello stesso ordine su tutte le repliche. esempio: utente 1 aggiunge soldi sul suo conto corrente, utente 2 è la banca che aggiorna il conto corrente. In assenza di sincronizzazione, le due operazioni possono essere registrare in ordine diverso, avendo quindi due valori diversi per il saldo finale sulle due repliche.\\ Col multicast totalmente ordinato, voglio evitare questa situazione: le operazioni devono essere eseguite nello stesso ordine su entrambe le due repliche.\\ Ordinamento totale si può ottenere facendo operazione di multicast con cui tutti i messaggi sono consegnati nello stesso ordine a tutti i destinatari, quindi le assunzioni sono che comunicazione sia affidabile e che sia FIFO-ordered, ovvero i messaggi inviati da un processo sono ricevuti nello stesso ordine in cui sono stati inviati.\\ Soluzione:
+Elemento di centralizzazione, che assegna numero univoco ad ogni evento che accade nel sistema. Ogni processo consegna il proprio messaggio al sequencer e ciascuna operazione sarà eseguita considerando il numero assegnato dal sequencer, messaggi inviati in multicast dal sequencer. Soliti problemi della centralizzazione.
+\begin{itemize}
+\item Applico clock logico scalare: ciascun processo p$_i$ invia messaggio di update in multicast (incluso a se stesso). 
+\item Questo viene posto in una coda locale da ciascun processo che lo riceve, ordinata in base al valore del timestamp, assegnato usando il clock logico scalare. 
+\item Quando p$_j$ riceve il messaggio di update, manda ack a tutti gli altri processi. Questo serve per far sapere che i processi hanno ricevuto un update, serve per capire quale messaggio sarà consegnato a livello applicativo.
+\item Processo consegna messaggio a livello applicativo se questo è arrivato in testa, se ha ricevuto gli ack per quel messaggio e per ogni processo se c'è nella coda almeno un messaggio con timestamp maggiore di quello. Quindi messaggio viene consegnato solo se il nodo è sicuro che nessun altro processo può inviare in multicast un messaggio con timestamp minore o uguale. (vedi slides).
+\end{itemize}
+Costo: se ho N processi e per ogni messaggio ricevuto viene inviato un ack in multicast, quindi O($N^2$) ack totali: N processi, ogni messaggio ricevuto da un processo genera N messaggi di ack che vengono mandati in multicast a tutti i processi. Costo elevato che rende problematica la scalabilità a larga scala.\\ Questo algoritmo è il meccanismo alla base dell'approccio state machine replication: tecnica di replicazione software, applicata ai servizi, e che può essere implementata come una fine state machine deterministica. Supponendo di avere un servizio che viene replicato su molteplici server, ciascun server identifica uno stato del servizio. Per far si che tutte le repliche abbiano lo stesso stato (quindi fornisca lo stesso servizio) questo viene mantenuto come FSM, la transizione dipende dallo stato corrente + il comando eseguito. Obiettivo è quello di far eseguire lo stesso comando a tutte le repliche, diversi approcci: DB distribuiti e molti altre tipologie di servizio in cui ho delle repliche che devono essere sincronizzate. Replico il servizio per fault tollerance, devo avere trasparenza alla replicazione, voglio che le repliche si comportino come un unico server centralizzato (quindi anche trasparenza alla distribuzione).
+\subsubsection{Applicazioni del clock logico scalare: Multicast casualmente ordinato}
+Un messaggio viene consegnato solo se tutti i messaggi che lo precedono in relazione di causa-effetto sono già stati consegnati. Obiettivo: non deve accadere che viene prima consegnato l'effetto e poi la causa.\\ Relazione di causa-effetto in SD è anche relazione potenziale: secondo evento (effetto) è potenzialmente influenzato dal primo evento (la causa). È più debole del multicast totalmente ordinato, perché nel secondo caso vogliamo consegna dello stesso messaggio a tutti i processi, mentre qui vogliamo consegnare nello stesso ordine solo messaggi in relazione di causa-effetto, quelli concorrenti (ovvero non sono in relazione fra loro, concorrenti secondo tempo logico) non sono di interesse, quindi non interessa l'ordine di consegna.\\ Algoritmo: assumo che la comunicazione sia affidabile e che sia FIFO ordered, applicazione del clock logico vettoriale
+\begin{itemize}
+\item p$_i$ invia il messaggio m con timestamp t(m) basato sul clock logico vettoriale V$_i$, la componente i-esima di j V$_j$[i] conta i messaggi inviati da p$_i$ a p$_j$
+\item p$_j$ riceve m e deve capire quando consegnarlo a livello applicativo, in particolare aspetta finché:
+\begin{itemize}
+\item t(m)[i] = V$_j$[i] + 1, ovvero m è il messaggio successivo che p$_j$ si aspetta da p$_i$
+\item t(m)[k] $\leq$ V$_j$[k] $\forall$ k $\neq$ i, ovvero per ogni processo p$_k$, p$_j$ ha visto almeno gli stessi messaggi visti da p$_i$.
+\end{itemize}
+\end{itemize}
+\subsection{Mutua esclusione e sistemi concorrenti}
+La mutua esclusione nasce nei sistemi concorrenti, ovvero dove c'è memoria condivisa: ho N processi che vogliono accedere ad una risorsa condivisa, ma questa può essere usata in mutua esclusione. Voglio che ogni processo possa acquisire la risorsa e usarla senza interferenze con altri processi. Si identificano tipicamente 3 sezioni
+\begin{itemize}
+\item Sequenza di istruzioni chiamata sezione critica: si accede alla risorsa condivisa
+\item Sequenza di istruzioni che precedono l'accesso alla sezione critica, anche detta trying protocol
+\item Sequenza di istruzioni che segue l'uscita alla sezione critica, anche detti exit protocol.
+\end{itemize}
+Requisiti per algoritmo di mutua esclusione 
+\begin{itemize}
+\item che soddisfi la proprietà di mutua esclusione, anche detta proprietà di safety, ovvero che al più un processo esegua la sezione critica
+\item assenza di deadlock: situazione per cui tutti i processi sono bloccati per accedere in sezione critica e nessuno riesce ad accedere, quindi se un processo è in trying, altri possono accedere
+\item no starvation, nessun processo può rimanere bloccato nella sua trying section. Questa implica la proprietà di deadlock, la no starvation inoltre implica la liveness (no ritardi infiniti). È anche condizione di fairness per i processi, non c'è condizione di priorità fra i processi.
+\end{itemize}
+Ulteriore requisito è l'ordering, ovvero che le richieste di accesso in sezione critica sono evase in base all'ordine di arrivo (alcuni algoritmi la rispettano, altri no).\\ Esempio di algoritmo in un sistema concorrente (proposto da Lamport): bakery algorithm (esiste anche algoritmo ideato da Dijkstra, garantisce safety, ma non la no satrvation). Soluzione ispirata ad una situazione reale: attesa dal panettiere, processo che arriva prende il numeretto che definisce l'ordine con cui verrà servito, può esserne servito uno alla volta. Modello di sistema concorrente: memoria condivisa, processi comunicano tramite memoria condivisa, in particolare leggono/scrivono variabili condivise. Un solo processo può scrivere, tutti possono leggere. Inoltre, nessun processo può eseguire due scritture, e il rate di scrittura è differente.\\ Due vettori: array num e array choosing, num è numero che viene assegnato a ciascun processo mentre choosing è array di booleani (inizializzato a false) che indica se processo sta scegliendo il suo numero. Ciascun processo ha variabile locale j, che usa in un loop, ed è compreso fra 1 ed N.\\ Algoritmo eseguito all'infinito da ogni processo che deve accedere in sezione critica. Siccome operazioni di scrittura e lettura non sono atomiche, può accadere che due processi prendono lo stesso numero.
+\subsubsection{Mutua esclusione distribuita}
+Comunicazione non avviene più tramite lettura/scrittura di variabili condivise, ma tramite scambio di messaggi. Assunzioni:
+\begin{itemize}
+\item I processi non hanno variabili condivise
+\item Il ritardo di trasmissione è impredicibile
+\item I canali di comunicazione sono affidabili: un messaggio viene correttamente ricevuto, non ho duplicati o messaggi spuri.
+\end{itemize}
+Considero N processi: p$_1$,..., p$_N$, sistema asincrono, assumo che p$_i$ non subiscano fallimenti e che anche la comunicazione sia affidabile ed inoltre FIFO ordered, i processi trascorrono un tempo finito in sezione critica.\\ Adattamento del bakery algorithm: ogni processo p$_i$ si comporta da server rispetto alle variabili num[i] e choosing[i], se p$_j$ vuole conoscere num[i] manda messaggio di richiesta a p$_i$. L'algoritmo si adatta senza nessun problema, ma posso chiedermi costo: n° messaggi scambiati per ogni accesso in sezione critica è  pari a 6N, dove N è il numero di processi. Questo perché per accedere in sezione critica devo scambiare 3 messaggi: uno scambio per la doorway e due per la bakery (vedi slide con pseudocode). Fattore 6 può essere ridotto? Sì, diversi algoritmi per ridurlo, in modo da avere algoritmi più efficienti in termini di scambio di messaggi. 6N è costo importante perché bisogna anche considerare che siamo in un sistema asincrono.\\ Algoritmi possono essere divisi in 3 classi
+\begin{itemize}
+\item Algoritmi basati su autorizzazione, ne considero 3, uno centralizzato e due completamente distribuiti.
+\item Algoritmi basati su tokenn
+\item Algoritmi basati su quorum
+\end{itemize} Per confrontarli fra di loro, i principali criteri di valutazione saranno il numero di messaggi per entrare ed uscire dalla sezione critica (misura indiretta della banda di rete) ed il numero di messaggi scambiati per entrare.
+\subsection{Autorizzazioni}
+\subsubsection{Algoritmo centralizzato}
+La richiesta di accesso ad una risorsa condivisa in mutua esclusione viene inviata al coordinatore centrale.\\ Se la risorsa è libera, viene concesso l'accesso, altrimenti il coordinatore informa il processo che non può accedere in sezione critica e mette la richiesta di accesso all'interno della coda, che sarà gestita con disciplina FIFO.\\ Se sistema è sincrono, coordinatore non risponde e processo suppone che se non vede risposta deve attendere per l'accesso.\\ Quando processo che esegue in sezione critica manda un messaggio di release al coordinatore e questo permette l'accesso la primo in coda.\\ Vantaggi:
+\begin{itemize}
+\item Algoritmo soddisfa mutua esclusione, soddisfa la no starvation ed anche assenza di deadlock
+\item  Garantisce anche la fairness, è semplice 
+\item Costo per accesso ed uscita in sezione critica è pari a 3 messaggi. 
+\end{itemize}
+Ma svantaggi: 
+\begin{itemize}
+\item coordinatore è single point of failure
+\item Può diventare bottleneck
+\item Se processo fallisce mentre è in CS, non può più mandare release. Quindi non è garantita la possibilità di entrare in sezione critica, servono altri meccanismi.
+\end{itemize}
+\subsubsection{Algoritmo di Lamport distribuito}
+Non devi confonderlo col cazzo di maledetto algoritmo del panificio di Lamport. CAPITO?\\ Bene, ora che hai capito, vediamo come funziona: ogni processo mantiene un clock logico scalare ed una coda locale (per memorizzare le richieste di accesso alla sezione critica), si applica anche la relazione d'ordine totale (molto simile al problema del multicast totalmente ordinato). Regole:
+\begin{itemize}
+\item p$_i$ richiede l'accesso in CS (critical section): p$_i$ invia a tutti gli altri processi un messaggio di richiesta avente come timestamp il suo clock scalare ed aggiunge la coppia $<$richiesta, timestamp $>$ alla sua coda
+\item p$_j$ riceve la richiesta di p$_i$ ed invia un ack, dopo aver memorizzato la richiesta
+\item p$_i$ accede in CS se e solo se:
+\begin{itemize}
+\item La sua richiesta, con timestamp t precede tutti gli altri messaggi di richiesta in coda, ossia t è il minimo della relazione di precedenza
+\item p$_i$ ha ricevuto da ogni altro processo un messaggio (di ack o nuova richiesta) con timestamp t maggiore del suo
+\end{itemize} 
+\item p$_i$ rilascia la CS, quindi elimina la richiesta dalla sua coda ed invia agli altri processi un messaggio di release
+\item p$_j$ riceve messaggio di release, elimina dalla coda la richiesta 
+\end{itemize}
+Soddisfa la proprietà di mutua esclusione, anche quella di liveness ed anche la fairness, in quanto le richieste sono servite secondo l'ordine dei timestamp.\\ Costo in termini di messaggi: N-1 messaggi di richiesta, N-1 ack ed N-1 release = 3$\cdot$ (N-1)
+\subsubsection{Algoritmo di Ricart e Agrawala}
+Si parte dall'algoritmo di Lamport distribuito, per ridurre il costo di comunicazione, viene eliminato un messaggi, quindi si passa ad 2(N-1).\\ Usa clock logico scalare e relazione d'ordine totale. Funzionamento:
+\begin{itemize}
+\item p$_i$ vuole accede in CS, manda messaggio di richiesta, che contiene il suo ID ed un timestamp basato su clock logico scalare
+\item p$_i$ attende l'autorizzazione da tutti gli altri processi
+\item Entra in CS, la usa, quando ha terminato manda un massaggio di reply a tutti quelli che gli hanno mandato un messaggio di richiesta
+\item Processo p$_j$, che riceve richiesta può essere in 3 situazioni:
+\begin{itemize}
+\item Essere in CS, quindi non risponde e mette il messaggio in coda locale. Risponderà all'uscita della CS
+\item Non essere in CS ma volerci entrare, confronta il valore del suo timestamp e del suo ID con quelli del processo che ha inviato richiesta. Vince quello che ha la coppia minore: se vince il processo che ha mandato request, questo gli manda la reply, altrimenti non risponde e mette messaggio di richiesta nella coda (risponderà solo all'uscita dalla CS).
+\item Non essere in CS e non volerci entrare, manda un reply al mittente, concede la sua autorizzazione
+\end{itemize}
+\end{itemize}
+Vantaggi:
+\begin{itemize}
+\item Algoritmo completamente distribuito
+\item Costa meno in termini di comunicazione rispetto a Lamport distribuito, in questo caso 2$\cdot$(N-1) messaggi
+\item Esistono in letteratura delle varianti che riducono il costo di comunicazione ad N.
+\end{itemize}
+Svantaggi:
+\begin{itemize}
+\item Se un processo fallisce, nessuno può entrare in CS (nessun processo otterrà il numero di messaggi necessario per entrarvi), a meno di latri meccanismi per aggiornare numero di processi attivi nel sistema.
+\item Tutti i processi possono essere bottleneck, ognuno di essi partecipa alla decisione
+\end{itemize}
+\subsection{Algoritmi basati su token}
+Viene usata una risorsa ausiliaria, chiamata token e che viene scambiata fra i processi. Solo il processo che detiene il token può accedere in CS. L'algoritmo deve definiee come i processi richiedono e gestiscono il token, poiché in ongi istante deve esistere un solo processo che possiede il token. Possiamo dividere gli algoritmi in due classi:
+\begin{itemize}
+\item Algoritmi centralizzati: processo viene eletto coorindatore, sarà lui a gestire il token
+\item Algoritmi decentralizzati: il token si muove nel sistema, arriva prima o poi a tutti i processi. Il processo che vuole entrare in CS lo trattiene per tutto il tempo necessario, poi esce e lo rimette in circolo.
+\end{itemize}
+\subsubsection{Algoritmi centralizzati}
+Il processo coordinatore tiene traccia
+\begin{itemize}
+\item Delle richieste ricevute ma non ancora soddisfatte
+\item Delle richieste già soddisfatte
+\end{itemize}
+Processi usano clock vettoriale, così c'è relazione di causa-effetto e si può definire ordinamento totale. Quando processo vuole entrare in sezione critica manda messaggio al coordinatore, allegando il suo timestamp. Messaggio viene inserito in una coda di richieste pendenti. Quando processo diviene eleggibile, il coordinatore gli manderà il token, all'uscita dalla CS il processo rimanderà il token al coordinatore.\\ Strutture dati del coordinatore:
+\begin{itemize}
+\item Reqlist: coda delle richieste pendenti, ricevute ma non ancora servite
+\item V: array di dimensione pari al numero di processi, V[i] = numero di richieste di p$_i$ già servite 
+\end{itemize}
+Regole:
+\begin{itemize}
+\item Quando arriva la richiesta del processo p$_i$, questa viene inserita nella lista delle richieste pendenti
+\item Quando richiesta del processo i diventa eleggibile ed il coordinatore ha il token ,glielo manda. Diventa eleggibile quando la richiesta diventa minore di V.
+\end{itemize}
+Ogni processo deve mantenere il proprio clock vettoriale VC. Regole:
+\begin{itemize}
+\item All'invio della richiesta di token, il processo incrementa il suo clock vettoriale: VC[i] = VC[i] + 1
+\item Quando riceve il token, entra in CS e poi restituisce il token all'uscita
+\item Messaggio di programma: server per aggiornare i VC dei vari processi (si aggiorna come nelle regole del clock vettoriale viste sopra)
+\end{itemize}
+Vantaggi: efficiente in termini di messaggi scambiati col coordinatore, garantita fairness ed ordering. Ma svantaggi: coordinatore e single point of failure e collo di bottiglia. Se coordinatore fallisce, va eletto.
+\subsubsection{Algoritmo decentralizzato}
+Processi organizzati logicamente in overlay network ad anello, percorsa dal token in un unico verso, passando da un processo all'altro. Il processo che riceve il token può entrare in CS, se non vuole farlo passa il token al processo successivo. Vantaggi:
+\begin{itemize}
+\item Se l'anello è unidirezionale, fairness è garantita (altrimenti può verificarsi starvation)
+\item Rispetto all'algoritmo centralizzato, c'è maggiore bilanciamento del carico
+\end{itemize}
+Svantaggi:
+\begin{itemize}
+\item Token deve circolare in modo perpetuo ne sistema, anche se nessun processo vuole entrare in CS, quindi c'è spreco di banda di rete
+\item Token è fondamentale per l'accesso in sezione critica, quindi se viene perso va rigenerato, ma deve comunque essere unico nel sistema
+\item Se processo subisce crash: va riconfigurato l'anello, se il processo possedeva il token, questo va rigenerato evitando però che ci siano più token presenti nel sistema
+\item Guasti temporanei possono portare alla creazione di token multipli.
+\end{itemize}
+\subsection{Algoritmi basati su quorum}
+Idea: per entrare in CS occorre raccogliere voti solo da un sottoinsieme di processi, non da tutti. La votazione avviene all'interno del sottoinsieme dei processi:
+\begin{itemize}
+\item Ciascun processo riceverà la richiesta per entrare in CS
+\item Ogni processo deciderà se il processo può entrare in CS
+\end{itemize}
+Per ogni processo, definisco il quorum V$_i$ = \{p$_1$,..., p$_N$\}, ogni processo che vuole entrare in CS:
+\begin{itemize}
+\item Invia la richiesta ai membri di V$_i$
+\item Attende le risposte
+\item Ricevute le risposte, usa la CS
+\item Al rilascio della CS  invia release ai soli membri di V$_i$
+\end{itemize}
+Un processo p$_j$ di V$_i$ che riceve una richiesta (slides)
+\subsubsection{Algoritmo di Maakawa}
+Si basa sulla definizione degli insiemi di votazione, per poter garantire la mutua esclusione questi insiemi devono essere fra di loro ad intersezione non nulla.
+\section{Approfondimento-Kubernetes}
+Orchestrazione di container utili per automatizzare la gestione, deploy, gestione di applicazioni multi-containered; tutto ormai (o quasi) è a micro-servizi. Kubernetes è standard de facto: framework open source, pensato per automatizzare il deployment, lo scaling, il management delle applicazioni containerizzate.\\ Framework altamente flessibile ed estendibile, è altamente dichiarativo: definisce astrazioni (gli oggetti) che definiscono lo stato del cluster, Kubernetes prenderà delle decisioni per far convergere lo stato del cluster verso quello desiderato.\\ Feature
+\begin{itemize}
+\item Service discovery e load balancing: servizi sono acceduti con IP pubblico o DNS name, fa anche load balancing fra le diverse repliche per il servizio. Parola chiave per applicazioni per grande numero di utenti: scalabilità, voglio diverse repliche per poter soddisfare le richieste degli utenti.
+\item Storage orchestration: permette l'uso di un system storage a piacere, quindi local sotrage, public cloud etc..
+\item Rollout e rollback automatizzati: è possibile descrivere lo stato, ritornare ad uno stato precedente etc... tutto in maniera automatica.
+\item Scheduling delle applicazioni: si occupa di piazzare i contianer nei nodi del cluster, orima operazione è costruire il cluster su cui deployare Kubernetes, in modo che questo possa deployare i container secondo opportuna politica sui nodi.
+\item Self-healing: controlla stato di salute dei nodi e dei container periodicamente
+\item Gestisce chiavi con delle astrazioni detti secret, disaccoppiamento delle informazioni sensibili dall'applicazione. Questo offre maggiore sicurezza, ma anche flessibilità in caso di cambiamenti.
+\end{itemize}
+Cosa Kubernetes non fa
+\begin{itemize}
+\item Non limita il tipo di applicazione supportata. Non cambia se uso micro-servizi staefull o stateless, purché l'applicazione sia containerizzata
+\item Non deploya il src code e non builda l'app. Si aspetta che le immagini siano pubblicate in un registro
+\item Non fornisce servizi built-in: permette l'uso dei più disparati servizi a livello di storage, data processing etc... 
+\item Non ci sono supporti di logging, monitoring, alert etc... per le applicazioni. Per farlo occorre farsi carico di questo aspetto.
+\end{itemize}
+\subsection{Kubernetes master}
+Architettura di Kubernetes è master-worker, gran parte dei SD hanno architettura master-worker. In generale, master gestisce aspetti manageriali, workers ospitano container per le applicazioni.\\ Primo passo: creare cluster di macchine su cui ospitare macchine e su cui c'è Kubernetes configurato. Cluster deve avere almeno un nodo, questi devono ospitare i container; pod: collezione di container. Il ruolo più manageriale sarà il master
+\begin{itemize}
+\item REST API interrogabile con CLI o per via diretta per usufruire de servizi
+\item SI occupa dello scheduling dell'applicazione
+\item Monitora lo stato dei container
+\end{itemize}
+Nodi: ospitano i container, non c'è supporto per creare l'applicazione, mi aspetto che le immagini siano già disponibili in un registro di immagini pubblico o privato, con cui i container interagiranno.\\ Master ha diversi componenti per il control plan: possono essere deployati in nodi diversi, ma in genere si ha sullo stesso nodo
+\begin{itemize}
+\item API server: parte di front end di Kubernetes: API REST per invocare i servizi di Kubernetes. Implementato col kube-apiserver, che può essere scalato orizzontalmente
+\item etcd: data store key-value persistente e leggero, mantiene aggiornato lo stato del cluster. Obiettivo di Kubernetes è effettuare azioni per far convergere il cluster verso lo stato desiderato.
+\item scheduler: decide dove mettere i pod, ovvero i container. C'è scheduler di default, il kube scheduler la cui politica di default è spread (sparpaglia i container). È customizzabile, posso cambiare con gli extender la politica
+\item controller: sistemi di monitoraggio (control loop) che vanno a recuperare lo stato del cluster e effettuano cambiamenti per convergere verso lo stato desiderato
+\end{itemize}
+\subsection{Kubernetes nodes}
+Kubernetes nodes: ospitano i pod, anche questi hanno diversi componenti
+\begin{itemize}
+\item kubelet: agente che verifica che i container siano up\&running
+\item kube-proxy: permette di smistare il traffico verso i vari container, fa da network proxy e load balancer.
+\item Container run time: software che è responsabile per runnare i container (ne supporta diversi).
+\end{itemize}
+\subsection{Kubernetes object}
+Sono entità persistenti, che permettono di rappresentare lo stato del cluster. Posso descrivere diverse cose
+\begin{itemize}
+\item Le applicazioni containerizzate
+\item Risorse che le applicazioni necessitano
+\item Politiche per le applicazioni
+\end{itemize}
+Si può usare API di Kubernetes, per lavorare con gli oggetti creandoli, modificandoli, cancellandoli, si può invocare la CLI.\\
+Etichette, coppie key-value che si possono attaccare agli oggetti. Utili perché Kubernetes raggruppa gli oggetti in base all'etichetta, tutti quelli con la stessa etichetta verranno gestiti dalla stessa entità.Nel selector, pecificherò le label che voglio gestire. Per gestire oggetto si usa file yaml: tutte le informazioni necessarie ad identificare gli oggetti.
+\subsubsection{Pod} 
+Tra gli di oggetti usabili in Kubernetes troviamo i pod: i pod sono l'unità minima schedulabile e deployabile in Kubernetes, un pod è un gruppo di uno o più container che condividono storage/network resources (di solito c'è mapping 1-a-1). Per la gestione dei pod ci sono diverse tipologie di oggetti, tra cui il deployment:\\
+si occupa della gestione delle diverse repliche dei pod, gestisce pod senza entità definita. Posso rimpiazzare con nuovi pod in maniera semplice, è adatto per servizi stateless, non assegna al pod un'entità univoca.
 \end{document}
