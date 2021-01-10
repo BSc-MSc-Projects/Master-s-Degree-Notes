@@ -1837,7 +1837,7 @@ Framework che utilizza diversi framework open source, tra cui
 \item Gateway: nodo centralizzato che fa da smistatore di richieste. Questo componente centralizzato è un po' il limite di tutte le piattaforme FaaS open source.
 \end{itemize}
 \section{Sincronizzazione e coordinazione nei Sistemi Distribuiti}
-In un SD, c'è necessitò di gestire il tempo: se considero applicazione distribuita e SD ci sono aspetti di comunicazione nel SD, obiettivo è quello di far comunicare i componenti fra loro in modo da portare a termine una computazione. Comunicazione avviene con scambio di messaggi, molti degli algoritmi distribuiti o delle computazioni distribuite richiedono sincronizzazione, ovvero richiedono una nozione comune di tempo per i diversi processi in esecuzione sui vari nodi. Tempo è fattore critico nel SD: in un sistema centralizzato, è possibile stabilire l'ordinamento fra gli eventi basandosi sul clock del nodo centrale.\\ IN un SD, non è possibile avere un unico clock fisico comune a tutti i nodi del sistema, ma comunque l'obiettivo è vedere la computazione portata avanti come un ordine totale di eventi. Soluzioni per affrontare il probelma di gesitoen del tempo sono due
+In un SD, c'è necessità di gestire il tempo: se considero applicazione distribuita e SD ci sono aspetti di comunicazione nel SD, obiettivo è quello di far comunicare i componenti fra loro in modo da portare a termine una computazione. Comunicazione avviene con scambio di messaggi, molti degli algoritmi distribuiti o delle computazioni distribuite richiedono sincronizzazione, ovvero richiedono una nozione comune di tempo per i diversi processi in esecuzione sui vari nodi. Tempo è fattore critico nel SD: in un sistema centralizzato, è possibile stabilire l'ordinamento fra gli eventi basandosi sul clock del nodo centrale.\\ IN un SD, non è possibile avere un unico clock fisico comune a tutti i nodi del sistema, ma comunque l'obiettivo è vedere la computazione portata avanti come un ordine totale di eventi. Soluzioni per affrontare il probelma di gesitoen del tempo sono due
 \begin{itemize}
 \item Nozione di tempo fisico: sincronizzo i clock fisici dei diversi nodi che compongono il SD. In ciascun nodo, in particolare la aprte del middleware di sincronizzazione aggiusterà il valore del proprio clock fisico in modo coerente.
 \item Nozione di tempo logico: sincronizzo gli orologi logici, Lamport ha dimostrato come in un SD non sia necessaria la sincronizzazione degli orologi fisici. Tempo logico è concetto fondamentale nei SD
@@ -1871,7 +1871,7 @@ In un orologio al quarzo si devia di circa un secondo in 10/11 giorni. Per clock
 \subsubsection{UTC}
 Universal Coordinated Time, standard internazionale per mantenere il tempo. È basato sul tempo atomico, ma occasionalmente viene corretto usando il tempo astronomico. \\ 1 sec = tempo impiegato dall'atomo di Cesio 133 per eseguire un bel numero di transizioni di stato.\\ I clock fisici che usano oscillatori atomici sono i più precisi ed accurati. \\ Output dell'orologio possono essere inviati in broadcast da stazioni radio su terra e da satelliti. I nodi con ricevitori possono sincronizzare i loro clock con questi segnali, a seconda della fonte del segnale ci sarà una maggiore o minore accuratezza, se arriva da satellite è più accurato.
 \subsubsection{Sincronizzazione del clock fisico}
-Come sincronizzare i clock fisici con gli orologi del mondo reale? Sincronizzazione esterna: se i clock sono sincronizzati con una sorgente di tempo S, questo in modo che $\forall$ C$_i$: $|S(t) - C_i(t)| \leq \alpha$, con $\alpha$ $>$ 0.\\ Sincronizzazione interna: i clock sono sincronizzati l'uno con l'altro. Se considero il clock C$_i$ e C$_j$ questi sono sincronizzati se $|C_i(t) - C_j(t)| \leq \pi$ per tutte le coppie di clock. (vedi slides)\\ Sincronizzazione interna ed esterna non si implicano a vicenda: se c'è sincronia esterna, allora saranno anche sincronizzati internamente, ma non vale il viceversa, perché tutti i clock che sono sincronizzati internamente potrebbero deviare rispetto alla fonte S esterna.\\ Se l'insieme dei processi è sincronizzato internamente con precisione $\alpha$, allora lo è internamente con precisione 2$\alpha$.\\ Clock hardware H è corretto se il suo drift rate si maneitene in un intervallo $\rho$ $>$ 0. Se clock H è corretto, l'errore che si commette nel misurare un intervallo di istanti reale [t, t'] (t' $>$ t) è limitato (vedi slides).\\ Siccome i diversi clock fisici possono essere reaizzati con materiali differenti e quindi avere diverso drift rate, vanno periodicamente sincronizzati. Se due clock hanno lo stesso tasso di scostamento massimo da UTC, che sia pari a $\rho$, quindi dopo $\Delta$t si saranno scostati di 2$\rho$. Per garantire che i due clock non differiscano per più di $\delta$, i clock vanno sync ogni (vedi slides).
+Come sincronizzare i clock fisici con gli orologi del mondo reale? Sincronizzazione esterna: se i clock sono sincronizzati con una sorgente di tempo S, questo in modo che $\forall$ C$_i$: $|S(t) - C_i(t)| \leq \alpha$, con $\alpha$ $>$ 0.\\ Sincronizzazione interna: i clock sono sincronizzati l'uno con l'altro. Se considero il clock C$_i$ e C$_j$ questi sono sincronizzati se $|C_i(t) - C_j(t)| \leq \pi$ per tutte le coppie di clock. (vedi slides)\\ Sincronizzazione interna ed esterna non si implicano a vicenda: se c'è sincronia esterna, allora saranno anche sincronizzati internamente, ma non vale il viceversa, perché tutti i clock che sono sincronizzati internamente potrebbero deviare rispetto alla fonte S esterna.\\ Se l'insieme dei processi è sincronizzato internamente con precisione $\alpha$, allora lo è internamente con precisione 2$\alpha$.\\ Clock hardware H è corretto se il suo drift rate si maneitene in un intervallo $\rho$ $>$ 0. Se clock H è corretto, l'errore che si commette nel misurare un intervallo di istanti reale [t, t'] (t' $>$ t) è limitato: (1 - $\rho$)(t-t') $\leq$ H(t')-H(t) $\leq$ (1+$\rho$)(t'-t).\\ Siccome i diversi clock fisici possono essere realizzati con materiali differenti e quindi avere diverso drift rate, vanno periodicamente sincronizzati. Se due clock hanno lo stesso tasso di scostamento massimo da UTC, che sia pari a $\rho$, dopo $\Delta$t si saranno scostati di 2$\rho$. Per garantire che i due clock non differiscano per più di $\delta$, i clock vanno sync almeno ogni $\frac{\delta}{2\rho}$ secondi.
 \subsubsection{Sincronizzazione interna in SD sincrono}
 Algoritmo di sincronizzazione interna tra due processi
 \begin{itemize}
@@ -1919,13 +1919,13 @@ Scambio in modo simmetrico: in particolare usato nei livelli altri della gerarch
 \item Tempo locale di send (T$_{i-1}$) del messaggio m'
 \item Tempo locale di send (T$_{i-3}$) e di receive (T$_{i-2}$) del messaggio precedente m.
 \end{itemize}
-Il ricevente di m' registra il tempo locale T$_i$ (conosce quindi una 4-pla di valori), il tempo tra l'arrivo di m e l'invio di m' può essere non trascurabile.\\ Accuratezza: Per ogni coppia di messaggi m ed m', NTP stima l'offset o$_i$ tra i due clock. Assumendo che:
+Il ricevente di m' registra il tempo locale T$_i$ (conosce quindi una 4-pla di valori), il tempo tra l'arrivo di m e l'invio di m' può essere non trascurabile.\\ Accuratezza: Per ogni coppia di messaggi m ed m', NTP stima l'offset o$_i$ tra i due clock. Indicando con:
 \begin{itemize}
 \item o: offset reale del clock di B rispetto ad A
-\item t e t': tempi di trasmissione di m ed m', abbiamo\\
-T$_{i-2}$ =  T$_{i-3}$ + t + o e T$_i$ = T$_{i-1}$ + t' + o
-\end{itemize}
-(vedi slides). \\ Server NTP si scambiano queste coppie di messaggi e usano algoritmo di filtraggio statistico sulle 8 coppie (o$_i$, d$_i$) più recenti, scegliendo come stima di o il valore di o$_j$ corrispondente al minimo d$_j$. Applicano poi un algoritmo di selezione dei peer per modificare eventuale il peed da usare per sincronizzarsi. Accuratezza è di circa 10 ms su Internet e 1 ms in LAN, può sembrare ok ma gli eventi avvengono anche nell'ordine del $\mu$sec o nsec.
+\item t e t': tempi di trasmissione di m ed m'
+\end{itemize} 
+abbiamo:\\ 
+T$_{i-2}$ =  T$_{i-3}$ + t + o e T$_i$ = T$_{i-1}$ + t' + o. Quindi $d_i$ = t + t' = $T_{i-2}$ - $T_{i-3}$ + $T_i$ - $T_{i-1}$.\\ Sottraendo le equazioni: o = $o_i$ + $\frac{t'-t}{2}$ con $o_i$ = $\frac{T_{i-2} - T_{i-3} + T_{i-1} - T_i}{2}$\\ Poiché t, t' $>$ 0, si può dimostrare che: $o_i$ - $\frac{d_i}{2}$ $\leq$ o $\leq$ $\frac{d_i}{2}$.\\ Quindi: $o_i$ è la stima dell'offset d $\frac{d_i}{2}$ è l'accuratezza di questa stima.\\ Server NTP si scambiano queste coppie di messaggi e usano algoritmo di filtraggio statistico sulle 8 coppie (o$_i$, d$_i$) più recenti, scegliendo come stima di o il valore di o$_j$ corrispondente al minimo d$_j$. Applicano poi un algoritmo di selezione dei peer per modificare eventuale il peed da usare per sincronizzarsi. Accuratezza è di circa 10 ms su Internet e 1 ms in LAN, può sembrare ok ma gli eventi avvengono anche nell'ordine del $\mu$sec o nsec.
 \subsubsection{Google's TrueTime}
 Meccanismo di sincronizzazione fisica, definito durante lo sviluppo di spanner. TT si basa su una sync ben ingegnerizzata disponibile per tutti i server grazie a numerosi clock GPS e clock atomici, quinid è richiesto hardware specializzato ed un protocollo di sync proprietario, quindi questo è una cosa non fattibile per molti sistemi. Google usa algoritmo per raggiungere sync tra i server dei suoi data center che sono collegati con rete a fibra ottica ad alto throughput.
 \subsubsection{Tempo nei SD asincroni}
@@ -2149,7 +2149,149 @@ Per ogni processo, definisco il quorum V$_i$ = \{p$_1$,..., p$_N$\}, ogni proces
 \end{itemize}
 Un processo p$_j$ di V$_i$ che riceve una richiesta (slides)
 \subsubsection{Algoritmo di Maakawa}
-Si basa sulla definizione degli insiemi di votazione, per poter garantire la mutua esclusione questi insiemi devono essere fra di loro ad intersezione non nulla.
+Si basa sulla definizione degli insiemi di votazione, per poter garantire la mutua esclusione questi insiemi devono essere fra di loro ad intersezione non nulla. Basato su quorum: ho un sottoinsieme di votazione, la cui cardinalità è inferiore alla totalità dei processi che devono sincronizzarsi. Processo che vuole entrare in CS, deve raccogliere i voti da parte di un certo sottoinsieme di votazione, processi votano quale processo entrerà in CS, esprimendo una sola preferenza in ciascun round di votazione.\\ Processo i vuole accedere in CS:
+\begin{itemize}
+\item Manda richiesta di accesso in CS a tutti i processi che appartengono ad un insieme di votazione a cui esso appartiene, indico con $V_i$
+\item Attende la risposta
+\item Una volta ricevuta la risposta, entra in CS
+\item Una volta uscito dalla CS, manda un messaggio di release 
+\end{itemize}
+Processo j che $\in$ $V_i$ che riceve la richiesta:
+\begin{itemize}
+\item Se è nella CS o ha già risposto dopo l'ultimo release non risponde e mette la richiesta in coda locale
+\item Altrimenti, risponde inviando messaggio a favore per processo i
+\item Se riceve messaggio di release, processo j interpreta come terminazione del round di votazione ed inizio di un round successivo, quindi estrae una richiesta dalla coda locale (se presente) e gli invia la reply.
+\end{itemize}
+Algoritmo di Maekawa:
+\begin{itemize}
+\item Ciascun processo usa due variabili:
+\begin{itemize}
+\item state: stato in cui si trova il processo: release, wanted e held
+\item voted: variabile boolena che esprime se processo ha votato o  meno nel round di votazione
+\end{itemize}
+\item Processo che vuole entrare in CS mette il suo stato a wanted e invia a tutti gli altri processi in $V_i$ la richiesta. Aspetta finché non ha ricevuto tutte le risposte. K = $|V_i|$, fattore critico
+\item Quando riceve tutte le risposte, accede in CS ed usa la risorsa in maniera esclusiva
+\item Se riceve richiesta $p_j$:
+\begin{itemize}
+\item Se stato è in held, accoda la richiesta
+\item Altrimenti, vota per $p_j$ con reply e pone variabile voted a true
+\end{itemize}
+\item Quando $p_i$ esce dalla CS, pone lo stato a release e invia la release a tutti i processi in $V_i$, ad indicare che inizia un nuovo round di votazione. Quindi ogni processo estrae la prima richiesta in coda ed invia la reply, ponendo voted a true. Se invece la coda era vuota, pone voted a false e potrà ancora esprimere votazione se riceve una richiesta.
+\item Se arriva una release: processo i valuta lo stato della coda delle richieste e se trova una richiesta invia la reply e porrà voted a true; altrimenti se coda è vuota voted = false
+\end{itemize}
+Punto critico: dimensione dell'insieme di votazione. Come viene definito $V_i$:
+\begin{itemize}
+\item Deve essere assicurata la safety dell'algoritmo, ovvero un solo processo alla volta deve eseguire in CS. In termini di insieme di votazione, siccome processo in un round può votare per un solo processo alla volta, devo avere che $V_i$ $\cap$ $V_j$ $\neq$ $\emptyset$.
+\item $|V_i|$ = K $\forall$ i, ovvero tutti i processi hanno insiemi di votazione con la stessa cardinalità K, stesso sforzo per tutti i processi
+\item Ogni processo $p_i$ è contenuto in K insiemi di votazione, stessa responsabilità per ogni processo
+\item $p_i$ $\in$ $V_i$, per ridurre il numero di messaggi trasmessi
+\end{itemize}
+È possibile formalizzare la determinazione degli insiemi di votazione, si ottiene l'ottimo, che permette di minimizzare la K è k $=$ $\sqrt[2]{N}$, essendo N = K(K-1)+1.\\ Proprietà:
+\begin{itemize}
+\item Safety
+\item Equa distribuzione del workload per tutti i processi
+\item Non garantisce liveness, può esserci situazione di deadlock. Per evitare, serve modificare algoritmo e costo è maggiore del $3\cdot \sqrt[2]{N}$
+\end{itemize}
+Prestazioni: fra gli algoritmi visti fin ora, è quello più efficiente in un sistema a larga scala. N° di messaggi per accedere in CS: $3\cdot \sqrt[2]{N}$, in particolare:
+\begin{itemize}
+\item Un messaggio di richiesta a tutti i processi di $V_i$
+\item Messaggio di release a tutti i $V_i$
+\item Numero di reply per processo che deve entrare in CS pari a $|V_i|$
+\end{itemize}
+Quindi 3K, ma K = $\sqrt[2]{N}$.\\ Nel caso di Ricart-Agrawala avevamo numero 2(N-1) messaggi e se N $>$ 4 $\rightarrow$ $3\sqrt[2]{N}$ $<$ $2(N-1)$
+\subsection{Confronto finale}
+vedi slide 108 e riporta la tabella.
+\subsection{Algoritmi di elezione distribuita}
+Molti algoritmi distribuiti richiedono un processo leader o coordinatore, es il sequencer per multicast totalmente ordinato o il coordinatore per la mutua esclusione.\\ Quindi, occorre eleggere il coordinatore in modo dinamico, in quanto i nodi possono entrare/uscire nel/dal sistema o subire fallimenti. Proprietà:
+\begin{itemize}
+\item safety: viene eletto un solo coordinatore alla volta
+\item liveness: prima o poi viene eletto un nuovo coordinatore
+\end{itemize}
+Modello del sistema:
+\begin{itemize}
+\item Considero N processi
+\item Processi possono subire guasti, ma solo di tipo crash (il più semplice da gestire in un SD)
+\item La comunicazione è affidabile
+\item Un processo ha id univoco e viene eletto il processo non guasto con id più elevato
+\end{itemize}
+\subsubsection{Algoritmo bully}
+Idea degli anni 80',il nodo che ha id più alto fra quelli presenti nel sistema fa il bullo e cera di ottenere la leadership nel sistema.\\ Suppongo che sia i ad accorgersi (mediante meccanismo di failure detection) che il coordinatore è crashato. Quindi:
+\begin{itemize}
+\item $p_i$ invia un messaggio di elezione a tutti i processi con id maggiore del suo. Non serve mandarlo a quelli con ID più alto, tanto verrà eletto quello con ID più alto non guasto
+\item Se nessuno risponde, $p_i$ si auto-proclama vincitore e manda messaggio di proclamazione a tutti i processi con ID minore del suo
+\item Se $p_k$, che ha id k $>$ i, riceve messaggio di elezione, questo risponde ad i con un messaggio di Ok, bloccando l'elezione di i.\\ A questo punto, k indice una nuova elezione
+\item Se $p_i$ riceve un OK, abbandona il proposito di divenire leader.
+\end{itemize}
+Un processo che subisce crash può ritornare in esecuzione in seguito al crash e nel momento in cui torna in esecuzione non conosce l'attuale coordinatore e può promuovere una elezione. Questo garantisce che sia sempre il processo con ID più alto ad essere coordinatore.\\ Assunzione importante nell'algoritmo: il processo che vuole diventare leader attende un TO per la risposta dagli altri con ID più elevato e posso impostare un TO solo se il SD è sincrono ed usa un meccanismo di time-out(vedi slides).\\ Costo di comunicazione:
+\begin{itemize}
+\item Caso migliore: processo che indice l'elezione è quello con ID subito sotto a quello che crasha.
+\item Worst case: parte dal processo con id più basso, questo triggera una srie di elezioni a catena $\rightarrow$ O($n^2$) messaggi
+\end{itemize}
+\subsubsection{Algoritmo di Fredrickson e Lynch}
+Processi organizzati logicamente in un anello, percorso in modo uni-direzionale. Il processo $p_i$ che rileva l'assenza del coordinatore attuale promuove una nuova elezione:
+\begin{itemize}
+\item $p_i$ invia il messaggio di elezione a $p_{(i+1)modN}$, inserendo nel messaggio il suo id
+\item A sua volta il processo successivo invia a quello dopo di lui (sempre inserendo l'id,sono in una lista), se è guasto lo invia a quello ancora dopo, quindi per tolleranza ai guasti serve conoscenza maggiore del solo successore nella overlay network.
+\item Al termine, il processo che ha iniziato vedrà che gli è tornato il messaggio perché trova il suo ID nel messaggio, quindi invia un messaggio per indicare il nuovo leader (quello con ID maggiore)
+\item Se un altro processo si rende conto del guasto, ricomincia ad inoltrare il messaggio di elezione. Al termine, il messaggio tornerà al processo che ha iniziato e questo si renderà conto di chi è il nuovo coordinatore, ed invierà messaggio di avviso agli altri nodi (la stessa cosa accade nell'algoritmo del bully).
+\end{itemize}
+\subsubsection{Algoritmo di Chang e Roberts}
+A differenza di F-L, il messaggio di elezione che circola contiene solo l'ID di un processo.\\ Ciascun processo può essere in due stati: partecipante o non partecipante, nel momento in cui invia un messaggio diviene partecipante.2 fasi:
+\begin{itemize}
+\item Fase 1:
+\begin{itemize}
+\item Il processo j riceve il messaggio di elezione: valuta l'id nel messaggio confrontandolo col proprio ID. Se è maggiore, comunica al processo successivo il messaggio e marca il suo stato come partecipante, se invece è minore dell'ID di j, se stato del processo era non partecipante, il processo pone il contenuto del messaggio pari a j ed inizia una elezione per proprio conto
+\item Se j ha ricevuto un messaggio con id minore del suo ed è già partecipante, vuol dire che il messaggio ha già percorso tutto l'anello e j è il nuovo leader
+\end{itemize}
+\item Fase 2:
+\begin{itemize}
+\item Nel momento in cui il leader viene eletto, marca il suo stato come non partecipante ed invia messaggio di coordinatore eletto con cui annuncia la sua elezione.
+\item Processo che riceve questo messaggio, passa il suo stato a non partecipante, registra l'ID del coordinatore e forwarda il messaggio
+\item Quando messaggio torna di nuovo al coordinatore, questo non lo inoltra e l'elezione è terminata.
+\end{itemize}
+\end{itemize}
+Costo di comunicazione: dipende da come sono organizzati i processi nell'anello:
+\begin{itemize}
+\item Caso migliore: ID ordinati ed anello percorso in senso orario: O(N), 2 giri di anello
+\item Caso peggiore: l'anello è organizzato con un percorso in senso orario, ma gli ID sono in senso anti-orario e tutti i processi decidono di avviare l'elezione contemporaneamente
+\item Costo medio: O(NlogN).
+\end{itemize}
+\subsubsection{Proprietà}
+Tutti gli algoritmi:
+\begin{itemize}
+\item Assumono che la comunicazione sia affidabile e che i messaggi non siano corrotti o duplicati
+\item Funzionano sia in comunicazione sincrona che asincrona, anche quelli ad anello non richiedono di conoscere in anticipo quanti sono i processi nel sistema
+\item Tolleranza ai guasti: dipende dall'algoritmo se un processo crasha durante l'elezione. Se ci sono molteplici crash bisogna, negli algoritmi ad anello, riconfigurarlo (cambia la conoscenza).
+\end{itemize}
+Problemi:\\ cosa accade in presenza di una partizione di rete: i processi nel sistema continuano a comunicare, ma questo è possibile solo all'interno delle partizioni della rete.\\ Problema si verifica anche su reti a larga scala, molto spesso. In questo tipo di algoritmi, non è più garantita la mutua esclusione: i nodi di una partizione eleggeranno il loro leader, quindi occorrono meccanismi per ricongiungimento dopo che termina la partizione.
+\section{Consistenza distribuita}
+Tecnica principale usata per scalabilità è la replicazione, nel caso dei dati il replico per:
+\begin{itemize} 
+\item Disponibilità: suppongo di avere N server ed il dato replicato sugli N server, disponibilità = $1-p^N$, ovvero devono fallire tutti gli N server perché questi non siano disponibili.
+\item Tolleranza ai guasti (slides)
+\end{itemize}
+Costo della replicazione: ho molteplici copie del dato, che vanno mantenute tra di loro consistenti, ovvero quando viene aggiornata una replica il sistema deve mantenere anche le altre aggiornate o non avrei consistenza. Sarebbe auspicabile avere sempre il dato aggiornato, ma questo prevede che l'utente che fa una read non può completarla finché la write non viene propagata su tutte le altre repliche. Ma in un contesto a larga scala, mantenere la consistenza ha un costo legato alla latenza di comunicazione, ricordare che latenza non è mai trascurabile (nemmeno in un datacenter).\\ Quindi il costo impatta sulle prestazioni, quindi come mantenre le repliche consistenti, in particolare quali sono le operazioni conflittuali:
+\begin{itemize}
+\item Conflitto read-write: conflitto si verifica se ho operazioni di lettura e scrittura concorrente sullo stesso dato
+\item Conflitto write-write: due scritture concorrenti sullo stesso dato.
+\end{itemize}
+Obiettivo teorico: consistenza (stretta) ideale in cui istantaneamente le repliche vengono aggiornate, ma c'è anche problema di come mantenere ordinamento globale delle operazioni.\\ Ci sono diversi modelli di consistenza, in cui vengono rilassati via via i vincoli di consistenza: da una parte avrò consistenza rilassata, ma da un'altra parte avrò minore impatto sulle prestazioni.
+\subsection{Modelli di consistenza}
+Archivio di dati distribuito: insieme di spazi di storage fisicamente distribuiti e replicati su molteplici processi.\\ Modello di consistenza: contratto tra l'archivio di dati distribuito ed i processi che lo usano, che stabilisce che se i processi (ovvero coloro che stabiliscono operazioni r/w), l'archivio garantisce corretta esecuzione.\\ Tutti i modelli tentano di restituire come risultato di un'operazione di lettura di un dato l'ultima operazione di scrittura,  ci sono due famiglie di consistenza:
+\begin{itemize}
+\item Modelli data-centrici: obiettivo dell'archivio di dati è fornire una vista dell'archivio di dati consistente a livello di sistema
+\item Modelli client-centrici: obiettivo è fornire una vista di un archivio di dati consistente a livello di un singolo client.
+\end{itemize}
+Non esiste modello giusto o sbagliato, soluzioni cambiano a seconda della tipologia di applicazione (in termini di requisiti di consistenza).\\ Notazione:
+\begin{itemize}
+\item Rappresento i diversi processi che eseguono le operazioni:
+\begin{itemize}
+\item $W_i(x)a$: operazione di scrittura da parte di $P_i$ sul dato x con valore scritto a
+\item $R_i(x)a$: operazione di lettura da parte di $P_i$ sul dato x con valore letto a
+\end{itemize}
+\end{itemize}
+\subsection{Consistenza stretta}
+
 \section{Approfondimento-Kubernetes}
 Orchestrazione di container utili per automatizzare la gestione, deploy, gestione di applicazioni multi-containered; tutto ormai (o quasi) è a micro-servizi. Kubernetes è standard de facto: framework open source, pensato per automatizzare il deployment, lo scaling, il management delle applicazioni containerizzate.\\ Framework altamente flessibile ed estendibile, è altamente dichiarativo: definisce astrazioni (gli oggetti) che definiscono lo stato del cluster, Kubernetes prenderà delle decisioni per far convergere lo stato del cluster verso quello desiderato.\\ Feature
 \begin{itemize}

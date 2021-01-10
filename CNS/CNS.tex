@@ -1,6 +1,7 @@
 \documentclass[16px]{article}
 \usepackage{graphicx}
 \usepackage[utf8]{inputenc}
+\usepackage{amsmath}
 
 \begin{document}
 \tableofcontents
@@ -1512,4 +1513,81 @@ Key retrieval: bitcoin use case, voglio firmare una transazione (in bitcoin si u
 \item User ottiene $H(m)^{d_2}$ e deve moltiplicare con $H(m)^{d_1}$, ma $d_1$ è computabile, quindi per ogni signature chiedo aiuto al network server, ma questo non consocerà mai d.
 \end{itemize}
 d non è mai in chiaro, se l'attacker controlla la password ed il device, non può più ottenere la chiave segreta d. Se il server non è informato del furto, continuerà a rispondere ed a firmare transazioni, ma la secret key non è nota. Disabling key t: il server può essere bloccato per far si che non risponda più alle send. Se blocco le transazioni, l'attacker non può più fare transazioni, la chiave d non è nota. Introdotta una chiave t apposita, inclusa nel ticket, finché ho un backup della chiave t posso dire al server di bloccare il device mandandogli t. Ora, il server può controllare che u non è in un DB che contiene tutti i device bloccati (es u = H(t), salva quello nel DB).
+\subsection{Secret sharing lineare e matrice per controllo di accesso}
+Il secret sharing visto fin'ora è molto più generale di di Shamir o del trivial, che sono casi specifici.
+\subsubsection{Revisione dello schema di Shamir}
+Avevo un segreto s, lo share i è una y$_i$ che corrisponde alla valutazione di un polinomio in uno specifico punto.\\ Ma dal punto di vista vettoriale: y$_i$ = [1, $x_i$, $x_i^2$,...] $°$ [s, $a_1$, $a_2$,...], prodotto scalare fra due vettori.\\ Scrivo in forma matriciale: Ax = b:\\
+\begin{itemize}
+\item A, matrice n x t, sono deterministiche
+\item x vettore di t entries., segreto
+\item b vettore di n entries, shares risultanti
+\end{itemize}
+esempio: (3,4)\\
+(1 1 1 1, $x_1$, $x_2$, $x_3$, $x_4$, $x_1^2$, $x_2^2$, $x_3^2$, $x_4^2$)(s, $r_1$, $r_2$) = ($y_1$, $y_2$, $y_3$, $y_4$) (da leggere in colonna, vedi slides), che sono gli shares.\\ Ma se cambio la matrice? Avrò un diverso schema di secret sharing, ma comunque valido. Per ricostruire il segreto, so che posso ricostruire s facendo $\lambda_1\cdot y_1$ etc..., se qui prendo 3 shares: scrivo un sistema lineare, so che il determinante della matrice A è diverso da 0, quindi posso invertirla e risolvere: x = A$^{-1}$b. Ora risolvo un sistema lineare, diverso dal risolvere un'interpolazione di Lagrange, ma l'invera della matrice ha come componenti i $\Lambda_i$ di Lagrange.\\ Ogni riga per ciascun party è il vettore $v_i$, quindi a seconda del valore della x, definiscono uno spazio. Se sono linearmente indipendenti, possono creare uno spazio $R^3$ (3D), la combinazione lineare arbitraria dei 3 vettori è $c_1\cdot v_1$ + $c_2\cdot v_2$ + $c_3\cdot v_3$, se modifico le $c_i$, posso creare un qualunque punto arbitrario nello spazio 3D. Sono interessato al punto (1, 0, 0): se questo è contenuto nello Span, allora esiste una combinazione di $c_1$, $c_2$, $c_3$: $c_1\cdot v_1$ + $c_2\cdot v_2$ + $c_3\cdot v_3$ = (1, 0, 0).\\ Per trovarli devo scrivere le equazioni:\\
+\begin{itemize}
+\item $c_1$ + $c_2$ + $c_3$ = 1
+\item $x_1$ + $x_2$ + $x_3$ = 0
+\item $x_1^2$ + $x_2^2$ + $x_3^2$ = 0
+\end{itemize}
+Che è la stessa soluzione vista prima (anche se cambia il sistema lineare).\\ Moltiplicando (1, 0, 0)(s, $r_1$, $r_2$)$^T$, riottengo s, il segreto è nascosto in un vettore random, ma se posso moltiplicarlo con (1, 0, 0) cancello la randomness e riottenere s.\\ Quindi, la 3° interpretazione di Shamir è uno "span" problem, dove devo scoprire se un dato insieme di vettori questi generano un sotto-insieme che contiene il vettore (1, 0, 0)
+\subsection{Linear Secret Sharing Scheme (LSSS)}
+Linear Secret Sharing Scheme, in cui la matrice A è arbitraria, non ci sono assunzioni sul fatto che A sia invertibile o meno. C'è un teorema (Amos Beimel): un LSSS è equivalente ad una classe di span programs, detti monotòni.\\ esempio: (3,3, (1 0 0, -1 1 0, -1 0 1)$^T$(s, $r_1$, $r_2$) = (s - $r_1$ - $r_2$, $r_1$, $r_2$), riesco a ricavare la matrice A che mi da come risultato questo prodotto.\\ Span program corrispondente: prendo i 3 vettori riga della matrice, cerco i $c_1$ che danno come combinazione lineare dei 3 vettori (1, 0, 0), in questo caso $c_1$ = $c_2$ = $c_3$ = 1. Per ricostruire: moltiplico le shares ai coefficienti ed ottengo s. LSSS usa una matrice differente di quella usata in Shamir, ed ottengo due secret sharing scheme diversi. Ma quindi con LSSS posso creare un qualunque secret sharing scheme, e hanno tutti la proprietà di essere omomorfi: lo share della somma è uguale alla somma degli shares (vedi slides).
+\subsubsection{Programmi di span monotoni}
+Le operazioni in LSSS possono essere fatte in un modulo arbitrario. Esempio di GF2: solo i bit 0,1 con $\oplus$ come operazione. Nell'esempio, due shares al party 2, altra importante generalizzazione: nel caso di Shamir, ho uno schema (t, n), ma nessuno mi obbliga a dare uno share a ciascuno, posso dare più di uno shares ad un partecipante. Nell'esempio, assumo che party 2 party 4 si riuniscano, possono scoprire s? Lo esprimo come span problem: controllo se le shares che hanno generano uno span che contiene (1, 0, 0, 0) (tramite combinazione lineare degli shares con opportuni coefficienti $c_i$).\\ In questo caso $P_2$ e $P_4$ possono essere accettate come soluzioni del problema di Span.\\ Ad esempio, nno c'è una combinazione lineare di $P_1$ e $P_2$ che dia (1, 0, 0, 0), quindi questi non possono ricostruire il segreto. Ora , il numero di persone che servono per ricostruire non è più il fattore cruciale, ma quali bisogna coordinare per poter ricostruire il segreto s. Come trasformalo in un secret sharing scheme? Prendo le shares dei parties, moltiplico per s  e le rand $r_1$ ed ottengo le shares $y_{i,j}$ (doppio pedice perché un party può avere più shares).
+Per ricostruire: so quali $c_i$ servono per risolvere lo span program, li moltiplico alle shares dei $P_i$ e sommo.
+\subsubsection{LSSS e strutture d'accesso}
+Posso implementare qualche struttura d'accesso con proprietà specifiche? Un LSSS può implementare una qualunque struttura di accesso lineare. Ho 4 partecipanti $P_1$, $P_2$, $P_3$, $P_4$, ho una struttura di accesso monotona A $c$ $2^P$, es A = \{\{$P_1$, $P_2$\}, \{$P_1$, $P_3$, $P_4$\}\}\\ Voglio un predicato booleano: ad esempio "Apri il secreto se $P_1 and P_2$ or $P_3 and P_4$, non si può usare il not.\\ Ogni predicato booleano senza negazioni viene supportato da una LSSS.Problema di Shamir: è basato sul conto: i partecipanti sono considerati tutti uguali (1 means 1), vorrei creare un sistema in cui "posso aprire la stanza" solo se qualcuno di questi sono presenti, ad esempio solo un professore, o 5 studenti + un assistente del prof. Le policies sono più elaborate dei semplici numeri, nel caso di LSSS posso farlo e tutte le considerazioni fatte in precedenza valgono.\\ Voglio implementare la policy $P_1$ or ($P_2$ and ($P_3$ or $P_4$)). Costruisco un albero: le foglie sono i partecipanti e i nodi sono le operazioni (possono essere and o or).\\ Se il nodo riceve un vettore x ed è un AND gate: metto x come prima componente della matrice, metto due 1 come altre componenti ed uso uno schema (3, 3) aggiungendo gli altri due vettori.\\ Valore iniziale è la dimensione in cui nascono il segreto (es 1: 1 vettore di taglia 1), l'AND lo trasforma in un due dimensioni: (1 1, 1 -1)$^T$ e le do come shares ai parties. L'OR no fa altro che duplicare il vettore. Fare attenzione al padding: a seconda della policy può servire fare delle considerazioni.
+\section{Elliptic curve cryptography}
+L'uso dell'ECC: risposta sbagliata è che le chiavi sono più piccole. È vero, ma non è una risposta completa: ECC darà chiavi più piccole, ma non è solo quello. La vera ragione è data da questa tabella:
+\begin{table}
+\begin{tabular}{ c c }
+Symmetric key equiv & modulus size\\
+80 bits & 1024 bits\\
+128 bits & 3072 bits\\
+256 bits & 15360 bits\\
+\end{tabular}
+\end{table}
+Sto usando RSA con aritmetica standard, nella tabella c'è la corrispondenza tra il livello di sicurezza e la taglia della chiave. Ma per aumentare il livello di sicurezza serve scalare la chiave esponenzialmente. Quindi in aritmetica modulare, il problema è la scalabilità: è vero che oggi siamo al sicuro con questo livello di sicurezza, ma c'è un problema per scalabilità futura.\\Con curve ellittiche:
+\begin{table}
+\begin{tabular}{ c c c }
+Symmetric key equiv & modulus size & Elliptic curve\\
+80 bits & 1024 bits & 163 bits\\
+128 bits & 3072 bits & 283 bits\\
+256 bits & 15360 bits & 571 bits\\
+\end{tabular}
+\end{table}
+Quindi in EC per poter duplicare il livello di sicurezza, basta duplicare la taglia della chiave;EC scalano meglio.\\ In ECC c'è problema difficile in una direzione e facile nell'altra che è un equivalente del Dlog problem. Recall Dlog problem: se ho y = $g^xmodp$, è difficile trovare x. Serve quantificare il "difficile" (nel caso del Dlog non c'è regolarità nella curva di $g^Xmodp$, "unico" approccio valido è brute force).\\ Ci sono algoritmi per semplificare la ricerca di x: il migliore algoritmo che risolve il Dlog nel gruppo $Z_p^*$ ha una complessità di $O(n^{\frac{1}{3}})$, ed ogni gruppo ha un algoritmo di Pollard-$\rho$ che abbassa a $\sqrt[2]{n}$, mentre nel caso del gruppo $Z_p^*$ abbiamo $\sqrt[3]{n}$, che rimane comunque esponenziale.\\ Per questo motivo è stato abbandonato il gruppo $Z_p^*$ o RSA etc... verso le curve ellittiche in TLS:
+\begin{itemize}
+\item Chiavi più piccole
+\item Migliore scalabilità
+\end{itemize}
+\subsection{Curve ellittiche}
+Non sono ellissi (quella è una conica), sono delle curve cubiche particolari, espressione generale è: $y^2 = x^3 +ax + b$, a,b a scelta ma tali che $4a^2 +27b^3 \neq 0$.\\ Altra differenza da $Z_p^*$, dove una volta fissato p ho un solo gruppo, qui al variare di a,b ho diverse curve ellittiche. es: curva bitcoin usa (a,b) diversi da quelli delle banche, rispetto alla crittografia usata in TLS.\\ Per crittografia, serve un gruppo, Dlog crypto deriva dal un gruppo $Z_p^*$, di cui g è il generatore e poi c'è un'operazione fra i punti del gruppo.\\ Se voglio fare crypto con EC: cos'è il punto e qual'è l'operazione? Le EC permettono di specificare dell strutture algebriche specifiche.
+\subsubsection{Operazione}
+"Invento" operazione, la chiamo "+" (chiamata storicamente somma).\\ Prendo un punto P, poi un punto Q (appartenenti alla curva), voglio un R definito come P+Q e che appartenga alla curva.\\ Definizione dell'operazione: prendo due punti P e Q, traccio una retta fra i due punti e questa retta intercetta la curva in un punto (questo avviene sempre, tranne che in un caso). Prendo il punto intercettato e lo proietto sull'altro estremo della curva, il risultato è il punto R.\\ Nella definizione assumo che P e Q siano due punti diversi della curva, ma potrei fare P+P: per definirla, prendo il punto e traccio una linea tangente alla curva in P e questa intercetterà la curva in un punto -R, lo proietto ed ottengo R (come nel caso precedente).\\ Se prendo due punti della curva e la retta che passa per questi è parallela all'asse y, l'operazione non sarebbe definita. Quindi completiamo la curva con un punto in più detto "O", che è il punto all'infinito: non è rappresentabile, ma è convenzione per le EC. Ora l'operazione è definita per qualunque punto: facendo P + (-P, per convenzione il secondo punto che intercetta la retta parallela). P + 0 = -P, una volta ribaltato riottengo P; proprietà fondamentale per avere un gruppo, un punto del gruppo ($x_1$, $y_1$ deve soddisfare l'equazione $y^2 = x^3 +ax + b$), più il punto 0. Ho definito l'operazione: presi due punti $P_1$ = ($x_1$, $y_1$) e $P_2$ = ($x_2$, $y_2$) ho il +.\\ Espressione algebrica per i nuovi punti: P = ($x_1$, $y_1$) e Q = ($x_2$, $y_2$) ed R = P+Q = $P_1$ = ($x_3$, $y_3$) è computato così:
+\begin{itemize}
+\item $x_3$ = $\lambda^2 - x_1 - x_2$
+\item $y_3$ = $\lambda\cdot (x_1 - x_3) -y_1$
+\item Dove $\lambda$ è definito come:
+\begin{itemize}
+\item $\frac{y_2 - y_1}{x_2 - x_1}$ se P $\neq$ Q
+\item $\frac{3x^2 + a}{2y_1}$ se P = Q
+\end{itemize} 
+\end{itemize}
+\subsubsection{Elliptic curve group}
+Ho quindi definito il gruppo, l'operazione e un modo per eseguirla ed il risultato di questa. Ma dove posso computare: assunzione implicita fin ora era che fossimo nei reali. Invece di lavorare sui reali, restringo agli interi ed anche in modulo primo. Prima potevo plottare qualcosa, ragionavo con numeri reali e curve reali, ma ora ho solo dei punti e quindi definisco una "curva", che è un insieme discreto $E_p(x, y)$: insieme dei punti tali che
+\begin{itemize}
+\item x,y sono interni in $Z_p$ (c'è anche lo 0).
+\item $y^2modp = x^3 + ax +b modp$, se vale l'uguaglianza il punto (x, y) $\in$ curva.
+\end{itemize}
+Campo è finito, quindi un numero finito di punti.\\ esempio: $x^3+x+1$, voglio trovare i punti della EC definita su $Z_5$. $Z_5$ = \{0, 1, 2, 3, 4\}. for x:0 to 4: for y:0 to 4: if mod($y^2$, 5) = mod($x^3 + x + 1$, 5) then include point in EC $Z_5$; inoltre devo includere O.\\ Cambiando l'equazione dell'EC, avrò un diverso numero di punti. Inoltre, quasi sempre il numero di punti sarà parie questo è utile. Cerco di vedere se ci sono proprietà fra i punti: se li sommo, il risultato è nella curva? Sì, inoltre preso (0,1) e faccio P e P+P e P+P+P=3P e P+P+P+P=4P (non è un'operazione nuova, è solo un abbreviazione per dire che è k volte +), questo è un generatore e genera i restanti punti.\\ Regola generale: potrei plottare la curva $y^2 = x^3 + x$ su $Z_{23}$ (anche chiamato $F_{23}$, devo graficare tutti i possibili punti. La curva risultante richiama quella vista nel caso reale, ma è ristretta al gruppo $Z_{23}$, grafico molto irregolare e scattered: il Dlog è interessante perché il plot è caotico, con le EC ristrette agli interni modulari ho un plot che assomiglia a quello che ottengo col Dlog. Non c'è più lo stesso "look and feel" di una curva regolare.\\ Inoltre, i punti sono legati da una struttura molto regolare, formano un gruppo nel senso di struttura algebrica: (E($Z_p$,+)) è un gruppo, bisogna dimostrare le varie proprietà note:
+\begin{itemize}
+\item Chiuso rispetto all'addizione 
+\item Addizione commutativa
+\item O è l'identità
+\item Ogni punto P in E ha l'inverso -P
+\item Vale proprietà associativa
+\end{itemize}
+\subsubsection{EC group properties for crypto}
+Preso P punto di una EC ed un intero k, operazione [k]P (P+P+P+P... k volte): è facile da computare se ho P e k, ma se ho P ed il risultato [k]P è difficile trovare k.\\ Questo perché sto computando $P^k$, simile al problema del Dlog in $Z_p^*$, ma per oggetti diversi: ho dei punti di una curva ellittica, non numeri interi.\\ Ma il problema non è sempre difficile, la complessità dipende dalla scelta della curva: ci sono curve in cui è difficile rompere ed altre meno.\\ Bitcoin non usa parametri standard, altra curva che credono sia sicura (non dimostrato).\\ Difficoltà: per computare [k]P posso applicare l'algoritmo di square e multiply, O(1.5logN operazioni, ma per l'inverso servono $2^x$ operazioni; stavolta lo square e la multiply diventano duoble\&sum.\\ Anche qui prendo k e lo scrivo in base 2, lo scrivo al contrario e costruisco la tabella (ricordando che ora l'operazione è un +).
 \end{document}
