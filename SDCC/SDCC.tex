@@ -1871,11 +1871,11 @@ In un orologio al quarzo si devia di circa un secondo in 10/11 giorni. Per clock
 \subsubsection{UTC}
 Universal Coordinated Time, standard internazionale per mantenere il tempo. È basato sul tempo atomico, ma occasionalmente viene corretto usando il tempo astronomico. \\ 1 sec = tempo impiegato dall'atomo di Cesio 133 per eseguire un bel numero di transizioni di stato.\\ I clock fisici che usano oscillatori atomici sono i più precisi ed accurati. \\ Output dell'orologio possono essere inviati in broadcast da stazioni radio su terra e da satelliti. I nodi con ricevitori possono sincronizzare i loro clock con questi segnali, a seconda della fonte del segnale ci sarà una maggiore o minore accuratezza, se arriva da satellite è più accurato.
 \subsubsection{Sincronizzazione del clock fisico}
-Come sincronizzare i clock fisici con gli orologi del mondo reale? Sincronizzazione esterna: se i clock sono sincronizzati con una sorgente di tempo S, questo in modo che $\forall$ C$_i$: $|S(t) - C_i(t)| \leq \alpha$, con $\alpha$ $>$ 0.\\ Sincronizzazione interna: i clock sono sincronizzati l'uno con l'altro. Se considero il clock C$_i$ e C$_j$ questi sono sincronizzati se $|C_i(t) - C_j(t)| \leq \pi$ per tutte le coppie di clock. (vedi slides)\\ Sincronizzazione interna ed esterna non si implicano a vicenda: se c'è sincronia esterna, allora saranno anche sincronizzati internamente, ma non vale il viceversa, perché tutti i clock che sono sincronizzati internamente potrebbero deviare rispetto alla fonte S esterna.\\ Se l'insieme dei processi è sincronizzato internamente con precisione $\alpha$, allora lo è internamente con precisione 2$\alpha$.\\ Clock hardware H è corretto se il suo drift rate si maneitene in un intervallo $\rho$ $>$ 0. Se clock H è corretto, l'errore che si commette nel misurare un intervallo di istanti reale [t, t'] (t' $>$ t) è limitato: (1 - $\rho$)(t-t') $\leq$ H(t')-H(t) $\leq$ (1+$\rho$)(t'-t).\\ Siccome i diversi clock fisici possono essere realizzati con materiali differenti e quindi avere diverso drift rate, vanno periodicamente sincronizzati. Se due clock hanno lo stesso tasso di scostamento massimo da UTC, che sia pari a $\rho$, dopo $\Delta$t si saranno scostati di 2$\rho$. Per garantire che i due clock non differiscano per più di $\delta$, i clock vanno sync almeno ogni $\frac{\delta}{2\rho}$ secondi.
+Come sincronizzare i clock fisici con gli orologi del mondo reale? Sincronizzazione esterna: se i clock sono sincronizzati con una sorgente di tempo S, questo in modo che $\forall$ C$_i$: $|S(t) - C_i(t)| \leq \alpha$, con $\alpha$ $>$ 0.\\ Sincronizzazione interna: i clock sono sincronizzati l'uno con l'altro. Se considero il clock C$_i$ e C$_j$ questi sono sincronizzati se $|C_i(t) - C_j(t)| \leq \pi$ per tutte le coppie i,j tali che 1 $\leq$ i,j $\leq$ N nell'intervallo I; i clock i e j hanno quindi precisione $\pi$.\\ Sincronizzazione interna ed esterna non si implicano a vicenda: se c'è sincronia esterna, allora saranno anche sincronizzati internamente, ma non vale il viceversa, perché tutti i clock che sono sincronizzati internamente potrebbero deviare rispetto alla fonte S esterna.\\ Se l'insieme dei processi è sincronizzato internamente con precisione $\alpha$, allora lo è internamente con precisione 2$\alpha$.\\ Clock hardware H è corretto se il suo drift rate si maneitene in un intervallo $\rho$ $>$ 0. Se clock H è corretto, l'errore che si commette nel misurare un intervallo di istanti reale [t, t'] (t' $>$ t) è limitato: (1 - $\rho$)(t-t') $\leq$ H(t')-H(t) $\leq$ (1+$\rho$)(t'-t).\\ Siccome i diversi clock fisici possono essere realizzati con materiali differenti e quindi avere diverso drift rate, vanno periodicamente sincronizzati. Se due clock hanno lo stesso tasso di scostamento massimo da UTC, che sia pari a $\rho$, dopo $\Delta$t si saranno scostati di 2$\rho$. Per garantire che i due clock non differiscano per più di $\delta$, i clock vanno sync almeno ogni $\frac{\delta}{2\rho}$ secondi.
 \subsubsection{Sincronizzazione interna in SD sincrono}
 Algoritmo di sincronizzazione interna tra due processi
 \begin{itemize}
-\item Processo 1 manda il suo clock t locale al processo due in un messaggio
+\item Processo 1 manda il suo clock t locale al processo 2 in un messaggio
 \item Processo 2 imposta il suo clock locale al tempo contenuto nel messaggio + il tempo di trasmissione. Vale il vincolo sul tempo di trasmissione, che sarà limitato (ma non è noto) in t$_{min}$ e t$_{max}$. u = (t$_{max}$ - t$_{min}$), se il processo due imposta il suo clock a t + $\frac{t_{max} - t_{min}}{2}$ il lower bound ottimo sullo skew sarà pari ad $\frac{u}{2}$
 \end{itemize}
 Si può generalizzare per sincronizzare tra n processi e si vede che l'ottimo sullo skew sarà pari a $\frac{u}{1 - \frac{1}{N}}$. IN un SD sincrono, l'algoritmo non è più utilizzabile, in questo caso t$_{trasm}$ = t$_{min}$ + x, con x $\geq$ 0, ma non noto.
@@ -2282,15 +2282,254 @@ Archivio di dati distribuito: insieme di spazi di storage fisicamente distribuit
 \item Modelli data-centrici: obiettivo dell'archivio di dati è fornire una vista dell'archivio di dati consistente a livello di sistema
 \item Modelli client-centrici: obiettivo è fornire una vista di un archivio di dati consistente a livello di un singolo client.
 \end{itemize}
-Non esiste modello giusto o sbagliato, soluzioni cambiano a seconda della tipologia di applicazione (in termini di requisiti di consistenza).\\ Notazione:
-\begin{itemize}
-\item Rappresento i diversi processi che eseguono le operazioni:
+Non esiste modello giusto o sbagliato, soluzioni cambiano a seconda della tipologia di applicazione (in termini di requisiti di consistenza).\\ Notazione:\\
+Rappresento i diversi processi che eseguono le operazioni:
 \begin{itemize}
 \item $W_i(x)a$: operazione di scrittura da parte di $P_i$ sul dato x con valore scritto a
 \item $R_i(x)a$: operazione di lettura da parte di $P_i$ sul dato x con valore letto a
 \end{itemize}
+\subsection{Modelli di consistenza data centrici}
+La vista consistente dell'archivio di dati distribuito viene offerta a livello di sistema. Ne esistono diverse sotto-tipologie, ci concentriamo su quella più usata e diffusa che prevede l'ordinamento delle operazioni.\\ Le operazioni sono r/w di singole variabili, ovvero di dati condivisi e replicati, si parte dalla consistenza stretta, via via fino alla finale. AL progredire, il modello di consistenza diverrà più debole.\\ La notazione sarà quella introdotta nella sezione superiore. 
+\subsubsection{Consistenza stretta}
+Modello più stringente di consistenza: una lettura qualsiasi del dato x restituisce un valore corrispondente al risultato più recente della write su x. Write è eseguita istantaneamente su tutte le repliche come una singola operazione atomica. \\ La consistenza stretta impone un ordinamento temporale assoluto di tutti gli accessi all'archivio di dati e richiede un orologio globale, ma ho visto tutte le difficoltà inerenti alla disponibilità di un orologio globale.\\ Implementazione richiede che nel momento in cui viene effettuata una write, questa venga propagata su tutte le repliche dell'archivio dei dati distribuito nell'immediato; read non può essere effettuata finché la write non è propagata ovunque, quindi è bloccata.\\ Implementazione richiede quindi sincronizzazione fisica molto accurata tra i diversi nodi dell'archivio di dati distribuito, ma ho visto la difficoltà ad avere sincronizzazione fisica accurata: es NTP ha accuratezza O(ms), mentre esecuzione istruzioni O(ns), quindi c'è problema: realizzare consistenza stretta in maniera efficiente è molto difficile. \\ Rilassamento del requisito della consistenza stretta, due modelli che mantengono ancora l'illusione che vi sia un'unica copia del dato, ma non viene più rispettato ordinamento temporale delle operazioni, con due diversi gradi.
+\subsubsection{Consistenza sequenziale}
+Definita dicendo:
+\begin{itemize}
+\item Tutti i processi vedono la stessa sequenza di operazioni di read e write, ma questa non rispetta l'ordinamento temporale delle operazioni. Indebolimento: non esiste più tempo globale, in base a cui assegno un timestamp. Tuttavia, all'esterno rimane l'illusione che vi sia una singola copia dei dati.
+\item (IMPORTANTE, È ERRORE GRAVE SE LO SCORDI) Per ciascun processo deve essere rispettato l'ordine di programma: data la sequenza vista da tutti i processi, ognuno deve rispettare l'ordine di r/w di quel processo. Se un processo eseguire prima w(x)$_a$ e poi w(x)$_b$, nella sequenza dovranno essere in questo ordine.
 \end{itemize}
-\subsection{Consistenza stretta}
+esempio: 4 processi, che eseguono r,w su un dato x. Esempio non soddisfa la consistenza stretta: quando da $P_3$ e $P_4$ viene effettuata read, non viene letto ultimo valore di x che è stato scritto (dovrebbe essere b).\\ Definisco interleaving, ovvero sequenza di operazioni che includa tutte le operazioni presenti nel diagramma, e l'ordine deve soddisfare il vincolo che venga mantenuto l'ordine di programma visto da ciascun processo;4 validi, quindi archivio soddisfa la consistenza sequenziale, es: nel caso di $P_3$, deve essere vista prima $R(x)_b$ e poi $R(x)_a$. Deve esserci il rispetto delle operazioni: se ad esempio scrivo b, poi devo leggere b.\\ Non banale da implementare in maniera efficiente: requisito è che tutti vedano le operazioni nello stesso ordine, quindi ricorda multicast totalmente ordinato, voglio che tutti i processi vedano le operazioni nello stesso ordine, con in più il vincolo dell'ordine di programma.\\ Quindi o uso sequencer (centralizzato) o algoritmo decentralizzato usando clock logico di Lamport. Implementazione di due protocolli: primary-based e replicated-based 
+\subsubsection{Consistenza linearizzabile}
+Più debole della consistenza stretta, ma più forte di quella sequenziale. Ogni operazione di r/w appare nel sistema come se abbia effetto istantaneamente tra il momento in cui l'operazione inizia e quando finisce. Basta un clock fisico che non garantisca una sincronizzazione forte (va bene NTP).  Le operazioni ricevono un timestamp in base al clock fisico e vengono ordinate in base a tale valore. Se $op_1$ precede $op_2$ temporalmente (quindi $ts_1$ $<$ $ts_2$) allora op1 precede op2 nella sequenza. Come nel caso sequenziale, la linearizzabilità fornisce una semantica di copia unica, in più la consistenza linearizzabile aggiunge che una read restituisce la write più recente, in base all'ordinamento dato dal clock fisico utilizzato. Se viene effettuata read e scrittura non è ancora propagata, viene restituito NIL.\\ Perché è più debole di quella stretta: due operazioni che avvengono nello stesso tempo possono essere viste in un ordine qualunque, l'importante è che l'ordine sia comunque a tutti. Siccome tempo di esecuzione delle operazioni dei diversi processi ha tempo dell'ordine dei ns, mentre tempo di comunicazione è O(ms), quindi due operazioni che, guardando al tempo assoluto, sono avvenute in tempi differenti, possono avere tempi bervi tra di loro.\\ Confrontando con consistenza linearizzabile:
+\begin{itemize}
+\item Tutte e due danno una semantica di copia singola per clinet singolo
+\item Con consistenza sequenziale le operazioni possono essere organizzate in diversi interleaves, basta che sia rispettato l'ordine di programma di ciasun processo. No nozione di tempo fisico globale.
+\end{itemize}
+Performance della linearizzabilità: condivido un file con collega di New York (io sto a Roma). Il collega di NY scrive 2 sul dato x, io scrivo 5 e per avere linearizzabilità voglio che nel momento in cui collega legge x, legga 5. Per implementare: le operazioni di scrittura vanno propagate sull'altra replica, una replica è in Irlanda, una in North Carolina. Quindi problema di prestazioni: finché l'operazione di scrittura non è propagata dal server in Irlanda a quello in North Carolina, il collega newyorkese non completa operazione di lettura. Devono essere sincronizzate tutte le repliche prima che l'operazione di scrittura possa dirsi conclusa. Modello utilizzabile in un singolo data center: latenza fra i nodi è molto minore rispetto a quella in un sistema distribuito a larga scala. 
+\subsubsection{Consistenza causale}
+Obiettivo del modello di consistenza è di mantenere nell'interleaving la relazione di causa-effetto. Perdo l'illusione della singola copia. es: post su facebook, se utente scrive un post ed utente lo legge e ne scrive uno di conseguenza, voglio che questi vengano visti in quest'ordine.\\ Formalmente: modello di consistenza in cui operazioni di scrittura che sono potenzialmente in relazione di causa-effetto fra di loro devono essere viste da tutti i processi nello stesso ordine. Operazioni di scrittura concorrenti possono essere viste in un ordine differente, da processi differente.\\ Dire che due operazioni di scrittura sono in relazione di causa-effetto: operazione di scrittura eseguita da un processo, un altro fa una read di quel dato e successivamente ne fa una write. La scrittura può dipendere dalla lettura che è stata effettuata.\\ Se invece due processi fanno due write, non collegate fra di loro con relazione di causa-effetto (non c'è una read nel mezzo), queste non sono un problema.\\ Indebolimento della consistenza sequenziale, distinguo fra operazioni in relazione di causa-effetto, mentre non ci interessa l'ordine per operazioni concorrenti.\\ Non c'è più l'illusione della singola copia, le scritture concorrenti possono essere fatte in diversi ordini per le diverse copie.\\ Visti i requisiti di rilassamento, la latenza è più trattabile rispetto a quella nella consistenza sequenziale, ma per tenere conto della relazione di causa-effetto, devo usare clock logici vettoriali, o con un grafo di dipendenza che tenga traccia delle dipendenze nella relazione di causa effetto.
+\subsubsection{Sintesi dei modelli di consistenza}
+\begin{table}
+\begin{tabular}{ c c }
+Consistenza & Descrizione\\
+Stretta & Tutti i processi vedono gli accessi condivisi nello stesso ordine assoluto di tempo\\
+Linearizzabile & Tutti i processi vedono gli accessi condivisi nello stesso ordine: gli accessi sono ordinati in base ad un timestamp globale (non unico)
+\end{tabular}
+\end{table}
+\subsubsection{Rilassamento ulteriore: consistenza eventuale-teorema CAP}
+Teorema CAP: Consistency Availability and Partition tolerance. Quando fu presentato, era più una congettura basata sull'esperienza, nasce dallo studio di cosa accade alla consistenza quando si verifica una partizione di rete che divide il sistema in due sotto-insiemi.\\ esempio: DB distribuito che viene usato da una applicazione bancaria. I diversi server replicati sono indicati con la lettera B, due utenti stanno effettuando sullo stesso conto corrente due operazioni, una di deposito ed una di prelievo.\\ C'è una partizione di rete, domanda: gli utenti possono effettuare le operazioni? E se le effettuano, quali sono le conseguenze sulle repliche? Operazioni sono withdraw(B, 4) e deposit(B, 3): a causa della partizione di rete, ci sarà situazione di inconsistenza sul valore del conto corrente. Alternative:
+\begin{itemize}
+\item Per mantenere le repliche consistenti, bisogna impedire operazioni di aggiornamento delle repliche. Nel nostro esempio quindi, il sistema appare unavailable. 
+\item Se  invece non blocco operazioni di aggiornamento, allora i due sottoinsiemi di repliche divergeranno fra di loro. Sistema sarà disponibile, ma non consistente, teorema CAP spiega quale soluzione scegliere.
+\end{itemize}
+Teorema CAP: se ho un sistema i cui nodi sono interconnessi da una rete e che condividono i dati, un sistema in ogni momento potrà soddisfare due di queste 3 proprietà:
+\begin{itemize}
+\item Consistenza, dalla sequenziale in su, quindi forte.
+\item Availability, del dato anche in presenza di fallimenti.
+\item Tolerance, alle partizioni di rete. Ovvero, il sistema continua a funzionare correttamente anche in presenza di partizioni di rete.
+\end{itemize}
+Perché è spesso interessante avere tolleranza alle partizioni di rete: partizioni di rete possono accadere in un SD a larga scala piuttosto frequentemente
+\begin{itemize}
+\item Malfunzionamenti ai router 
+\item Malfunzionamenti ai cavi marini
+\item DNS non funzionante
+\end{itemize}
+Anche per brevissimi intervalli di tempo, due nodi qualunque non riescono a comunicare fra loro. Possono avvenire anche in data center, ma qui c'è grado di ridondanza nella comunicazione fisica che è tipicamente maggiore.\\ Quindi, considerando teorema CAP sono costretto a fissare la P, quindi devo scegliere l'altra variabile: o garantisco consistenza forte, o alta disponibilità, scelta è progettuale e dipende dall'applicazione. Un servizio di storage cloud mette enfasi sulla disponibilità (vedi SLA di S3), quindi possono esserci possibili inconsistenze, spesso negli storage cloud si usa modello consistenza finale.\\ Quindi, se fissata la P scelgo consistenza ho un sistema CP, se invece fisso la A ho un sistema AP. È importante sapere, quando uso SD, se offre garanzie CP o AP:
+\begin{itemize}
+\item CP: non c'è availability sempre, quindi se ad esempio richiedo scrittura, questa non può essere effettuata. Quindi, sviluppatore che effettua write e non può terminarla, deve decidere cosa fare con il dato
+\item Viceversa, se sistema è AP, facendo write questa viene accettata, ma read può non ridare l'ultimo valore aggiornato
+\end{itemize}
+Consistenza finale: in un archivio dati distribuito in cui:
+\begin{itemize}
+\item Mancano aggiornamenti simultanei (conflitti write-write)
+\item Forte prevalenza di letture rispetto a scritture
+\end{itemize}
+Allora è garantito che le repliche diventano gradualmente consistenti entro un valore di consistency window. Tale valore (ampiezza) di finestra può dipendere da vari fattori:
+\begin{itemize}
+\item Latenza di comunicazione
+\item Workload del sistema
+\item Numero di repliche
+\end{itemize}
+Spesso sistemi di storage cloud specificano durata della finestra, che è un upper bound, quindi se ad esempio è di 10 sec, può accadere raramente che vediamo dati non aggiornati in una finestra di letture ad esempio di un secondo.\\ esempio CAP: ho un DB distribuito, 2 repliche di cui una a Londra ed una a Mumbai (la seconda è il master, l'altro il worker).\\ 2 utenti stanno usando in concorrenza il DB distribuito, che è back-end per una web app usata per le prenotazioni di un hotel di NY.\\ Gli utenti stanno cercando di prenotare una stanza di hotel e ce n'è una sola disponibile. Supponiamo che avvenga partizione di rete, che impedisce ai due server di cominciare fra loro. Cosa accade: dipende dal tipo di consistenza e come il DB replicato implementa CAP, 3 possibili configurazioni:
+\begin{itemize}
+\item CA: non ho tolleranza alle partizioni di rete, nessun utente può prenotare la camera
+\item CP: non ho availability, server master di Mumbai può ricevere operazione di prenotazione, l'altro non può
+\item AP: si verifica overbooking, entrambe possono prenotare la camera d'albergo. Questo tipo di configurazione dipende molto dall'applicazione.
+\end{itemize}
+Importante sempre sapere qual'è il tipo di consistenza offerta dal sistema data-centrico.\\ CAP non parla esplicitamente di latenza, ma è  cruciale per poter capire l'essenza del teorema: ricordare che latenza non è 0.
+\subsubsection{Consistenza finale}
+Adottata in un sistema di dati distribuito caratterizzato da:
+\begin{itemize}
+\item Mancanza di aggiornamenti simultanei (conflitti write-write) o che abbiano una facile risoluzione
+\item Forte prevalenza di letture rispetto alle scritture
+\end{itemize}
+Garantisce:
+\begin{itemize}
+\item Se non si verificano aggiornamenti, tutte le repliche (distribuite geograficamente) diventano gradualmente consistenti entro una finestra temporale, detta inconsistency window.
+\item In assenza di fallimenti, l'ampiezza dell'inconsistency window dipende da: latenza di comunicazione, numero di repliche, carico del sistema.
+\end{itemize}
+DNS (sistema di storage distribuito), per via del TTL del resource record, per via del fatto che i RR possono essere mantenuti nella cache dei NS intermedi e il valore può cambiare.\\ Modifica di un record A (mapping fra nome e ip) non si riflette subito dal NS autoritativo, ma si propaga in qualche decina di secondi. Nel frattempo però, alcuni client vedono risoluzione fra host name ed IP che non è quella offerta dal NS autoritativo, perché questa viene risolta da un NS intermedio che ha la risoluzione ancora in cache e non scaduta.\\ Inoltre, ci sono de NS non cooperativi intermedi che continuano a fornire una associazione anche se ha TTL scaduto.\\ Nel caso di DB replicato, nel caso di consistenza finale (adottata nel caso di DB AP) le repliche sono sempre disponibili, ma possono portare a inconsistenza. Nel caso di consistenza forte: master manda operazioni di replica del dato dai worker, ma le repliche non sono disponibili finché scrittura non è completata.\\ Modello di consistenza ha molti vantaggi:
+\begin{itemize}
+\item Molto facile e poco costoso da implementare
+\item Permette di effettuare letture e scritture veloci sulla replica locale
+\item Usato ad es nel DNS
+\end{itemize}
+Ma svantaggi:
+\begin{itemize}
+\item Non c'è illusione della singola copia
+\item Possibili inconsistenze, si usano tecniche per riconciliazione il valore divergente per un dato su diverse repliche
+\end{itemize}
+Tecniche di riconciliazione: strategia più nota è "last write wins". Ultima scrittura può essere etichettata, piuttosto che con clock fisico, con clock vettoriale, così da catturare relazione di causalità esistente fra diverse versioni dei dati. Confronto valori del clcok vettoriale per dato che è la versione più recente. Clock possono essere concorrenti, quindi servono ulteriori strategie per risolvere.\\ Altra strategia è esporre conflitto a livello applicativo e far si che sia sviluppatore ad invocare handler specifico per risolvere il conflitto (usata es in Amazon Dynamo).\\ Altra scelta è quando far avvenire la riconciliazione:
+\begin{itemize}
+\item Di solito, quando avviene read, per fornire un'operazione di scrittura veloce senza overhead sperimentato dalla riconciliazione. Read possono essere più lente, perché vengono piallate le divergenze fra i dati.
+\item Altrimenti su on write, quindi repair asincrono
+\end{itemize}
+Consistenza usata largamente sopratutto nei servizi cloud di storage, DB noSQL... SD è più veloce, non c'è la latenza legata all'operazione di aggiornamento legata alle diverse repliche ma nel caso in cui uno sviluppatore abbia bisogno di offrire maggiore livello di consistenza, il costo ricade sulle spalle dello sviluppatore.\\ Acronimo BASE: filosofia di design alternativa all'ACID. ACID è classico approccio  per problemi di consistenza nei DBMS, è approccio pessimistico in quanto previene i conflitti. I DB relazionali tradizionali che usano approccio ACID sono esempi di sistemi CA.\\ Ma la filosofia ACID non scala bene quando si considerano petabytes di dati (ricordare la latenza).\\ BASE: Basically Available Soft state Eventual consistency, approccio ottimistico che non previene le operazioni conflittuali, due operazioni sullo stesso dato possono avvenire in concorrenza, approccio BASE le identifica e le fa convergere verso una unica.\\
+\begin{itemize}
+\item Basically Available: il sistema è sempre disponibile per la maggior parte del tempo ma possono esistere
+\item Soft state: il dato non è durevole nel senso che la persistenza è nelle mani dell'utente che deve prendersi cura di rinfrescarli
+\item Eventually consistent: il sistema converge eventualmente ad uno stato di consistenza.
+\end{itemize}
+\subsection{Modelli di consistenza client-centrici}
+Obiettivo è fornire garanzie al singolo client relative alla consistenza degli accessi da parte di quel client ad un archivio dati distribuito\\ esempio: archivio dati distribuito a cui utente accede tramite dispositivo mobile. A seconda della posizione, accederà ad una delle diverse repliche, quindi le scritture che aveva effettuato su una delle repliche potrebbero non essere propagate sull'altra e se vi accede, potrebbe notare inconsistenze nei dati.\\ Utente però vorrebbe che questo non accada, diversi modelli di consistenza definiscono le garanzie che vengono offerte all'utente mobile.\\ Notazione è leggermente differente da quella per la consistenza data-centrica:
+\begin{itemize}
+\item $x_i[t]$: versione di x sulla replica locale $L_i$ al tempo t
+\item $WS(x_i[t])$: sequenza di operazioni di scrittura sul $L_i$ che hanno portato come risultato a $x_i[t]$
+\item $WS(x_i[t1], x_j[t2])$ indica che $x_j$ segue da $x_i$, ovvero $x_j$ è ottenuto da un append di operazioni di scrittura alla serie di operazioni che portano ad $x_i$.
+\end{itemize}
+Assumiamo che i dati possano essere modificati solo dal proprietario
+\subsubsection{Consistenza monotonic-read}
+Se un processo legge il valore di un dato x, qualunque successiva operazione di lettura su x da parte di quel processo restituirà sempre lo stesso valore o un valore più recente.\\ esempio: leggere gli aggiornamenti ad un calendario accedendo a diverse repliche del servizio, vedo tutti gli aggiornamenti a prescindere dalla replica
+\subsubsection{Consistenza monotonic-write}
+Un'operazione di scrittura da parte di un processo su un dato x viene completata prima di qualunque operazione di scrittura successiva su x da parte dello stesso processo.\\ esempio: sto aggiornando un programma sul server $s_2$ e tutti i componenti che dipendono dal linking e compilazione del programma sono su $s_2$
+\subsubsection{Consistenza read-your-writes}
+L'effetto di un'operazione di di scrittura da parte di un processo su un dato x sarà sempre visto da una successiva operazione di lettura di x da parte dello stesso processo, quindi la causa precede sempre l'effetto.\\ esempio: nel momento in cui aggiorno pagina web, se browser adotta questo modello di consistenza, mostra versione più recente del server e non copia in cache
+\subsubsection{Consistenza writes-follow-reads}
+Scrittura dopo la lettura: un'operazione di scrittura da parte di un processo su un dato x, che segue una precedente operazione di lettura di x da parte dello stesso processo ha luogo sullo stesso valore di x che è stato letto o su un valore più recente.\\ esempio: utenti usano news group, utente legge articolo A e scrive un commento B relativo ad A, è garantito che la scrittura di B avverrà su ogni copia del newsgroup solo dopo la scrittura di A.
+\subsection{Protocolli di consistenza}
+Come implementare uno specifico modello di consistenza, protocolli di consistenza linearizzabile e sequenziale (più largamente usati) ci sono due diverse famiglie di protocolli:
+\begin{itemize}
+\item Primary backup: scritture eseguite solo su una replica primaria, che si assicura che le scritture vengano propagate in modo ordinato sulle altre repliche
+\item Replicated write: scritture su molteplici repliche
+\end{itemize}
+\subsubsection{Protocolli primary-based: Remote write}
+Anche detti protocolli di replicazione passiva. Idea:
+Associo ad ogni dato x una replica primaria, che ha il compito di replicare operazioni di scrittura su tutte le altre repliche, le read può essere effettuata su qualunque delle repliche.\\ Remote write: scrittura di x è inviata alla replica primaria, che poi la inoltra alla replica primaria, che può essere remota al client che vuole scrivere x.
+\begin{itemize}
+\item Client richiede scrittura su dato x, comunica con la replica locale che passa a quella primaria
+\item Primary esegue scrittura ed invia aggiornamento a tutte le altre repliche
+\item Una volta finita la write di tutte le repliche, mandano ack alla primaria, che comunica alla replica locale al client che l'operazione è stata completata
+\item Replica locale comunica che write è avvenuta con successo
+\end{itemize}
+Lentezza della propagazione della scrittura se SD è su scala geografica, dipende molto dalla replica più lenta; quindi, anche scalabilità ridotta. Client è bloccato in attesa di ACK finché scrittura non è stata completata su tutte le repliche. Si può pesare ad un protocollo non bloccante, in cui replicazione è fatta in modo asincrono: replica primaria risponde al client che scrittura è stata effettuata solo sul primario, successivamente si occupa di effettuare aggiornamento di tutte le repliche. Viene offerto modello di consistenza sequenziale, non è garantito che ordinamento di scrittura eseguite su tutte le repliche sia quello temporale.\\ Se usato remote write in versione bloccante, modello di consistenza è linearizzabilità: maggiore fault tollerance (viene inclusa situazione in cui primario subisce crash), svantaggio è lentezza.
+\subsubsection{Protocolli primary-based: local write}
+In questo caso, la replica primaria migra rispetto alla posizione del client: se utente richiede scrittura su x accedendo ad una replica che non è quella primaria per x, questa diviene la replica primaria, si occupa della scrittura locale e risponde al client una volta che ha terminato.\\ Scrittura avviene solo sulla replica locale al client, poi in modo asincrono la nuova replica primaria si occupa di propagare la scrittura (modo asincrono).
+\subsubsection{Protocolli replicated write: replicazione attiva}
+Rispetto ai primary based, scrittura può essere effettuata su molteplici repliche.\\ Replicazione attiva: quando una replica riceve una write, deve inviare in multicast la scrittura a tutte le repliche. Obiettivo è che tutte le repliche devono eseguire le operazioni nello stesso ordine. Stesso problema del multicast totalmente ordinato o state machine replication.\\ esempio: un operazione di aggiornamento ed una di inserimento su uno stesso dato, su due repliche diverse. Voglio garantire che tutte le repliche vedano nello stesso ordine le due operazioni. Posso usare multicast totalmente ordinato con clock logico scalare (totalmente distribuito) o sequencer centralizzato, seconda soluzione ha i classici problemi.\\ Consistenza garantita è sequenziale, garantisce che tutte le repliche eseguano le operazioni nello stesso ordine.
+\subsubsection{Protocolli replicated write: quorum based}
+Quorum based: si sfrutta un'idea di quorum simile a quella dell'algoritmo di Maekawa, in questo caso si concretizza nel fatto che per effettuare una read o write la replica deve ottenere quorum di voti da un sottoinsieme di repliche.\\ Considero dato x, che abbia N repliche (può variare quorum in scrittura o lettura), quindi un totale di N voti esprimibili. Se processo vuole fare read, richiede un quorum per la lettura per garantire che leggerà l'ultima versione di x. Allo stesso modo una write richiede quorum write che assegna un numero di versione, che viene incrementato per ogni scrittura.\\ Definendo opportune condizioni sulla cardinalità del quorum di lettura e scrittura posso garantire i conflitti r-w e w-w, indicando con $N_r$ ed $N_w$ cardinalità del quorum di lettura e scrittura:
+\begin{itemize}
+\item $N_r + N_w > N$, se qualcuno ha votato per operazione di write, non potrà votare per la read
+\item $N_w > \frac{N}{2}$, per evitare conflitti w-w. In questo modo, esiste almeno una replica che appartiene a due differenti quorum di scrittura, quindi non posso avere conflitto w-w.
+\end{itemize}
+Se non sono soddisfatte, consistenza si degrada fino ad un modello di consistenza finale, se soddisfatte abbiamo consistenza sequenziale: con queste condizioni, non garantisco rispetto dall'ordine temporale nell'effettuare operazioni.\\ Configurazioni:
+\begin{itemize}
+\item ROWA: read once, write always. 1 replica in lettura, quindi per effettuare lettura basta un voto ed è molto veloce. Ma la scrittura deve ottenere voto da tutte le repliche, quindi molto lenta
+\item RAWO: 1 replica per la scrittura, speculare alla precedente. Permette scritture veloci ma letture lente, inoltre possono occorrere conflitti w-w (siccome $N_w < \frac{N}{2}$), servono meccanismi di riconciliazione delle scritture.
+\item Stessa cardinalità per $N_r$ e $N_w$ ed uguali a $\frac{N}{2}$ + 1, soddisfo tutte le proprietà. Garantita consistenza sequenziale, prestazioni delle read e wrtie sono entrambe abbastanza lente, in quanto serve la maggioranza dei voti per poter eseguire una delle due operazioni.
+\end{itemize}
+Largamente usati, perché configurando opportunamente i valori $N_r$ ed $N_w$ si può lasciare all'utente del data store di scegliere grado di consistenza che più gli interessa, posso passare da consistenza forte a consistenza finale.
+\subsubsection{Protocolli per consistenza client-centrica}
+Implementazione richiede di definire insieme delle operazioni che sono rilevanti per ciascun processo. Ogni client c mantiene:
+\begin{itemize}
+\item Read set $WS_r$, letture rilevanti per le letture eseguite da c
+\item Write set $WS_w$ scritture eseguite da c
+\item Inoltre, viene dato un identificatore univoco ad ogni operazione di scrittura
+\end{itemize}
+Per consistenza monotinic-read:
+\begin{itemize}
+\item Quando c si sposta da una replica all'altra, passa il proprio write set o read set a seconda se richieda un'operazione di scrittura o lettura.
+\item Se replica nota che gli manca qualche write, contatta le altre repliche per farsi dare le operazioni mancanti prima di eseguire l'operazione di c
+\item Aggiorna il RS o WS di c
+\end{itemize}
+Per la read-your-writes:
+\begin{itemize}
+\item c passa $WS_w$ alla replica quando richiede l'operazione di lettura
+\item Se alla replica manca qualche scrittura, contatta le altre repliche per essere aggiornata prima di eseguire l'operazione richiesta da c
+\item Dopo l'operazione di lettura viene aggiornato $WS_r$
+\end{itemize}
+\subsection{Consistenza nei data store cloud}
+Sistemi, in base a CAP, sono orientati verso AP offrendo quindi livelli di consistenza più debole (sotto la sequenziale, C è consistenza forte in CAP).\\ C'è trend nuovo, che è stato lanciato a dicembre 2020 da parte di Amazon: S3 offriva fino a novembre un modello di consistenza finale, ora è più forte ma che non vuol dire ancora consistenza sequenziale perché è client-centrica.\\ Su S3, nel momento in cui utente faceva una put (operazione per inserire file in un bucket) e supponendo di fare list del bucket su un'altra replica era possibile non vedere, all'interno di un breve periodo di tempo (che rappresenta la consistency window), il file caricato. Ora, per S3 il modello di consistenza è di tipo read-after-write, per tutte le operazioni che includono get, put e list: versione più aggiornata della consistenza di S3 troviamo tale consistenza applicata sia su scrittura su nuovi oggetti, sia su put che sovrascrivono oggetti che anche su delete.\\ Ma: il servizio di S3 non supporta locking degli oggetti su scritture concorrenti, quindi due put simultanee vince la richiesta avente ultimo timestamp.\\ Siccome non so qual'è l'ultima operazione effettuata sul sistema, se questo è un problema devo ancora implementare meccanismo di locking nell'applicazione. Questo perché il tipo di consistenza è client-centrica.\\ Altro aspetto interessante riguarda il fatto che alcuni datastore noSQL offrono modelli di consistenza che possono essere scelti dallo sviluppatore: DynamoDB, ad esempio, permette di scegliere modello in cui read abbiano consistenza finale o forte. Compromesso è che le letture avranno latenza più o meno altra a seconda del modello scelto, scelta va fatta in base al tipo di applicazione.\\ Anche Cassandra offre scelta: usa protocolli quorum-based, utenti possono scegliere consistenza per ciascun item nel datastore, portò avere modello di consistenza forte o più rilassata. Tuning del livello di consistenza può essere effettuato con una granularità molto fine.
+\subsection{Cenni sulla replicazione}
+Nel replicare i dati ci sono delle scelte da prendere:
+\begin{itemize}
+\item Dove posizionare le repliche: problema largamente studiato nei SD, non solo quando ho repliche dei dati, ma anche quando replico risorse computazionali.\\ Ad esempio Kubernetes ha degli algoritmi di scheduling per decidere su quali nodi verrà effettuato deployment dei container. \\ Stessa cosa per i framework di data processing viene affrontato questo problema. Problema NP-hard, richiede tempo computazionale elevato nel caso in cui sistema è di grandi dimensioni. Per avere algoritmi efficienti si tende a ricorre a soluzioni euristiche che identificano soluzioni sub-ottime. Importante avere soluzioni veloci perché se cambia configurazione del sistema, deve essere possibile riconfigurarlo velocemente
+\item Come propagare operazione di aggiramento
+\item Cosa propagare
+\end{itemize} 
+Può essere interessante collocare le repliche vicine agli utenti, bisogna conoscere le latenze del SD: se è a larga scala, mettere su un meccanismo di monitoring delle latenze, può essere utile usare sistema basato su coordinate di rete: modello Internet come spazio geometrico e caratterizzo posizione di un nodo. Stimo distanza fra due nodi come distanza geometrica delle coordinate nello spazio geometrico.\\ Algoritmo di Vivaldi, soluzione più nota per realizzare sistema di coordinate di rete che ha la caratteristica di essere decentralizzato e basato su gossip. È facilmente stimabile la latenza fra due nodi senza dover mettere in piedi sistema punto punto che richiede di effettuare ping fra i diversi nodi del sistema.
+\section{Consenso distribuito}
+Dependability: abilità di un sistema di fornire un servizio che può essere considerato fidato in maniera giustificata. Ha una classificazione abbastanza estesa, che include diversi concetti, proprietà di un sistema dependable:
+\begin{itemize}
+\item Disponibilità: posso usare il sistema i un certo momento. Si definisce come probabilità in funzione del tempo che il sistema sia disponibile al tempo t. Si può anche definire come A = $\frac{MTTF}{MTTF + MTTR}$, dove MTTF = mean time to failure, MTTR = mean time to repair, MTTF + MTTR = mean time between failure.\\ Si misura con la scala dei 9, A = 99\%, due 9. Downtime di calcola come prob di indisponibilità, in questo caso 1-0.99 = 0.01$\cdot$ n° giorni in un anno.
+\item Affidabilità: per quanto tempo il sistema sarà up and running al momento in cui comincio ad usarlo. In modo formale, è definita come probabilità condizionata che il sistema sia funzionante al tempo t sapendo che era funzionante al tempo t'. Metrica è MTTF ed il tasso di fallimento. NB: affidabilità diversa da disponibilità: se un sistema non funziona per 1ms ogni ora, ho alta disponibilità, ma bassa affidabilità perché MTTF = 1h, 1 fallimento ogni ora. Se ho sistema che funziona sempre ma viene spento per due settimane l'anno, questo ha disponibilità buona ma affidabilità molto alta.
+\item Safety: se sitema subisce un fallimento, quali sono le conseguenze. Garantisce che se sistema smette di funzionare all'improvviso non avviene nulla di catastrofico
+\item Manutenibilità: 	quanto facile è riparare un sistema quando si guasta
+\item Integrità: no interazioni improprie nel sistema
+\end{itemize}
+Differenze fra failure, error e fault:
+\begin{itemize}
+\item Failure: si verifica quando il comportamento di un componente non è conforme alle specifiche
+\item Error: bug che può portare ad una failure, stato interno non corretto del componente 
+\item Fault: guasto, causa di un errore.
+\end{itemize}
+Strumenti per avere sistemi dependable: 
+\begin{itemize}
+\item miglioro la progettazione del software.
+\item Divento più tollerante ai guasti, mi concentro ora su questo. Sistema continua a funzionare in modo conforme alle sue specifiche, anche in presenza di guasti.
+\item Rimozione dei guasti
+\item Predizione dei guasti
+\end{itemize}
+\subsection{Tipi di fallimento}
+Differiscono a seconda del tipo di failure:
+\begin{itemize}
+\item Crash: un componente del sistema si arresta, ma fino a quel momento aveva funzionamento bene. Fallimenti più innocui da affrontare.
+\item Omissione: componente non risponde ad una richiesta (es server sovraccarico)
+\item Fallimento nella temporizzazione: risposta arriva oltre l'intervallo specificato nei requisiti.
+\item Fallimento nella ripsosta: risposta non corretta, per colpa di fallimento nel valore o nella transizione di stato
+\item Fallimento arbitrari o bizantini: manifesta sintomi diversi ad osservatori diversi, sono guasti più gravi e per gestirli bisognerà introdurre nel sistema un grado di replicazione più elevato di quello che permette di gestire crash o omissioni.
+\end{itemize}
+\subsection{Modelli di failure}
+Problema nei SD è che risulta difficile distinguere se un componente ha subito un crash o è solo molto lento. Processo in attesa può chiedersi che tipo di fallimento è avvenuto, è difficile riuscire a distinguere quale tipo di fallimento c'è stato, particolarmente evidente in SD asincroni.\\ Modelli di failure vanno da quelli fail-stop a quelli fail-arbitrary (slides). Per mascherare i fallimenti, occorre identificarli, ovvero occorrono meccanismi di failure detection:
+\begin{itemize}
+\item Attivi: soluzione più usata, hearthbeat monitoring, mando messaggio e faccio partire TO. Se non ricevo risposta dopo alcuni tentativi, assumo che processo abbia subito fallimento. Adatto per fallimenti fail-stop
+\item Passiva: mi aspetto di ricevere messaggio da un compinente, se non lo ricevo suppongo che quel componente abbia subito fallimento
+\item Proattiva: come effetto collaterale dello scambio di informazioni tra vicini.
+\end{itemize}
+TO: difficoltà nell'impostarlo nei sistemi asincroni, ma nei sistemi reali tipicamente i SD non sono completamente asincroni.\\ Modello generale di failure detection: supponiamo che ciascun nodo abbia un modulo di failure detection, un processo P manda messaggio di probe a processo Q, se Q reagisce è considerato disponibile, altrimenti se non reagisce entro un tempo t Q è sospettato di essere crashato.\\ Implementazione pratica (slides)\\ Tecnica principale è ridondanza: 3 diversi assi di declinazione
+\begin{itemize}
+\item Ridondanza dell'informazione: ad esempio, bit di parità o CRC
+\item Ridondanza nel tempo: viene eseguita un'azione e, se necessario, viene rieseguita. È utile per guasti transienti o intermittenti.
+\item Ridondanza fisica: si aggiungono attrezzature o processi extra (hw o sw in più). esempio è quella della ridondanza modulare tripla: ciascun componente viene replicato 3 volte, introdotto meccanismo di voto a maggioranza, se uno dei componenti fallisce, gli altri due possono mascherare e correggere il guasto. I voter sono replicati perché se fallisce il voter non è più possibile eseguire elezione. Per mascherare fallimento di due componenti: grado di replicazione passa da 3 a 5.
+\end{itemize}
+\subsection{Resilienza dei processi}
+Termine spesso usato nei SD: sistema è in grado di fornire e mantenere livello di servizio accettabile anche in caso di guasti.\\ Soluzione principale per affrontare tolleranza ai guasti è replicazione, ma posso anche replicare e distribuire computazione fra un gruppo di processi uguali. 2 organizzazioni:
+\begin{itemize}
+\item Flat: controllo è completamente distribuito, maggiore overhead.
+\item Gerarchico: un coordinatore e più worker, architettura più volte usata. Se coordinatore fallisce, si elegge nuovo coordinatore, con algoritmi di elezione o con algoritmi di consenso distribuito.
+\end{itemize}
+Replicazione può essere attiva o passiva:
+\begin{itemize}
+\item Passiva: gruppo di processi organizzati in modo gerarchico, in cui una sola replica primaria esegue le azioni sui dati e le altre servono in caso di guasti.\\ Una sola replica è corretta, le altre possono essere non aggiornate.\\ Possibile scostamento dello stato della replica dalle repliche secondarie, se quest subisce un crash prima di propagare un aggiornamento.
+\item Attiva: gruppo di processi organizzati in modo flat, coordinamento tra repliche attive, ma c'è un costo da pagare che aumenta con la scala e la complessità delle politiche di coordinamento. (esempio: protocolli replicated-write)
+\end{itemize}
+Considerando un gruppo flat composto da N processi è tollerante a k guasti se può mascherare k guasti concorrenti, dove k è il grado di tolleranza.\\ Grandezza di un gruppo k-fault varia a seconda del modello di failure:
+\begin{itemize}
+\item Se è fail-stop o fail-silent, basta un solo processo in più: N = k+1, perché nessun processo del gruppo produrrà risultato errato, quindi basta un solo processo non guasto
+\item Fallimento arbitrario e risultato del gruppo è definito tramite un meccanismo di voto: N = 2k + 1.
+\end{itemize}
+Assunzione: tutti i processi sono uguali ed effettuano operazioni nello stesso ordine.
+
 
 \section{Approfondimento-Kubernetes}
 Orchestrazione di container utili per automatizzare la gestione, deploy, gestione di applicazioni multi-containered; tutto ormai (o quasi) è a micro-servizi. Kubernetes è standard de facto: framework open source, pensato per automatizzare il deployment, lo scaling, il management delle applicazioni containerizzate.\\ Framework altamente flessibile ed estendibile, è altamente dichiarativo: definisce astrazioni (gli oggetti) che definiscono lo stato del cluster, Kubernetes prenderà delle decisioni per far convergere lo stato del cluster verso quello desiderato.\\ Feature

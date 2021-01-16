@@ -1590,4 +1590,148 @@ Campo è finito, quindi un numero finito di punti.\\ esempio: $x^3+x+1$, voglio 
 \end{itemize}
 \subsubsection{EC group properties for crypto}
 Preso P punto di una EC ed un intero k, operazione [k]P (P+P+P+P... k volte): è facile da computare se ho P e k, ma se ho P ed il risultato [k]P è difficile trovare k.\\ Questo perché sto computando $P^k$, simile al problema del Dlog in $Z_p^*$, ma per oggetti diversi: ho dei punti di una curva ellittica, non numeri interi.\\ Ma il problema non è sempre difficile, la complessità dipende dalla scelta della curva: ci sono curve in cui è difficile rompere ed altre meno.\\ Bitcoin non usa parametri standard, altra curva che credono sia sicura (non dimostrato).\\ Difficoltà: per computare [k]P posso applicare l'algoritmo di square e multiply, O(1.5logN operazioni, ma per l'inverso servono $2^x$ operazioni; stavolta lo square e la multiply diventano duoble\&sum.\\ Anche qui prendo k e lo scrivo in base 2, lo scrivo al contrario e costruisco la tabella (ricordando che ora l'operazione è un +).
+[secg.org: pagina web per EC crypto pratica, contiene diversi standard.]
+\subsection{Applicazioni delle EC}
+La storia dell'EC crypto è interessante:
+\begin{itemize}
+\item 1995 da due matematici molto forti, che pensarono di poter applicare EC nella crittografia.
+\item Sicurezza: difficoltà del Dlog problem, ma nel dominio delle curve ellittiche: dato un punto P e [k]P, è difficile computare k.K è un intero, non un punto Q, non esiste la "moltiplicazione" fra due punti nelle curve ellittiche, è un gruppo quindi una sola operazione.\\ Se avessimo usato notazione moltiplicativa, allora avremmo definito la moltiplicazione come unica operazione e avremmo avuto Dlog problem.
+\item Le chiavi sono più piccole rispetto a quelle in RSA, inoltre scalano meglio.
+\end{itemize}
+\subsubsection{ECDH}
+DH con curve ellittiche, quindi key agreement.\\ Per AEAD si usa AES128/256 come minimo, mentre per SHA-256 o 384 per hashing.\\ Non ci sono cipher asimmetrici che non siano basate sulle EC (anche la DS si basa su quelle).\\ Come funziona: esattamente come DH, ma invece  di fare operazioni in $Z_p^*$, ovvero:
+\begin{itemize}
+\item Seleziono un gruppo specifico, ovvero un primo p in $Z_p$, i parametri a,b, l'ordine del gruppo n ed il generatore G
+\item Quando si fa agreement fra client e server su questi parametri, si mandano [x]G ed [y]G. (rispettivamente coefficiente pubblico di client e server).
+\item Il segreto sarà [xy]G
+\end{itemize}
+Esattamente lo stesso, solo che si usano punti di curve ellittiche
+\subsubsection{ECDSA}
+Digital signature (standardizzata dal NIST), non si usa più RSA. Cos'è DSA: signature odiata, ma standard. Non c'è prova di sicurezza, una signature migliore di questa che è Schnorr signature è stata brevettata (molti simile, ma ha delle piccole differenze fondamentali).\\ Si crede che sia sicura, ma non ci sono delle prove di sicurezza. Versione con EC della signature DSA, proposto del 1991 per standardizzazione. È variante di ElGamal, è basata sul Dlog.\\ Famoso perché rotta nel 2010 in Playstation3, per via di un uso non corretto. Come funziona DSA:
+\begin{itemize}
+\item $Z_p^*$, p $>$ 2
+\item Scelgo un primo q grande, di solito p = 2q+1
+\item Generatore g tale che $g^xmodp$ genera tutti gli elementi del gruppo
+\item Pub/pr key sono y (slides)
+\end{itemize}
+Come firmare:
+\begin{itemize}
+\item Random k $\in$ (1, q), che sia $<$ q
+\item Calcolo r = ($g^kmodp$)modq. Fattore tecnico, assumo che faccio operazioni $mod83$, q = 41. Quindi k deve essere $\in$ (1, 40). Può accadere che k $>$ 40,quindi lo tronco facendo $mod40$.
+\item s = $k^{-1}(H(m)+d\cdot r)modq$, d è la chiave privata, r il termine ottenuto da k e lo divido per k.
+\item La signature è (r,s) = $(g^k, \frac{H(m) + dr}{k})$.
+\end{itemize}
+Mando due punti: uno che dipende solo da k, che è una rand scelta da me, ed un altro che dipende da k e dal messaggio, dipende anche dalla private key. Per la verifica:
+\begin{itemize}
+\item s = $\frac{H(m) + dr}{k}$, se lo inverto ottengo $\frac{k}{H(m) + dr}$. Se moltiplico $s^{-1}$ per H(m) ed r ottengo: $\frac{k\cdot H(m)}{H(m) + dr}$ ed $\frac{k\cdot r}{H(m) + dr}$
+\item Quindi $u_1$ = $s^{-1}H(m)modq$ ed $u_2$ = $s^{-1}rmodq$.
+\item Cosa succede se faccio $g^{s^{-1}H(m)}\cdot g^{d(s^{-1}r)}$ = $g^{\frac{H(m)k}{H(m) +rd} + \frac{k\cdot dr}{H(m) +rd}}$, riottengo esattamente $g^k$.
+\end{itemize}
+Versione con EC: DSA è male, ECDSA è meglio. Setup:
+\begin{itemize}
+\item Seleziono la curva E($Z_p$), l'ordine della curva n (che sia primo, può essere maggiore o minore di p), il punto P (generatore)
+\item Q = [d]P, sarà la pub key, d è la chiave privata.\\ In ECDSA la chiave privata è un intero $modn$ e la chiave pubblica il punto di una curva ellittica. Quando faccio P, 2P, 3P etc..., d sarà un numero $\in$ (1, n-1), perché n è l'ordine del gruppo.
+\end{itemize}
+Generazione della signature:
+\begin{itemize}
+\item Scelgo una quantità random k $\in$ [1, n-1], intero random. Essenziale:
+\begin{itemize}
+\item Unico
+\item Non predicibile
+\end{itemize}
+Se non si rispettano le due proprietà su k, è un macello.
+\item Calcolo kP = ($x_1$, $y_1$), punto di una EC. In generale ($x_1$, $y_1$) sono interi in $Z_p$.
+\item Calcolo r = $x_1modn$, può accadere che $x_1$ sia $>$ n, quindi lo si riduce $modn$ (accade di rado)
+\item Calcolo $k^{-1}modn$
+\item Ho funzione di hash, come SHA256, la applico la messaggio m e creo la signature s = $k^{-1}(H(m) +dr)$, $k^{-1}modn$ è intero, H(m) è intero, d è intero ed r è intero. Non sono usate le EC, solo per computare r si usa punto P di una EC, altrimenti è aritmetica modulare standard.
+\item Mando come signature (r,s).
+\end{itemize} 
+È come nel caso di DSA, cambia solo il modo con cui si computa r.\\ Verifica:
+\begin{itemize}
+\item Prendo m e la signature (r,s). Computo H(m), da s calcolo w = $s^{-1}modn$, inverso di s.
+\item Computo $u_1$ = $H(m)wmodn$ ed $u_2$ = rw. Quindi $u_1$ = $\frac{k\cdot H(m)}{H(m) +dr}$, mentre $u_2$ = $\frac{k\cdot r}{H(m) +dr}$, lo stesso che avevo in DSA
+\item Solo ora passo ad EC: faccio $u_1$P + $u_2$Q = $\frac{k\cdot H(m)}{H(m) +dr}\cdot P$ + $\frac{k\cdot r}{H(m) +dr}\cdot Q$, ma Q = pub key = dP, quindi raccogliendo P: $(\frac{k\cdot H(m)}{H(m) +dr} + \frac{k\cdot rd}{H(m) +dr}$, quindi alla fine riottengo kP.
+\item In pratica non ho kP, che è punto di EC, ma mi viene inviato (r,s), ma ora prendo la coordinata x e verifico se v = $xmodn$ = r.
+\end{itemize}
+Nota: la k non viene mai scoperta. In DSA non conosco k, nella verifica k va all'esponente di g e rimane segreta.\\ In ECDSA avviene lo stesso, perché nella signature r è legato a kP (protetto dal problema del Dlog), in verification non viene mai ricostruita la k, ma sempre kP.\\ kP costa abbastanza, ma k non viene mai scoperta. Quindi che cosa può accadere di male se riutilizzo k? Guadagno in pefrormance, calcolo kP e poi lo riuso successivamente. È questa la parte che costa computazionalmente, quindi scelgo di riusare la chiave k.\\ Problema grandissimo: se
+\begin{itemize}
+\item Se riuso k
+\item Se k è predicibile
+\end{itemize}
+il risultato è devastante: non solo posso verificare un messaggio e farci qualcosa ma posso scoprire la chiave privata a long term, ovvero divento la Sony.\\ Se conosco k, ho (r,s): s = $k^{-1}[H(m) +rd]modn$.\\ Se faccio sk = $H(m) +rd modn$ = $[sk - H(m)]r^{-1}$ = $d modn$, d viene rivelata.\\ Se invece k viene ripetuto? Scoprirei la chiave d, avrei un sistema di due equazioni in due incognite, d e k(vedi slides per conti) (questo ciò che è accaduto a Sony).\\ Bitcoin usa ECDSA, alcuni usano dei servizi come Coinase. Ma alcuni non si fidano di questi servizi e quindi lo fanno per conto loro, quindi ogni transazione è autenticata da una signature ECDSA, ma se viene riusata la chiave k? Frego un portafoglio di Bitcoin. [2013, qualcuno scandisce tutte le transazioni di Bitcoin e scopre che si potevano rubare 59 Bitcoin].
+\section{Introduzione alle mappe bilineari}
+Molti pensano che le EC siano crittografia standard e migliore, idea è che EC possono essere usate per crittografia tradizionale meglio.\\ Ma le EC, specialmente alcune varianti, possono permettere nuova crypto: ci sono delle costruzioni scoperte recentemente, dimostrato che si può fare qualcosa che non si potrebbe con crittografia asimmetrica.\\ Bilinear maps: stabiliscono una relazione fra gruppi crittografici, DDH e CDH.\\ Definizione di mappa bilineare: siano $G_1$, $G_2$ e $G_t$ gruppi ciclici dello stesso ordine, una mappa bilineare da $G_1$ x $G_2$ a $G_t$ è una funzione e: $G_1$ x $G_2$ $\rightarrow$ $G_t$ tale che $\forall$ u $\in$ $G_1$, v $\in$ $G_2$, a,b $\in$ $Z$ abbiamo e($u^a, v^b$) = e$(u, v)^{ab}$; ovvero, mi da la possibilità di combinare gli esponenti, che sembra simile a DH.\\ Le mappe bilineari sono chiamate pairings, perché associano coppie di elementi da $G_1$ e $G_2$ con elementi di $G_t$. C'è la trasformazione triviale: se trasformo tutte le possibili coppie di $G_1$ e $G_2$ in I (identità), ottengo trasformazione degenere, la escludo.\\ Mappa bilineare è ammissibile se e($g_1$, $g_2$) genera $G_t$, l'identità non è un generatore.\\ $G_1$, $G_2$ e $G_t$ hanno lo stesso numero di elementi, ma gli elementi sono diversi, di solito ci occupiamo dei pairings e(G, G) $\rightarrow$ $G_t$. Non è conosciuta una self-bilinear map, ovvero tale che GxG $\rightarrow$ G.\\Caso pratico: $G_1$ = $G_2$ sono EC, si usa notazione additiva, ci sono due pairings noti:
+\begin{itemize}
+\item Weil pairing
+\item Tate pairing, il più efficiente.
+\end{itemize}
+vanno in $Z_p^*$, e(aP, bQ) = e(P,Q)$^{ab}$, confonde e quindi spesso chi lavora con i gruppi bilineari usa nelle EC la notazione moltiplicativa.\\ Ci sono software che implementano i due pairings (prenderli come delle black box), pairing-basic crypto library.
+\subsection{Decisional Diffie Hellman}
+Ho un generatore del gruppo g, ho poi $g^a$ e $g^b$, assumo poi di avere un coefficiente $\alpha$ che può essere o $g^{ab}$ o $g^{rand}$ (random). Ora, qual'è la probabilità con cui posso dire che $\alpha$ = $g^{ab}$, spesso il problema è difficile: non ci sono algoritmi semplici per prendere questa decisione, in $Z_p^*$ è difficile come nel caso di DH classico.\\ Problema diviene triviale: assumo di avere un EC group e che qualcuno scopra che si può applica un pairing (non tutte le EC ammettono pairings), allora il DDH è rotto.\\ Ho il gruppo G (EC points) che è accoppiato con $G_t$ = $Z_p^*$, supponiamo che g sia il generatore di g e $g^{'}$ quello di $G_t$. Suppongo di avere g, $g^a$, $g^b$, $\alpha$ = $g^{ab}$ o rand. e(g, g) $\rightarrow$ g', suppongo di fare e($\alpha$, g):
+\begin{itemize}
+\item e($g^{ab}, g$) = e(g, g)$^{ab}$ = $g'^{ab}$
+\item Altrimenti e(rand, g)
+\end{itemize}
+Posso confrontare con e($g^a, g^b$) = e(g,g)$^{ab}$ = $g'^{ab}$.\\ Altro punto: EC ha una taglia più piccola di $Z_p^*$ (vedi taglia delle chiavi), ma nel 1993 Menezes e altri due amici (MOV) scoprirono che per alcune curve, quando ammesso pairing, potevano distruggere Dlog problem.\\ Suppongo di avere g, $g^k$, è difficile trovare k (siamo su curve ellittiche!). Ma ora: se so che EC point mappano su $Z_p^*$ e so che l'ordine del gruppo è lo stesso, ora come posso ricondurre porblema del Dlog dal gruppo originale a quello target? Faccio (g,$g^k$) = e(g,g)$^k$ = $g'^k$, ma posso anche computare $g'$ = e(g,g). Devo trovare k in un gruppo con solo 256 bit, se lo rompo nel target group l'ho rotto anche nel gruppo originale, MOV reduction attack(posso fare brute force, oggi sicurezza dei gruppi è almeno 2048/4096 bit).
+\subsection{Introduzione del pairing nella crittografia}
+Pairing era uno strumento di attacco in crittografia, fino al 2000: 3-party Diffie Helllman.\\ In 2-party DH, ho A e B, generatore g del gruppo. A inventa a e pubblica $g^a$ (b inventa b e passa $g^b$), quindi k = $g^{ab}$. Non si interagisce: computo il mio termine e poi prendo quello dell'altro e computo k, non un protocollo vero e proprio.\\ Posso farlo con 3-party: A,$g^a$ B,$g^b$ C,$g^c$. Se a prende $g^b$, per computare un segreto k doverebbe avere c, quindi è un problema; anche risolvere in un modo non trivial serve un protocollo dedicato, molta interazione.\\ Se risolvo su EC che ammette pairing: se ho un gruppo e questo ammette pairing, allora posso fare 3-party DH è triviale e non interattivo:
+\begin{itemize}
+\item A ha a e $g^a$
+\item Abbiamo g, generatore di G e $g'$ generatore di $G_t$
+\end{itemize}
+Posso, pubblicando i coefficienti ottenere k comune: per esempio a prende $g^b$ e $g^c$ e fare e($g^b$, $g^c$) = e(g, g)$^{bc}$ = $g'^{bc}$, quindi ora sono bloccato in $G_t$. Ma ho ancora a, quindi posso esponenziare ed ottenere $g'^{abc}$. B e C possono fare la stessa cosa, quindi ho risolto il problema in modo triviale. Prima costruzione utile, dimostrato che con pairing era possibile fare qualcosa di diverso dalla standard crypto, in questo caso ho "barato" su DH, ma solo una volta: in DH classico non posso combinare $g^a$ e $g^b$, qui lo faccio ma solo una volta.\\ Fare e(e($g^b$, $g^c$), $g^c$) non è corretto: parto da G,G ed arrivo a $G_t$ e G, quindi non è detto che siano combinabili fra loro.\\ Dan Boneh, idea a partire da questa.
+\subsubsection{Identity based entryption}
+Problema posto da Shamir nel 1984, irrisolto. Certificati: risolvono il problema del legare crittograficamente un nome ad una chiave pubblica, perché ho il problema dell'impersonificazione (mi fingo una banca). Non esiste un sistema crittografico che produce "intelligible" pub keys, molti attacchi di phishing mettono nomi di siti reali senza una lettere (es "gogle.com"), quindi non posso usare un'associazione nome=pub\_key. Problema: se riesco a trovare un crypto system in cui la chiave può essere impostata come il nome della persona? Se sì, posso abbandonare l'uso delle CA, sono sicuro che il nome sia associato alla pub key.\\ Risolto nel 2001 (parzialmente risolto da Shamir nel 1984, trovò una costruzione speciale che poteva implementare una DS, ma non come cifrare i dati).\\ Costruzione di Boneh: 3 parties
+\begin{itemize}
+\item Private key generator (PKG)
+\item Bob
+\item Alice
+\end{itemize}
+Idea è che Alice vuole mandare un messaggio cifrato con la chiave pubblica di Bob, quindi pubk = "Bob".\\ Prendo una chiave generica s posseduta da PKG, pubblica $g^s$ (punto di una curva ellittica), dove g è il generatore di un EC che ammette pairing: GxG $\rightarrow$ $G_t$, g' il generatore di questo gruppo $G_t$.\\ Quando Alice vuole mandare messaggio fa la cosa seguente:
+\begin{itemize}
+\item Genera r random, e $g^r$
+\item $h_1$, hash functio che fa mapping da string ad EC point. Quindi $h_1$("Bob") = EC point, lo chiamo $	ID_{Bob}$, quindi EC point che corrisponde al nome Bob.\\ Posso prendere hash function e usare output come coordinata x (o prendere il punto più vicino).
+\item $h_2$ trasforma un numero in una stringa
+\end{itemize}
+Per cifrare m: m$\cdot$ e($g^s$, $ID_{Bob}$)$^r$ (sto supponendo che m sia un numero), ed ottengo il mio cifrato.\\ Per decifrare, Bob deve avere altro: Alice manda \{$g^r$, m$\cdot$ e($g^s$, $ID_{Bob}$)$^r$\}. Il PKG ha s e $g^s$, Bob ha la sua identità pubblica, serve che abbia qualcosa di privato. Se PKG da a Bob: $h_1$("Bob")$^s$, quindi Bob espone la sua identità (per esempio) e nessuno tranne PKG conosce s. Ma ora che Bob ha w = $h_1$("Bob")$^s$, fa e(w, $g^r$) = e($ID_{Bob}$, g)$^{rs}$ = e($g^s$, $ID_{Bob}$)$^r$, quindi ora lo messo insieme a quello che ho ricevuto e ricavo m (nell'esempio divido, in realtà c'è un XOR).\\ Quindi:
+\begin{itemize}
+\item PKG ha s e $g^s$
+\item Alice manda il messaggio m cifrato come m$\cdot$ e($g^s$, $ID_{Bob}$)$^r$ = m$\cdot$ e($ID_{Bob}$, g)$^{rs}$
+\item Ora, Bob ha $ID_{Bob}^s$, che gli è stato dato dal PKG, quindi può fare e($ID_{Bob}^s$, $g^r$).
+\end{itemize}
+Intuitivo per il seguente motivo: assumo che $ID_{Bob}$ sia un punto di una curva ellittica, quindi può essere scritto come $g^t$, dove g è il generatore. Quindi $g^t$ = $ID_{Bob}$, che conosciamo, ma per sapere t doveremmo invertire il Dlog nelle EC. Supponiamo che Bob abbia t, cosa vuol, dire usare l'approccio di Boneh: m$\cdot$ e($g^s$, $ID_{Bob}$)$r$ = e($g^s$, $g^t$)$^r$ = $g'^{rst}$, che è esattamente come l'approccio del 3-way DH. Ora, se Bob avesse t, avrebbe potuto prendere ($g^s, g^r$)$^t$, ma siccome non ce l'ha deve chiedere al PKG di computare ($ID_{Bob}$)$^s$ = ($g^t$)$^s$ = $g^{st}$, ma sono ancora nel gruppo originale, quindi posso ancora barare su DH.\\ $h_1$ ed $h_2$ servono per rendere le cose compatibili per XOR con un messaggio m che sia una stringa.
+\section{Ciphertext-Policy: Attribute-based encryption}
+Permette di fidarsi solo l'encryption e non di dover fidarsi del server, encryption data con access control policy (pioniere è Allison Lewko, vedi paper del 2010).
+Cos'è la ciphertext-policy Attribute Based Encryption (CPA-ABE)? È una specie di identity-based encryption, ma invece di dare chiave ad indentità, la chiave viene data agli attributi. esempio: professore di una facoltà di Tor Vergata, ha più di 25 anni, è uomo etc... Dei dati possono essere acceduti da tutti gli uomini di Tor Vergata, quindi meccanismo che permetta l'accesso quando l'entità che vole entrare nel sistema può mostrare di possedere degli attributi e tale possessione può essere gestita con una policy (and/or) o combinazioni.
+\subsection{Remote file storage}
+Importante, quando voglio salvare i dati ho un dilemma:
+\begin{itemize}
+\item Voglio scalare: se creo un repository grande di dati, voglio avere scalabilità e quindi dover replicare i server e fare load balancing
+\item Reliability: non solo replico i server, ma anche i dati
+\end{itemize}
+Problema di sicurezza: la superficie da proteggere è maggiore.\\ Quindi:
+\begin{itemize}
+\item Creo un access control front-end, implementato nel server. Quando arriva una richiesta al server, questo in base a delle policies decide se puoi entrare o no.\\ Il server dovrebbe essere non attaccabile, ma se ho vulnerabilità è tutto finito. Questo è access control server. Vantaggio è che posso avere regole a grana molto fine, svantaggio è che sicurezza del server deve essere trusted ed i dati sono vulnerabili.
+\end{itemize}
+Soluzione: cifriamo i dati, tutti lo direbbero. È facile da dire, ma come gestisci le chiavi? (domanda classica da fare a chi risponde così), la difficoltà non sta nel cifrare (AES-256, ECIES) perché la cifratura è molto sicura e gli algoritmi non sono rompibili, ma le chiavi? Più chiavi gestisco, meglio è l'access control ma più aumenta la difficoltà nel gestirle.\\ Obiettivo è avere file cifrati su uno storage non trusted: metto file su Internet, li cifro e metto nei dati l'access control policy che permette di aprire i dati solo se hai gli attributi che soddisfano la policy. No server, nativamente cifrata, ma per accedere servono degli attributi, ovvero chiavi offline, che se soddisfano le policies incluse nei dati ti permettono di decifrarli. Per questo è chiamata ciphertext policy, perché la policy  inclusa col ciphertext (c'è variante che include le policy proprio nel ciphertext).\\ L'accesso ai dati è quindi diretto, non ci sono party trusted nel mezzo, questo è l'obiettivo di CPA-ABE.\\ Costruzione ad alto livello:
+\begin{itemize}
+\item Ho un MSK che è l'unica authority trusted. Ha, come il PKG, un segreto long term s (master secret key) ed espone $g^s$ (chiave pubblica). Il PKG può fornire chiavi private alle entità che ricevono autorizzazione per accedere i dati.
+\item La chiave legata a Sarah sarà legata al fatto che è un manager dell'IT department, ovvero ai suoi attributi ($\neq$ identity based encryption). Lo stesso vale per un altro tizio, otterrà magari una chiave diversa perché accede a dei dati diversi.
+\item Una volta che MSK da le chiavi va offline, quindi queste saranno salvate offline dalle entità
+\item Una segretaria produce un documento, non ha chiavi segrete, come avviene nel caso della identity based encryption: io uso la chiave pubblica per cifrare, non ho bisogno di avere un segreto.\\ La segretaria in questo caso decide le policies per il file per limitare l'accesso ai dati. È quindi lei decidere l'access control policy (AND/OR combination di attributi) ed usando solo informazioni pubbliche, cifra i dati.
+\item Quindi avrò i dati cifrati, con le ploicies per poterli aprire.
+\item Metto i dati in uno storage non sicuro, Sarah arriva e poi vedere se ha la combinazione di attributi che apre la policy. Nel caso in cui la ha, può accedere ai dati, senza richiedere la cooperazione di altri party, decifra da sola. Kevin, per esempio, non ha la combinazione per aprire
+\end{itemize}
+\subsubsection{Problema: collusion attack}
+Voglio accedere ad un sito a cui devo dimostrare di avere i soldi ed avere 18 anni. Chiedo a qualcuno di mettere la sua età ed io metto i soldi.\\ Supponiamo di avere un AND(A,B), Sarah ha A,C e Kevin ha B,D, siccome secret key è standard per ogni attributo, posso fare collusion attack: Sarah decifra A, chiama Kevin (collusion-cooperazione) per mettere la skey per B, mettiamo in XOR i dati e riveliamo il messaggio. Problema non è quindi facile: non posso semplicemente associare la secret key all'attributo, questo rende gli schemi non triviali.
+\subsubsection{Schema risolutivo}
+Primo schema mai proposto che risolve il problema: uso pairing, $|G|$ = $|G_t|$ = p, g $\in$ G, definisco bilinear map e: G x G $\rightarrow$ $G_t$.\\ Cosa sono chiave pubblica e privata: s era la chiave privata e $g^s$ quella pubblica, qui le cose cambiano. Creo due numeri random $\alpha$ e $\beta$, PubK = (g, $g^{\beta}$, e(g,g)$^{\alpha}$) , PrK = ($\beta$, $g^{\alpha}$), quindi se ti do $g^{\alpha}$ posso ottenere e(g,g)$^{\alpha}$ = $g'^{\alpha}$ (facendo e(g, $g^{\alpha}$), ma non posso tornare indietro.\\ Non basta un solo segreto, ho diversi attributi (stringhe) $x_1$, $x_2$,... e genero una quantità random per ogni attributo $r_{x_1}$, $r_{x_2}$ ed un valore random unico r. Perché n+1 quantità: l'r extra ha l'obiettivo di fare binding di tutti attributi ad una singola persona, per evitare collusion attacks.\\ Ora SK che do a Sarah è SK = ($g^{\frac{\alpha + r}{\beta}}$), $g^r\cdot H(x_1)^{r_{x_1}}$, $g^{r_{x_1}}$ etc... dove H mappa una stringa su un punto di EC, la parte chiave è $g^r$ che è il trick per anti-collusion (r sarà diverso per ogni entità), rende le componenti della chiave non compatibili.\\ Quindi fin ora ho una chiave pubblica globale, un segreto globale mantenuto dal master ed ora ogni partecipante ha una SK. Suppongo che arrivi la segretaria e debba cifrare i dati: ho una AND policy (ma so che si può generalizzare con LSSS) con $x_1$ ed $x_2$, quindi voglio che sia possibile decifrare solo se qualcuno ha $x_1$ ed $x_2$. Genero s random, ne faccio due shares $s_1$ = s-d ed $s_2$ = d ed ogni ciphertext sarà $C_j = g^{s_j}, H(x_j)^{s_j}$, inoltre  do C = $g^{\beta\cdot s}$, perché $g^{\beta}$ è una chiave pubblica, s è il segreto generato dalla segretaria, infine proteggo il messaggio con l'altra parte di chiave $C^{~}$ = Me(g,g)$^{\alpha\cdot s}$. Quindi per decifrare, devo poter costruire e(g,g)$^{\alpha\cdot s}$, come faccio a decifrare: sono Sarah e ricevo i seguenti dati: C$^{~}$ = Me(g,g)$^{\alpha\cdot s}$, C = $g^{\beta\cdot s}$ e per ogni attributo ho ($g^{s_j}, H(x_j)^{s_j}$).\\ La mia chiave segreta contiene tutti i $C_j$, quindi posso fare i pairings: $\frac{e(g^r, g^{s_j}, H(x_j)^{s_j}}{e(g^{r_{x_j}}, H(x_j)^{s_j})})$, siccome posso fare spread della moltiplicazione ottengo e(g, g)$^{r\cdot s_j}$, quindi ho all'esponente lo share del segreto. Nel caso di un AND, moltiplico le due parti e ricostruisco all'esponente s, ottengo A = e(g,g)${r\cdot s}$. Ho ricostruito qualcosa che è specifica per Sarah, se lo combino con Kevin, non funziona $\rightarrow$ anti-collusion property. Ma devo comunque rimuovere la r dall'esponente, è non ce l'ho quindi non posso fare nessuna inversione, non posso darlo perché altrimenti Sarah potrebbe passarlo a Kevin e rompere la sicurezza.\\ Ma Sarah ha anche D = $\frac{g^{\alpha + r}}{\beta}$, considero anche le informazioni extra C = $g^{\beta\cdot s}$, C$^{~}$ = Me(g,g)$^{\alpha\cdot s}$. Posso usarli per ottenere M: $\frac{C^{~}}{\frac{e(C,D)}{A}}$ = e($g^{\beta s}$, $g^{\frac{\alpha+r}{\beta}}$) = e(g,g)$^{s\alpha}$e(g,g)$^{sr}$. Siccome è possibile avere e(g,g)$^{sr}$ (la segretaria ha cifrato per chiunque abbia rispetti la policy non per uno solo) e quindi ottenere M.
+\subsubsection{Altri dettagli}
+È possibile aggiungere, oltre che AND ed OR policies anche altri tipi di policies, sto nel gruppo delle EC ma bisogna stare attenti alla sicurezza, Dlog probelm è indebolito, servono dei gruppi con n° bit più grandi (attenzione a MOV). Vero problema di schemi più complessi è che se ho nodo centralizzato, in molte applicazioni pratiche sono un problema. Lewko risolve problema, ma ci sono altri problemi: 
+\begin{itemize}
+\item Costruzioni sono pesanti
+\item Sicurezza sulla taglia del gruppo
+\item Problemi di revoca 
+\end{itemize}
+Ci sono schemi migliori di quello visto, anche possibilità di usare meno il pairing e di più la crittografia classica: pairing è una nicchia molto giovane, se qualcuno comincia a studiarla e lo rompe è un problem
 \end{document}
