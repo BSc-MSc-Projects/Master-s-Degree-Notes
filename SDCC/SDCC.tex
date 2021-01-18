@@ -1,12 +1,16 @@
-\documentclass[16px]{article}
+\documentclass{article}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 \usepackage{graphicx}
 
 \begin{document}
 \title{Sistemi distribuiti e cloud computing}
+\author{Pierciro Caliandro}
+\date{}
 \maketitle
 \tableofcontents
+\large
+
 \section{Capitolo 1 - Introduzione}
 Dal 1977, con la nascita e l'avvento dell'Internet, al 2017 il numero di nodi IPv4 a livello globale è incredibilmente aumentato, con il più del 50\% del traffico criptato.\\
 Sono nati nuovi trend, tra cui Iot, cryptocurrency ed advertisement mobile, ed una stima della CISCO prevede che nel 2023 ci saranno 6 miliardi di utenti in Internet.\\
@@ -2528,7 +2532,141 @@ Considerando un gruppo flat composto da N processi è tollerante a k guasti se p
 \item Se è fail-stop o fail-silent, basta un solo processo in più: N = k+1, perché nessun processo del gruppo produrrà risultato errato, quindi basta un solo processo non guasto
 \item Fallimento arbitrario e risultato del gruppo è definito tramite un meccanismo di voto: N = 2k + 1.
 \end{itemize}
-Assunzione: tutti i processi sono uguali ed effettuano operazioni nello stesso ordine.
+Assunzione: tutti i processi sono uguali ed effettuano operazioni nello stesso ordine.\\ Mi pongo nel caso in cui i processi non siano identici, ovvero c'è una computazione distribuita ma non tutti i processi eseguono la computazione nello stesso ordine.\\ Obiettivo è che i processi non guasti del gruppo devono raggiungere un consenso anche se alcuni sono guasti (siano essi bizantini o non).\\ Differenza tra consenso ed accordo, in teoria fanno riferimento a due problemi non identici:
+\begin{itemize}
+\item Agreement: un processo ha il valore iniziale su cui gli altri processi raggiungeranno l'accordo
+\item Consenso: ciascun processo ha un valore, consenso raggiunto su uno di questi.
+\end{itemize}
+3 algoritmi, due risolvono il problema di consenso, uno quello di accordo.
+\subsection{Condizioni per il consenso}
+Risultato teorico con impatto molto importante.\\ Quando è possibile raggiungere il consenso in un SD: considero diverse tipologie di:
+\begin{itemize}
+\item Processi sincroni o asincroni: sincroni: operano in modalità step-lock, ovvero esiste $c \geq$ 1 tale che se un processo ha eseguit c+1 passi, ogni altro processo ha eseguito almeno 1 passo
+\item Ritardo della comunicazione, se limitato o illimitato
+\item Ordinamento dei messaggi: se ordine di consegna rispetta ordine di ricezione, si parla di ordine FIFO
+\item Trasmissione dei messaggi, può essere unicast o multicast
+\end{itemize}
+Condizioni rappresentate in una tabella, rispetto ai diversi fattori considerati. 
+\subsubsection{FLP}
+Teorema dell'impossibilità di FLP dice che è impossibile raggiungere consenso distribuito anche in presenza di un processo guasto. Assunzioni sul modello del sistema: in un modello di sistema asincrono in cui ho ritardo non vincolato nella tx dei messaggi, ma comunque finito, non esiste un algoritmo che permetta di risolvere il problema del consenso distribuito. Analizzano che un qualunque algoritmo asincrono per consenso, anche su un bit non termina.\\ Ma impossibilità = non sempre possibile, dimostrato che esistono dei run dell'algoritmo che non terminano, ma tali run sono estremamente poco probabili (p prossima allo 0). Cosa in SD rende difficile raggiungere il consenso? Problema della membership:
+chi fa parte di un gruppo? Quindi, qual'è l'insieme dei processi che partecipa all'algoritmo, difficile perché in SD asincrono non valgono le 3 proprietà dei SD sincroni, quindi non posso identificare i fallimenti in modo affidabile: processo che può semplicemente essere lento, può apparire come processo guasto.\\ SD in pratica non sono tipicamente completamente asincroni, ovvero non lo sono nel senso della definizione usata da FLP per raggiungere il risultato: loro assumono che SD async non possono fare uso di clock distribuito e che messaggi possono impiegare tempo arbitrariamente lungo ad arrivare. In pratica: per la maggiore parte del tempo il SD funziona in modalità sincrona, ma accade che per dei problemi sistema transita in un periodo di async. Crash detection può essere usato in modo abbastanza affidabile, con accortezze per renderlo migliore (es hearthbeat variando il tempo di trasmissione del messaggio).
+\subsection{Algoritmo di Paxos}
+Algoritmo per consenso distribuito, in presenza di guasti. N processi eseguono algoritmo, ci permette di raggiungere consenso fino a k processi guasti in SD async, dove N = 2k + 1 (si usa voto di maggioranza).\\ Importante e largamente usato, rappresenta ancora l'algoritmo principale usato nei SD async per raggiungere consenso. È in realtà una famiglia di protocolli, a seconda dello scopo; vediamo versione di base. È algoritmo elegante e semplice, ma non facile da capire e lo stesso Lamport (l'ideatore) ha contribuito per renderlo più chiaro.\\ Si rifà ad un problema dell'antica Grecia, in cui i membri di un parlamento devono prendere una decisione anche se non sono tutti presenti.\\ Modello di SD:
+pittosto realistiche e deboli
+\begin{itemize}
+\item SD Parzialmente sincrono
+\item Guasti non bizantini (o non arbitrari)
+\item Comunicazione avviene tramite messaggi
+\item Comunicazione non affidabile (loss e duplicazione)
+\item Tempi di consegna arbitrariamente lunghi
+\item Corruzione dei messaggi è possibile, ma può essere scoperta
+\end{itemize}
+Processi:
+\begin{itemize}
+\item Insieme conosciuto
+\item Velocità di esecuzione arbitraria
+\item Modello fallimento fail-stop
+\item Processo che crasha può essere riabilitato e rijoinare 
+\item Si può fare logging dell'attività su sistema di storage persistente, per ripartire dopo il crash da qui
+\item Sistemi non non colludono: comportamento fair, nessuno prova a barare
+\end{itemize}
+Algoritmo basato su quorum, obiettivo è che insieme di processi raggiunga il consenso sul singolo valore che viene proposto. Se non viene raggiunto consenso, non viene scelto nessun valore, altrimenti gli altri  processi impareranno il valore scelto.\\ Vengono fatte proposte, a ciascuna è assegnato un numero di sequenza (dettaglio di implementazione non banale).\\ Processi votano su ciascuna proposta, per essere approvata deve essere votata dalla maggioranza, siccome processi sono noti a priori e la cardinalità della membership è nota, anche la dimensione della maggioranza è nota.\\ Altra idea è che processo approva, fra due proposte, quella con numero di versione associato più alto.\\ Algoritmo:
+\begin{itemize}
+\item Soddisfa la safety: viene raggiunto consenso, se viene proposto singolo valore viene raggiunto solo su quello (no valori che spuntato a cazzo) e non esiste processo che impari che è stato raggiunto consenso su valore a caso. Siamo interessanti al fatto che sia raggiunto consenso su un valore che soddisfi le proprietà appena introdotte
+\item No liveness: impossibilità di FLP dice che non esiste algoritmo che possa raggiungere consenso anche in presenza di processo guasti in SD. Ovvero nessun algoritmo di consenso asincrono può garantire liveness e safety insieme, ovvero alcune esecuzioni non terminano mai. Ma tali sequenze che non terminano sono molto poco probabili, perché SD reali sono parzialmente sincroni.
+\end{itemize}
+Importante da un punto di vista pratico: compromesso ci dice che viene sempre garantita la safety, trade-off è sulla liveness.\\ Processo può prendere 3 stati:
+\begin{itemize}
+\item Proposer: propone un valore, tale valore può essere derivare dal comportamento dei client
+\item Acceptor: processi che votano
+\item Learner: processi che imparano il valore scelto, forniranno tale valore ai client.
+\end{itemize}
+Un singolo processo può svolgerli tutti e 3, per semplicità assumo che possano eseguirne uno solo.\\ Idee iniziali:
+\begin{enumerate}
+\item Se ho un solo processo che fa da acceptor, posso pensare che sia la soluzione più semplice. Ma non avrei algoritmo distribuito: se acceptor fallisce, GAME OVER. Devo avere multipli acceptor
+\item Voto di maggioranza per decidere il valore scelto. Quando si raggiunge la maggioranza, ovvero la metà + 1, tale valore viene scelto. Funziona perché se ho k acceptor e $\frac{k}{2} + 1$ acceptor bastano per la maggioranza, così facendo ho che un acceptor sta in più quorum di maggioranza ed esprimendo un solo voto per il valore avrò safety sul singolo valore.
+\item Meccanismo che faccia si che una volta che acceptor ha accettato valore, non possa accettarne un altro. Entra in gioco numero di sequenza, che permette di distinguere proposte diverse.\\ Proposta del proposer: coppia (ID,valore), possono esserci diverse proposte per lo stesso valore, ma con differenti ID.
+\item I processi hanno a disposizione uno storage persistente, che permette in caso di failure di recuperare lo stato del protocollo visto dal processo
+\item Algoritmo adotta approccio basato su molteplici round, ovvero iterazioni dell'algoritmo. Una volta che viene raggiunta decisione su un determinato valore, i successivi round fanno si che tutti gli altri raggiungeranno il consenso su quel valore, forzando i proposer successivi a scegliere quel valore.
+\end{enumerate}
+Ciascuno dei round è composto da due fasi:
+\begin{itemize}
+\item Prepare: proposer scopre il valore da proporre (ricevuto dai client) e blocca delle vecchie proposte che non sono state ancora completate
+\item Accept: richiesta agli acceptor di accettare valore proposto
+\end{itemize}
+Mi concentro su un singolo round:
+\begin{itemize}
+\item Proposer seleziona valore da proporre e ID della proposta. Invia questa coppia ad una maggioranza di acceptor
+\item Acceptor riceve la richiesta e valuta il numero di sequenza N: se è $>$ dell'ID di ogni altra richiesta di prepare a cui ha già risposto, acceptor promette di non accettare una richiesta con ID minore di N. Risponde con la richiesta con ID più alto accettato prima, col relativo valore (se esiste). Questo serve a forzare i futuri proposer a scegliere il valore su cui si è raggiunto consenso
+\end{itemize}
+Nella fase di accept:
+\begin{itemize}
+\item Se proposer riceve una risposta alla sua proposta con ID N dalla maggioranza, manda una accept request ad ognuno degli acceptor per l'ID N con un valore V che sia quello della proposta con ID maggiore fra quelli ricevuti in fase 1, se esiste. Altrimenti ne sceglie uno lui.
+\item Se acceptor riceve una accept request con ID N (slides)
+\end{itemize}
+Proprietà:
+\begin{itemize}
+\item ID univoci
+\item Due insiemi di acceptor devono essere ad intersezione non nulla
+\item Valore che viene inviato in fase 2, corrisponde al valore delle risposte ricevuto dagli acceptor nella fase 1 con ID corrispondente più alto
+\end{itemize}
+Per quanto riguarda i leaner, diverse alternative:
+\begin{itemize}
+\item Ciascun acceptor informa tutti i learner appena accetta una coppia (ID, value), ma molti messaggi inviati
+\item Viene scelto un solo leaner, diventa distinguished, impara il valore e manda in broadcast a tutti gli altri, ma single point of failure
+\item Mix fra le due: gruppo di distinguished leaner
+\end{itemize}
+Non c'è garanzia della liveness, qual'è situazione difficile che può verificarsi che da luogo a mancanza di terminazione è quella in cui due proposer propongono valori conflittuali fra di loro e mandano in stallo algoritmo: ho proposer p e q, suppongo che p completi fase di prepare per numero di proposta = 1. q completa con n° $n_2 > 1$. Fase di accept di p, e fase di accept di q: nessuno accetta la proposta di p (perché almeno uno degli acceptor in comune ha accettato proposta di q), quindi p ricomincia e q non ha terminato. Di nuovo, entrambi propongono un nuovo numero di sequenza. Situazione limite che si può verificare, per ovviare a questa situazione molte implementazioni fanno si che ci sia un solo proposer attivo, che faccia da leader. Quando fallisce, viene eletto nuovo leader fra i proposer "follower".\\ Algoritmo può essere usato per la state machine replication, permette di raggiungere consenso sulla sequenza di operazioni da eseguire.\\ Si usa variante dell'algoritmo, la multi-paxos, (slides).\\ Usabile anche in tante altre situazioni:
+\begin{itemize}
+\item Elezione leader
+\item Definire quali sono i processi che fanno parte di un gruppo
+\item (etc...)
+\end{itemize}
+Esistono inoltre diversi sistemi che usano Paxos.
+\subsection{Raft}
+Proposto nel 2014, progettato con l'implementazione in mente, mentre in Paxos non è stato così.\\ Modello di sistema simile a Paxos, prestazioni equivalenti al multi-Paxos, ma a differenza di Paxos:
+\begin{itemize}
+\item Problema del consenso suddiviso in sotto-problemi
+\item Sotto-problemi pensati direttamente per essere implementati
+\end{itemize}
+Idee salienti dell'algoritmo:
+\begin{itemize}
+\item Basato sull'idea della SMR, quindi una macchina a stati finiti. Macchina a stati processa una serie di comandi che vengono dati dai client al cluster di nodi di Raft, ciascun nodo che ne fa parte simula una copia della SM. Obiettivo: mantenere consistenza fra tutte le copie
+\item Due componenti fondamentali:
+\begin{itemize}
+\item Elezione del leader: permette di scegliere che uno dei server del cluster agisca come leader, usata solo quando è necessario eleggerne uno nuovo.
+\item Replicazione del log: operatività normale dell'algoritmo. Permette di far si che la SM di Raft sia aggiornata sulla maggioranza dei server che compongono il cluster. Leader prende i comandi dal client e li appende al suo log, replicandolo su quello dagli altri server, andando quindi a sovrascrivere delle possibili inconsistenze.
+\end{itemize}
+\end{itemize}
+All'inizio, tutti i nodi sono nello stato di follower, uno di questi transita nello stato di candidato, per divenire leader. Richiede voto per diventare leader, altri follwer rispondono alla richiesta, questo riceve maggioranza dei voti e diventa nuovo leader.\\ Quindi con algoritmo di elezione abbiamo un leader, ora tutti i cambiamenti nello stato delle macchine possedute dai diversi nodi saranno coordinate dal leader.\\ Client manda una sua request al leader, quest'ultimo la aggiunge al proprio log e prima di farne il commit (renderla permanente), il leader replica la entry del log su quelli degli altri nodi.\\ I nodi rispondono quando hanno scritto il loro log, il leader aspetta finché non riceve maggioranza di risposte che i nodi hanno scritto il loro log, a quel punto fa commit del suo log. Notifica ai follower che è stato effettuato commit della entry nel log, cluster ha raggiunto quindi il consenso sullo stato della macchina, ovvero del sistema: processo di replicazione dei log.\\ Raft ha 2 timeout per controllare l'elezione:
+\begin{itemize}
+\item TO dell'elezione: quantità di tempo che nodo follower aspetta prima di provare a diventare leader. Questo valore è compreso fra 150 e 300, scelto a random da ciascun server del cluster. Allo scadere del TO, follwer diventa candidato ed inizia term di elezione, votando per se stesso e richiedendo il voto. Se altri processi non hanno votato, votano per il candidato e resettano il valore del TO.\\ A questo punto nuovo leader comincia a mandare richieste di append per il log, che avviene in un intervallo detto di hearthbeat. Follower rispondono a questi append e questo term continua finché follower non riceve più hearthbeat e quindi diventa candidato, in quanto sospetta ci siano problemi
+\item Term: tempo nel cui leader manda gli append del log, fino a che funziona
+\end{itemize}
+Se processo avvia nuova elezione: term passa da 1 a 2, se viene eletto riparte a mandare gli append del log. Nella fase di replicazione: manteniamo consistente il log replicato su tutti i nodi.\\ Raft può funzionare anche in presenza di partizioni di rete (come Paxos): i nodi cominciano elezione ed accade che ci sono due leader differenti. Client prova a far aggiornare valore posseduto dal sistema. Poiché uno dei due leader non riesce a comunicare con la maggioranza dei nodi, il commit non viene completato, mentre nel caso del secondo leader, se arriva un cambiamento da parte di un altro client, questo raggiunge la maggioranza e può fare commit.\\ Al termine della partizione, il nodo che era leader della partizione più piccola, vede che il term del leader è più grande del suo e ritorna a follwer, i nodi della sua partizione fanno roll-back del loro log e questo torna ad essere consistente su tutti i processi.\\ Garantisce la safety, fornisce garanzia di liveness se ci sono pochi fallimenti concorrenti nel sistema.
+\subsection{Algoritmo dei generali bizantini}
+Sempre di Lamport, scenario: generali, che hanno circondato con i loro eserciti una città e devono decidere se sferrare l'attacco alla città o ritirarsi. Alcuni generali sono traditori, che comunica la sua decisione in maniera differente agli altri. Il comportamento del generale traditore (è un guasto bizantino) non è facilmente identificabile, domanda è se e quando è possibile raggiungere il consenso da parte dei generali non traditori (nodi non guasti).\\ Affinché sistema possa continuare a funzionare in presenza di k guasti bizantini, occorrono 3k + 1 processi non guasti. Se per esempio ho solo 3 processi, di cui uno è guasto: il 3° processo non riesce a discriminare quale dei due nodi sia quello guasto e quale no, si vede arrivare due comunicazioni differenti.\\ Assunzioni dell'algoritmo più stringenti di quelle del caso di Raft e Paxos, perché guasti bizantini sono più difficili da gestire:
+\begin{itemize}
+\item Processi singoli
+\item Comunicazione unicast
+\item Ordinamento FIFO
+\item Ritardi di comunicazione limitati
+\end{itemize}
+\subsubsection{Prima versione}
+Prima versione del problema (non originale di Lamport), N processi ed ognuno fornisce n proprio valore $v_i$, obiettivo è far costruire a ciascun processo un vettore di cardinalità N, in modo che se processo i non è guasto, $V[i]$ è il valore comunicato dal processo $p_i$, altrimenti è indefinito. Vettore fornisce la dimensione degli eserciti messi a disposizione dai generali.\\ esempio: 4 processi, per tollerare guasto bizantino occorrono 3 processi non guasti. Assumiamo che $v_i$ = i, dove i è l'ID del processo. Al primo passo dell'algoritmo, ogni processo invia il proprio valore agli altri in unicast. processo guasto manda valori arbitrari.\\ Al passo successivo, ciascun processo raggruppa in un vettore i valori ricevuti dagli altri processi, ed al 3° passo ogni processo invia il proprio vettore agli altri processi, questi li ricevono ed applicano un voto di maggioranza componente a componente sui vettori così ricevuti: se processo i funziona correttamente, $v[i]$ = i, altrimenti non riesco ad identificare il valore applicando il voto di maggioranza. ad esempio, 1 riceve (1,2,y,4) (a,b,c,d) (1,2,z,4), quindi sulle entry 1,2,4 vota per 1,2,4 mentre per 3 non sa che valore dare; stesso avviene per 1,2,4 e quindi si identifica il mal funzionamento del processo 3.\\ Se applico l'algoritmo al caso di 3 processi, di cui uno soggetto a guasto, non riesco a raggiungere l'accordo.
+\subsubsection{Versione di Lamport}
+Versione originale dell'algoritmo: guasto bizantino è rappresentato dal fatto che il messaggio (essendo orale) può non essere compreso correttamente dal processo che lo riceve o durante la comunicazione il contenuto può essere corrotto.\\ Algoritmo nella definizione originale prevede k+1 passi, con k = \#processi guasti. Al passo k il comandante invia il suo valore ai colonnelli, supponiamo che sia $v[i]$ o retreat il valore ricevuto dal colonnello i, ciascuno agisce da comandante ed esegue il passo k-1, inviando il proprio valore a ciascuno degli n-2 colonnelli.\\ Successivamente, per ciascun valore ricevuto si applica il voto di maggioranza. esempio: 4 processi uno guasto. Al passo 1, il comandante invia ai colonnelli il valore a, al passo 0, ogni colonnello manda a tutti gli altri il suo valore.\\ I singoli colonnelli a questo punto applicano i voti di maggioranza: il colonnello 1 vede che ha ricevuto a dal comandante e dall'altro non guasto, mentre dal guasto ha ricevuto ?, quindi per voto di maggioranza sceglie come valore a.\\ Scenario in cui il comandante è il traditore: comunica valore differente a qualcuno dei colonnelli al passo 1. Al passo 0, ciascun colonnello invia il valore ricevuto agli altri e anche in questo caso (se ho i 4 processi), il consenso si ottiene su a.\\ Sono richiesti k+1 round, si scambiano O($n^k$) messaggi, dove n = numero di processi e k = n° guasti bizantini. È algoritmo lento, richiede un certo numero di round sincroni pari a k+1 ed in cui si scambia valore elevato di messaggi, per questo a lungo i protocolli in grado di supportare i guasti bizantini sono stati considerati troppo costosi. Situazione è cambiata quando alla fine degli anni 90' è stato proposto algoritmo Parctical Byzantine Fault Tolerance, con cui sono stati ridotti numero di messaggi scambiati e latenza. Quindi, soluzione viene applicata in pratica, ad esempio in Bitcoin nella comunicazione di informazioni fra i diversi nodi.
+\subsection{Commit distribute}
+Altro problema risolvibile con algoritmi introdotti, si verifica solitamente in DB distribuito in cui abbiamo transazione distribuita su un gruppo di processi e si vuole decidere se tutti i processi devono portare a commit le transazioni o annullarla. Per risolvere il problema, sono stati proposti algoritmi di commit ed i due attuati sono il protocollo di commit a 2 fasi ed a 3 fasi.
+\begin{itemize}
+\item 2 fasi: prima fase di voto e seconda di decisione, problema che si può verificare blocco e quindi mancata terminazione dell'algoritmo (no liveness)
+\item 3° fase: evita il blocco di quello a 2 fasi, ma non è tollerante alle partizioni di rete.
+\end{itemize}
+In pratica: si può usare o Paxos o Raft, perché entrambi sono tolleranti alle partizioni di rete: nel caso di Paxos, finché c'è maggioranza di processi in grado di comunicare fra loro può raggiungere l'accordo e quando passa la partizione, i restanti nodi si ri-allineano sulle decisioni prese dagli altri nodi.
+
+
+
+
 
 
 \section{Approfondimento-Kubernetes}

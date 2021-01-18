@@ -5,6 +5,7 @@
 
 \begin{document}
 \tableofcontents
+\large
 \section{Introduzione-warm up example}
 Il problema spesso è che una buona crittografia è applicata male alla risoluzione di un problema.esempio: paper che discute di una tecnica di sicurezza ed in cui viene matematicamente provata la sicurezza.\\ Basata sul meccanismo del One Time Pad: ho il mio plain text e voglio criptarlo in modo che non si capisca cosa ci sia scritto. Genero una sequenza random di bit, di lunghezza pari alla lunghezza del testo. Una volta ottenuta la chiave, computo lo XOR fra la chiave ed il plaintext ed ottengo il mio ciphertext.\\ Il seguente meccanismo è il migliore possibile per fare enrcyption.\\ Per decriptare applico il procedimento inverso, facendo sempre l'XOR, infatti: b $\oplus$ 1 = $\overline{b}$ $\oplus$ 1 = b.\\ Devo però fare delle assunzioni:
 \begin{enumerate}
