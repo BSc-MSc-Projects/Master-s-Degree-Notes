@@ -1,0 +1,62 @@
+\documentclass{article}
+\begin{document}
+\Large
+\tableofcontents
+\section{Cos'è l'hacking}
+Bisogna innanzitutto fare distinzione fra DDoS ed Hacking:
+\begin{itemize}
+\item DDoS nega un servizio ad una qualche società/compagna, esaurendone le risorse. Il modo più gettonato è eseguire un elevato numero di connessioni verso i server che offrono i servizi, in modo da interrompere il servizio. Questo non è però hacking, non ha tecniche interessanti da sfruttare
+\item Hacking: tecniche per ottenere accesso non autorizzato ala macchina (ma in realtà servirà) con lo scopo finale di proteggere la macchina su cui abbiamo ottenuto l'accesso.\\ Accedo come utente root, riporto i passi che mi hanno permesso di accedervi per far si che il cliente che ha richiesto il test possa sistemare la sicurezza
+\end{itemize}
+Come possono due entità comunicare in modo sicuro, in modo che ci sia integrità e confidenzialità? Si introducono appositi protocolli e tecniche crittografiche etc... in modo da rendere la sicurezza sicura. Uso TLS e mi sento abbastanza sicuro, in teoria: chi però implementa il protocollo in software può introdurre delle funzionalità nuove che si pensa siano innocue ma poi sono devastanti.\\ esempio: ricorda l'hearthbleed di openSSL, la funzionalità aggiunta era la possibilità di hearthbeat per TLS/DTLS. Vulnerabilità affligge tutti i dispositivi che utilizzano la libreria, era possibile leggere tutti i dati all'interno del dispositivo: password, cookies, etc... Non era un malware, ma una vulnerabilità derivante da ciò che si pensava essere una funzionalità. In cosa consisteva la vulnerabilità: buffer overflow, invia più caratteri di quelli necessari andando a pescare contenuti di aree di memoria adiacenti.\\ Take home message: tutte le vulnerabilità derivano dal fatto che l'utente può inserire delle informazioni in un sistema informatico che possono:
+\begin{itemize}
+\item avere valore sbagliato
+\item avere dimensione sbagliata
+\item input può essere da utente autorizzato ma malevolo
+\item input da utente non autorizzato, sia malevolo che non
+\end{itemize}
+Problema è che input di utenti in generale vanno sempre validati in forma e contenuto, le funzioni di sicurezza non devono mai basarsi su input non validato. Questa cosa va fatta nelle sezioni più critiche del sistema: se server avesse controllato la lunghezza della parola data con quella fornita dall'utente, non ci sarebbe stato problema.\\ In linea di principio è complicato avere tutto sott'occhio, specialmente perché le configurazioni sono fatte da persone. La teoria non è uguale al mondo reale: un protocollo che in teoria funziona bene, può essere implementato male.
+\subsection{Hacker vs penetration testers}
+C'è una delineazione molto chiara e generale su quelle che sono le figure, con annessa legalità/illegalità. "Cappelli": figura che si è sviluppata negli anni:
+\begin{itemize}
+\item script kiddies: prendono programmi dalla rete e li utilizzano per attaccare le reti per "farsi un nome"
+\item attivisti: motivati da scopi politici o religiosi che effettuano attacchi informatici con questi scopi
+\item white hat hackers: i "buoni", operavano comunque nell'illegalità. Esperti di sicurezza, il cui scopo era di dimostrare vulnerabilità di sistemi affinché queste venissero fixate.
+\item black hat hackers: operano nell'illegalità al fine di ottenere accesso non autorizzato per interessi personali: ottenere un nome nella comunità, soldi, vendetta, cerare bot-net etc... Ne fanno parte:
+\begin{itemize}
+\item gruppi sponsorizzati dallo stato
+\item terroristi
+\item spie
+\end{itemize}
+\end{itemize}
+Tutto ciò visto fin ora opera nell'illegalità, i penetration tester invece no: il pentester ha l'autorizzazione da parte del cliente, mentre l'hacker no. Lo scopo dei pentester è quello di aumentare la consapevolezza in ambito di sicurezza, ottenendo anche permessi per fare test.\\ Non esistevano questi confini legali, ad esempio nel caso dei white hat, se qualcuno trova una vulnerabilità in un'azienda è come dirglielo: potrebbe farci causa, ignorarla etc... C'è sempre stata un "area grigia", oggi si è quasi arrivati ad un punto fisso che è quello dei bug bounties: viene dato premio in denaro dall'azienda a chi trova la vulnerabilità. Vengono dati dei limiti entro cui poter agire, se si trova la vulnerabilità si ottiene un premio in denaro.
+\section{Fasi di un penetration test}
+Lo scopo sarà quello di effettuare un penetration test su un sistema. Il test andrà strutturato, ci sono delle fasi prestabilite, lo scopo del test è ottenere accesso come utente con i permessi più elevati nel sistema. Il test potrebbe essere automatizzato, oppure essere fatto a mano: alcuni tool rendono veloci degli steps, ma altri step vanno fatti a mano (occorre pensare in modo creativo). 4 macro-step:
+\begin{itemize}
+\item gathering information
+\item identificare possibili entry point
+\item tentativo di accesso
+\item report di ciò che è stato trovato
+\end{itemize}
+Il vulnerability assessment può essere automatizzato, ci sono dei tool che permettono di farlo ma può essere molto poco affidabile e produce alto rate di falsi positivi: non c'è la certezza che il sistema sia vulnerabile ad una certa vulnerabilità.\\ Invece, il penetration test ha un'accuratezza molto alta e produce un risultato binario: successo o insuccesso, quindi o il sistema non è sicuro o potrebbe essere sicuro.\\ Gli ambiti del penetration test sono vari:
+\begin{itemize}
+\item target recon: sfruttare software vulnerabile
+\item social engineering: sfruttare interazione con le persone per ottenere informazioni riservate
+\item physical facilities adult
+\item ...
+\end{itemize}
+Un penetration test può portare a risultati che un semplice vulenaribility assessment non può, l'azienda può sistemare tutte le vulnerabilità trovate (anche in termini di persone). Nel test è fornita l'autorizzazione, ma nel contratto stipulato con l'azienda poterebbe essere possibile non accedere a determinate parti del sistema. Nel caso di un attacco hacker, le fasi sono le stesse del pentest ma in più ci sono fasi di mantenimento di acceso (dopo averlo ottenuto) e di copertura tracce.
+\subsection{The killchain model: APT}
+Il modello che si usa nel caso di un attacco informatico. Le fasi sono di più, ma ognuna è mappabile su quelle viste nel pentest:
+\begin{itemize}
+\item reconnaissance: information gathering
+\item weaponization: cerco arma con cui ottenere l'accesso
+\item delivery: mando payload malevolo per accedere
+\item exploitation: fase in cui si esegue un exploit
+\item installation: per mantenere l'accesso, posso installare malware sul PC per raccogliere informazioni nel tempo
+\item command and control: l'attaccante installa un agent, che comunica con un mio server per riceve comandi al fine di ottenere controllo della macchina. È l'agent che manda pacchetti verso il server e non il viceversa
+\item exfiltration: esporto informazioni utili dalla macchina
+\end{itemize}
+\section{Hunder the hood of applications}
+Cosa accade "dietro le quinte" quando provo ad accedere ad una qualche applicazione che sta nel web: ho il mio client ed il server, di mezzo l'Internet.\\ Supponiamo di considerare un'applicazione web: per accedere ad un sito web si usa nella maggior parte dei casi uno URL per indicare la risorsa del web a cui accedere.\\ HTTP: protocollo costituito da messaggi human-readable, è possibile ispezionare i pacchetti di rete che vanno dal mio client verso il server e viceversa.\\ Lo stesso vale per SMTP e come per HTTP di default non è inclusa alcuna autenticazione (oggi è possibile configurare server SMTP per rifiutare e-mail non autenticate), ma è possibile trovar e alcuni server in cui è possibile mandare e-mail nascondendo il mittente.\\ telnet: software che permette il collegamento con un server e l'invio di messaggi, ad esempio posso richiedere una pagina web (vedo il sorgente).\\ Quello che accadeva qualche tempo fa era la possibilità di mandare mail senza specificare il mittente (no auth).
+\end{document}
