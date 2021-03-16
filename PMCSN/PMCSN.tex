@@ -2,10 +2,16 @@
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 \usepackage{graphicx}
+\usepackage{geometry}
+
+\geometry{
+	a4paper,
+}
 
 \begin{document}
 \Large
 \tableofcontents
+\newpage
 \section{Introduzione}
 Terminologia:
 \begin{itemize}
@@ -170,7 +176,7 @@ Denotiamo con I gli intervalli in cui il servente è idle (non ha job in servizi
 \end{itemize}
 esempio:\\ 
 \includegraphics[scale=0.25]{images/PMCSN-6.png}
-\\Il server più veloce è comunque utile, in quanto ci saranno dei tempi di risposta più brevi. Però, il minimizzare il tempo di risposta non è detto che migliori il thorughtput, come avviene in questo caso.\\ Se i centri sono in equilibrio stazionario, ovvero il flusso che entra è pari al flusso che esce (se $\lambda < \mu$ o $\rho < 1$), allora il thoughput è pari a $\lambda$. Se invece $\mu$ è maggiore di $\lambda$, il throughput è pari a $\mu$, ma questo vuole anche dire che la coda cresce indeterminatamente, perché il centro non riesce a smaltire le richieste in entrata.
+\\Il server più veloce è comunque utile, in quanto ci saranno dei tempi di risposta più brevi. Però, il minimizzare il tempo di risposta non è detto che migliori il thorughtput, come avviene in questo caso.\\ Se i centri sono in equilibrio stazionario, ovvero il flusso che entra è pari al flusso che esce (se $\lambda < \mu$ o $\rho < 1$), allora il thoughput è pari a $\lambda$. Se invece $\mu$ è maggiore di $\lambda$, il throughput è pari a $\mu$, ma questo vuole anche dire che la coda cresce indeterminatamente, perché il centro non riesce a smaltire le richieste in entrata.\\ Un altra metrica interessante è il tempo medio di servizio, definito in termini di C = della capacità operativa del server ($\frac{op}{s}$) e di Z = domanda media dei job (op): $\frac{E(Z)}{C}$.
 \subsubsection{Server singolo a buffer finito}
 Cosa accade nel caso di buffer finito: quando la coda è piena, l'arrivo si perde (c'è tutto un altro tema quando l'arrivo alla coda piena viene mantenuta dove c'è una certa area). Qual è in questo caso il throughput? Non è più $\lambda$ e cambia anche $\rho$ in quanto non entra $\lambda$ nella coda, bensì $\lambda'$. Dove c'è un buffer finito, c'è sempre l'equilibrio perché più di tanto non entra in coda, il sistema sarà sempre in grado di servire le richieste. Per poter calcolare il throughput, avremo bisogno dei processi di Markov, calcolare la probabilità di avere lo stato vuoto e quello saturo, la probabilità di perdita sarà la probabilità di avere la coda piena.
 \subsection{Server a coda multipla}
@@ -242,7 +248,6 @@ Nonostante ciò, è possibile applicare il teorema di Little anche se non valgon
 \item $E(N_q) = \lambda\cdot E(T_q)$
 \end{enumerate}
 e vale lo stesso per il multi-server\\
-esercizi:\\
 \subsection{Risultati del modello analitico}
 Abbiamo visto alcune relazioni per i valori medi, riscritte anche con la legge di Little. Le soluzioni note partono tutte da $E(N_q)$, cominciamo con il servente singolo.
 \paragraph{Notazione di Kendall}: notazione del tipo $A/S/m/B/N/D$, dove:
@@ -347,11 +352,66 @@ L'esponenziale ha un'altra proprietà particolare: $f(t) = \lambda e^{-\lambda t
 La media è $\frac{1}{\lambda}$, ed $f(\frac{1}{\lambda}) = \lambda e^{-1}$ ovvero: l'esponenziale parte da un punto che è il suo parametro e crolla, valutando f nella media $\frac{1}{\lambda}$ scopro che il suo valore iniziale è stato ridotto dell'$e^{-1}\%$, quindi la media è il tempo per ridurre la quantità iniziale del $1 - e^{-1} \%$. Questa viene detta costante di tempo ($\frac{1}{\lambda}$): se valuto la funzione di distribuzione nella media $\frac{1}{\lambda}: F(\frac{1}{\lambda}) = \int_{0}^{\frac{1}{\lambda}} f(t) dt = 1 - e^{-1} = 0.6321$.\\
 \includegraphics[scale=0.3]{images/PMCSN-exp.jpeg}\\
 È indipendente da $\lambda$: qualunque sia la costante di tempo, questo equivale al tempo necessario affinché il valore iniziale si riduca di circa il $63 \%$.
-\subsubsection{Memoryless come tempo di vita}
+\subsection{Memoryless come tempo di vita}
 Una v.a X è detta memoryless se $P(X > s + t| X > s) = P(X > t), \forall s,t > 0$, ovvero il fatto che sia passato già un tempo s non conta nulla. esempio: sia X il tempo di vita di una lampadina. La memoryless direbbe che la probabilità che la lampadina duri ancora t secondi prima che si fulmini, dato che aveva funzionato per s secondi, è la stessa che la lampadina funzioni per almeno t.\\ Vediamo in termini di distribuzioni, non considerando la memoryless: considero tutte le distribuzioni per cui questo tempo di vita trascorso conta. Le distribuzioni per cui $P(X > s + t |X > s)$ decresce al crescere di s vengono dette a \textit{failure rate crescente}. Mentre, quelle per cui vale il contrario (ovvero al crescere di s la probabilità decresce), vengono dette a \textit{decreasing failure rate}.\\ esempi: il tempo di vita di una automobile è caratterizzato da un tempo di vita a increasing failure rate, nel caso chi ci riguarda di più:
 \begin{itemize}
 \item i tempi di vita dei job UNIX sono caratterizzati da distribuzioni decreasing failure rate: tanta più CPU ha usato un job, quanto più è probabile che ne debba usare altra
 \item stesso vale per i chip: (test spesso eseguito per i chip) se non falliscono per un certo tempo, la probabilità di difetto è bassa (solitamente compaiono in un primo tempo).
 \end{itemize}
-
+\paragraph{Hazard rate function:}supponiamo di avere una v.a X continua con densità di probabilità $f(t)$ e funzione di distribuzione $F(t) = P{X < t}$, chiamiamo $r(t) = \frac{f(t)}{\bar{F}(t)}$, dove $\bar{F}(t)$ è il complementare della $F(t)$, consideriamo la probabilità che un oggetto di $t$ anni fallirà nei prossimi $dt$ secondi = $P(X \in (t, t + dt)|X > t) \approx \frac{f(t)dt}{\bar{F}(t)} = r(t)dt$, quindi la hazard rate function ci da il failure rate istantaneo.\\ Quando $r(t)$ è costante, allora la distribuzione è esponenziale.
+\subsubsection{Importanza del tempo di vita rimamente}
+Consideriamo un load balacing per la CPU in una rete di workstations: può essere utile migrare un job sulla workstation meno carica, per migliorare i tempi medi di risposta. Ma questo ha un costo, bisogna portarsi dietro lo stato del processo, ci sono due tipi di migrazioni:
+\begin{itemize}
+\item non-preemptive migration: re-alloca solo processi "nuovi", non ancora attivi
+\item preemptive migration (active process migration): possibile migrare anche processi attivi
+\end{itemize}
+Ci poniamo delle domande: può essere utile la migrazione P, o basta la NP? E se scegliamo di usare la P, quale è una buona politica di migrazione (quale processo è meglio scegliere)?\\ Richiamiamo ancora una volta il lifetime, ricordiamo la terminologia:
+\begin{itemize}
+\item taglia di un job: domanda totale di CPU
+\item vita di un job: utilizzo di CPU fino ad ora
+\item tempo di vita di un job: richiesta totale di CPU di un job, dipende sia dalla capacità operativa che da quanto richiede (coincide sostanzialmente con la size
+\item tempo di vita rimanente di un job: si riferisce ad un certo istante di tempo, la rimanente richiesta di CPU
+\end{itemize}
+Non per tutte le applicazioni è possibile conoscere tutti i termini, ma è sempre possibile su un sistema misurare quanta elaborazione è stata fatta, quindi è sempre possibile conoscere l'age (vita di un job).\\ 
+\subsection{Distribuzioni di Pareto}
+(vedi slide)
+Vedo le raccolte dei tempi di vita di job Unix, sembrano distribuiti esponenzialmente ma non è così: per t=2 abbiamo una decrescenza di $\frac{1}{2}$, per t=4 $\frac{1}{4}$ etc..., classe delle distribuzioni di Pareto: $f(x) = \alpha \cdot k^{\alpha} \cdot x^{\alpha-1}$ con $k \leq x < \infty, 0 \leq \alpha \leq 2$, con code la cui misura è data da $\alpha$:
+\begin{itemize}
+\item $\alpha -> 0$, più variabilità e più pesantezza della coda
+\item $\alpha -> 2$, il contrario
+\end{itemize}
+problema: hanno momento finito di ordine i sono se $\alpha > i$, quindi non possiamo valutarne la varianza.\\ Proprietà:
+\begin{itemize}
+\item sono a decreasing failure rate: più CPU viene usata, più continua ad usarne
+\item hanno varianza infinita, la heavy tail property ci dice che una una minuscola frazione dei job molto grandi contribuisce alla metà del carico del sistema. Per esempio, con $\alpha = 1.1$, se migro i job grandi, tolgo la metà del carico dal sistema.
+\end{itemize}
+\subsubsection{Bounded Pareto}
+L'infinito che limita la x si può togliere, si può facilmente trovare un limite finito molto grande alla size, si può passare alla classe bounded Pareto: $f(x) = \alpha \cdot x^{-\alpha - 1} \cdot \frac{k^{\alpha}}{1 - (\frac{k}{p})^{\alpha}}$ con $k \leq x \leq p, 0 < \alpha < 2$, tutti i momenti sono finiti.\\ $C^2 = 25$ è il minimo coefficiente di variazione misurato per distribuzioni di questo tipo, solitamente varia tra 25 e 49, quindi le prestazioni possono degradare moltissimo (con la variabilità), nel caso di distribuzione di questa classe.\\ Quindi, rispondendo alle due domande precedenti, la caratteristica del decreasing failure rate (quindi tutti i casi in cui l'applicazione viene ben modellata da questa caratteristica) ci porta a pensare che la migrazione è utile e può essere più sensato migrare i job vecchi. Sebbene i job vecchi potrebbe aver maturato uno stato più significativo di un job "giovane" (appena nato"), quel costo di migrazione verrà ammortizzato dal tempo in cui quel job continuerà a chiedere risorse di computazione.
+\subsection{Risultati analitici ulteriori della KP}
+Vediamo la KP nell'ottica del tempo di servizio rimanente. Ad un certo istante di tempo, la situazione di un server può essere la seguente:\\
+\includegraphics[scale=0.4]{images/PMCSN-1603.jpeg}\\
+supponiamo che lo scheduling sia FIFO, il job che arriva dovrà attendere il tempo necessario ad elaborare i job nella coda ed il tempo di servizio rimanente del job in servizio. Il tempo di attesa sarà quindi una qualche combinazione $T_Q = t_c \oplus S_{rem}$, si può dimostrare che per \textbf{qualunque distribuzione} $E(S_{rem} = \frac{\lambda}{2}\cdot E(S^2)$. Nel caso dell'esponenziale, poiché $E(S^2) = 2\cdot E(S)^2 \rightarrow E(S_{rem}) = \frac{\lambda}{2}2E(S)^2 = E(S_{rem} = \rho E(S))$, quindi $E(T_Q) = \frac{\rho E(S)}{1 - \rho} = \frac{E(S_{rem})}{1 - \rho}$, quindi l'operazione per l'esponenziale è un prodotto di $E(S)$ con $\frac{1}{1 - \rho}$ (che non è il tempo per completare, \textbf{ma è un numero puro}).\\ Nel caso generale (KP): $E(T_Q) = \frac{\rho}{1 - \rho} \cdot \frac{C^2 + 1}{2}\cdot E(S) = \frac{1}{1 - \rho} [\frac{\sigma(S)^2}{E(S)^2} + 1]$ = $\frac{\rho}{2(1 - \rho)}\cdot[\frac{E(S^2) - E(S)^2}{E(S)^2} + 1] = \frac{\lambda E(S)}{2(1 - \rho)}[\frac{E(S^2)}{E(S)^2} - 1 + 1]$ = $\frac{\lambda}{2(1 - \rho)}[\frac{E(S^2)}{E(S)^2}]E(S)^2 = \frac{\lambda}{2}\cdot \frac{E(S^2)}{1 - \rho}$.\\ Il termine $\frac{1}{1 - \rho}$ rappresenta il fattore legato al $t_c$ (NON È UN TEMPO), siccome i due termini sono combinati con un prodotto:
+\begin{itemize}
+\item se uno è 0, il risultato è 0. Se $E(S_{rem}) = 0$, allora non c'è coda. Il job che arriva non deve attendere e viene subito servito
+\item se uno è 1, abbiamo un invariante per il prodotto. Se il coefficiente $\frac{1}{1 - \rho}$ fosse 1, il job che arriva trova solo il job in servizio, quindi in pratica è come se non attendesse nulla
+\end{itemize}
+\paragraph{Tempo di risposta} per il tempo di risposta $E(T_S)$ abbiamo:
+\begin{itemize}
+\item M/G/1: $E(T_S) = E(T_Q) + E(S) = \frac{\frac{\lambda}{2} \cdot E(S^2)}{1 - \rho}$
+\item M/M/1: $E(T_S) = \frac{\rho E(S)}{1 - \rho} + E(S) = \frac{E(S)}{1 - \rho}$.
+\end{itemize}
+\subsection{Scheduling astratto non-preemptive}
+Riprendiamo le definizioni sullo scheduling, abbiamo dei risultati molto più forti di quelli della KP. Ricordiamo che: 
+\paragraph{Definizione 1:}una politica prevede preemptive se un job può essere fermato durante la sua esecuzione e ripreso più tardi, dal punto in cui era stato fermato. Una politica è invece non preemptive se i job non possono mai essere fermati mentre sono in servizio.
+\paragraph{Definizione 2:}lo scheduling si dice work conserving quando il server non è mai fermo nel caso in cui ci sia qualcuno nella coda. Può avere senso, per un server, attendere un job di taglia piccola (se sa che questo arriverà a breve), quindi il work non-conserving ha un senso.\\ C'è un risultato molto più forte della KP:
+\paragraph{Teorema di Conway, Maxwell, Miller:} tutto lo scheduling astratto non preemptive mostra avere la stessa distribuzione del numero di job nel sistema: vale per $E(N_S), E(N_Q)$, quindi con Little anche per $E(T_Q)$ ed $E(T_S)$; quindi, vale per i momenti di ogni ordine (per i tempi invece, vale solo per le medie).\\ In generale $E(T_Q) = \frac{\frac{\lambda}{2} E(S^2)}{1 - \rho}$, può essere alto quando il quadrato è alto.\\ Cosa non ci piace: l'attesa in coda non ha nessuna relazione con la size del job, Mentre un job grande la tollera, in quanto l'attesa è proporzionale a quanto lui richiede, ma per job piccoli questo è poco fair. Ciò che vorremmo vedere è un tempo di risposta proporzionale alla size: chi chiede molto attende molto, chi poco attende poco.
+\subsubsection{Tempo di slowdown}
+Consideriamo il tempo di risposta medio per un job di taglia x: $E(T_S(x)) = E(x + T_Q(x))$, ATTENZIONE: si mette la taglia del job (x), non il tempo di servizio medio $E(S)$, perché dopo aver atteso in coda non vogliono vedere il tempo $E(S)$, bensì x. Quindi, siccome x non è una media, ma una size, inoltre $E(T_Q)$ è indipendente dalla size x, quindi otteniamo $E(T_S(x)) = x + E(T_Q)$. Definiamo una nuova misura di prestazione chiamata \textit{slowdown} (rallentamento): non valuto solo il tempo di risposta, che una misura non fair, ma anche lo slow down per size che mi dice quanto il sistema è stato fair con i job. Lo slowdown medio per job di taglia x è il tempo medio osservato rispetto all taglia del job: $E(sd(x)) = \frac{E(T_S(x))}{x} = 1 + \frac{\frac{\lambda}{2} E(S^2)}{x \cdot (1 - \rho)}$  quindi lo slowdown diventa tanto più grande, quanto più il job è piccolo.
+\subsubsection{Slowdown vs response time}
+Il tempo di risposta tende ad essere rappresentativo per la performance di pochi job, i più grandi tendono ad enfatizzare la performance di quelli molto grandi, visto che contano di più in media il loro tempo di risposta tendere ad essere il più grande.\\ Il tempo di slowdown tende ad essere rappresentativo per la performance della maggior parte dei job perché domina la performance del grande numero di piccoli job; vorremmo rendere $E(T_S(x))$ piccolo per x piccoli. Come fare se non si conosce la taglia x: due ragioni storiche per cui lo scheduling delle CPU è circa processor sharing :
+\begin{itemize}
+\item parliamo di sistemi con molte risorse, quindi è utile avere in esecuzione molteplici job perché questi richiedono diverse risorse
+\item una divisione di tempo o processor sharing, in termini di modelli, fa andare avanti job piccoli senza necessariamente conoscere la taglia. Se do un n-simo di quanti (o quanto di tempo) a ciascuno, i job piccoli finiranno subito, quelli grandi continueranno a stare lì
+\end{itemize}
+dovrebbe essere migliore il processor sharing rispetto alla FIFO, in termini di tempi di risposta medi,perché manda via i job piccoli velocemente, ed in termini di slowdown dovrebbe essere molto meglio, perché non rallenta i job piccoli. $P(N_S = n)^{M/G/1/PS} = \rho^n (1 - \rho) = P(N_S = n)^{M/M/1/FIFO}$, riusciamo ad avere le stesse prestazioni, anche in caso di distribuzione generale. In particolare: $E(N_S)^{M/G/1/PS} = \frac{\rho}{1 - \rho} = E(N_S)^{M/M/1/FIFO}$ ed $E(T_S)^{M/G/1/PS} = \frac{E(S)}{1 - \rho} = E(T_S)^{M/M/1/FIFO}$, quindi il processor sharing, che tra l'altro modella bene molte situazioni reali, ha degli indici di prestazioni ottimi quando la variabilità è maggiore di 1. Inoltre, è insensibile alla variabilità del tempo di servizio, perché vale per distribuzione generale (infatti la variabilità non compare nelle formule).
 \end{document}

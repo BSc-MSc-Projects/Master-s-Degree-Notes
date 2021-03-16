@@ -1,11 +1,16 @@
 \documentclass{article}
 \usepackage{amssymb}
+\usepackage{geometry}
+
+\geometry{
+	a4paper,
+}
 
 \title{Ingegneria del software II}
 \begin{document}
 \Large
 \tableofcontents
-\section{Modulo I - Machine Learning for Software Engineering (Falessi)}
+\section{Modulo I - Machine Learning for Software Engineering}
 \section{Ripasso: introduzione a SVN e Github}
 Un sistema di controllo delle versioni tiene traccia dei cambiamenti ad un file ed inoltre permette di tornare indietro nelle versioni. Ci sono due tipologie:
 \begin{itemize}
@@ -91,7 +96,7 @@ Data la revisione di un file, per ogni riga è possibile risalire al commit che 
 \subsection{Cercare ticket in JIRA}
 Una volta trovato un progetto, è possibile selezionare il tipo di ticket da cercare, lo sviluppatore etc... (numerosi filtri), in advanced è anche possibile creare delle query SQL-like, con cui è possibile creare delle ricerche sofisticate e metterle da parte.
 \newpage
-\section{Modulo II - Software Testing (De Angelis)}
+\section{Modulo II - Software Testing}
 \section{Introduzione e concetti generali per software testing}
 La progettazione di un sistema software è complessa: in primo luogo per l'interazione fra le persone che hanno un interesse nello sviluppo del sistema (ingegneri, programmatori, analisti, committenti etc...). È importante cercare di avere degli strumenti che guidino nel processo di sviluppo del software in modo da poter definire delle garanzie che tutti i membri del team siano sulla strada giusta.\\È necessario stabilire dei checkpoint per poter dire che il processo di progettazione e sviluppo sta procedendo nel modo corretto: Boehm definisce e distingue i due concetti di verifica e validazione:
 \begin{itemize}
@@ -112,7 +117,7 @@ Il peso attribuito alle operazioni di verifica o di validazione dipende dal cont
 \item 2° metodo: software testing e debugging. Si cerca di scoprire se P nasconde delle imperfezioni.
 \end{itemize}
 Ci focalizzeremo sul 2° metodo (anche perché chi cazzo è capace a fare una verifica formale, figuriamoci dimostrare formalmente che sia valida); il 1° metodo ha innumerevoli benefici, quindi quando è possibile bisogna validare formalmente.\\ Nel 2° approccio, si ammette di avere una discrepanza fra P ed S, la si accetta e si cerca di trovare i punti in cui sussiste tale discrepanza, andando a cercare le porzioni di dominio critiche per trovare tali punti.
-\subsection{Software testing vs debugging}
+\subsection{Cos'è il software testing}
 Per raggiungere una adeguata confidenza sulla presenza o meno di mismatch fra P ed S si può:
 \begin{itemize}
 \item pianificare una strategia che faccia vedere potenziali differenze fra P ed S. Questo è ciò che si fa col software testing (ci focalizzeremo su questo)
@@ -124,10 +129,90 @@ Nel software testing, l'obiettivo principale è far saltare fuori le differenze 
 \item un sistema software è pieno di difetti (o fault o bug) ma non è detto che un utilizzatore del software incappi in tutti. Quando questo accade, il fault genera un malfunzionamento (o failure), che viene percepito dall'utente.
 \item un malfunzionamento è il risaluto di un fault
 \end{enumerate}
-Possiamo cercare di evitare i malfunzionamenti pure mantenendo il sistema buggato, ad esempio isolando il bug ovvero facendo in modo che nessun utente vi si imbatta; è possibile organizzare una campagna di $V\&V$ per nascondere tale bug.\\ Sempre nella sfera del $V\&V$, vorremo cercare di omettere il fault: per afre ciò, applichiamo delle politiche di fault detection o removal, e questa è la parte più grossa del software testing: si pianificano attività il cui scopo è quello di esporre i fault.\\ Molto più complessa è l'attività di errore removal, in quanto occorre capire perché il progettista/analista/sviluppatore ha avuto una percezione non corretta del software che andava analizzato e sviluppato.\\ La parte che riguarda l'analisi e rimozione di errori e fault fa parte del debugging, mentre la ricerca di failure del software testing.\\ esempio:\\
-il metodo $makeItDOuble$ mi fa intendere che il risultato sia il doppio del parametro che ho passato come input, ma se passo 3 ottengo 9. Il risultato 9 è la failure, causata dal fault che è il prodotto del parametro con se stesso. Probabilmente, tale fault è dovuta ad un errore umano, come ad esempio un typo di "*" al posto di "+".\\ Ma ad esempio, se passo 2 come input, non mi accorgo mai del problema e se il codice che utilizzo passa sempre 2, l'utente non sperimenterà mai la failure perché il bug non sussisterà.\\ Il software testing è composto da attività che vengono eseguite in un ambiente controllato e sul sistema software così come verrà usato dagli utenti finali, mentre nelle verifiche formali si ragiona su un modello astratto dall'originale.\\ Il lavoro sul sistema vero e proprio ha come vantaggio il fatto che si prova se il software originale risponde alle esigenze per cui è stato creato, ma come svantaggio il fatto che il test non può dimostrare l'assenza di errori, bensì solo la presenza di essi.\\ Il mood del test engineer è starno: devi essere contento se trovi errori, non se non li trovi (cit*).\\
+Possiamo cercare di evitare i malfunzionamenti pure mantenendo il sistema buggato, ad esempio isolando il bug ovvero facendo in modo che nessun utente vi si imbatta; è possibile organizzare una campagna di $V\&V$ per nascondere tale bug.\\ Sempre nella sfera del $V\&V$, vorremo cercare di omettere il fault: per afre ciò, applichiamo delle politiche di fault detection o removal, e questa è la parte più grossa del software testing: si pianificano attività il cui scopo è quello di esporre i fault.\\ Molto più complessa è l'attività di errore removal, in quanto occorre capire perché il progettista/analista/sviluppatore ha avuto una percezione non corretta del software che andava analizzato e sviluppato.\\ La parte che riguarda l'analisi e rimozione di errori e fault fa parte del debugging, mentre la ricerca di failure del software testing.\\ esempio:\\ (metti codice)
+il metodo $makeItDouble$ mi fa intendere che il risultato sia il doppio del parametro che ho passato come input, ma se passo 3 ottengo 9. Il risultato 9 è la failure, causata dal fault che è il prodotto del parametro con se stesso. Probabilmente, tale fault è dovuta ad un errore umano, come ad esempio un typo di "*" al posto di "+".\\ Ma ad esempio, se passo 2 come input, non mi accorgo mai del problema e se il codice che utilizzo passa sempre 2, l'utente non sperimenterà mai la failure perché il bug non sussisterà.\\ Il software testing è composto da attività che vengono eseguite in un ambiente controllato e sul sistema software così come verrà usato dagli utenti finali, mentre nelle verifiche formali si ragiona su un modello astratto dall'originale.\\ Il lavoro sul sistema vero e proprio ha come vantaggio il fatto che si prova se il software originale risponde alle esigenze per cui è stato creato, ma come svantaggio il fatto che il test non può dimostrare l'assenza di errori, bensì solo la presenza di essi.\\ Il mood del test engineer è starno: devi essere contento se trovi errori, non se non li trovi (cit*).\\ Contesto tipico: ho il mio system under test, che viene stimolato da un'attività di test, che è composta da 4 fasi:
+\begin{itemize}
+\item inizializzazione
+\item esercizio
+\item verifica: mi chiedo se il system under test si è comportato come mi aspettavo. Verifico delle asserzioni che avevo fatto, se sono verificate il test passa, altrimenti fallisce. Non esiste un test in cui non ci sono asserzioni 
+\item teardown dell'ambiente, ripulisco il system under test da eventuali evoluzioni di stato causate dai test.
+\end{itemize}
+esempio: scrivo un programma che calcola il fattoriale su tutti gli interi, su un numero negativo è da intendersi come il fattoriale del suo opposto. ho prodotto \textit{myBuggyFact}: comincio a pormi delle domande:
+\begin{itemize}
+\item quanto è ampio il dominio di test?
+\item quanto è costoso esplorare un sotto-dominio di input: anche se avessi avuto un enumerazione finita, ma per l'esecuzione del test ci avessi messo molto tempo(es 4 giorni), mi sarei posto dei problemi anche se il dominio è piccolo
+\item potrei considerare una sottoparte? Potrei considerare se ci sono input equivalenti fra loro
+\item tutti i possibili valori di input sono equivalenti fra loro?
+\end{itemize}
+vogliamo verificare se la nostra implementazione P è conforme ad S, ma nel dominio considerato solo una piccolissima parte causerà difformità fra P ed S: dovrei mettere in piedi una strategia che cerchi di focalizzarsi su quei piccoli cluster del dominio che mi causano la difformità. Quindi ci sono domande fondamentali da porsi quando ci si trova davanti ad un'attività di pianificazione di software testing:
+\begin{itemize}
+\item quali e quanti input selezionare?
+\item quando posso smettere di testare? All'inizio avrò molti errori, ma poi mi aspetto di avere meno errori avanzando nel tempo. Quindi quando possiamo ritenerci soddisfatti della campagna di testing che h effettuato
+\item come facciamo a sapere se il risultato di un'operazione è corretto o meno? Ogni test deve prevedere una fase di verifica del comportamento, quindi cosa mi aspetto dalle interazioni di servizio. Non è una cosa semplice da fare, oracle problem: avere una sorgente di informazione che mi dice che risultato aspettarmi in base al comportamento, la risoluzione dell'oracolo può essere effettuata in vari modi come ad esempio dedurre i valori attesi da specifiche, storici, sistemi equivalenti in esecuzione etc...
+\end{itemize}
+da qui in avanti, bisognerà porsi queste domande.\\ Fare software test significa definire delle strategie per eseguire un programma con un campione di dati in input.
+\subsubsection{Correttezza e reliability}
+Se non riusciamo a testare esaustivamente il dominio, non riusciamo ad essere certi dell'assenza di errori in un prodotto software, ha ancora senso definire un sistema corretto come un sistema senza errori? La correttezza di un programma asserisce la sua completa aderenza alle specifiche ($P(d) = S(d) \forall d$) e questo può essere effettuato solo tramite prove formali, quindi la validazione mediante testing richiederebbe l'esplorazione esaustiva del dominio di input. Introduciamo un concetto di correttezza relativo, \textbf{reliability}: il sistema è corretto nel senso che non è esente da errori, è possibile che abbia errori. Stimiamo la probabilità di interazione con successo verso il programma, a partire da un insieme di parametri in ingresso estratti casualmente dal dominio di input. La reliability è un attributo statistico di un sistema, non un asserzione di correttezza.\\ Consideriamo ancora il metodo \textit{myBuggyFact}, in pratica configuriamo il sistema in modo che il metodo sarà invocato in maniera equiprobabile con uno solo dei parametri [-5; -3; 0; 2; 4]; la reliability è la probabilità di corretto funzionamento, quindi possiamo considerare il complementare: $1 - P(fail\_on\_demand)$, ho $\frac{1}{5}$ di probabilità di fallimento e $\frac{4}{5}$ di probabilità di successo. Stiamo legando il concetto di reliability a quello di operational profile, che è una descrizione numerica di come il sistema sarà utilizzato; avrò differenti profili di esecuzione in base al tipo fi utenti. Viene stimato mediante l'analisi e le considerazioni di requisiti e specifiche, oppure in maniera effettiva misurando le richieste al sistema ed l'analisi di log etc...
+\section{Test automation e Continous test}
+Facciamo software test per contribuire a dare qualità al prodotto software che stiamo sviluppando: attività sistematiche che mettono in evidenza gli obiettivi per l'utilizzo del prodotto software. Abbiamo dei punti chiave:
+\begin{itemize}
+\item systematic activities: processo 
+\item providing evidence: punti di controllo
+\item fitness: obiettivi misurabili che si vogliono raggiungere
+\end{itemize}
+La software quality assurance prevede un insieme di piani di attività per il monitoraggio ed il controllo del processo di sviluppo software, l'obiettivo è assicurare una sufficiente confidenza che un prodotto software soddisfi le specifiche, sia utilizzabile nel contesto considerato e venga sviluppato secondo le modalità stabilite.\\ Un piano di software quality assurance dovrebbe considerare anche altri aspetti di software testing? Sicuramente la parte di testing è importante, gli aspetti della software quality assurance sono abbastanza ortogonali al software testing, ma esistono altri aspetti importanti:
+\begin{itemize}
+\item ci deve essere una esplicita gestione del processo di qualità
+\item quali sono le fasi del processo di qualità
+\item aderenza standard a procedure o a convenzioni
+\end{itemize}
+se testiamo senza nessun tipo di aderenza agli obiettivi da raggiungere o senza strumenti automatici, l'efficacia della campagna di testing viene impattata: come riesco a fare in modo efficiente le attività di software testing.
+\subsection{Quality control}
+Gli obiettivi sono:
+\begin{itemize}
+\item monitorare il processo di sviluppo e rilascio
+\item controllare che i requisiti siano soddisfatti
+\end{itemize}
+si utilizzano vari strumenti:
+\begin{itemize}
+\item processo di QA
+\item metodi d monitoring
+\item controlli di QA
+\end{itemize}
+In una visione di insieme, definire un quality control vuol dire:
+\begin{itemize}
+\item avere un quality plan, con degli obiettivi e con una strategia. Non c'entra nulla con il software testing
+\item fare quality assurance, viene messo in atto il quality plan usando tecniche di $V\&V$, quality standards...
+\item post QA, valutiamo tutti i risultati
+\end{itemize}
+le attività di software testing devono andare di pari passo con un piano di quality control, quindi dire che il prodotto è di qualità perché è stato effettuato software testing = syntax error (cit*)
+\subsection{Software configuration management}
+Per raggiungere un software di qualità, dobbiamo aver strutturato in un certo modo la linea di progettazione e sviluppo. Ho vari componenti:
+\begin{itemize}
+\item identificare un sistema modulare
+\item sistema di progettazione e/o di sviluppo che consenta il controllo del versioning: che cosa vul dire release x.xx e cosa cambia con la y.yy, quindi non solo il sistema automatico che fa il versioning
+\item un sistema per la configurazione di ambienti di build
+\end{itemize}
+normalmente ciò che accade è che vengono definiti due macro-ambienti:
+\begin{itemize}
+\item pre-production: regole sostanzialmente per gli ambienti di sviluppo
+\item production: definisco dei QA gates, dei punti di controllo per cui vogliamo vedere se ciò che abbiamo definito va bene.
+\end{itemize}
+Quindi le release sono associate a vari momenti:
+\begin{enumerate}
+\item software in sviluppo
+\item versione per-alpha
+\item versione alpha: usato in ambienti controllati e da utenti che appartengono a determinati profili
+\item versione beta: può essere usato dagli utenti in ambienti reali, ci si aspetta una qualità che va migliorata
+\item versione release candidate: abbiamo una determinata confidenza sulla beta
+\item release gold: passati determinati check, abbiamo la nostra release
+\end{enumerate}
+abbiamo definito dei quality gate, in alcuni le attività di software testing sono perdonatati, altri sono per ambienti di production, in cui sono gli utenti a fare le scelte e quindi i software tester non hanno più un'importanza così alta.\\ Il problema dell'approccio è che se non abbiamo strutturato un piano di software configuration management, tutto andava bene prima dell'operation e una volta uscito dall'ambiente controllato non funziona più nulla. Questo perché c'è un passaggio netto dagli ambienti di pre-production a quelli di production, più il gap fra i due ambienti è grande e più sono i rischi che tutto vada a finire male. Vogliamo far si fin dall'inizio che questo salto sia i più "dolce" possibile.
+\subsection{QA and release cylcle - DevOps}
+Una serie di pratiche, più o meno recenti, legate alle pratiche di continous integration, continous testing etc...
+
 \newpage
-\section{Modulo III: Dott. Calavaro - Enterprise IT}
+\section{Modulo III: Enterprise IT}
 \section{Introduzione}
 IBM: azienda nel mercato da 110, nata per cerare dispositivi per il business. Non punta al mercato di largo consumo, bensì alla commercializzazione con altre aziende che acquistano prodotti hardware o software. Enterprise IT: cos'è l'IT di una grande società e quali sono i requisti di una grande società, ovvero adottati da un cliente di tipo enterprise.\\ Enterprise: impresa che può essere:
 \begin{itemize}
