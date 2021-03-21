@@ -1,6 +1,10 @@
 \documentclass{article}
 \usepackage{amssymb}
 \usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{placeins}
+\usepackage{hyperref}
+\usepackage{xcolor}
 
 \geometry{
 	a4paper,
@@ -277,7 +281,7 @@ coinvolgo un grande numero di sistemi Enterprise per ogni transazione, se qualcu
 \item scelgo la meta, la data, l'aeroporto di partenza e di arrivo etc...
 \item l'applicazione gira, mi fornisce la lista di voli possibili,  i posti disponibili. Hunder the hood: ho "parlato" con un system of engagement, che ha contattato un system of record, avranno contattato DB con una query specifica per filtrare i risultati etc... Una serie di ingaggi sempre più sofisticati verso il system of record, il cui poi risultato viene sempre mandato al mio system of engagement e sul front end della mia applicazione.
 \end{enumerate}
-\subsection{Requisiti non funzionali Enterprise}
+\section{Requisiti non funzionali Enterprise}
 I fondamentali sono:
 \begin{itemize}
 \item reliability ad availability
@@ -295,11 +299,11 @@ In una Enterprise, contano anche gli ambienti, che sono diversi ed hanno diversi
 \item high availability: serve per assicurarsi che se un ambiente cade, ce ne sia un altro che ha e stesse informazioni
 \item distaster recovery
 \end{enumerate}
-\subsubsection{Reliability ed availability}
-Spesso reliability = affidabilità, se è al $99\%$ è alta? Manco per nulla, anche $99.9999\%$, per ad esempio un volo aereo non è alta.\\ Un affidabilità del $99.99999\%$ (i cinque "9") è considerata il minimo (rivedi appunti SDCC), a seconda del tipo di applicazione, crescerà l'affidabilità.\\ Se ho due sistemi che hanno un'affidabilità del $99.9\%$, l'affidabilità del sistema dato dai due che cooperano decresce (è il prodotto). È importante lavorare sull'affidabilità, quando si parla di affidabilità occorre specificarne il livello, non basta dire che è up 24x7.\\ Molte industry hanno dei requisiti di affabilità dettati dagli SLA e che sono dettati ed imposti a chi sta nell'industry, mentre altre scelgono i loro requisiti privatamente.\\ Al crescere del numero di sistemi, cresce la probabilità di failure: avere una macchina che ha affidabilità de $99.999\%$ è diverso da averne 1000 che hanno la stessa. Il sistema avrà un costo diverso, ma anche il servizio erogato sarà diverso e quindi bisognerà eseguire l'analisi economica.
-\subsubsection{Serviceability}
+\subsection{Reliability ed availability}
+Spesso reliability = affidabilità, se è al $99\%$ è alta? Manco per nulla, anche $99.9999\%$, per ad esempio un volo aereo non è alta.\\ Un affidabilità del $99.99999\%$ (i cinque "9") è considerata il minimo (rivedi appunti SDCC), a seconda del tipo di applicazione, crescerà l'affidabilità.\\ Se ho due sistemi che hanno un'affidabilità del $99.9\%$, l'affidabilità del sistema dato dai due che cooperano decresce (è il prodotto). È importante lavorare sull'affidabilità, quando si parla di affidabilità occorre specificarne il livello, non basta dire che è up 24x7.\\ Molte industry hanno dei requisiti di affabilità dettati dagli SLA e che sono dettati ed imposti a chi sta nell'industry, mentre altre scelgono i loro requisiti privatamente.\\ Al crescere del numero di sistemi, cresce la probabilità di failure: avere una macchina che ha affidabilità de $99.999\%$ è diverso da averne 1000 che hanno la stessa. Il sistema avrà un costo diverso, ma anche il servizio erogato sarà diverso e quindi bisognerà eseguire l'analisi economica.\\ La reliability è invece una misura della ridondanza dei componenti, in modo da permette al sistema di continuare a fornire il servizi anche in presenza di fallimenti. In presenza di ridondanza in un sistema, l'uptime viene calcolato come 100 - il prodotto dei failure rate dei componenti ridondati.
+\subsection{Serviceability}
 Si riferisce all'abilità del supporto tecnico di poter risolvere problemi in real-time, invece di fermare il sistema ho delle copie di backup. L'obiettivo è ridurre il costo operazionale e mantenere la continuità di business.\\ Ad esempio, la possibilità di poter fare disk swapping, se uno si rompe.
-\subsubsection{Security}
+\subsection{Security}
 Un altro requisiti non funzionale importante, elemento più critico che può esistere nell'Enterprise. Ormai gli attacchi sono presenti e costanti, bisogna poter gestire la sicurezza dei sistemi e spesso viene dato per scontato. È anche necessario per poter essere compliant a determinati requisiti: GDPR multa del $4\%$ se un data breach non viene denunciato entro 24h.\\ Un altro requisito importante è l'encryption dei dati:
 \begin{itemize}
 \item sia perché chi arriva e copia i dati li trova cifrati
@@ -312,7 +316,7 @@ internamente solo le persone autorizzate possono accedervi. Ma quali dati cifrar
 \item tutto in container/servizi che permette di amministrare bene le chiavi di cifratura
 \end{itemize}
 Se ho i dati anche sulle repliche per ridondanza, il sistema di cifratura permette di recuperarli e di recuperare le chiavi di de-cifratura
-\subsubsection{Performances}
+\subsection{Performances}
 La performance di un computer è l'ammontare di lavoro utile compiuto da un sistema. Ci sono diverse metriche di performance, per i system of records la metrica più importante è data dalle Transactions per Seconds (TPS): le computazioni DB centriche sono il cuore di questi sistemi. Ad esempio:
 \begin{itemize}
 \item transazioni con carte di credito: milioni di TPS
@@ -325,7 +329,7 @@ al crescere del business, cresce anche di conseguenza il numero di TPS: ad esemp
 \item scale out (orizzontale)
 \end{itemize}
 tipicamente lo scale up ha una crescita dei costi esponenziali, rispetto a quelli lineari dell'approccio scale out.\\ In un ambiente Enterprise, oltre al costo dell'hardware devo anche tenere conto dei costi di software, del networking (servono più hub e switch per più server), serve anche uno spazio più ampio e di manutenzione dello spazio (aria condizionata, IT admin) etc...\\ I costi, nella realtà dell'Enterprise, crescono nel modo inverso: oltre all'ambiente di produzione ho un ambiente di test, uno di alta affidabilità, uno per disaster recovery etc..., quindi se il mio business cresce dovrei aumentare il numero di server in tutti gli ambienti (non solo in quello di production). Quindi, seguendo una logica di scale out, in sistemi di dimensioni medie per una singola applicazione si arrivano ad avere 10k server e quindi la manutenzione non è banale.\\ La maggior parte dei data center tende a seguire l'approccio di scale out, in quanto è più semplice: partendo da un ambiente piccolo, si vanno ad aggiungere altri server.
-\subsection{Costi per Enterprise}
+\section{Costi per Enterprise}
 Consideriamo un DB come software da dover gestire, l'open source nel mondo Enterpirse viene usato ma non è gratis: occorre il technical support, in modo che in caso di problemi sia possibile avere subito una soluzione.\\ Solitamente c'è una licenza, che può essere legata a diversi aspetti; alcuni sono commerciali:
 \begin{itemize}
 \item IBM D2
@@ -333,7 +337,14 @@ Consideriamo un DB come software da dover gestire, l'open source nel mondo Enter
 \item Oracle DB
 \item Dynamo DB
 \end{itemize}
-se ad esempio la licenza è legata al numero di core (spesso bei DB), ho bisogno di tante licenze quanti sono i core e quindi costi importanti.\\ Quando si parla del costo di una soluzione è importantissimo parlare del TCO (Total Cost Of Ownership), che è diverso dal TCA: ogni applicazione ha dei costi legati ad hardware, software, servizi cloud e questi sono i TCA (Total Cost of Acquisition). Vanno anche considerati i costi di gestione del server e dell'applicazione, tipicamente per ogni 30 server occorre un IT admin (anche se non è una sola persona, possono essere anche di più che poi completano un full time equivalent, ovvero 40h/sett).\\ Bisogna anche considerare altre voci di costo, che sono presenti anche per tutti gli altri ambienti e di tutti i requisiti introdotti prima, come anche dei business values e del tempo: una cosa è il costo di acquisto, ma poi nel tempo dovrò fare degli upgrades software, refresh hardware e quindi tipicamente il TCO si fa su una finestra di 5 anni; spesso il refresh cycle viene stabilito nell'azienda: sul totale dei server, se ne cambieranno periodicamente (non per forza tutti insieme) un certo numero. Spendere decine di milioni per mettere su un ambiente Enterprise è abbastanza comune: a seconda della scelta di avere scale up o scale out ci saranno costi diversi, ma tipicamente il costo di scale out è maggiore; inoltre, la parte che ormai ha un costo predominante del TCO è quella del software come anche il costo del disater recovery (che deve mettere insieme i costi di hardware, software etc... che copre non per forza tutti gli stessi servizi dell'ambiente main site).
+se ad esempio la licenza è legata al numero di core (spesso bei DB), ho bisogno di tante licenze quanti sono i core e quindi costi importanti.
+\subsection{TCO vs TCA}
+Quando si parla del costo di una soluzione è importantissimo parlare del TCO (Total Cost Of Ownership), che è diverso dal TCA:\\
+\begin{figure}[h]
+\includegraphics[scale=0.2]{images/TCO-TCA.png}\\
+\caption{TCO vs TCA}
+\end{figure} 
+ogni applicazione ha dei costi legati ad hardware, software, servizi cloud e questi sono i TCA (Total Cost of Acquisition). Vanno anche considerati i costi di gestione del server e dell'applicazione, tipicamente per ogni 30 server occorre un IT admin (anche se non è una sola persona, possono essere anche di più che poi completano un full time equivalent, ovvero 40h/sett).\\ Bisogna anche considerare altre voci di costo, che sono presenti anche per tutti gli altri ambienti e di tutti i requisiti introdotti prima, come anche dei business values e del tempo: una cosa è il costo di acquisto, ma poi nel tempo dovrò fare degli upgrades software, refresh hardware e quindi tipicamente il TCO si fa su una finestra di 5 anni; spesso il refresh cycle viene stabilito nell'azienda: sul totale dei server, se ne cambieranno periodicamente (non per forza tutti insieme) un certo numero. Spendere decine di milioni per mettere su un ambiente Enterprise è abbastanza comune: a seconda della scelta di avere scale up o scale out ci saranno costi diversi, ma tipicamente il costo di scale out è maggiore; inoltre, la parte che ormai ha un costo predominante del TCO è quella del software come anche il costo del disater recovery (che deve mettere insieme i costi di hardware, software etc... che copre non per forza tutti gli stessi servizi dell'ambiente main site).
 \subsection{Rack - z15}
 In un ambiente Enterprise, rispetto ad un ambiente x86, posso avere un singolo rack (evoluzione dei mainframe), ne esistono due versioni:
 \begin{itemize}
@@ -355,4 +366,73 @@ L'hardware viene visto come un data-center in una scatola, composto da n server 
 Sicuramente per avere le stesse prestazioni devo avere molteplici server, e abbiamo visto che al crescere dei server crescono anche i problemi in termini di availability, security etc...
 \subsection{Gestione dei picchi di carico}
 Un altro problema importante da gestire è calibrare un sistema per gestire i picchi di carico: fare over-provisioning è una soluzione tipica, ma c'è un grande spreco di risorse, quindi prezzi più alti così come anche consumi più alti.\\ Uno degli approcci è quello di usare un ambiente cloud, per sfruttarne l'elasticità, tipicamente per una Enterprise si configura un ambiente dedicato in base al tipo di applicazione. L'utilizzazione tipica dei server sta intorno al 20\%, sotto alto utilizzo siamo introno al 30\%, questo in base allo statistical multiplexing model: in base alla media, posso avere picchi differenti in base all'applicazione. Esistono diversi studi dello statistical multiplexing per cui se mettiamo su un servizio su un server, la probabilità che tutti i server abbiano un picco di richieste è molto bassa (utilizzazione pari ad 1), ci sono diversi server di tipo Enterprise in cui la distanza fra picco e media è bassa.\\ Queste macchine inoltre sono state pensate per lavorare ad utilizzazione al 100\%, il sistema operativo è abituato a girare all' 80-90\% e tutto ciò porta ad avere un utilizzo delle risorse molto ottimizzato.
+\subsection{Esempio: pricing di database commerciali}
+Di seguito vengono riportati i pricing per l'utilizzo dei database di alcune Enterprise:
+\subsubsection{IBM D2}
+I prezzi per il servizio D2 di IBM non sono pubblici, ma vanno richiesti contattando l'azienda.\\\\
+\begin{table}
+\begin{tabular}{ | c c c c | }
+\hline
+ & Community edition & Standard edition & Advanced edition\\
+\hline 
+Price(perpetual) & Free/unsupported & Contact us & Contact us\\
+\hline
+Price(subscription) & N/A & Contact us & Contact us\\
+\hline
+Caps & 4 cores & 16 cores & Unrestricted\\
+ & 16 GB RAM & 128 GB RAM &  \\
+\hline
+Free trial period & Free & Development or & Development or\\
+ & indefinetly & production & production\\
+\hline
+License & Development or & Development or & Development or\\
+ & production & production & production\\
+\hline
+Metric & Not applicabile & Virtual process & Virtual process\\
+ & & core & core\\
+\hline
+Features & All features & All features & All features\\
+\hline
+\end{tabular}
+\caption{IBM D2 pricing}
+\end{table}
+\FloatBarrier
+notiamo come nella metrica, oltre 
+\subsubsection{Oracle DB}
+\subsubsection{Microsoft SQL}
+\begin{table}[ht]
+\begin{tabular}{ c c c c }
+\hline
+Edizioni & Prezzo Open & Modello & Disponibilità per\\
+ & No Level & di licenza & il canale\\
+\hline
+Enterprise & \$13,748 & Pacchetto da & Contratti multilicenza,\\
+ & & 2 core & hosting\\
+\hline
+Standard - per core & \$3,586 & Pacchetto & Contratti multilicenza,\\
+ & & da 2 core & hosting\\
+\hline
+Standard - server & \$899 & Server & Contratti multilicenza,\\
+ & & & hosting\\
+\hline
+Standard - CAL & \$209 & CAL & Contratti multilicenza,\\
+ & & & hosting\\
+\hline
+Developer & Gratuito & Per utente & Download\\
+ & & & gratuito\\
+\hline
+Web & Rivolgersi ai & Non applicabile & Solo hosting\\
+ & partner di hosting & &\\
+ & per informazioni & &\\
+ & sui prezzi & &\\
+\hline
+Express & Gratuito & Non applicabile & Download\\
+ & & & gratuito\\
+\hline
+\end{tabular}
+\caption{Microsoft SQL pricing (2019}
+\end{table}
+\FloatBarrier
+Nel caso di Microsoft SQL, dove i prezzi sono espressi in dollari, la metrica fa riferimento ai singoli core di CPU. Inoltre, vengono forniti maggiori dettagli sul \textcolor{blue}{\href{https://www.microsoft.com/it-it/sql-server/sql-server-2019-pricing}{sito}}.
+\subsubsection{DynamoDB}
 \end{document}
