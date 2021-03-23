@@ -225,7 +225,7 @@ normalmente ciò che accade è che vengono definiti due macro-ambienti:
 \item pre-production: regole sostanzialmente per gli ambienti di sviluppo
 \item production: definisco dei QA gates, dei punti di controllo per cui vogliamo vedere se ciò che abbiamo definito va bene.
 \end{itemize}
-Quindi le release sono associate a vari momenti:
+Tradizionalmente, le release sono associate a vari momenti:
 \begin{enumerate}
 \item software in sviluppo
 \item versione per-alpha
@@ -234,9 +234,53 @@ Quindi le release sono associate a vari momenti:
 \item versione release candidate: abbiamo una determinata confidenza sulla beta
 \item release gold: passati determinati check, abbiamo la nostra release
 \end{enumerate}
-abbiamo definito dei quality gate, in alcuni le attività di software testing sono perdonatati, altri sono per ambienti di production, in cui sono gli utenti a fare le scelte e quindi i software tester non hanno più un'importanza così alta.\\ Il problema dell'approccio è che se non abbiamo strutturato un piano di software configuration management, tutto andava bene prima dell'operation e una volta uscito dall'ambiente controllato non funziona più nulla. Questo perché c'è un passaggio netto dagli ambienti di pre-production a quelli di production, più il gap fra i due ambienti è grande e più sono i rischi che tutto vada a finire male. Vogliamo far si fin dall'inizio che questo salto sia i più "dolce" possibile.
-\subsection{QA and release cylcle - DevOps}
-Una serie di pratiche, più o meno recenti, legate alle pratiche di continous integration, continous testing etc...
+abbiamo definito dei quality gate, in alcuni le attività di software testing sono perdonatati, altri sono per ambienti di production, in cui sono gli utenti a fare le scelte e quindi i software tester non hanno più un'importanza così alta.\\ Il problema dell'approccio è che se non abbiamo strutturato un piano di software configuration management, tutto andava bene prima dell'operation e una volta uscito dall'ambiente controllato non funziona più nulla. Questo perché c'è un passaggio netto dagli ambienti di pre-production a quelli di production, più il gap fra i due ambienti è grande e più sono i rischi che tutto vada a finire male. Vogliamo far si fin dall'inizio che questo salto sia il più "dolce" possibile.\\
+Fare software testing quindi non basta per poter determinare la QA: se trovo errori è bene, altrimenti non ho nulla da dire. Devo quindi relazionare il software testing ad un piano in cui ho vari pillars
+\subsection{QA and release cycle - DevOps}
+Una serie di pratiche, più o meno recenti, legate alle pratiche di continous integration, continous testing etc... L'approccio a cascata introduce problemi vari, sopratutto nel passaggio dall'ambiente di pre-production a quell di production per i più svariati motivi. L'approccio al concetto di release cycle hanno portato al concetto di DevOps (Development and Operations): ci sono sempre 3 categorie di attori:
+\begin{itemize}
+\item ambiente di development: ingegneri e sviluppatori
+\item operation: team che prendono una versione gold di un software e si occupano di installarla sulle risorse dei clienti, di fare deployment etc... Le persone che sono nel mondo Ops hanno una visone molto chiara delle infrastrutture e possono avere meno chiaro del perché nel software le cose funzionano in un certo modo
+\item in parallelo ai due mondi c'è il QA: ingegneri che devono verificare che ciò che viene rilasciato matchi con un certo quality plan
+\end{itemize}
+l'approccio tradizionale inserisce l'intervento dei QA nei vari gate, in modo agnostico rispetto al scelte di Dev o Ops. Il suggerimento dell'approccio DevOps è quello di vedere queste 3 entità come strettamente legate fra loro: ogni entità deve sapere qualcosa rispetto agli altri, i team devono essere strutturati in modo collaborativo, così che tutti abbiano una visone d'insieme completa.\\ In pratica, si passa da un approccio a fasi, ad un concetto ciclico in modo continuo, dove le varie fasi di continous integration o build del software, vanno in commistione con le vasi di continuous delivery e continuous deployment del software: ciò che un'azienda doverebbe fare è mettere su una pipeline/framework dove ogni modifica scatena in modo automatico la compilazione del sistema, la verifica del sistema, la validazione automatica del test e proponga la versione che ha passato tutti i test ad un ambiente simile al deployment. A questo punto, vengono proposti dei test di accettazione, che se vanno a buon fine scaturiscono nel deployment nell'ambiente effettivo di production.\\ Ricorrono sempre i concetti di automazione e deployment, punti chiave del meccanismo DevOps. Quindi un'azienda che opera seguendo le continous practicings, ha strutturato una catena di framework tali che per ogni commit ricevuto sul src code è possibile abilitare l'intero meccanismo di build, delivery e deployment in modo che sia integrato nella gold release.\\ Quindi, una volta scritta una nuova funzionalità del codice, in modo automatico questa viene compilata, testata, deployata in un ambiente simile a quello di production, lanciare test di validazione per requisiti utente. Se tutto va bene viene proposta una release da deployare e poi deployarala effettivamente.\\ Per fare tutto, è necessario strutturare i processi di DevOps perché siano ripetibili e cercare di limitare al minimo l'intervento umano sul framework definito. Sarebbe interessante se ogni ambito avesse a disposizione dei tool per poter automatizzare tutto il processo.
+\subsubsection{Testing automatizzato}
+Fare test in un contesto DevOps vuol dire fare test attraverso l'uso di infrastrutture o framework che eseguano le attività per noi. Come test engineer occorre capire quali test fare e stabilire le policies per tali test, ma poi pensare a strumenti per la selezione e la prioritizzazione dei test, o anche per stabilire la bontà dell'insieme dei casi di test sviluppati. Tutte queste attività si contrappongono al manual testing, ancora oggi molto diffuso e causa della nota di spesa tra le più alte delle aziende di software. I principali obiettivi dell'automated testing sono:
+\begin{itemize}
+\item migliorare l'efficienza dei passi di QA
+\item migliorare l'efficacia dei passi di QA
+\end{itemize}
+i benefici saranno:
+\begin{itemize}
+\item costi ridotti
+\item ridurre la durata dei test
+\item aumentare la ripetibilità dei test
+\item aumentare l'attendibilità statistica dei responsi delle fasi di QA
+\item migliorare la documentazione delle failures
+\end{itemize}
+In particolare all'interno del mondo DevOps, così come si fa continous integration, allo stesso modo si cerca di stimolare il mondo del continous testing: ogni volta che uno sviluppatore propone un cambiamento, vorremmo attivare una catena di processi software che eseguano i test. I test vengono automaticamente eseguiti sulla versione attuale del sistema, ma è possibile anche configurarli su degli ambienti con caratteristiche fornite dagli altri team (ad esempio con altri SO, librerie etc...) e non solo su ambienti locali allo sviluppo. Se dovessi fare a mano il passaggio da ambiente locale a configurazione custom avrei dei costi, che vengono abbattuti se tutto avviene automaticamente.\\ L'approccio ha diversi vantaggi:
+\begin{itemize}
+\item i problemi vengono subito alla luce
+\item lo sviluppatore deve solo preoccuparsi di mandare la nuova feature in analisi, non deve preoccuparsi dell'ambiente di esecuzione etc... Si preoccuperà solo del risultato finale, che sarà booleano: passa o non passa
+\end{itemize} 
+se immagino di avere un version control system, ogni volta che faccio un commit/PR sul codice partono una serie di attività in modo automatico che verificano se i vari needs configurati sulla pipe sono stati rispettati.
+\subsubsection{CI + CT}
+Stiamo parlando di strutturare un ambiente di sviluppo che:
+\begin{enumerate}
+\item non dipenda dalle singoli abitudini del membro del team
+\item possa tenere conto agilmente di aspetti che vengono dal mondo Dev ed aspetti che vengono dal mondo Ops e QA
+\end{enumerate}
+I pezzi fondamentali di cui abbiamo bisogno:
+\begin{itemize}
+\item ambiente di sviluppo locale allo sviluppatore, che deve essere configurato in maniera indipendente ed in modo che nessuna scelta impatti quelle degli altri o che impatti sulla qualità del prodotto software
+\item ogni sviluppatore deve inviare il contributo su un version control system che deve armonizzare i contributi ricevuti da tutti
+\item in un ottica CI, ogni potenziale commit sul verison control system deve generare un processo di build che almeno compili il codice (su una macchina astratta diversa da quella degli sviluppatori). Chi può dirci qual è un sotto-insieme possibile di macchine su cui andare a compilare il codice: sicuramente il project leader dell'ambiente Dev, ma ci fa Ops sa dove andrà testato il sistema e quindi potrà fornire tale informazione. Nel momento in cui viene committato un contributo nella code base occorre che il codice compili sul determinato numero di macchine. Occorre un build server che si occupi di fare la compilazione sulle macchine richieste, fornendo un report con i risultati.; questo è strettamente legato al concetto di software testing. A questo punto, è possibile agganciare un pezzo delle attività di QA proprio sul build server: il report ottenuto dal build server può includere i risultati dei test, riportando quelli passati e non
+\end{itemize}
+quindi, cerchiamo di capire come tirare su un ambiente che ci introduca alle pratiche almeno di CI e CT.
+\subsection{Verison control, automated build e test}
+Git: version control system open source e distribuito, di cui esistono versioni on-line, in particolare per tracciare le versioni useremo Github: ogni volta che viene proposta un cambiamento alla code base, vorremmo che vengano triggerate attività di CI e CT.\\ Quindi, dobbiamo affidarci ad un framework che ci aiuto almeno a compilare il src code. Per automatizzare la build: Maven, che è un sistema di build principalmente ad ambienti Java. Permette automaticamente di gestire le dipendenze sia esplicitamente, tramite la dichiarazione di librerie (con versioni) da considerare e sia transitiva, ovvero dichiarando solo quello che si usa esplicitamente ed al resto ci pensa il sistema di build. Maven struttura il build in una serie di fasi, l'errore in una fase i interrompe il processo di build, ogni step del processo deve identificare la fase di appartenenza. Quindi, sappiamo come rendere il build automatico, in modo che la code base scateni azioni maven su qualche build server, ora vorremmo rendere il processo di build serlf-testing. Il framework di rifermento è JUnit, ha consentito lo sviluppo di pratiche di test-driven development: scrivo un test che interagisce col sistema, dopo aver scritto il test scrivo la funzionalità finché il test non passa. ATTENZIONE: Junit consente di scrivere ed organizzare test program, non dice assolutamente la strategia di test, quali valori usare etc... è un linguaggi che permette di facilitare la scrittura dei test cases, è un DSL che ha delle astrazioni che consentono di gestire i cicli di vita dei test in modo più semplice. La fase di test viene strutturata attraverso diverse fasi, come agganciamo la codifica dei casi di test all'esecuzione ed al continous testing: con Maven, nella fase di test Maven va alla ricerca di tutte le classi che hanno un determinato nome, se le trova lancia un'istanza di JUnit e le passa in ingresso.\\ Tutto ciò avviene in locale, ma serve un build server, in qualche modo collegato con la codebase: Travis CI.
+
+
 
 \newpage
 \section{Modulo III: Enterprise IT}
@@ -341,7 +385,7 @@ se ad esempio la licenza è legata al numero di core (spesso bei DB), ho bisogno
 \subsection{TCO vs TCA}
 Quando si parla del costo di una soluzione è importantissimo parlare del TCO (Total Cost Of Ownership), che è diverso dal TCA:\\
 \begin{figure}[h]
-\includegraphics[scale=0.2]{images/TCO-TCA.png}\\
+%\includegraphics[scale=0.2]{images/TCO-TCA.png}\\
 \caption{TCO vs TCA}
 \end{figure} 
 ogni applicazione ha dei costi legati ad hardware, software, servizi cloud e questi sono i TCA (Total Cost of Acquisition). Vanno anche considerati i costi di gestione del server e dell'applicazione, tipicamente per ogni 30 server occorre un IT admin (anche se non è una sola persona, possono essere anche di più che poi completano un full time equivalent, ovvero 40h/sett).\\ Bisogna anche considerare altre voci di costo, che sono presenti anche per tutti gli altri ambienti e di tutti i requisiti introdotti prima, come anche dei business values e del tempo: una cosa è il costo di acquisto, ma poi nel tempo dovrò fare degli upgrades software, refresh hardware e quindi tipicamente il TCO si fa su una finestra di 5 anni; spesso il refresh cycle viene stabilito nell'azienda: sul totale dei server, se ne cambieranno periodicamente (non per forza tutti insieme) un certo numero. Spendere decine di milioni per mettere su un ambiente Enterprise è abbastanza comune: a seconda della scelta di avere scale up o scale out ci saranno costi diversi, ma tipicamente il costo di scale out è maggiore; inoltre, la parte che ormai ha un costo predominante del TCO è quella del software come anche il costo del disater recovery (che deve mettere insieme i costi di hardware, software etc... che copre non per forza tutti gli stessi servizi dell'ambiente main site).
