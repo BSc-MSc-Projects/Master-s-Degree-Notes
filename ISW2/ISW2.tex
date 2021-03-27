@@ -118,11 +118,63 @@ L'approccio ha comunque dei problemi:
 \item il blame va una sola volta indietro e non sappiamo quante volte occorre andare indietro (anche se è possibile settare fin quando andare indietro)
 \item se dei cambiamenti in realtà non aggiungono nulla (ad esempio refactoring di codice) possono essere colpiti dal blame, quando in realtà la modifica è non funzionale. Ci sono tool che vanno indietro finché non trovano una modifica funzionale, scartando quelle non funzionali
 \end{itemize}
+Per poter predirre il futuro, devo utilizzare i dati del passato: ci stiamo orientando per poter predirre quali classi sono buggy, deve essere possibile quali erano buggy.
+\subsection{Prediction dataset}
+La predizione di difetti cerca di identificare gli artefatti software che hanno dei difetti, lo scopo è quello di ridurre l'effort di testing e code review. L'affidabilità della predizione dipende dalla qualità dataset, esistono diversi sorgenti di rumore nel dataset (in-accuratezze), ad esempio la mail classificazione dei difetti, ovvero difetti taggati in Jira che non lo sono, o anche la difficoltà di andare indietro col blame etc... È possibile predirre:
+\begin{itemize}
+\item commit
+\item classe
+\item altro
+\end{itemize}
+e dire se questi sono buggy. Il nostro contesto sarà predirre la buggyness di una classe, avranno delle probabilità assegnate. La stessa classe appare in diverse revisioni e diverse release: ci mettiamo nei panni di chi è all'ultima revisione e vuole testare lo stato della classe prima di fare la nuova release. Il problema di capire l'origine dei difetti è che alcuni difetti possono essere scoperti solo dopo che sono stati introdotti: esistono difetti che vengono introdotti e risolti nella stessa release, marchiamo con:
+\begin{itemize}
+\item I: difetto iniettato
+\item F: difetto fixato
+\item N: nulla
+\end{itemize}
+è possibile inserire più di un difetto in una release\\\\
+\begin{tabular}{ |c|c|c|c|}
+\hline
+ & $r_1$ & $r_2$ & $r_3$\\
+\hline
+$C_1$ & IF & N & F\\
+\hline
+$C_2$ & I & N & F\\
+\hline
+$C_3$ & II & F & F\\
+\hline
+\end{tabular}\\\\
+Può accadere che sono in una release in cui non ho fatto il fix di un difetto introdotto in quella precedente, quindi non ne conosco l'esistenza. Quindi, quando parte il balme, questo mi classifica la classe come non buggy. Tutte e tre le classi della tabella, in release 2 sembrerebbero non buggy se la misurazione venisse fatta in release II, diverso se fatta nelle altre release: quindi, cambia lo stato a seconda di quando avviene la misurazione.\\ Più la release è recente, più c'è il problema che alcune classi mi sembrano non buggy anche se lo sono. Quindi, le release che è più probabile che abbiano bug dormienti: se sono in release i, le ultime mi sembrano tutte non buggy, perché magari li troverò dopo mesi. C'è il problema di capire se si possono usare i dati di queste release. Il numero di bug nelle release è decrescente, in quanto c'è il problema dei bug dormienti; la predizione fa sempre riferimento alla coppia (classe, release), NON VANNO CONSIDERATI QUELLI PRECEDENTI
+\subsection{Snoring}
+Concetto importante nella misurazione dei difetti nelle classi: ho positivi e negativi, il positivo è la classe buggy. Parlo di falso positivo quando la classe mi sembra buggy e non lo è. Il problema è un falso negativo, in quanto la classe mi sembra non defective, quando in realtà lo è. Questo perché la misurazione avviene (ad esempio tramite SZZ) considerando i bug non ancora eliminati.\\ Una classe è snoring se la classe ha uno o più bug di tipo dormiente, una classe in realtà è snoring se sembra non buggy,ma in realtà lo è.\\ Con riferimento alla tabella sopra, nella release 1 le prime due classi mi sembrano non defective, la classe 3 mi sembra defective, in quanto per fare la misurazione sto nella release successiva, quindi avendo un fix la release precedente mi sembra defective. (vedi tabelle slides)\\
+Domande di ricerca che provano a capire:
+\begin{itemize}
+\item per quanto tempo le classi dormono
+\item per quanto tempo le classi sono snoring
+\item lo snoring impatta la misura delle stime fatte?
+\end{itemize}
+Vogliamo vedere quante release passano in media dall'injection al fix: per ogni bug, per quante release questo è dormiente.\\
+\\ la linea centrale rappresenta la mediana, quindi possiamo dire che la maggior parte dei difetti in \textit{Connectors} ha dormito per almeno 25 release.
+\\ qui abbiamo la percentuale (delle release di sleep). Quindi, se non volessimo il rumore nei dati, dovremmo scartare questa percentuale di release (altrimenti me perderei quei bug, che sono dormienti).\\ Se io misuro la buggyness di una classe, il fatto che alcuni bug dormano non è un problema, l'importante è trovarne almeno uno per far si che la misurazione sia corretta.
+\subsubsection{Misurare lo snoring}
+Supponiamo di avere un tot di release, considerarle tutte farà si di avere un certo livello di snoring, soprattutto nelle ultime: meno ne considero, meno snoring avrò ma serve avere un compromesso rispetto alla taglia del dataset, quindi non è possibile dare massima priorità all'accuratezza del dataset.\\ Quindi, dobbiamo misurare come cambia l'accuratezza in base alle release tolte: per capire come l'in-accuratezza varia al variare del tempo, il \textit{missing rate} è la percentuale di classi che sono falsi negativi diviso tutte le classi positive, ovvero $\frac{FN}{FN + TP}$, la percentuale di classi positive che perdo nella misurazione.\\ Per capire se varia nel tempo, devo vedere quando un set di bug vengono trovati nel tempo: se prendessi le prime release, avrei un certo grado di inaffidabilità rispetto a quelle ancora prima, devo vedere quando sono stati trovati i primi bug, quindi mi soffermo sul primo 5\% del dataset. Misuro cosa accade al primo 5\%, misurato con diversi punti di osservazione, che variano nel tempo (misurato col numero di release), ovvero come cambia lo stato delle classi se le osservassi in futuro.\\ Quindi, in base al missing rate, so quante release devo scartare: ad esempio, per la  maggioranza delle release, il missing rate è più del 50\% a meno che non venga tolto il 20\% delle release.
+\subsubsection{Impatto dello snoring sull'accuratezza della perdizione}
+Ci son due concetti importanti in Machine Learing:
+\begin{itemize}
+\item training set: dati con cui viene costruito il modello
+\item testing set: dati che vengono usati per misurare la correttezza del modello
+\end{itemize}
+una parte dei dati non verranno usati (unused data). L'accuratezza della stima, sullo stesso modello migliora considerando le release sempre più avanti nel futuro, ma non è possibile aspettare troppo. Lo step successivo è chiedersi, dato che si sa che lo snoring cresce al crescere delle release, se il modello non prende in considerazione le ultime release migliora la qualità della perdizione, ovvero avere meno dati è meglio che avere dati con snoring: togliere l'ultima release da dei dati talmente snoring che è conveniente non usarla, ma dipende dal tipo di modello che si usa: dipendentemente dal fatto che si vuole aumentare la precisione di uno o più modelli, occorre togliere più o meno release. Esistono poi classificatori che sono più o meno robusti allo snoring.\\ Ultime considerazioni
+\begin{itemize}
+\item togliere una release è sempre meglio che non toglierne per l'accuratezza
+\item rimuovere 3-4 release è sempre peggio che toglierne una
+\end{itemize}
+rimane come questione se toglierne una o due.\\
+
+
 
 
 \newpage
-
-
 \section{Modulo II - Software Testing}
 \section{Introduzione e concetti generali per software testing}
 La progettazione di un sistema software è complessa: in primo luogo per l'interazione fra le persone che hanno un interesse nello sviluppo del sistema (ingegneri, programmatori, analisti, committenti etc...). È importante cercare di avere degli strumenti che guidino nel processo di sviluppo del software in modo da poter definire delle garanzie che tutti i membri del team siano sulla strada giusta.\\È necessario stabilire dei checkpoint per poter dire che il processo di progettazione e sviluppo sta procedendo nel modo corretto: Boehm definisce e distingue i due concetti di verifica e validazione:
@@ -385,7 +437,7 @@ se ad esempio la licenza è legata al numero di core (spesso bei DB), ho bisogno
 \subsection{TCO vs TCA}
 Quando si parla del costo di una soluzione è importantissimo parlare del TCO (Total Cost Of Ownership), che è diverso dal TCA:\\
 \begin{figure}[h]
-%\includegraphics[scale=0.2]{images/TCO-TCA.png}\\
+\includegraphics[scale=0.2]{images/TCO-TCA.png}\\
 \caption{TCO vs TCA}
 \end{figure} 
 ogni applicazione ha dei costi legati ad hardware, software, servizi cloud e questi sono i TCA (Total Cost of Acquisition). Vanno anche considerati i costi di gestione del server e dell'applicazione, tipicamente per ogni 30 server occorre un IT admin (anche se non è una sola persona, possono essere anche di più che poi completano un full time equivalent, ovvero 40h/sett).\\ Bisogna anche considerare altre voci di costo, che sono presenti anche per tutti gli altri ambienti e di tutti i requisiti introdotti prima, come anche dei business values e del tempo: una cosa è il costo di acquisto, ma poi nel tempo dovrò fare degli upgrades software, refresh hardware e quindi tipicamente il TCO si fa su una finestra di 5 anni; spesso il refresh cycle viene stabilito nell'azienda: sul totale dei server, se ne cambieranno periodicamente (non per forza tutti insieme) un certo numero. Spendere decine di milioni per mettere su un ambiente Enterprise è abbastanza comune: a seconda della scelta di avere scale up o scale out ci saranno costi diversi, ma tipicamente il costo di scale out è maggiore; inoltre, la parte che ormai ha un costo predominante del TCO è quella del software come anche il costo del disater recovery (che deve mettere insieme i costi di hardware, software etc... che copre non per forza tutti gli stessi servizi dell'ambiente main site).
@@ -410,73 +462,43 @@ L'hardware viene visto come un data-center in una scatola, composto da n server 
 Sicuramente per avere le stesse prestazioni devo avere molteplici server, e abbiamo visto che al crescere dei server crescono anche i problemi in termini di availability, security etc...
 \subsection{Gestione dei picchi di carico}
 Un altro problema importante da gestire è calibrare un sistema per gestire i picchi di carico: fare over-provisioning è una soluzione tipica, ma c'è un grande spreco di risorse, quindi prezzi più alti così come anche consumi più alti.\\ Uno degli approcci è quello di usare un ambiente cloud, per sfruttarne l'elasticità, tipicamente per una Enterprise si configura un ambiente dedicato in base al tipo di applicazione. L'utilizzazione tipica dei server sta intorno al 20\%, sotto alto utilizzo siamo introno al 30\%, questo in base allo statistical multiplexing model: in base alla media, posso avere picchi differenti in base all'applicazione. Esistono diversi studi dello statistical multiplexing per cui se mettiamo su un servizio su un server, la probabilità che tutti i server abbiano un picco di richieste è molto bassa (utilizzazione pari ad 1), ci sono diversi server di tipo Enterprise in cui la distanza fra picco e media è bassa.\\ Queste macchine inoltre sono state pensate per lavorare ad utilizzazione al 100\%, il sistema operativo è abituato a girare all' 80-90\% e tutto ciò porta ad avere un utilizzo delle risorse molto ottimizzato.
-\subsection{Esempio: pricing di database commerciali}
-Di seguito vengono riportati i pricing per l'utilizzo dei database di alcune Enterprise:
-\subsubsection{IBM D2}
-I prezzi per il servizio D2 di IBM non sono pubblici, ma vanno richiesti contattando l'azienda.\\\\
-\begin{table}
-\begin{tabular}{ | c c c c | }
-\hline
- & Community edition & Standard edition & Advanced edition\\
-\hline 
-Price(perpetual) & Free/unsupported & Contact us & Contact us\\
-\hline
-Price(subscription) & N/A & Contact us & Contact us\\
-\hline
-Caps & 4 cores & 16 cores & Unrestricted\\
- & 16 GB RAM & 128 GB RAM &  \\
-\hline
-Free trial period & Free & Development or & Development or\\
- & indefinetly & production & production\\
-\hline
-License & Development or & Development or & Development or\\
- & production & production & production\\
-\hline
-Metric & Not applicabile & Virtual process & Virtual process\\
- & & core & core\\
-\hline
-Features & All features & All features & All features\\
-\hline
-\end{tabular}
-\caption{IBM D2 pricing}
-\end{table}
-\FloatBarrier
-notiamo come nella metrica, oltre 
-\subsubsection{Oracle DB}
-\subsubsection{Microsoft SQL}
-\begin{table}[ht]
-\begin{tabular}{ c c c c }
-\hline
-Edizioni & Prezzo Open & Modello & Disponibilità per\\
- & No Level & di licenza & il canale\\
-\hline
-Enterprise & \$13,748 & Pacchetto da & Contratti multilicenza,\\
- & & 2 core & hosting\\
-\hline
-Standard - per core & \$3,586 & Pacchetto & Contratti multilicenza,\\
- & & da 2 core & hosting\\
-\hline
-Standard - server & \$899 & Server & Contratti multilicenza,\\
- & & & hosting\\
-\hline
-Standard - CAL & \$209 & CAL & Contratti multilicenza,\\
- & & & hosting\\
-\hline
-Developer & Gratuito & Per utente & Download\\
- & & & gratuito\\
-\hline
-Web & Rivolgersi ai & Non applicabile & Solo hosting\\
- & partner di hosting & &\\
- & per informazioni & &\\
- & sui prezzi & &\\
-\hline
-Express & Gratuito & Non applicabile & Download\\
- & & & gratuito\\
-\hline
-\end{tabular}
-\caption{Microsoft SQL pricing (2019}
-\end{table}
-\FloatBarrier
-Nel caso di Microsoft SQL, dove i prezzi sono espressi in dollari, la metrica fa riferimento ai singoli core di CPU. Inoltre, vengono forniti maggiori dettagli sul \textcolor{blue}{\href{https://www.microsoft.com/it-it/sql-server/sql-server-2019-pricing}{sito}}.
-\subsubsection{DynamoDB}
+\subsection{Case study - TCO su 5 anni}
+Come abbiamo visto, per un analisi completa del TCO, dobbiamo avere una visione completa su tutti i componenti dell'applicazione, non solo in termini hardware e software ma anche per le persone etc... e questo per tutti i possibili ambienti.\\ A seconda degli anni, ci sono costi più preponderanti rispetto ad altri etc...\\ Per effettuare un TCO, occorrono 4 passi principali:
+\begin{itemize}
+\item Analizzare lo UC e capire il workload, solitamente si effettua parlando con il cliente. Occorre capire sia la media che i picchi del workload, misurato in TPS (transaction per seconds): non avviene così spesso che l'analisi venga fatta prima di mettere in esercizio un sistema, nel caso in cui l'ambiente sia già in esercizio, i valori si possono inferire dal sistema già in esercizio. Si ottengono dei report su una finestra minima di 1 mese per ricavare i valori, altrimenti occorrerà fare delle stime o delle ipotesi.
+\item Valutazione e dimensionamento della piattaforma per permettere di supportare il workload, quindi ad esempio capire la taglia del server su cui deployare l'ambiente:
+\begin{itemize}
+\item taglia dell'ambiente di produzione, considerando i requisiti di HA
+\item sizing di tutti gli altri ambienti: Dev e Test, Pre-prod, DR
+\end{itemize}
+il sizing del distaster recovery è molto interessante, bisogna trovare il compromesso giusto. Occorre inoltre confrontare scale up con scale down
+\item valutazione dei costi, analisi del TCO
+\item descrizione con grafici, dati, tabelle etc.. facendo riferimento ai dati di input
+\end{itemize}
+\subsubsection{Sizing}
+Fare un sizing preciso è complesso: occorre analizzare i dati, facendo analisi tecnica dell'hardware e del software, la tipologia di VM e di hypervisor etc...\\ Partiamo da un'ipotesi semplificata: il numero di core di un ambiente Enterprise è almeno 17 volte minore di un ambiente x86. Partiamo da una ipotesi consolidata (slides)\\ A questo punto, andrebbe progettata l'architettura tecnica: spesso esiste già, quindi va modificata ed evoluta (N.B: l'ambiente di pre-prod dovrebbe avere la stessa taglia del prod). Si parla più che altro di core: è possibile avere un server con 12 core, o uno equivalente che ne ha 24 l'importante è la capacità elaborativa.\\ esempio 1: situazione active passive, dove mantengo dei core per il DR da parte, per sopperire a disastri.\\ esempio 2: active active (vedi video).\\ In LinuxONE: \\ esempio1: posso tenere nel sito 24-75 CBU (core di backup)\\ esempio 2: ho abbastanza CBU per poter coprire la pre-prod e la prod, con un ambiente di sviluppo e test più piccoli. LinuxONE: una delle due architetture z della IBM, su cui girano solo software di tipo Linxu\footnote{distro supportate: Red Hat, Suse, Ubuntu}.
+\subsubsection{Costi}
+Occorre valutare diversi costi:
+\begin{itemize}
+\item Il software deve girare su un software stack, il tipico prevede:
+\begin{itemize}
+\item OS
+\item VM
+\item Application server: oltre al classico software, permette di poter gestire differenti transazioni in parallelo. Ho il software che coordina le chiamate alle transazioni, da smistare sui vari server.
+\item DB
+\item data replication tool
+\item tool di monitoring
+\item security tools
+\end{itemize}
+per tutti, occorre conoscere diversi prezzi.
+\end{itemize}
+Gli altri costi di cui si tiene conto sono:
+\begin{itemize}
+\item costi per le persone, che devono manutenere i server. Un full-time equivalent (una persona assegnata a tempo pieno) può fornire supporto fino a 30 server. Occorre considerare anche i fully loaded cost, non solo il salario: oltre a quello ed alle tasse, ci sono una serie di costi come l'ufficio, il manager del team etc...
+\item costi di rete: tipicamente, per ambiente Enterprise è in media 7000\$ per server
+\item costi di facilities: affitto del data center, costi di elettricità
+\end{itemize}
+un altro elemento che sta diventando importante è il carbon footprint, ovvero l'emissione di $CO_{2}$ del data center.
+\subsection{Use case: transazione con carta di credito di una banca}
+Ogni acquisto del cliente va registrato sui server, occorre verificare un sacco di cose per poter completare e validare una transazione. Una transazione concettuale è fatta di molteplici transazioni IT, assumiamo che un core x86 possa effettuare 20 TPS, intese come transazioni concettuali.\\ Importante: il costo per core conta anche quelli spare, quindi se non attivi dono soldi "buttati".\\ Per il software: a seconda del utilizzo può cambiare il prezzo: ad esempio per l'ambiente di production può avere un costo maggiore di quello di dev.\\ Tipicamente: sul LinuxONE è possibile avere diversi carichi sulle CPU, perché sono progettati per lavorare al 90-95 \% di utilizzazione, mentre per x86 non è così (se il carico cresce troppo, si rischia di violare lo SLA).
 \end{document}

