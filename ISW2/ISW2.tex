@@ -169,7 +169,90 @@ una parte dei dati non verranno usati (unused data). L'accuratezza della stima, 
 \item togliere una release è sempre meglio che non toglierne per l'accuratezza
 \item rimuovere 3-4 release è sempre peggio che toglierne una
 \end{itemize}
-rimane come questione se toglierne una o due.\\
+rimane come questione se toglierne una o due.
+\section{Leveraging defects}
+Non usiamo SZZ, ma un altro meccanismo: si parte sempre dal presupposto che il bug sia stato versionato da un commit in Jira e che ci sia un ticket a riguardo. Una volta che sappiamo quale riga di codice è stata cambiata per risolvere un bug, sappiamo allora che quella era buggy. Ci sono però tutti i problemi introdotti con SZZ: un fix può essere dovuto ad un refactoring, inoltre occorre capire quali revisioni e versioni del codice erano buggy. Se non riusciamo a classificare una release come buggy o non buggy non posso creare il dataset per le stime.\\ La predizione dei difetti cerca di identificare gli artefatti software che esibiscono un difetto, il vantaggio è quello di ridurre il costo del testing e della code review.\\ Quindi, il lavoro si focalizza sulla creazione di un dataset per poter fare le predizioni. Per fare un ranking delle classi come defective o non: facciamo il \textbf{labeling} di una classe in una release, occorre identificare in maniera separata le due classificazioni:
+\begin{itemize}
+\item una avviene al momento della creazione del dataset
+\item la classificazione per la predizione
+\end{itemize}
+una cosa è l'input (dati passati) del modello, un'altra sono gli outout del modello. Col labeling, identifichiamo classificazione di una classe come buggy o non buggy nel passato. Per farlo, possiamo usare SZZ oppure verificare nel ticket di Jira il campo di \textit{affected version}. Quando l'AV non è presente, l'unica tecnica era usare il blame ma qui c'è la difficoltà di capire quanto andare indietro
+\subsection{Defect lifecycle}
+Ciclo di vita di un difetto: rappresenta lo stato di un difetto:
+\begin{itemize}
+\item fixed version (FV): prima versione bug free, ci sarà un fix commit. Abbiamo le diverse revisioni e le versioni, il fix commit produrrà la prima versione senza bug, che è la FV
+\item c'è una versione in cui è stato cerato il ticket: qualcuno ha identificato una failure, chiamo la versione con il ticket del bug aperto opening verison (OV). In Jira, so sempre quando un ticket è stato aperto e quando è stato eliminato
+\item Injected version (IV): versione dove il bug è nato, non la conosciamo
+\end{itemize}
+per definizione, tutte le versioni aventi quel bug sono affected version (AV). La fixed version è sempre bug free, prima dell'injected version le versioni non hanno il bug; quindi tutte le versioni affected vanno dall'injceted (inclusa) alla fixed (esclusa).\\ Lo scopo è vedere la percentuale dei casi in cui l'AV è disponibile nei ticket, per capire quanto il problema è grave. Se non è disponibile, cerchiamo un metodo alternativo ad SZZ.
+\subsubsection{Affected version in Jira}
+L'IV deve essere antecedente alla OV, in quanto prima devo inserire il bug e poi formulare il ticket. Vediamo la percentuale dei ticket che hanno una AV disponibile e consistente (ovvero non antecedente alla OV): circa $\frac{1}{3}$ dei casi non ha l'AV disponibile nel ticket. Su un analisi di circa 125k bug, la maggior parte non aveva AV o la aveva non affidabile. Occorre capire quindi quale release della classe sono affected o no, supponendo che le AV non fossero disponibili.
+\subsection{Metodo proportion}
+L'assunzione è che i difetti hanno un ciclo di vita: più è grande la distanza fra IV ed OV\footnote{in termini di numero di versioni}, più è grande la distanza fra OV e FV. L'unica incognita è l'IV: ci basterebbe calcolare la proporzione nei bug dove sappiamo qual è l'IV ed utilizzare il risultato nei casi in cui l'IV non è disponibile (e quindi non sappiamo nemmeno l'AV).\\ La proporzione è  fissa: $P = \frac{(FV - IV)}{(FV - OV)}$, l'IV predetto sarà $IV = FV - (FV - OV)\cdot P$. Ci sono delle varianti per calcolare P:
+\begin{itemize}
+\item cold start: non ho dati passati, posso usare i dati di altri progetti. Calcolo la media dei P di altri porgetti e lo uso sul mio
+\item incremento: calcolo P come la media dei difetti fixati nelle versioni precedenti (a bug 14, userò il P computato da 1 a 13). Il ciclo di vita del progetto può cambiare, quindi anche il ciclo di vita dei difetti. Usare quindi tutta la storia passata può non essere corretto
+\item moving window: P viene calcolato come la media dell'ultimo 1\% dei difetti fixati, fa fronte al problema dell'approccio incrementale.
+\end{itemize}
+Assumiamo di non avere l'AV, come facciamo a stimare: sappiamo che l'AV è un insieme di versioni e la prima è sempre l'IV, quindi abbiamo diversi metodi di stima:
+\begin{itemize}
+\item simple: assumere che la prima IV è uguale a quanto il ticket è stato creato, ovvero OV; varianti di SZZ
+\item proportional
+\end{itemize}
+Ci sono i concetti fondamentali:
+\begin{itemize}
+\item true positive: 
+\item true negative: classificazione corretta, che mi ha classificato una versione come non-defective.
+\end{itemize}
+(vedi slides). Per la maggior parte dei classificatori, il metodo proportioning è migliore di SZZ, tranne che per la recall (molto affetta dai FP).\\ Qual è la relazione fra l'accuratezza della misurazione e quella della stima: nella predizione usiamo delle caratteristiche come dati di input, una volta creati i dataset per fare ciò, possiamo usarli per fare analisi di correlazione. Ci sono varie metriche che possono essere usate per relazionarle alla buggyness.
+\subsection{Problematiche nel mining Github}
+Abbiamo visto come analizzare i difetti e prendere determinate decisioni. Github è attualmente la codebase più grande del mondo, quindi l'abbondanza dei dati semplifica il problema di collezione dei dati e del processamento. Le analisi possono essere scorrette, ci sono delle difficoltà che possono alterare le conclusioni se i dati sono stati analizzati male o se i dati sono scorretti; ci sono delle difficoltà
+\paragraph{Repository != project}il repository non corrisponde sempre 1-a-1 con un progetto: se è un fork, il commit non appare nella storia del repository principale, ma solo in quello dove il commit è originato. Quindi, per andare a vedere la storia id un progetto occorrerebbe analizzare (in teoria) tutti i fork del repository. Il progetto è dato dal repository base + tutti i fork.
+\paragraph{Molti progetti hanno pochi commit}molti progetti hanno pochi commits, quindi prima di scegliere un progetto occorre verificare se il progetto è ancora aperto (vivo), inoltre su progetti che hanno commit frequenti. La stra-grande maggioranza dei progetti ha un basso numero di commits
+\paragraph{Repository che non sono progetti software}la strategia consigliata per le analisi è di usare i progetti Apache, che sono di sicuro progetti software e che hanno un bel numero di commit.
+\paragraph{Pull requests}mentre Github registra tutti i commit, questi non sono forniti dall'API, inoltre i commit originali sono eliminati se il repository è eliminato. Quindi, nell'analisi, il ricercatore può vedere solo l'ultimo commit, se c'è un processo di review delle PR, quello che è visibile è solo la parte accettata.
+\paragraph{Problema del merge}lo status del merge è un problema nell'API: possono apparire come non merged anche se sono state di fatto marged.
+\paragraph{Uso non esclusivo di Github}molti progetti usano altro oltre a Github, molti usano un mirror del repository su Github. Per capirlo, è possibile verificare il readme oppure se il nome di chi effettua il commit è registrato o meno in Github\\\\ Una strategia importante nella selezione dei progetti è quella di avere una strategia ripetibile: abbiamo a disposizione moltissimi progetti che sono di possibile analisi, riportare l'analisi di pochi progetti può essere una strategia opportunistica. Da un punto di vista di analisi della bontà dei risultati, può essere difficile capire se il set di dati è biased o meno. Esistono dei tool per la selezione dei dati in maniera unbiased, che fornisce la lista dei progetti che rispettano i criteri, se la lista eccede il numero di progetti richiesti, viene eseguita una selezione con PRNG.
+\section{Creazione di un dataset}
+Per poter predirre lo stato di una classe come buggy o meno, occorrono dei dati raccolti in file. L'input deve essere in csv, che abbia come ultima colonna lo stato in termini di buggyness di una classe in una release (yes or no). Le prime 3 colonne devono sempre essere progetto, versione (ordinata) e filename. Inseriamo il numero di versione, e non il nome, in quanto è utile per il calcolo della proportion.
+\subsection{Feature}sono le metriche che ci consentono di effettuare una previsione, ad esempio:
+\begin{itemize}
+\item le LOC di una classe (la grandezza)
+\item LOC touched, più ne ho toccate più è probabile che ci sia un bug
+\item age della classe (in settimane)
+\end{itemize}
+Una release è fatta da più revisioni e quindi da più commit, quando si parla di numero di autori, ci si riferisce a quelli della singola release. Avendo diversi commit si possono usare diverse statistiche come massimo, media, mediana etc... ma avere una release in cui ho cambiato un numero più variabile di righe è diverso da avere una relase in cui i cambiamenti dei commit sono più stabili.\\ Ci sono 16 metriche principali: ne vanno scelte 12, considerando solo i file java ed ignorando la seconda metà delle release (misurate nel tempo).
+\section{Misurazione del software}
+L'analisi dei function points serve per misurare il software, che prima veniva sempre misurato contando le linee di codice, cosa che però non va bene in quanto vorremmo farlo a priori del codice. Perché andare a misurare e quanto tempo costa l'attività di misura? Si misura per:
+\begin{itemize}
+\item validare delle scelte
+\item dirigere le scelte
+\item correggere un progetto
+\item etc...
+\end{itemize}
+Occorre saper fare delle stime di quanto tempo serve per poter completare un progetto. Tutto nasce dal farsi delle domande semplici: quanto è grande un progetto? Molti continuano a parlare di ore/uomo, ma questo è l'effort e non la grandezza del progetto. Occorre conoscere quantità, tempi e costi per poter determinare queste stime. Se raccolgo informazioni riguardo il tempo che occorre, le quantità che occorrono, riusciamo ad avere un idea della produttività. Misurare in linee di codice non è più una metrica utile, in quanto questo può variare in base allo stile di programmazione. Siccome i numeri erano variabili, un ingegnere dell'IBM produce un algoritmo, basato su processi, per tirare fuori una Functional Sizing Unit: misura parziale del prodotto software, i Function Point misurano il prodotto solo per quanto riguarda la parte funzionale del progetto, e non tutto.
+\subsection{Function Point}
+Avendo dei Functional Requirement, si tira fuori un algoritmo prima di sviluppare il software che andava rapportata ad un tempo di lavoro. Se so quanto tempo stimato ci metto, so chi deve lavorare e che costi posso avere, prima di poter partire con lo sviluppo. La tecnica nasce nel 79', si parlava di requisiti funzionali perché era ciò che il software faceva (il cosa). Nel tempo è stato affinato il modo in cui si categorizzano i Functional Requirements e quindi in FP, come il software deve fare qualcosa (NFR) o anche aspetti di qualità generano del tempo ulteriore. Da questo punto di vista, i FR rappresentano nel 100\% del tempo di lavoro di un progetto solo una piccola parte, quindi servono delle misure non funzionali, Non Functional Measure Unit. Si parla di scope creep là dove i requisiti possano essere non del tutto chiari o dati per scontato, solo nel caso dei requisiti espressi è possibile fare delle misure. Suddividiamo il software in due aspetti principali: FR e NFR, la loro somma mi darà un valore. La qualità del prodotto segue diverse voci, ci sono moltissimi extra function point, la cosa importante è capire la base
+\subsection{Analisi di Function Point}
+Le misure, rispetto ad una certa entità misurabile esprimono una certa metrica: le linee di codice misurano solo la lunghezza degli statement scritti, i FP non corrispondono a linee di codice.\\ L'obiettivo dell'algoritmo era quello di non aspettare le linee di codice del progetto, ma di anticipare a partire dai requisiti. I requisiti possono mettere in evidenza processi e dati. L'algoritmo prevede la derivazione dei FP:
+\begin{itemize}
+\item si analizzano i FR
+\item si determina la presenza di determinate metriche, c'è un sistema di pesi fissi che non variano più per il conteggio.
+\end{itemize}
+Per la parte non funzionale la misurazione avviene separatamente, mentre prima si faceva tutto insieme: un progetto potrebbe avere 0 FP, quindi da questo punto di vista la misura sarebbe stata solo dettata dalla parte non funzionale.\\ Da qui si sviluppano 5 metodologie possibili, tra le più usate c'è sono COSMIC
+\subsubsection{COSMIC}
+Disegna il sistema come un rettangolo, verifica quanti data movement entrano nel software, quante letture e scritture ci sono. In COSMIC, con la versione attuale ogni sistema delimita un confine fuori o dentro del quale avvengono delle operazioni: immaginando che un utente inserisca dei dati, questi verranno scritti su un DB, poi potranno uscire o proseguire verso altri punti. La nomenclatura è dei Cosmic Function Point.
+\subsubsection{IFPUG}
+Metodo più usato per la misurazione del software, quando parliamo di processi, questi sono tutti elementari (EP) ed indipendenti. Se ad esempio, dovessi gestire l'anagrafica di un sistema, avremmo come EP:
+\begin{itemize}
+\item Creare un nuovo record (EI)
+\item Leggere il record (EQ)
+\item Modificare un record (EI)
+\item Cancellare un record (EI)
+\item Mostrare una vista dei record (EQ)
+\end{itemize}
+posso definire un peso, che sono i FP del sistema: per ogni EI, ci sarà una determinata fascia di complessità, che può essere in prima battuta impostata come un valore medio.
+
 
 
 
@@ -331,6 +414,65 @@ I pezzi fondamentali di cui abbiamo bisogno:
 quindi, cerchiamo di capire come tirare su un ambiente che ci introduca alle pratiche almeno di CI e CT.
 \subsection{Verison control, automated build e test}
 Git: version control system open source e distribuito, di cui esistono versioni on-line, in particolare per tracciare le versioni useremo Github: ogni volta che viene proposta un cambiamento alla code base, vorremmo che vengano triggerate attività di CI e CT.\\ Quindi, dobbiamo affidarci ad un framework che ci aiuto almeno a compilare il src code. Per automatizzare la build: Maven, che è un sistema di build principalmente ad ambienti Java. Permette automaticamente di gestire le dipendenze sia esplicitamente, tramite la dichiarazione di librerie (con versioni) da considerare e sia transitiva, ovvero dichiarando solo quello che si usa esplicitamente ed al resto ci pensa il sistema di build. Maven struttura il build in una serie di fasi, l'errore in una fase i interrompe il processo di build, ogni step del processo deve identificare la fase di appartenenza. Quindi, sappiamo come rendere il build automatico, in modo che la code base scateni azioni maven su qualche build server, ora vorremmo rendere il processo di build serlf-testing. Il framework di rifermento è JUnit, ha consentito lo sviluppo di pratiche di test-driven development: scrivo un test che interagisce col sistema, dopo aver scritto il test scrivo la funzionalità finché il test non passa. ATTENZIONE: Junit consente di scrivere ed organizzare test program, non dice assolutamente la strategia di test, quali valori usare etc... è un linguaggi che permette di facilitare la scrittura dei test cases, è un DSL che ha delle astrazioni che consentono di gestire i cicli di vita dei test in modo più semplice. La fase di test viene strutturata attraverso diverse fasi, come agganciamo la codifica dei casi di test all'esecuzione ed al continous testing: con Maven, nella fase di test Maven va alla ricerca di tutte le classi che hanno un determinato nome, se le trova lancia un'istanza di JUnit e le passa in ingresso.\\ Tutto ciò avviene in locale, ma serve un build server, in qualche modo collegato con la codebase: Travis CI.
+\section{Partizione di dominio per generazione di test}
+Abbiamo visto il processo iterativo ideale al quale vorremmo tendere, che è il concetto di DevOps, dove 3 famiglie di ingegneri del software collaborano per lo sviluppo del prodotto software:
+\begin{itemize}
+\item Dev: sviluppo del software
+\item QA: si assicurano che il prodotto rispetti le richieste del cliente
+\item Ops: messa in opera del software
+\end{itemize}
+Il DevOps è la naturale evoluzione dei concetti di continous*, dove la parola chiave è l'automazione. A costo umano 0, vorremmo poter attivare tutta la procedura in maniera automatica, per fare questo occorre strutturare una serie di pipeline in modo da gestire gli ambienti di build, sviluppo test etc.., in maniera automatica.\\ Il software testing è un elemento del software quality assurance, ma ci sono tanti altri fattori che contribuiscono ad una visione del DevOps, torniamo ora nell'ottica verticale del software testing. Per introdurre questi discorsi, la prima cosa da capire è l'approccio: fare software testing non da garanzie sulla correttezza del software, l'approccio del software test deve essere orientato alla scoperta di un bug. Tutto quello che si fa deve essere orientato a trovare il bug, a rompere il sistema: nel momento in cui non si identificano una lista di problemi non si può dire nulla, quindi da ora in avanti la strategia ha come obiettivo la ricerca di corner case che sono i candidati più probabili nella rivelazione di bug.
+\subsection{Primo problema: come costruire i test}
+Come costruiamo un insieme di test tali che trovano il maggior numero di bug possibile. Abbiamo un programma da testare (system under test) che è una funzione che da un dominio di input tira fuori degli output. Vogliamo identificare un sotto-insieme dei possibili valori di input che sono i casi di test da considerare. Questi casi di test saranno la test suite \textit{gold}, produrre una tale test suite vuol dire produrre un insieme di test tale per cui troviamo il maggior numero di bug possibili. L'attività di software test è di tipo best effort: facciamo il meglio che possiamo rispetto al budget di risorse allocato nelle attività di software test. Non facciamo software test per cercare tutti i possibili bug, pianifichiamo una campagna di software testing per arrivare ad una certa qualità, ma con un certo budget a disposizione e tale budget non consente di coprire tutto D. Quando pianifichiamo una campagna di software testing c'è un budget: massimo numero di VM, massimo numero di ore/uomo etc... altrimenti $T_x$ (che è un sotto-insieme di D, che denota i test considerati) sarebbe uguale a D. Vorremmo il $T_x$ che fosse il più piccolo possibile e che massimizzi il numero di bug trovati: potremmo porci il problema di qual è la test suite gold in un determinato momento. In generale trovare la test suite gold è difficile e la sua esecuzione può essere onerosa.\\ Occorre trovare un modo per poter gestire gli input a partire da un dominio molto grande: ci aspettiamo che solo una piccola porzione dei valori di input possano causare mismatch fra P ed S.
+\subsection{Quanti e quali input selezionare}
+Selezionare input random può essere sensato? Sicuramente non è la $T_{gold}$ che volevamo cercare, inoltre la randomicità potrebbe non essere ripetibile. Come possiamo mitigarla: se ci affidiamo a tale approccio, dobbiamo fare in modo che il numero di esperimenti che faccio siano tali da darmi un certo tipo di significatività a ciò che dico. Potremo quindi avere come primo approccio una scelta randomica: c'è un filone di ricerca sul software testing che enfatizza l'uso di sistemi randomici, questo perché a dispetto della apparenze in molti contesti risultano molto efficaci:
+\begin{itemize}
+\item può essere un ottimo modo per sollevare problemi banali che sono presenti
+\item implementazione evoca un'apparente semplicità nella scrittura del metodo
+\end{itemize}
+Ci sono anche degli svantaggi:
+\begin{itemize}
+\item la ricerca degli input è cieca
+\item per controbilanciare l'aleatorietà, occorrono molti casi di test per avere una buona confidenza
+\item la realizzazione di un processo effettivamente randomico non è così banale, occorre stare attenti ad una eventuale presenza di bias nascosti
+\end{itemize}
+la strategia, in alcuni casi, paga molto. Esistono diversi approcci, che sono guidati dalla scelta rappresentativa dei valori per il dominio di input: l'idea è quella di identificare delle classi di equivalenza per i dati di input.
+\subsubsection{Classi di equivalenza del dominio di input}
+Per partizionare il dominio di input, per ogni elemento in una partizione il system under test deve evidenziare lo stesso comportamento, o dalle specifiche si può assumere che sia così. Quindi per ogni elemento creo delle partizioni del dominio di input a partire dalle specifiche o da considerazioni sul SUT.\\ Nella test suite gold $T_g$ devo includere un elemento per ogni partizione: se questa raggruppa elementi omogenei, per il SUT la scelta di un elemento della partizione è equivalente. All'interno della partizione, come scelgo il valore: posso usare una strategia o avere un approccio random, perché se ho scelto bene la partizione questa è sicuramente significativa per quel dominio. La test suite gold è funzione del modo in cui partiziono il dominio di input, sarà funzione delle classi di equivalenza che ho trovato nel mio dominio e che dipenderà:
+\begin{itemize}
+\item dalla chiarezza delle specifiche e dei requisiti, più sono chiari e maggiore è la qualità della mia test suite gold
+\item la conoscenza del SUT consente di ottenere una $T_g$ migliore, come ad esempio la conoscenza dei contesti operativi e di deployment
+\end{itemize}
+In pratica, la scelta delle classi di equivalenza possono essere inferite su uno o più parametri di input del sistema, o anche delle considerazioni esplicite ad un certo livello di astrazione: sappiamo qualcosa sul contesto operativo (dato da un certo operational profile). Un approccio white box permette di catturare diversi aspetti riguardo l'implementazione, ma potrebbe non far capire aspetti che non sono presenti nel sistema. Per poter fare partitioning, è possibile seguire delle linee guida:
+\begin{enumerate}
+\item considerare uno o più parametri di input per l'attività di test, derivandole
+\begin{itemize}
+\item direttamente dal dominio del sistema, quindi key abstractions, feature, needs, requirements 
+\item esplicandole solo ad un certo livello di astrazione considerato, quindi funzione di una particolare implementazione
+\end{itemize}
+\item partizionare lo spazio dei valori ammissibili basandosi su una conoscenza esplicita di vari fattori:
+\begin{itemize}
+\item range (impliciti o espliciti) di valori
+\item stringhe, se ad esempio vengono trattate possiamo considerare almeno un insieme di stringhe valide ed uno di stringhe non valide
+\item enum, la partizione considera tutti i valori in classi di equivalenza separate
+\item array, possiamo considerare almeno una partizione di array tutti legali, una di array vuoti, una di array che vanno oltre la lunghezza massima
+\end{itemize}
+queste sono tutte considerazioni su tipi di dato non strutturati, per le struct o oggetti la cosa è più dedicata, possiamo cercare di applicare le regole viste fin ora sugli elementi della struttura, ricordandosi di 	\textbf{considerare i valori nulli}.
+\end{enumerate}
+Queste sono solo linee guida generali, per cercare di definire classi di equivalenza quindi è errato considerarle in modo esclusivo: supponiamo di considerare un SUT in cui un parametro è una stringa (password). Considero una stringa valida ed una non valida, attenendomi alle linee guida generali, ma questo non è detto che basti a produrre un $T_g$ di qualità: sicuramente i due test sono utili, oltre ai casi limiti, come "" o null o password non valida per regex o policy di sicurezza. Le linee guida sono utili per iniziare a ragionare. Abbiamo quindi il SUT, che espone una serie di parametri, per ognuno di essi cerchiamo le partizioni di quel dominio, siccome il SUT prevede un input con N parametri, per ottenere la $T_g$ minima che mi consente di evidenziare il maggior numero di errori possibili. Possiamo usare due macro-criteri per identificare i test
+\paragraph{Approccio unidimensionale}ogni parametro di input viene considerato indipendentemente nei i casi di test: per ogni partizione di ognuno dei parametri di input ci sarà associato un caso di test. Mi accontento che la classe di equivalenza sia scelta in almeno un caso di test.
+\paragraph{Approccio multidimensionale}se ho più classi di equivalenza per un parametro, voglio che i casi di test coprano una combinazione lineare di tutte le classi di equivalenza su tutti i parametri.
+\\\\ Consideriamo il metodo \textit{LedgerHandle} di \textbf{Bookkeeper}\footnote{ci riferiamo alle classi di equivalenza}
+\begin{itemize}
+\item \textit{isRecoveryRead}: parametro \textbf{bool}, può avere senso dividere i valori in true e false
+\item \textit{firstEntry}: è \textbf{long} quindi consideriamo due indici, uno maggiore di 0 ed uno minore
+\item \textit{lastEntry}: come nel caso di \textit{firstEntry}
+\item \textit{cb}: tipo di dato complesso, considero il valore null, un istanza valida ed una non valida
+\item \textit{ctx}: stesso discorso di \textit{cb}
+\end{itemize}
+Cercando di applicare della semantica, ho a disposizione la lingua e la segnatura del metodo, riesco a definire delle classi di equivalenza più fini: ad esempio, se \textit{firstEntry} è maggiore, minore o uguale a \textit{lastEntry}.\\ Abbiamo quindi delle classi di equivalenza che per il livello di conoscenza che abbiamo del SUT vanno bene, ma ora rimane il problema di chiedersi quali valori scegliere in questi insiemi: da analisi empiriche risulta che i bug più comuni avvengono sui bordi delle classi di equivalenza, per definizione di classe di equivalenza scegliere qualsiasi valore è indifferente per il SUT. Quindi, è suggeribile identificare i valori limite: ad esempio per \textit{firstEntry} almeno 0 ed 1, per \textit{lastEntry} sceglieremo \textit{firstEntry - 1}, \textit{firstEntry} e \textit{firstEntry + 1}, per l'approccio boundary values. Ora, dobbiamo combinare i valori scelti per le classi di equivalenza: possiamo scegliere sia l'approccio multidimensionale che unidimensionale, nel primo avrò il prodotto cartesiano dei valori dei parametri nelle classi di equivalenza. In molti contesti, l'approccio multi* costa, quindi si cerca di avere un approccio unidimensionale: voglio avere almeno un test case per ciascuna classe di equivalenza.\\esempio: supponiamo di concentrarci solo sui parametri \textit{firstEntry} e \textit{lastEntry} (gli altri parametri sono costanti) e facciamo una scelta dei casi di test guidata da boundary values: prendendo come valori per \textit{firstEntry} -1, 0 ed 1 possiamo sintetizzare 9 casi di test per la $T_g$, con un approccio multidimensionale. Se invece considerassimo un approccio unidimensionale, per ogni classe di equivalenza identificata esista almeno un caso di test e i parametri sono considerati indipendentemente: scegliamo 3 casi che coprano tutte le 6 classi di equivalenza, ovviamente in questo caso non è detto che troverò i bug, in quanto l'approccio di software testing è best effort.
+
+
 
 
 
@@ -501,4 +643,29 @@ Gli altri costi di cui si tiene conto sono:
 un altro elemento che sta diventando importante è il carbon footprint, ovvero l'emissione di $CO_{2}$ del data center.
 \subsection{Use case: transazione con carta di credito di una banca}
 Ogni acquisto del cliente va registrato sui server, occorre verificare un sacco di cose per poter completare e validare una transazione. Una transazione concettuale è fatta di molteplici transazioni IT, assumiamo che un core x86 possa effettuare 20 TPS, intese come transazioni concettuali.\\ Importante: il costo per core conta anche quelli spare, quindi se non attivi dono soldi "buttati".\\ Per il software: a seconda del utilizzo può cambiare il prezzo: ad esempio per l'ambiente di production può avere un costo maggiore di quello di dev.\\ Tipicamente: sul LinuxONE è possibile avere diversi carichi sulle CPU, perché sono progettati per lavorare al 90-95 \% di utilizzazione, mentre per x86 non è così (se il carico cresce troppo, si rischia di violare lo SLA).
+\section{Feedback sul case study}
+Considerazioni:
+\begin{itemize}
+\item difficoltà nel trovare prezzi per software
+\item difficoltà nel determinare HA e DR
+\item se usare come valore per le TPS la media o i picchi
+\end{itemize}
+\paragraph{Gestione dei picchi di TPS}per la gestione dei picchi, quando si calibra un sistema con un tool come foglio Excel, calibriamo il sistema per gestire quel numero di TPS: il numero di core ottenuto soddisfa un carico di 2000 TPS, se ne arrivano di più ne occorrono di più. Quindi, metto le TPS di picco in modo tale da poter gestire i picchi e sicuramente la media. La richiesta di carico sarà dettata dalla domanda, se riesco ad essere elastico posso riuscire a seguire la curva per avere il minimo dello spreco.
+
+\paragraph{Spare cores}concetto solo del mondo LinuxONE, nel mondo x86 ci sono spare servers. Quindi o i core sono attivi o non lo sono, il costo del modello nel foglio Excel conta solo i core non attivi. Nel creare un LPAR, è come creare un server fisico con quel numero di core.
+\paragraph{DR}l'ambiente di DR può essere attivo-attivo o attivo-passivo, ma questo dipende dalle considerazioni: se quando è passivo i server sono spenti, allora potrebbe non esserci costo per il software. In realtà nessuno lascia il DR completamente spento, inoltre quando si acquistano risorse conviene prenderle da più fornitori, per evitare che in caso di disastro si venga bloccati.
+\paragraph{Sizing}spesso per il sizing si segue un processo iterativo: si parla col cliente per poter capire, in base al budget, come regolarsi sul dimensionamento dell'architettura.
+\paragraph{Statistical multiplexing}esiste un modello di statistical multiplexing, molto studiato in TLC: se consolido vari workload su un ambiente virtualizzato, quindi se ho un servente potente, più il numero di utilizzatori cresce e più il servente avrà un carico che sarà una media più o meno costante. La telefonia analogica prevedeva che nel momento in cui veniva composto il numero, la chiamata arrivava in centrale e questa stabiliva una connessione punto-punto tra il chiamante ed il ricevente. Quindi, la connessione, perfetta richiedeva una topologia a stella ma questo prevedeva un costo che cresce come $O(n^2)$. In realtà, veniva messo un numero limitato, circa quanto il numero medio di chiamate effettuate in una giornata. Quindi, più il servente cresce, più è poco probabile che i picchi, quando ci sono molti serventi, siano poco limitati intorno alla media. Quindi, se un server può supportare un certo numero di VM, ogni VM farà girare un software che gestirà un aspetto dell'applicazione, avrà una media di utilizzo molto grande ma le oscillazioni dei picchi sono molto più vicine alla media. Quindi, se un server può supportare un carico di 1000 VM, la media ed i picchi sono circa uguali. Quindi, nel mondo LinuxONE, posso considerare i calcoli sulla media, mentre nel mondo x86 devo considerare i picchi. Il discorso funziona quando la richiesta di servizio è incredibilmente eterogenea, ma anche quando le TPS sono eterogenee. Inoltre, in questo modo è possibile arrivare ad una server utilization del 70\%, in modo da sfruttare bene le macchine. Il sizing è complesso:
+\begin{itemize}
+\item occorre conoscere bene il workload
+\item sapere bene i picchi
+\item etc ...
+\end{itemize}
+\paragraph{Gestione dell'HA}almeno uno o due server di backup, fare un analisi per l'HA di 5-6-7 "9" richiede un'analisi molto più sofisticata, le considerazioni fanno riferimento al grado di ridondanza che si ha.
+\paragraph{Costo di licenza}il licesing model più presente è per core, è realistico che il prezzo sia indipendente dal tipo di core? Il core LinuxONE è molto più performante di quello x86, esistono dei correttivi per il prezzo:
+\begin{itemize}
+\item scontistica: al crescere del numero di core, lo sconto aumenta
+\item fattore correttivo: per sopperire al fatto che alcuni core sono più economici di altri, questo fattore aiuta. Per i DB, molto spesso c'è un fattore dello 0.5, ovvero nel mondo x86 serve una licenza per 2 core, mentre in LinuxONE il rapporto è 1-a-1. Le VPC, che corrispondono a diversi core per i diversi ambienti, ci sistemano le cose.
+\end{itemize}
+Sarebbe possibile spalmare nel tempo l'acquisto dell'hardware, in modo che a seconda della crescita del business crescerà l'hardware della percentuale di crescita.
 \end{document}

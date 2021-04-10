@@ -6,7 +6,7 @@
 \usepackage{listings}
 
 \geometry{
-	a4paper,
+	a4paper
 }
 
 \begin{document}
@@ -637,9 +637,9 @@ Supponiamo di guardare un intervallo $(0, \tau)$:
 \item media nel tempo in coda $\bar{q} = \frac{1}{\tau} \int\limits_{0}^{\tau} q(t) dt$
 \item media nel tempo in servizio $\bar{x} = \frac{1}{\tau} \int\limits_{0}^{\tau} x(t) dt$, è anche l'utilizzazione. Per definizione di utilizzazione, è chiaramente minore di 1
 \end{itemize}
-sono tutte collegate con la legge di Little: come visto nella \ref{Little}, le ipotesi valgono e quindi abbiamo: $\int\limits_{0}^{c_n} l(t) dt = \sum\limits_{i=1}^{n} w_i$, dove $c_t = \tau$. Lo stesso si può dire a livello di coda e di servente: $\int\limits_{0}^{c_n} q(t) dt = \sum\limits_{i=1}^{n} d_i$, $\int\limits_{0}^{c_n} x(t) dt = \sum\limits_{i=1}^{n} s_i$, dove $c_t = \tau$. Se noi andiamo a scriverci la funzione cumulativa degli arrivi e la funzione cumulativa delle partenze, abbiamo una corrispondenza con il tempo che ogni job richiede: quando calcoliamo l'aera, stiamo calcolando il tempo di risposta del job. Quindi integrando su tutto il tempo equivale a fare la somma di tutti i tempi di risposta per tutti i job.\\ $\tau$ corrisponde a $c_n$, quindi sostituendo: $\bar{l} = \frac{1}{\tau} \int\limits_{0}^{\tau} l(t) dt = c_n \bar{l} = \int\limits_{0}^{c_n} l(t) dt$, usando Little abbiamo $\sum\limits_{i=1}^{n} w_i = n \bar{w}$, da cui $\bar{l} = \frac{n}{c_n} \bar{w}$ lo stesso vale per $\bar{q} = \frac{n}{c_n} \bar{d}$, $\bar{x} = \frac{n}{c_n} \bar{s}$.\\$\frac{n}{c_n}$: n job completano in $c_n$, quindi otteniamo il throughput in $c_n$; nel caso della coda infinita, corrisponde alla frequenza media di arrivo.
+sono tutte collegate con la legge di Little: come visto nella \ref{Little}, le ipotesi valgono e quindi abbiamo: $\int\limits_{0}^{c_n} l(t) dt = \sum\limits_{i=1}^{n} w_i$, dove $c_n = \tau$. Lo stesso si può dire a livello di coda e di servente: $\int\limits_{0}^{c_n} q(t) dt = \sum\limits_{i=1}^{n} d_i$, $\int\limits_{0}^{c_n} x(t) dt = \sum\limits_{i=1}^{n} s_i$, dove $c_n = \tau$. Se noi andiamo a scriverci la funzione cumulativa degli arrivi e la funzione cumulativa delle partenze, abbiamo una corrispondenza con il tempo che ogni job richiede: quando calcoliamo l'aera, stiamo calcolando il tempo di risposta del job. Quindi integrando su tutto il tempo equivale a fare la somma di tutti i tempi di risposta per tutti i job.\\ $\tau$ corrisponde a $c_n$, quindi sostituendo: $\bar{l} = \frac{1}{\tau} \int\limits_{0}^{\tau} l(t) dt = c_n \bar{l} = \int\limits_{0}^{c_n} l(t) dt$, usando Little abbiamo $\sum\limits_{i=1}^{n} w_i = n \bar{w}$, da cui $\bar{l} = \frac{n}{c_n} \bar{w}$ lo stesso vale per $\bar{q} = \frac{n}{c_n} \bar{d}$, $\bar{x} = \frac{n}{c_n} \bar{s}$.\\$\frac{n}{c_n}$: n job completano in $c_n$, quindi otteniamo il throughput in $c_n$; nel caso della coda infinita, corrisponde alla frequenza media di arrivo.
 \paragraph{Intensità di traffico}il rapporto fra la frequenza di arrivo e la frequenza di servizio $\dfrac{\frac{1}{\bar{r}}}{\frac{1}{\bar{s}}} = \frac{\bar{s}}{\bar{r}} = \frac{\bar{s}}{\frac{a_n}{n}} = (\frac{c_n}{a_n})\bar{x}$ questo poiché $\bar{x} = \frac{x}{c_n}\bar{s}$. Questo per dire che la frequenza di servizio coincide con l'utilizzazione soltanto quando il rapporto $\frac{c_n}{a_n}$ tende ad 1, ma per periodi di tempo piccoli (quindi piccole finestre temporali) l'utilizzazione coincide con l'intensità di traffico quando il tempo di simulazione è sufficientemente lungo.
-\subsection{1° case study}
+\subsubsection{Algoritmo}
 Algoritmo:
 \lstset{
 	mathescape
@@ -658,5 +658,243 @@ while (more jobs to process){
 	n = 1;
 	return $d_1, d_2, ... , d_n$;
 \end{lstlisting}
-\textit{GetArrival()} e \textit{GetService()} leggeranno da file, prendendo i primi tempi. Possiamo calcolare il tempo di inter-arrivo medio, il tempo di servizo medio etc... a partire dai dati e dai valori dei $d_i$ risultanti dopo la simulazione.
+\textit{GetArrival()} e \textit{GetService()} leggeranno da file, prendendo i primi tempi. Possiamo calcolare il tempo di inter-arrivo medio, il tempo di servizio medio etc... a partire dai dati e dai valori dei $d_i$ risultanti dopo la simulazione. È possibile calcolare la media dei delay $\bar{d_i}$, siccome occorre dover effettuare la verifica e questo può essere complicato, un approccio può essere quello di calcolare i valori e poi usare l'equazione $\bar{w} = \bar{d} + \bar{s}$ per fare la verifica.
+\subsubsection{Case study - gelateria}
+Una gelateria vuole offrire delle varianti di gusti, ma vuole sapere quanto il tempo in più necessario a prepararli possa impattare sui tempi di coda. Viene usato un modello con singolo servente, il file dati ssq1.dat rappresenta i tempi di attesa per 1000 clienti, contenente le coppie istante di arrivo - tempo di servizio. I dati danno il così detto punto di stima (con le relative statistiche), ma è uno scenario: i 1000 clienti sono arrivati in quel preciso tempo ed hanno chiesto quel determinato tempo. Per lo studio, i tempi di servizio vengono incrementati e decrementati sistematicamente di un fattore moltiplicativo. Per il file di partenza, abbiamo un fattore di utilizzazione minore di 1, infatti 1-x (che è la probabilità che il centro sia vuoto) è circa del 28\%. A dispetto di questa probabilità, il numero medio in coda $\bar{q} = 2$, quindi non trascurabile: c'è una relazione fra l'aumento del tempo di servizio e la dimensione della coda.\\ Linee guida:
+\begin{itemize}
+\item se i dati non hanno delle incertezze ed il risultato è regolare, è possibile unire i punti, ma i dati originali vanno mantenuti
+\item se la curva non è così regolare probabilmente occorrono più punti
+\item se i punti corrispondono a dati incerti, non fare interpolazione, è approssimativo
+\item se i dati sono inerentemente discreti, mai fare interpolazione. È un errore grave
+\end{itemize}
+\subsection{Caso di studio 2}
+L'oggetto di studio è un magazzino, in particolare l'inventario: il magazzino riceve una serie di domande da utenti per il tipo di merci che vende e che, nel momento in cui le merci fossero poche per soddisfare gli ordini, sarebbero  rifornite. Gli utenti acquistano un certo numero di articoli, i quali arrivano dai fornitori una volta che gli ordini vengono evasi e le merci vengono inviate.\\ La domanda di merci è discreta, consideriamo un unico tipo di merce per semplificare il case study.
+\paragraph{Obiettivi}trovare una politica per l'inventario per minimizzare i costi. Vi sono due categorie di politiche:
+\begin{itemize}
+\item quando il numero di merci nel magazzino varia, viene rifatta un analisi dello stato dell'inventario
+\item politica periodica, indipendente dalla variazione delle merci
+\end{itemize}
+I pro ed i contro: nel primo caso, il costo è maggiore in quanto occorre verificare il livello dell'inventario ed agire di conseguenza. Il pro è che in questo modo verranno minimizzati i periodi in cui il livello merci è basso, la \textit{short age}\footnote{mancanza di merci} dovrebbe essere  minimizzato. Nel caso periodico, l'epoca di revisione è periodica, per esempio settimanale. Gli articoli vengono ordinati se necessario solo all'epoca della revisione, ad esempio il lunedì mattina. Si usano due parametri: il livello minimo di merci s ed il livello massimo S(che il magazzino può ospitare), chiaramente avremo $0 \leq s \leq S$.\\ Scegliamo la politica due, l'obiettivo dello studio diventa la ricerca della coppia (s,S) che minimizza i costi.
+\paragraph{Modello concettuale}definiamo tutti i costi di sistema:
+\begin{itemize}
+\item Holding cost: costo del mantenimento delle merci nel magazzino, legato al costo dello spazio
+\item Shortage cost: costo da pagare se non si risponde alla domanda
+\item Setup cost: costo fisso quando si effettua un ordine
+\item Item cost: costo per articolo
+\item Ordering cost: somma dei costi di setup e di items
+\end{itemize}
+A livello concettuale, lo stato del sistema è dato:
+\begin{itemize}
+\item dal livello dell'inventario l
+\item dalla quantità di merce ordinata o
+\item dalla quantità di merce richiesta dall'utente d
+\end{itemize}
+CI sono poi una serie di assunzioni da fare:
+\begin{itemize}
+\item arriva un ordine che ha una richiesta maggiore del livello merci, per essere evaso dovrebbe portare il livello ad un valore negativo; viene chiamato back ordering
+\item delivery lag: tempo che passa da quando qualcuno ordina le merci a quando queste arrivano. Lo assumiamo nullo ( ma manco per nulla è nullo)
+\item il livello di scorte iniziale è S
+\item il livello dell'inventario al termine dello studio è ancora S, questo fa si che abbiamo un bilanciamento dei flussi per tutt il tempo dello studio
+\end{itemize}
+\paragraph{Modello delle specifiche}fissiamo le variaibli a livello di specifica:
+\begin{itemize}
+\item il tempo comincia all'istante 0
+\item gli istanti di revisione sono t=0,1,2... che sono le settimane
+\item $l_{i-1}$ è il livello dell'inventario all'inizio della settimana i
+\item $o_{i-1}$ è la quantità ordinata dal tempo t= i-1
+\item alla fine dell'intervallo i-esimo, l'inventario è diminuito di $d_i$: $I_i = I_{i-1} + o_{i-1} - d_i$
+\item l'inventario alla fine della settimana può essere negativo
+\end{itemize}
+Il livello dell'inventario viene revisionato al tempo t = i-1, se la quantità è almeno s non viene fatto nessun ordine, altrimenti viene fatto un ordine per riportare il livello di scorte ad S. Le statistiche che calcoliamo sono $\bar{d_i}$ e $\bar{o_i}$, la domanda media e l'ordine medio devono essere uguali per definizione. Per quanto riguarda i costi, ci sono dei punti in cui il livello del magazzino è negativo e quindi si paga la penalità per lo short age. Abbiamo due casi:
+\[
+o_{i-1} = 
+\begin{cases}
+0 & \text{se }I_{i-1} \geq s\\
+S - I_{i-1} & \text{se }I_{i-1} < s
+\end{cases}
+\]
+\\$\bar{l_i^+}$ è la parte positiva di $\bar{l}$ nell'intervallo i-esimo, data da $\bar{l_i^+} = \int\limits_{i-1}^{i} l_i(t) dt$, se c'è una parte negativa (dovuta allo short age) ed una positiva, queste andranno sommate: $\bar{l_i^+} = \int\limits_{i-1}^{\tau} l(t) dt - \bar{l_i^-} = \int\limits_{\tau}^{i} l(t) dt$ Abbiamo le rispettive statistiche: la parte positiva sarà la somma su tutti gli intervalli, stesso vale per la parte negativa. Possiamo calcolare tutte le statistiche: $\bar{d}, \bar{o}, \bar{l^+}, \bar{l^-}$, possiamo poi fare la verifica dei valori.
+\subsubsection{Caso di studio - concessionario d'auto}
+La facility qui è costituita dallo showroom e dalle automobili. Sono macchine nuove, il fornitore sarà il produttore delle macchine e per semplicità consideriamo un solo tipo di macchina.\\ Nel caso di studio la quantità massima S = 80, l'inventario viene rinnovato ogni lunedì, se si scende sotto s = 20, viene fatto un ordine per tornare a 80.\\ La politica ottima è quella che porta ad un costo medio minimo. Notiamo che $\bar{o} = \bar{d}$ e $\bar{d}$ dipende solo dalla domanda, quindi il costo di item è indipendente da (s, S). La parte che dipende da s sarà sicuramente il costo di setup medio, il costo medio di immagazzinamento ed il costo medio di shortage (andranno tutti sommati). Fissato S e la sequenza di domande, facciamo variare s e ci aspettiamo che:
+\begin{itemize}
+\item il costo di immagazzinamento cresca ed anche il costo di setup
+\item il costo medio di shortage decrescerà
+\end{itemize}
+La funzione dei costi totali avrà un andamento ad "U" e potremo osservare il minimo valore.
+\section{Random number generators}
+Tutti i case study visti fin ora hanno bisogno di dati persi dall'esterno, quindi l'utilità dei programmi è limitata dalla disponibilità dei dati:
+\begin{itemize}
+\item se non ci fossero dati?
+\item se il modello cambiasse?
+\item se i dati di input non fossero abbastanza?
+\end{itemize}
+Occorre un random number generator: per generare i numeri caratterizzati da un particolare distribuzione di probabilità si parte da un generatore di numeri random fra 0 ed 1.\\ Tra tutte le classi di generatori, siamo interessati a quelli software, che hanno diversi vantaggi. Un generatore ideale dovrebbe estrarre il valore fra 0 ed 1 (che è una probabilità), in modo che tutti i possibili infiniti valori siano equiprobabili. Un generatore "buono" produce un output che è statisticamente (slides): scegliamo un m grande, positivo $m > 0$, denotiamo un insieme $\chi_{m} = \{1,2,...,m-1\}$, immaginiamo di estrarre a caso un intero x e di dividerlo per m, ottenendo $u = \frac{x}{m}$. I possibili valori sono $\frac{1}{m}$, $\frac{2}{m}$,... È importante che m sia grande in modo che i possibili valori siano molti.\\ Per definizione, i due estremi 0 ed 1 sono esclusi, inoltre vorremmo che ogni volta che estraiamo dall'urna un particolare valore vorremmo avere sempre lo stesso valore di probabilità  ovvero poter "rimettere" nell'urna il numero estratto. Vorremmo simulare un'estrazione con rimpiazzo, per ragioni pratiche dovremmo accontentarci di un generatore senza rimpiazzo ma se scegliamo m grande ed il gruppo di numeri usati è più piccolo di m, il fatto che non ci sia rimpiazzo è quasi non percepibile.
+\subsection{Generatore di Lehmer}
+Definito sulla base di due parametri:
+\begin{itemize}
+\item modulo m: un primo molto grande
+\item moltiplicatore a: uno dei numeri in $\chi_m$
+\end{itemize}
+I possibili valori $x_0, x_1,...$ vanno da $\frac{1}{m}$ ad $\frac{m-1}{m}$, la sequenza dei numeri generati è definita da un'equazione iterativa: $x_{i+1} = g(x_i)$ con $g(x) =ax mod m$; $x_0 \in \chi_m$ è chiamato seme (spesso, per convenzione, si sceglie 1). Se a ed m sono scelti propriamente, un generatore id Lehmer è statisticamente non distinguibile dal pescare da $\chi_m$ con rimpiazzo. Una buona scelta di m è l'INTMAX su sistemi a 32 bit, su sistemi a 64 bit la scelta non è così ovvia e quindi $2^{31} - 1$ continua ad essere una buona scelta. La scelta di a deve essere fatta con grande cura:
+\begin{itemize}
+\item vogliamo una sequenza full period
+\item inoltre, se abbiamo una sequenza full period, possono esserci sequenza migliori di altre a seconda della caratteristica di randomicità
+\item l'operazione $ax mod m$ non può essere fatta in modo banale, perché ax potrebbe causare integer overflow.
+\end{itemize}
+\subsubsection{Implementazione dell'algoritmo}
+Come abbiamo detto, è possibile che ax vada in overflow: su una macchina a 32 bit, tutti gli interi maggiori di $2^{32} - 1$ verranno persi, ma è possibile trasformare la funzione di partenza col calcolo di due funzioni, e ricavare $d(x) = \gamma(x) +m\cdot \delta(x)$, dove il prodotto ax non è solo. Inoltre, c'è un teorema che da una strada implementativa semplice:
+\paragraph{Teorema 2.2.1}se $m = aq + r$ è primo ed $r<q$ vale che per $x \in \chi_m$: $\delta(x) = 0$ o $\delta(x) = 1$, dove $\delta(x) = \lfloor \frac{x}{q} \rfloor - \lfloor \frac{ax}{m} \rfloor$, inoltre
+\[
+\delta(x) =
+\begin{cases}
+0 & \text{if } \gamma(x) \in \chi_m \\
+1 & \text{if } - \gamma(x) \in \chi_m
+\end{cases}
+\]dovremo scegliere una coppia (a,m) per cui vale la relazione del teorema.\\ Da qui, nell'algoritmo sapremo come generare il numero, in base al fatto che $\gamma(x)$ sia positiva o negativa in modo tale da non avere problemi di overflow.\\ La caratteristica per cui riusciamo a trovare m primo per cui vale il Teorema è detta modulo-compatibilità, il modulo scelto è $2^{31} - 1$, un moltiplicatore considerato lo standard è a = 48271. 
+\subsubsection{Proprietà}
+\begin{itemize}
+\item i moltiplicatori modulo-compatibili sono tutti minori di $\frac{m-1}{2}$
+\item sono più densi verso lo 0
+\end{itemize}
+quindi, basta scegliere un moltiplicatore piccolo per avere un alta probabilità che sia MC. Un moltiplicatore è "piccolo" quando il suo quadrato è minore di m, quindi tutti i moltiplicatori da 1 a $\lfloor \sqrt[2]{m} \rfloor$ sono MC. Da un punto di vista algoritmico, bisognerebbe partire da un moltiplicatore piccolo e vedere se è full period.\\ esempio: con $m = 2^{31} - 1$ ed un FPMC a = 7 è possibile generare altri 23093 FPMC, in particolare a = 16807 è uno standard "minimale", mentre lo standard consigliato è 48271. \\ Da un punto di vista della randomicità, dovremmo scegliere dei FPMC che danno delle sequenze quanto più randomiche possibili: non c'è una definizione universale di randomicità, inoltre il generatore mostra una struttura a lattice (tutti i punti si trovano su rette parallele).
+\textbf{WARNING:} rand(), della libreria ANSI-C fa schifo, non usarla per lavori scientifici. Non fidarsi di tool che non danno informazioni sull'algoritmo  con cui vengono generati i numeri
+\subsection{Esempio - single server queue}
+Sappiamo solo che i tempi di servizio sono distribuiti fra 1 e 2 minuti, non sappiamo nulla sulla distribuzione e quindi assumiamo che sia distribuito uniformemente fra 1 e 2 sia $Unif(1,2)$. Abbiamo un generatore di Lehmer che genera valori fra 0 ed 1, abbiamo bisogno fi una funzione che ci trasformi questo valore in uno che modella il tempo di servizio. Partendo dal valore, otteniamo x per cui il valore della densità di probabilità è proprio u, la trasformazione è $x = -\mu ln(1-u)$, ovvero della trasformazione esponenziale e dove $\mu$ è la media campionaria. Potremmo usare quindi in questo esempio l'esponenziale per i tempi di inter-arrivo, ovvero generando gli istanti di arrivo come $a_i = a_{i-1} + Exponential(\mu); i=1,2,3...,n$, per i tempi di servizio $s_i$ scegliamo la $Uniform(1.0, 2.0)$. L'uniformità de tempi di servizio non è molto diffusa, molto più spesso ci sono distribuzioni monotòne decrescenti, come le esponenziali.
+\\esercizio: calcoliamo teoricamente le statistiche di output che vengono prodotte con la simulazione: abbiamo un centro a coda infinita, servente singolo. Scriviamo i parametri:
+\begin{itemize}
+\item $\lambda = \frac{1}{2} j/s$, di tipo esponenziale
+\item E(S) = 1.5 s, unif (1,2)
+\item con Little, abbiamo ricavato $E(T_Q) = \dfrac{\frac{\lambda}{2}E(S^2)}{1 - \rho}$
+\end{itemize}
+per l'uniforme, in generale, la media è $E(S) = \frac{b+a}{2} = \frac{3}{2} s$, la varianza è $\sigma^2(S) = \frac{(b-a)^2}{12} = \frac{1}{12}$. \\ Per conoscere $E(S^2)$, poiché conosciamo sempre media e varianza delle v.a, possiamo scrivere $E(S^2) = \sigma^2(S) + E(S)^2$, da cui $E(S^2) = \frac{7}{3}$. \\ Possiamo quindi ricavare $\rho = \lambda E(S) = 0.75$ ed $E(T_Q) = 2.\bar{3}$.\\ Ora possiamo ricavare $E(T_S) = E(T_Q) + E(S) = 1.5 + 2.\bar{3} = 3.8333 s$ e possiamo usare Little per le popolazioni:
+\begin{itemize}
+\item $E(N_Q) = 1.1667$
+\item $E(N_S) = 1.9167$ 
+\end{itemize}
+dalla simulazione, otteniamo gli stessi risultati. Da un punto di vista delle prestazioni, nonostante il servente sia occupato per il 75\% del tempo, in media ci sono 2 job nel centro, quindi in tutto un job che mediamente chiede 1.5 spende più del doppio: 2.33 in coda ed 1.5 nel servizio.\\ Il vantaggio della simulazione è che possiamo mandare avanti la simulazione per molti job e vedere quando le statistiche tendono a questi valori asintotici, in quanto il calcolo effettuato usa la KP, quindi per valori stabili. Notiamo come la convergenza di w al valore 3.83 è lenta e dipende dal seme iniziale.\\ La simulazione può essere usata sia per usare il comportamento allo stato stazionario, ma anche per studiare la fase transiente e quindi la parte iniziale delle curve: si decide il numero di job e si fanno diverse repliche, usando semi differenti ma mantenendo fisso lo stato iniziale del sistema.\\Cerchiamo di simulare dall'inizio lo stato di stazionarietà. Sappiamo che il tempo di attesa medio in coda è 2.33, piuttosto che far partire il sistema come se fosse vuoto, partiamo con un sistema in uno stato stabile (con departure = 3):
+\begin{itemize}
+\item $a_1 = a_0 + expo(2) = 0 + 0.8 = 0.8$, confrontiamo poi arriva con departure. Il primo job va quindi in coda per un tempo $d_1 = 3-0.8 = 2.2$. Abbiamo un $s_1 = Uniform(1,2)=1.3$, con $w_1 = 2.2 + 1.3 = 3.5$ e $c_1 = 0.8+3.5 = 4.3$
+\end{itemize}
+C'è un bias nel calcolo dei dati: nella media campionaria non è così evidente, mentre nella varianza sì e andrà corretto matematicamente nel calcolo della varianza.\\ Vorremmo un indipendenza fra i valori di $x_i$, che però non c'è: è presente una correlazione seriale, i DES time-sequenced spesso presentano correlazione seriale che introduce bias sui valori.\\ esempio 2: i job arrivano on lo stesso tasso $\lambda$, ma stavolta i tempi di servizio modellano una situazione più articolata:
+\begin{itemize}
+\item ogni job può avere pari ad 1 + Geom(0.9)
+\item ogni task richiede un tempo (minuti) che è Unif(0.1, 0.2) 
+\end{itemize}
+quindi, mediamente ci saranno 10 task per job (la media della geometrica è $\frac{1}{0.9}$ ed il tempo di servizio per singolo job sarà 1.5 (0,15$\cdot$10). Sembra lo stesso caso di prima, ma ora è cambiata la varianza: abbiamo la varianza di 10 uniformi, quindi è più alta. Cambiano quindi tutte le statistiche, tranne $\bar{r}, \bar{x}, \bar{s}$, quindi le misure di performance sono sensibili alla scelta della distribuzione dei tempi di servizio.
+\subsubsection{Revisione dell'inventario}
+Come cambia il case study nel caso in cui: viene sostituita la Equilikely(a,b), usando sempre gli stessi dati. Per studiare al variare di s come cambiano le cose, non possiamo cambiare troppe cose insieme: facciamo variare s e lasciamo il resto invariato, così da capire come cambiano le statistiche di output. Qui, l'utilizzo di uno studio stazionario può sembrare inappropriato: già i due anni sembrano un ipotesi eccessiva, in quanto le cose tendono a cambiare. Il senso è che la curva è molto più smooth e quindi mostra meglio qual è il minimo per s. La variabilità nella fase di transizione ha assolutamente senso e non va eliminata, per quanto riguarda studi come quest'ultimo, in cui vogliamo solo vedere la variazione di s, ridurre la varianza vuole dire scegliere sempre lo stesso seme e cambiare solo s. Una stima viene detta robusta quando piccole oscillazioni nell'introno della stima non spostano gli obiettivi posti dallo studio.
+\subsubsection{Modifiche alla coda singola}
+Partiamo dall'esempio della coda singola, dove la \textit{GetService()} sceglieva uniformemente fra 1.0 ed 2.0 il valore. Cambiamo il codice in modo da:
+\begin{itemize}
+\item inizializzare una volta per tutte la variabile del seme (che per questo è \textbf{static})
+\item generare il tempo di servizio s
+\item ricavare lo stato del generatore, ovvero l'ultimo valore da cui bisogna partire
+\end{itemize}
+Analogo per la funzione che generava i tempi di arrivo,\textit{GetArrival()} che potremmo cambiare in maniera similare alla \textit{GetService()}.\\ Il problema è che noi vogliamo che i flussi non si sovrappongano, non sappiamo di quanti tempi di servizio abbiamo bisogno, di quanti tempi di arrivo, e quindi se poi generando questi due tempi non si sovrappongano. Non sappiamo la distanza in termini di numeri generati fra due seed, ad esempio fra 12345 e 54321: i primi valori sono diversi, ma se poi i tempi sono così tanti da superare la distanza fra i due seed, come servizi usiamo numeri fra 0 ed 1 che sono già stati usati come tempi di servizio, causando quindi un fenomeno di accoppiamento fra i servizi, che dovrebbero essere indipendenti.
+\subsubsection{Jump multipliers}
+Dividiamo il flusso in pezzi, in modo che le partizioni siano non sovrapposti, in modo che il numero di generazioni all'interno di ogni pezzo dovrà esser sufficiente per gestire i valori da generare. Prima ci siamo mossi a caso, ma occorre avere una scelta dei semi non casuale, ma fatta in modo che i flussi siano disaccoppiati: abbiamo il generatore di Lehmer $ax mod m$, viene detta \textbf{funzione salto} quella che usa come moltiplicatore $a^{j}mod m$, con $1 < j < m - 1$. $g^j(x) = (a^j mod m)x mod m$ genera i valori distanziati di j, scelto j opportunamente fra 1 ed m-1, quindi a partire da $x_0$ genera $x_j, x_{2j},...$, quindi consente di passare da un flusso all'altro di lunghezza j. Quindi se j è piuttosto grande, possiamo essere sicuri che ai processi vengano assegnati flussi lunghi j che non si sovrappongono. Dobbiamo avere dei seed che siano full-period e modulo compatibili, per standard il moltiplicatore è 48271, supponiamo di dividerlo in 256 flussi. Partizioniamo la ruota dei valori in 256 flussi diversi, dobbiamo assicurarci che j sia $< \frac{2^{31}}{2^8} = 2^{23}$ in modo che il moltiplicatore salto sia modulo-compatibile. Dobbiamo scegliere il moltiplicatore salto più grande possibile, in modo che sia modulo-compatibile.
+\subsection{Disaccoppiamento di processi stocastici}
+Possiamo provare a riscrivere il processo dei servizi come la somma di due uniformi, entrambe fra 0 ed 1.5: la media rimarrà uguale, mentre la varianza cambia. In questo modo, possiamo considerare gli stessi arrivi del caso della Unif(1.0, 2.0), possiamo prendere esattamente lo stesso flusso ed usarne un altro per i servizi "nuovi" ma sempre di media 1.5, con una variabilità che è 4.5x quella di prima. Se con un unico flusso avessimo variato anche la frequenza di arrivo, la variabilità sarebbe dovuta a più elementi che cambiavano, che non potevamo attribuire alla sola componente che volevamo cambiare. Vediamo come tutti i valori dei tempi di risposta e della popolazione media crescono, perché la variabilità influisce negativamente.
+\subsection{Altri esempio}
+\subsubsection{Feedback model}
+Abbiamo una frequenza di arrivo al centro che viene aumentata, dato il numero di job che faranno feedback una volta finito il servizio e questo avviene con una certa probabilità. Per aggiungere il feedback, ci basta definire la probabilità con cui un job fa feedback ed a seconda del valore di ritorno, occorre gestire i job: se non contiamo due volte il job che fa feedback, ma manteniamo il vecchio indice, il calcolo delle statistiche job-avereaged non cambiano. I tempi cambiano: se un job riceve un nuovo tempo di servizio di media $\frac{1}{\nu}$, quindi tempo di attesa, di risposta, e di servizio medio del job cambiano. Anche la semplice aggiunta di un feedback rende problematica la gestione degli arrivi nella coda che si mischiano con il feedback. Occorre quindi una struttura dati che mantenga le informazioni sui job che fanno feedback.
+\subsubsection{Inventory system con delivery lag}
+Assumiamo di avere del delivery lag, che sia generato randomicamente ma che sia minore di 1, ovvero che l'ordine sia evaso prima della settimana successiva. Si assume inoltre (per avere bilanciamento dei flussi) che nella settimana finale non ci sia delivery lag.
+\\ Le statistiche $\bar{o}, \bar{d}, \bar{u}$ saranno pressoché uguali al variare del delivery lag, mentre la statistica $\bar{l}^+$ tenderà a diminuire, mentre la parte negativa $\bar{l}^-$ crescerà o rimarrà simile. Dalle curve globali che rappresentano il costo globale, si può vedere che con delivery lag l'ottimo viene shiftato a sinistra.
+\subsubsection{Machine shop model}
+Partendo dalle assunzioni fatte in precedenza, abbiamo che ogni singola macchina si guasta in media ogni 100 unità di tempo (tempi distribuiti esponenzialmente), il tecnico è unico. Il programma è sostanzialmente lo stesso, dove però gli arrivi sono le failure, possiamo valutare $M - \bar{l}$, ovvero il numero di macchine operanti come totale - media di macchine guaste, contro il numero totale di macchine. Si nota che, oltre un certo valore, il numero di macchine attive si schiaccia contro un asintoto orizzontale, quindi occorre aggiungere tecnici e non macchine.
+\subsubsection{Controlli di consistenza}
+In generale, quando si parte da un modello e si aggiunge qualcosa, è importante verificare il modello esteso con quello di partenza tramite dei controlli di consistenza. Ad esempio, per il modello con feedback, il controllo più semplice da fare può essere impostare $\beta = 0$ e verificare che i valori siano gli stessi. Poi, facendo variare di poco il valore di $\beta$, si può vedere che i valori cominciano ad aumentare. In questo caso, avere un multi-stream facilita il lavoro, vogliamo controllare l'output di due sequenze diverse senza cambiare il modello.\\ Anche nel caso dell'inventory system, si può verificare che con delivery lag pari a 0 i valori trovati corrispondano a quelli del sistema originale.
+\section{Next Event simulation}
+Fin ora, abbiamo visto una simulazione in cui il tempo non c'è: abbiamo delle tracce, generate a random o lette da un file, su cui vengono effettuati dei calcoli. Non c'è la simulazione temporale, ed è questo che rende gli algoritmi difficili: ogni volta, occorre verificare se i tempi di completamento sono più o meno grandi di quelli di arrivo etc...\\ L'approccio next event fa una simulazione del tempo e degli eventi che accadono a mano a mano che il tempo passa. Gli elementi chiave di una next event simulation sono:
+\begin{itemize}
+\item stato del sistema
+\item eventi
+\item un clock di simulazione
+\item scheduling di eventi, un ordine di eventi
+\item lista di eventi, in cui ci sono tutti gli eventi correnti nel sistema in quell'istante di tempo
+\end{itemize}
+\paragraph{Stato}lo stato del sistema è una sua caratterizzazione completa in un istante di tempo. Sappiamo che nel definire il modello ci sono 3 livelli, lo stato va definito per ognuno dei livelli:
+\begin{itemize}
+\item livello concettuale: lo stato è un insieme di elementi astratti, anche espressi in linguaggio naturale. L'insieme di variabile è l'evoluzione del sistema nel tempo
+\item livello di specifiche: le variabili diventano matematiche e le relazioni matematiche fra di esse
+\item livello computazionale: le variabili diventano variabili di programma
+\end{itemize}
+per esempio in ssq lo stato è il numero di job nel sistema, per l'inventory system lo stato è la quantità di merci nel magazzino.
+\paragraph{Eventi}un evento è una occorrenza che può cambiare lo stato, per definizione lo stato può cambiare solo in presenza di eventi definiti per quel caso; ogni evento ha un suo tipo. Possiamo aggiungere agli eventi propri degli eventi artificiali, ovvero che non cambiano lo stato del sistema, ma che servono per scopi di simulazione, ad esempio un evento di campionamento per raccogliere le statistiche. Oppure, decidiamo che la simulazione deve essere un certo tempo $\tau$, quindi arrivati a quel tempo limite si chiude il processo degli arrivi; anche questo è un evento, ma aggiunto ai fini della simulazione
+\paragraph{Clock}orologio di sistema, i simulatori visti fin ora mancavano completamente del concetto di tempo. Qui, il tempo sarà il clock di simulazione
+\paragraph{Scheduler}meccanismo di avanzamento del tempo, nel nostro caso si segue l'ordine del tempo degli arrivi, l'orologio di simulazione passa dal tempo corrente a quello dell'accadimento del prossimo evento.
+\paragraph{Lista degli eventi}struct che mantiene tutti gli istanti di tempo di occorrenza dei prossimi eventi, uno per ogni tipo.
+\\\\ Per costruire un simulatore next-event occorre:
+\begin{itemize}
+\item individuare l'insieme di variabili di stato
+\item identificare i tipi di evento
+\item costruire un insieme di algoritmi che definiscono il cambiamento di stato per ogni tipo di evento
+\end{itemize}
+Algoritmo:
+\begin{itemize}
+\item inizializzazione: si impostano il clock e una prima occorrenza per ogni tipo di evento
+\item passo iterativo: si scandisce la lista degli eventi, scegliendo il primo, si aggiornano clock e stato
+\item schedulazione di nuovi eventi: un evento di arrivo genera un evento di completamento, se il primo va subito in esecuzione, che non è detto che sia il prossimo perché magari prima c'è un altro arrivo. Quindi si schedulano nuovi eventi se sono stati generati
+\item termina: il clock avanza finché non si arriva alla terminazione
+\end{itemize}
+quindi, il clock avanza in maniera asincrona.
+\subsection{Estensione del modello - multi-server}
+Da un punto di vista simulativo, a livello concettuale il multi-server è un centro con una coda singola (potrebbe non averla, ricordando l'M/M/m loss system) ed un certo numero di serventi che operano in parallelo. Quindi, per lo stato:
+\begin{itemize}
+\item ogni server può essere libero o occupato
+\item la coda può essere vuota o non vuota
+\item se ci sono dei job in coda, questi devono prendere servizio. Non è possibile avere server vuoti e code non vuote
+\item se ogni coda è vuota, allora tutti i server sono pieni
+\end{itemize}
+Abbiamo dato per scontato che la scelta del server libero è indipendente, ma nella simulazione potrebbe aver senso cercare di vedere cosa accade se i server sono diversi fra di loro e ci sia una politica di scelta del server libero:
+\begin{itemize}
+\item random
+\item in ordine, numeriamo i serventi paralleli
+\item cyclic, vengono scelti in ordine ma dopo l'ultimo si torna al primo
+\item equity, si usa il meno usato in modo tale da non sovraccaricare i server.
+\item priority, si sceglie il migliore server idle ma bisogna definire cosa vuol dire  "migliore"
+\end{itemize}
+\subsection{Esempi di simulatori next-event}
+\subsubsection{Single server queue}
+Lo stato è il numero di job nel centro al tempo t, $l(t)$. Nel tempo, lo stato varia per due eventi possibili:
+\begin{itemize}
+\item arrivo di un job, lo stato viene incrementato di 1
+\item completamento di un job, lo stato viene incrementato di 1
+\end{itemize}
+A livello di specifiche, la variabile di stato viene messa in relazione con $q(t)$ ed $x(t)$, che sono le altre variabili a livello di specifica. Quindi,
+\begin{itemize}
+\item se $l(t) = 0$, allora $q(t) = 0$ ed $x(t) = 0$
+\item se $l(t) > 0$ allora $q(t) = l(t) - 1$ ed $x(t) = 1$
+\end{itemize}
+Scegliamo di inizializzare lo stato $l(0)$ come valore non negativo, tipicamente pari a 0; lo stato terminale sarà un qualunque valore non negativo, assumiamo che al tempo $\tau$ il processo degli arrivi si fermi, in modo che i processi rimasti vengano evasi prima della terminazione per riportare il sistema allo stato finale come quello allo stato iniziale. Occorre usare una codifica per l'evento impossibile: ad esempio, per chiudere il processo degli arrivi, occorre denotare il processo come chiuso. In termini astratti, potremmo dire che un evento è impossibile se il suo tempo è $\infty$.\\ Nei due approcci, trace-driven e next-event, a parità di condizioni dobbiamo ottenere gli stessi risultati. Nel caso di ssq1 e 2, viene sempre generato un tempo arrivo e poi un tempo servizio, mentre nel caso del next-event non è detto che venga subito evaso un completamento dopo un arrivo, in quanto può darsi che il prossimo evento sarà un nuovo arrivo, occorre quindi avere un multi-stream. \\ Se ci fossero discipline di code diverse dalla FIFO, sarebbe utile avere una lista collegata per gestire le diverse politiche. Nel caso con coda finita, consideriamo ora un sistema con perdita, verifichiamo la saturazione nell'algoritmo nel momento in cui arriva un nuovo job.
+\subsubsection{Simple delivey system con delivery lag}
+Erano stati fatti i cambiamenti per introdurre il delivery lag, inoltre per ogni settimana veniva generato (o letto dalla traccia) un valore, che era globale per la settimana. Di fatto, il livello di scorte che parte da $l_{i-1}$ e che scende al valore $l'_{i-1} - d_i$ cala di un item alla volta, come se la domanda venisse spalmata per tutta la settimana. Un modello più realistico prevede di utilizzare un esponenziale di parametro $\frac{1}{\lambda}$ per i tempi inter-domanda, in questo modo la domanda sarà un processo di arrivo e la domanda media sarà $\lambda$ per ogni intervallo di tempo.
+\subsubsection{Multi-server}
+Il servente multiplo ha una coda ed m server paralleli. Lo stato è:
+\begin{itemize}
+\item il numero di job nel sistema al tempo t
+\item m variabili che si riferiscono allo stato del server 
+\end{itemize}
+Quali sono i tipi di eventi che possono cambiare lo stato del sistema:
+\begin{itemize}
+\item gli arrivi
+\item i completamenti, che stavolta sono m
+\end{itemize}
+il numero di diversi eventi sono quindi m+1. Facciamo sì che al tempo $\tau$ si spenga il processo degli arrivi, il sistema servirà i job presenti nel sistema per tornare allo stato iniziale. Per questo motivo, l'ultimo evento è sempre un completamento, mentre il primo è sempre un arrivo. Per semplicità consideriamo che i server siano tutti uguali e che la selezione del server venga fatta secondo equity, ovvero scegliendo il server meno utilizzato.
+\section{Feedback 1}
+\subsection{Distribuzioni heavy tail}
+Le distribuzioni esponenziali hanno diverse proprietà: consideriamo le distribuzioni a fasi esponenziali, in tutte quante le code vanno presto a 0, ovvero la probabilità dei valori grandi è estremamente piccola. Nella Pareto, anche la parte della distribuzione dei valori grandi ha delle probabilità non trascurabili, quindi le cose cambiano completamente.\\ Nella singola fase dell'esponenziale, la caratteristica principale è la memoryless, ovvero il failure rate è costante. Le distribuzioni con heavy tail hanno comportamenti opposti:
+\begin{itemize}
+\item più passa il tempo, meno è probabile che "la vita finisca", ovvero sono a failure rate decrescente.
+\item ad esempio, nella distribuzione di Pareto, la failure rate (ovvero la hazard rate function) è $e(x) = \frac{\alpha}{x}$, con $x > 1$. Quanto più la size x è grande, tanto più è piccola la frequenza di fallimento
+\end{itemize}
+Le heavy tail sono presenti in moltissimi aspetti:
+\begin{itemize}
+\item job Unix
+\item dimensione dei file web, con $\alpha \approx 1.1$
+\item topologia Internet: la maggior parte dei nodi ha un grado di uscita piccolo, pochi nodi hanno un grado di uscita molto grande
+\item n° di flussi di pacchetti IP: l'1\% dei flussi più grandi comportano il 50\% dei bytes della somma di tutti i flussi. Quindi, se indirizzo un flusso verso un certo routing, spostando solo l'1\% dei flussi più grandi si toglie una grande quantità di carico
+\item fenomeni naturali
+\end{itemize}
 \end{document}

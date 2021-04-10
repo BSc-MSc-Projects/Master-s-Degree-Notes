@@ -135,4 +135,76 @@ Per interagire con il DNS è possibile usare il comando \textsf{dig}. Per poter 
 \item trovare il nameserver
 \item effettuare \textsf{dig axsf} per far trasferire la copia della zona.
 \end{itemize}
+DNSRecon permette di automatizzare il reverse lookup, passando in input un range di indirizzi ip $<$startIp, endIP$>$, è possibile automatizzare anche il forward lookup.
+\subsection{Enumeration}
+Abbiamo una probabile lista di host, (nomi ed IP) che possiamo considerare come una probabile lista di punti di accesso. Una volta che abbiamo a disposizione un host (ci concentriamo su una macchina particolare), se sulla macchina c'è un server web allora ci sarà aperta la porta 80. Possiamo quindi interagire col server web che è in esecuzione sulla macchina, ma questa interazione è applicabile su tutte le macchine. La porta aperta lato server è sempre la stessa, una volta che il servizio è in esecuzione, mentre per il client viene scelta randomicamente dal kernel. Inoltre, per i servizi standard sono state documentate e raccomandate alcune porte (ad esempio la porta 80 per HTTP). Dobbiamo ancora raccogliere informazioni, siamo nella fase di raccolta attiva, per mappare un infrastruttura di rete è necessario scambiare pacchetti.
+\subsubsection{Scansione di porte - nmap}
+È un operazione effettuata anche dagli amministratori di rete, per vari motivi. L'utilità è sia lato attaccante che lato difensore, per effettuare la scansione tutti i tool devono usare TCP o UDP, spesso ci si concentra sulle scansioni TCP ma \textbf{NON DIMENTICARSI DI UDP:}può capitare di avere un servizio aperto su UDP che contiene informazioni importanti.\\ Nmap: standard del port scanning, molto robusto. Offre un risultato per una porta di 3 tipi:
+\begin{itemize}
+\item aperta: si completa una connessione TCP
+\item chiusa: riceviamo un pacchetto di RST
+\item filtrata: uno stato che viene assegnato quando il pacchetto inviato non riceve risposta
+\end{itemize}
+se non specifichiamo le porte su cui effettuare la scansione, nmap userà le 1000 porte più popolari. Nmap permette di specificare alcune opzioni, ad esempio il flag -S permette di spoofare il proprio indirizzo (ma per ricevere le risposte? Te la pii nder culo), l'opzione -D invece permette di specificare una lista di IP, ne verrà preso uno a cui inviare la risposta. In questo modo vengono ricevute le risposte ed è più difficile capire l'IP che effettua la scansione
+\paragraph{Basic firewall evasion}nmap cerca di capire se l'host è attivo oppure no, quindi per default manda un pacchetto di ping. Se l'host non risponde, per nmap è down e quindi non inizia la scansione delle porte. Magari sappiamo che non risponde per un motivo particolare, ad esempio se vengono bloccati i pacchetti di tipo ping da un firewall o dall'host stesso, è possibile specificarlo ad nmap col flag -P0.
+\paragraph{Gathering version info}per alcune porte è stato standardizzato il servizio per quella porta, ma non è vietato associare il servizio che si preferisce. Quindi, per conoscere il vero servizio e la versione del servizio dietro una porta, in quanto è utile per cercare vulnerabilità per la specifica versione. C'è il flag -sV che fa questo.\\ Di default, nmap esegue tutto l'handshake a 3 vie per connessioni TCP, questo da un punto di vista di monitoring può allertare, visto che è un grande traffico in poco tempo. Inoltre, quando viene effettuata una connessione, questa viene scritta sul log ed infine se la connessione viene instaurata ci sono le risorse allocate dal kernel nella RAM del server. Per questo, è meglio fare una scansione di tipo syn: se il server risponde syn ack, nmap manda un pacchetto di rst; se non risponde, la connessione è considerata chiusa. L'enorme vantaggio è che nei log del server non comparirà la connessione (in quanto non è mai stata creata), inoltre l'impatto sul traffico generato è molto ridotta e non vengono sprecate risorse sul server.
+\paragraph{Scansioni stealth}utile in quanto non si appare nel log dell'applicazione, da informazioni in più sul server, in quanto in caso di Windows la scansione stealth restituisce l'informazione che tutte le porte sono chiuse.
+\\\\ Se con nmap si prova a pingare una macchina in una sotto-rete diversa, è possibile effettuare una scansione di tipo ping: nmap, oltre ad effettuare il ping, manda anche un pacchetto TCP sulla porta 80 e se l'host è attivo risponderà con RST.\\ L'opzione di scan con l'ACK non restituirà mai una porta aperta, può solo dire se è filtrata o meno, È molto utile per scoprire se il pacchetto attraversa il firewall o IDS, in quanto ACK è un meccanismo di TCP (a differenza del SYN che instaura una connessione) e quindi un meccanismo poco sofisticato può farlo passare.
+\paragraph{OS fingerprint}nmap può scoprire il SO dell'host target. Vulnerabilità di Windows: ransomware "Wannacry" di tipo 0-interaction, ovvero una volta scoperto che il SO era Windows, si lanciava l'exploit ed avevamo una shell sulla macchina target. Quindi conoscere il SO è molto importante, anche da un punto di vista difensivo per poter documentare i SO degli host.\\ nmap ha due modi di scansione:
+\begin{itemize}
+\item attiva: manda diversi pacchetti, è più affidabile della passiva e più veloce
+\item passiva: monitoring del traffico, cerca pattern caratteristici dei SO
+\end{itemize}
+È prima necessario effettuare la scansione di alcune porte, restituisce diverse informazioni sulla versione del SO.\\\\ Per l'utilizzo, prima scansionare tutte le porte (salvando magari l'output su file), per poi partire con ricerche a grana più fine sulle singole porte trovate.
+\\\\ Ci sono alcuni script di nmap che sono più aggressivi, quelli che fanno parte della categoria default sono i meno aggressivi e che vengono lanciati in automatico con il flag -A o -sC. Per poter rientrare nella categoria default, lo script deve avere diverse caratteristiche. È possibile specificare quali script usare mediante gli operatori and or not etc..., basta passare come stringa, ad esempio "default and safe" ed inoltre è possibile passare parametri agli script.\\
+nmap ha degli script già pronti per alcune categorie, si possono usare in molti casi e riportano come informazione se il target è o meno vulnerabile.
+\subsubsection{SMTP enumeration}
+Per inviare e-mail in modo anonimo basta collegarsi ad un server SMTP che non gestisce autenticazione o autorizzazione. È possibile scrivere uno script nmap per fare questo controllo, quindi si prova ad inviare una e-mail (creando tutti i pacchetti del protocollo) per vedere se il server è vulnerabile o no.\\ SMTP di default non forza l'autenticazione, ma è possibile forzarla ed in particolare di autenticarsi come un possibile utente. SMTP chiederà la password se l'utente esiste, oppure chiederà una password. Immaginiamo di prendere una lista di utenti con SMTP, possiamo raccogliere questa una serie di informazioni per quel server.
+\section{Weaponization}
+Dopo la raccolta informazioni, ne cerchiamo di ulteriori per poter ottenere l'accesso. Avviene solo lato attacker: c'è l'exploit, così come anche il modo per sfruttarlo, ma non è ancora stato lanciato (avverrà nella fase successiva). Si parte dal servizio, che può essere mal configurato
+\subsection{Samba - SMB}
+Protocollo usato da Windows e Linux, permette lo scambio di cartelle e file, è abilitato di default su Windows. Negli anni è risultato molto vulnerabile, affliggeva tutte le versioni di Win fino ad XP, ma anche le successive se configurato male. Di default ascolta su porte 139 e 445 (TCP), una volta capito che su una macchina c'è Samba, si possono effettuare diversi tool per cercare le mal configurazioni, tutti si dividono in 2 categorie:
+\begin{itemize}
+\item tool che fanno la scansione di server Samba (come Enum4Linux)
+\item tool che si comportano come client Samba
+\end{itemize}
+un altro modo è quello di usare script nmap (iniziano sempre col nome del protocollo).
+\section{Vulenariblity assessment and penetartion testing}
+\subsection{Metasploitable}
+Metasploitable è una macchina virtuale Linux che presenta svariarti servizi volutamente vulnerabili (mal configurati etc) per esercitarsi. \textbf{ATTENZIONE:} è consigliato installare Metasploitable come VM con interfaccia host only e non bridged, in quanto altrimenti viene vista come una macchina nella rete (col relativo IP) e può essere usato da altri nella sotto-rete privata per accedere alla macchina host.
+\paragraph{NFS}protocollo per poter condividere file e cartelle in una rete, tra client e server. Se mal configurato, è possibile che un client acceda ad una cartella, montarla sul proprio file system e poter scrivere/leggere file. Di default, l'utente fornito da NFS è con pochi privilegi, ma c'è un opzione che fa si che una volta montato la cartella, non avviene l'impersonificazione come utente \textit{nobody}, bensì come utente con il quale è stato eseguito l'accesso dalla macchina, quindi è possibile leggere/scrivere come root.
+\paragraph{FTP}vulnerabilità sulla porta 21, associata ad una particolare versione: era stata aggiunta una backdoor alla compilazione del server FTP
+\\\\ È importante verificare il digest dell'hash associato ai file, in modo da avere una certezza sul fatto che il file scaricato è quello corretto.
+\subsection{Classificazione delle vulnerabilità}
+Tutte le vulnerabilità sono state classificate: ognuna ha un numero univoco che la identifica, il CVE\footnote{Common Vulnerability Enumeration}. Con il CVE è possibile ricercare le vulnerabilità per un particolare programma.
+\paragraph{CWE} Common Weakness Enumeration, che raggruppa le vulnerabilità in base alla debolezza. Questo è utile nella compilazione del report per andare a specificare il tipo di vulnerabilità. C'è anche un ranking delle CWE, stilata annualmente in base alle CWE trovate ed agli attacchi messi in atto. Può essere utile testare le vulnerabilità sul software proprio, per verificare che non siano presenti
+\paragraph{Attack patterns}
+(Common Attack Patterns Enumeration and Classification) È un dizionario che spiega, dato un attacco, come effettuarlo e come mitigarlo e risolverlo. Il CAPEC è un codice associato all'attacco, che permette di cercarlo, ma le stesse informazioni possono essere trovate in rete.\\\\ Per la ricerca della CVE, è possibile consultare diversi siti con DB di CVE, in cui è possibile effettuare ricerche in base a vari parametri. Una volta ottenuta la CVE, occorre trovare l'exploit per il CVE; siccome il DB è gestito dall'azienda di kali, è presente anche in kali stesso offline.
+\subsection{OpenVAS}
+Tool open source più usato per vulnerability assessment, specificando un host name su cui fare l'assessment. OpenVAS, oltre a verificare se sono presenti i CVE, fa anche altro in automatico ed è una cosa che solitamente si fa in un pen-test, in quanto questo permette di sfruttare, a partire dal report ottenuto, le possibili vulnerabilità.
+\section{Sicurezza di password}
+Metodo di autenticazione più utilizzato per l'accesso a dei servizi, è importante il tema della sicurezza delle password. Sono molto frequenti i data breach nel web, che consentono a vari gruppi di rivendere o di divulgare password o hash di password trovate nei data breach. Le password vengono usate per l'autenticazione, ovvero una prova del fatto che sono chi dico di essere (relativamente ad uno username), il segreto è conosciuto solo da me e dal servizio presso cui mi autentico. Il problema sta nel protocollo usato per l'autenticazione: se qualcuno si mette in mezzo, può leggere cosa scambio nel web, ma questo può essere risolto usando protocolli appositi come TLS. L'altro problema è come memorizzare le password, sia lato client che lato server: quando un utente si registra, un server memorizza un identificativo per l'utente, lo username e la password. Ci sono diversi problemi:
+\begin{itemize}
+\item il servizio può essere compromesso, quindi le informazioni saranno in chiaro. Una volta entrato in possesso della password in chiaro della password, è probabile che questa sia stata riusata per altri servizi (magari con leggeri cambiamenti)
+\item le password generate dagli utenti sono deboli
+\end{itemize}
+se la password è molto corta ($<$ 16 caratteri) diventa possibile un brute force attack, inoltre di solito l'entropia è bassa.\\ La soluzione per salvare una password prevede l'utilizzo di funzioni di hash. Oltre alle funzioni hash è possibile aggiungere del "salt" alle password, quindi l'hash sarà fatto sulla password unita a del salt.
+\paragraph{Password in Linux}le password vengono cifrate nel file \textsf{/etc/shadow}, utilizza il salt oltre che alla password, usando come algoritmo SHA-512. Quando si aggiunge un nuovo utente, sia nel passwd che nello shadow la password e lo username in passwd. Qualsiasi sistema che abbia necessità di memorizzare delle password utilizza salt.
+\subsection{John The Ripper}
+Dopo aver ottenuto le hash della password, non è possibile risalire alla stringa che ha generato il digest: dictonary attack, in cui creo un dizionario di password e ne faccio l'hash. Se trovo una corrispondenza, ho "trovato" la password (o magari una collisione). È la tecnica che viene usata spesso, può costare molto ma essendo off-line non ci sono restrizioni. 
+\\ John the Ripper è un tool che permette di crackare in diverse modalità le varie hash di password che possono servire. Inizialmente, è stato pensato per andare a testare la sicurezza della password (ad esempio per un sys admin), permette di utilizzare diverse modalità. Funziona su diverse piattaforme, la più interessante è quella CUDA (per il calcolo parallelo). Permette diversi modi di esecuzione:
+\begin{itemize}
+\item wordlist: prende in input la lista di hash da crackare, una lista di parole o informazioni relative all'utente per risalire alla password utente
+\item modalità single: in base ad informazioni dell'utente si cerca di crackare
+\item incrementale: modalità brute-force, può essere fattibile se fatto offline
+\end{itemize}
+tutte le modalità sono definite nel file john.conf
+\paragraph{Creazione del dizionario}per creare il dizionario da usare ci sono diverse possibilità:
+\begin{itemize}
+\item wordlist già esistenti (ad esempio su GitHub)
+\item cercare informazioni dell'utente targettato o del gruppo di utenti targettati
+\item ...
+\end{itemize}
+John the Ripper cerca di trovare la password o qualcosa di relativo alla password: spesso, partendo da una password si cerca di variarla in qualche modo (ad esempio con lettere, numeri al posto di vocali etc). È possibile quindi costruire dei pattern a partire da una parola (ad esempio "casa") in modo da ampliare il dizionario ed aumentare la percentuale di casi in cui si cracka la password. È anche possibile entrare in possesso dell'hash della password di una rete wireless: ci si mette vicino alla rete, si fa un dump dei pacchetti scambiati con il router da un utente e si ricava l'hash della password.
+\paragraph{Hashcat}"alter ego" di John teh Ripper, più funzionale per il cracking di hash utilizzando le GPU, permette di specificare delle maschere.
 \end{document}
