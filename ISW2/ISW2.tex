@@ -888,5 +888,12 @@ Considerazioni:
 \item fattore correttivo: per sopperire al fatto che alcuni core sono più economici di altri, questo fattore aiuta. Per i DB, molto spesso c'è un fattore dello 0.5, ovvero nel mondo x86 serve una licenza per 2 core, mentre in LinuxONE il rapporto è 1-a-1. Le VPC, che corrispondono a diversi core per i diversi ambienti, ci sistemano le cose.
 \end{itemize}
 Sarebbe possibile spalmare nel tempo l'acquisto dell'hardware, in modo che a seconda della crescita del business crescerà l'hardware della percentuale di crescita.
+\subsection{Q\&A}
+\paragraph{Sizing in base allo statistical multiplexing} Per lo statistical multiplexing, i mainframe LinuxONE possono essere consolidati a lavorare su diversi workload in modo da spingere l'utilizzazione al 70-80\%, mentre per sistemi x86 questo non è possibile, in quanto sono pensati per lavorare con un singolo workload. Quindi, una calibrazione più reale del sistema andrebbe fatta considerando:
+\begin{itemize}
+\item la media delle TPS per LinuxONE
+\item i picchi di carico per x86
+\end{itemize}
+inoltre, in analisi di TCO reali occorre anche fare riferimento all'utilizzazione media per andare a fare un dimensionamento più accurato, il che rende il tutto molto più complesso.
+\paragraph{NFR-6}nel NFR-6 veniva richiesto di effettuare un round completo di testing stressando il sistema ai picchi di carico. Per fare ciò, è necessario avere un ambiente di pre-produzione che abbia la stessa taglia dell'ambiente di produzione, quindi equivale a dire che pre prod = 100\% prod.\\ Spesso capita di calibrare il sistema per i FR e di fare stress test solo per la media dei carichi e non per i picchi.
 \end{document}
-\section{Q\&A}
