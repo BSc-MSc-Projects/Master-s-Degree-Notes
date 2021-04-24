@@ -180,8 +180,30 @@ Tutte le vulnerabilità sono state classificate: ognuna ha un numero univoco che
 \paragraph{CWE} Common Weakness Enumeration, che raggruppa le vulnerabilità in base alla debolezza. Questo è utile nella compilazione del report per andare a specificare il tipo di vulnerabilità. C'è anche un ranking delle CWE, stilata annualmente in base alle CWE trovate ed agli attacchi messi in atto. Può essere utile testare le vulnerabilità sul software proprio, per verificare che non siano presenti
 \paragraph{Attack patterns}
 (Common Attack Patterns Enumeration and Classification) È un dizionario che spiega, dato un attacco, come effettuarlo e come mitigarlo e risolverlo. Il CAPEC è un codice associato all'attacco, che permette di cercarlo, ma le stesse informazioni possono essere trovate in rete.\\\\ Per la ricerca della CVE, è possibile consultare diversi siti con DB di CVE, in cui è possibile effettuare ricerche in base a vari parametri. Una volta ottenuta la CVE, occorre trovare l'exploit per il CVE; siccome il DB è gestito dall'azienda di kali, è presente anche in kali stesso offline.
-\subsection{OpenVAS}
-Tool open source più usato per vulnerability assessment, specificando un host name su cui fare l'assessment. OpenVAS, oltre a verificare se sono presenti i CVE, fa anche altro in automatico ed è una cosa che solitamente si fa in un pen-test, in quanto questo permette di sfruttare, a partire dal report ottenuto, le possibili vulnerabilità.
+\subsection{Tool per vulnerability assessment}
+Tool open source più usato per vulnerability assessment, specificando un host name su cui fare l'assessment. OpenVAS, oltre a verificare se sono presenti i CVE, fa anche altro in automatico ed è una cosa che solitamente si fa in un pen-test, in quanto questo permette di sfruttare, a partire dal report ottenuto, le possibili vulnerabilità.\\ Armitage GUI, basato su Metasploit, è presente su kali: quando viene fatta la scansione della rete (usando una versione di nmap embedded), è possibile far partire gli exploit di Metasploit automaticamente, se si riesce ad ottenere l'accesso ad una shell, questa compare in basso.
+\subsection{Metasploit}
+Metasploit copre tutte le fasi dell'attacco cyber viste fin ora: dalla raccolta informazioni, al weaponization, all'exploit vero e proprio e poi alle operazioni di post exploitation. Il processo prevede:
+\begin{itemize}
+\item scansione dell'host
+\item primo accesso, mediante exploit o accesso con credenziali
+\item si fa privilege escalation
+\item si cercano informazioni, andando a fare il dump degli hash, che possono essere utili.
+\end{itemize}
+Metasploit aiuta in tutti questi step, è un framework estendibile presente in versione free su Kali. Alcune definizioni:
+\begin{itemize}
+\item vulnerabilità: una debolezza del sistema, che permette di effettuare un exploit
+\item exploit: attacco al sistema, che utilizza una vulnerabilità usando un payload
+\item un payload è un pezzo di codice che viene eseguito in un sistema vulnerabile, dopo avere exploitato tale vulnerabilità
+\end{itemize}
+Su Metasploit ci sono altri due concetti importanti:
+\begin{itemize}
+\item module: elemento chiave di Metasploit, se utilizziamo un exploit o qualsiasi alto tool questo è un modulo
+\item listener: moduli particolari, che permettono di mettersi in ascolto su una porta.
+\end{itemize}
+Oltre a tutto ciò ci sono le interfacce di Metasploit, sia GUI che da CLI (la più usata è questa).
+\paragraph{Auxiliary:}sono dei moduli usati per automatizzare dei task, ad esempio la scansione delle porte, uno script che controlla se è abilitato il login anonimo con FTP etc...
+\paragraph{Encoders:}permettono di cambiare il payload, in quanto ad esempio un anti-virus può essere in grado di rilevarla. Ci sono vari encoder su Metasploit, tra i più noti c'è Shikata\_ga\_nai che è polimorfico, ovvero preso in input il file, ne produce uno con byte differenti ma identico a quello di partenza (per fregare l'anti-virus).\\\\ Tra i tool più usati c'è Msfvenom, che permette di creare payload ed applicarci sopra qualsiasi encoding, restituendo l'output in molti formati diversi.\\ Prima di eseguire msfconsole, occorre eseguire postgresql con \textsf{systemctl}, poi eseguire \textsf{msfdb init} per inizializzare il DB di metasploit
 \section{Sicurezza di password}
 Metodo di autenticazione più utilizzato per l'accesso a dei servizi, è importante il tema della sicurezza delle password. Sono molto frequenti i data breach nel web, che consentono a vari gruppi di rivendere o di divulgare password o hash di password trovate nei data breach. Le password vengono usate per l'autenticazione, ovvero una prova del fatto che sono chi dico di essere (relativamente ad uno username), il segreto è conosciuto solo da me e dal servizio presso cui mi autentico. Il problema sta nel protocollo usato per l'autenticazione: se qualcuno si mette in mezzo, può leggere cosa scambio nel web, ma questo può essere risolto usando protocolli appositi come TLS. L'altro problema è come memorizzare le password, sia lato client che lato server: quando un utente si registra, un server memorizza un identificativo per l'utente, lo username e la password. Ci sono diversi problemi:
 \begin{itemize}
@@ -206,5 +228,90 @@ tutte le modalità sono definite nel file john.conf
 \item ...
 \end{itemize}
 John the Ripper cerca di trovare la password o qualcosa di relativo alla password: spesso, partendo da una password si cerca di variarla in qualche modo (ad esempio con lettere, numeri al posto di vocali etc). È possibile quindi costruire dei pattern a partire da una parola (ad esempio "casa") in modo da ampliare il dizionario ed aumentare la percentuale di casi in cui si cracka la password. È anche possibile entrare in possesso dell'hash della password di una rete wireless: ci si mette vicino alla rete, si fa un dump dei pacchetti scambiati con il router da un utente e si ricava l'hash della password.
-\paragraph{Hashcat}"alter ego" di John teh Ripper, più funzionale per il cracking di hash utilizzando le GPU, permette di specificare delle maschere.
+\paragraph{Hashcat}"alter ego" di John teh Ripper, più funzionale per il cracking di hash utilizzando le GPU, permette di specificare delle maschere, è inoltre più flessibile nella definizione delle regole.
+\\\\ \textbf{NB:}ai fini dell'esame, se per crackare un hash ci metti più di 5 minuti, vuol dire che hai sbagliato qualcosa (basta il dizionario rockyou).
+\paragraph{Cracking online}Hydra è un tool per il cracking delle password online: supporta moltissimi protocolli, possiamo passare una lista di username e di passwowrd e lui le tenta tutte.
+\subsection{Windows hashes}
+Su Linux, le password sono salvate come hash, usando anche un valore di salt. Al login, si fa l'hash della password passata e si confronta con l'hash salvato. Nel caso di Windows, un hash può essere importante tanto quanto lo è una password: Windows usa molti tipi di hash, ci sono 3 tipi generali
+\begin{itemize}
+\item LM: hash delle prime versioni, ma ancora oggi usato. È un hash function veloce da crakcare, le hash sono salvate in un file tipo \textsf{/etc/shadow}, che però si chiama \textsf{SAM}. Windows può essere installato installato in modalità domain, dove il db si chiama NTDS e si trova su una "macchina" speciale che è il Domain Controller. L'autenticazione è stata spenta da Win Vista.
+\item NTLM: nuovo tipo di hash, con cui Win10 salva gli hash sul DB. Facendo il dump del DB, non troviamo un hash, bensì hash:hash, tutto quello che viene prima dei 2 punti è l'hash LM, l'altro è l'hash NT. La cosa che sembra strana è che il salvataggio avviene due volte, non sempre in quanto spesso l'hash LM non è presente ma viene comunque chiamato NTLM.
+\item Net-NTLM: presente in due versioni v1 e v2, vengono usate in rete. IN particolare, quando avviene l'autenticazione tramite rete entra in gioco il protocollo NTLM, che è di tipo challenge-response: il server invia una challanege, uso la password per ottenere un hash della challenge, il server fa lo stesso e se coincidono, otteniamo l'autenticazione. Dalla versione v2 l'algoritmo è completamente differente e più difficile da crackare. Per rispondere al protocollo di C-R, il client prende la challenge, ne fa l'hash con la password e lo rimanda al server, che fa la verifica.
+\end{itemize} 
+per l'autenticazione su rete, avere anche solo l'hash della password va bene: se riusciamo a leggere il file SAM, possiamo impersonare gli utenti anche solo con l'hash. La response del client dovrebbe basarsi sulla password e sulla challenge, ma Microsoft ha deciso di calcolare la response basandosi sull'hash della password. Quindi, preso l'hash NT o LM, quella è la stringa che viene usata per calcolare la response. Quindi, anche conoscendo l'hash è possibile autenticarsi. Normalmente nel challenge-response è buona norma che sia il server a scegliere la challenge e che poi il client risponda, mentre su questi protocolli è il client che può scegliere la challenge. Se siamo loggati su Win, non è possibile accedere al file del database SAM, ma è possibile fare una copia di 3 file, che possono essere letti. È necessaria una sessione come SYSTEM (che ha permessi più elevati di ADMINISTRATOR), ma basta aprire una shell come ADMIN per eseguire i comandi. Ci sono dei programmi per fare ciò, tra cui Mimikatz, che viene però riconosciuto come pericoloso da Win.
+\section{Web Applications}
+All'interno della macchina target, c'è un applicazione a cui si può accedere e quindi a livello di rete il firewall fa passare le richieste in quanto l'utente può accedere. All'interno della stessa rete, possono esserci dei servizi a cui l'utente non può accedere, protetti dal firewall: a livello di rete il firewall garantisce che un attaccante non possa accedervi, ma spesso l'applicazione è sviluppata in modo custom e se non è sicura può permettere all'attaccante di accedere al resto dei servizi e delle infrastrutture che dovrebbero essere protette. Le applicazioni web sono molto diffuse e sono target di molti attacker, che le usano come punto per iniziare un attacco verso un servizio: il processo di ricerca di vulnerabilità di siti web viene automatizzato per poter essere scalato su altre app simili.\\ Le web app sono semplici da sviluppare, ma non dal punto di vista della sicurezza. I threats che possono esserci in una web app sono varie:
+\begin{itemize}
+\item information disclosure: segreti aziendali, informazioni finanziare etc
+\item perdita di dati: sovrascrittura di dati, modifica dei dati in modo da corromperne l'integrità
+\item denial of service (DoS)
+\end{itemize}
+La comunicazione nelle applicazioni web si basa prevalentemente su HTTP:
+\begin{itemize}
+\item GET: richiesta di risorse
+\item POST: si possono inviare nel body anche dei parametri
+\end{itemize}
+\subsection{OWASP}Ente che si occupa di promuovere lo sviluppo di web application sicure, stila una classifica di vulnerabilità presenti nelle web application periodicamente.
+\paragraph{Injection}Un esempio è la SQL injection: metto in una query di select, nella parte del where, di inserire una condizione sempre vera. Per mitigare questo tipo di threat, occorre sempre validare l'input utente. Inoltre, nel caso di SQL è possibile usare prepared statement e garantire privilegi minori agli utenti che accedono al DB.
+\paragraph{Malicious file execution}php permette di includere dei file all'utente, questo può portare all import di file malevoli e farli eseguire. Anche qui, una soluzione può essere validare l'input e permettere solo di includere risorse esterne.
+\paragraph{Broken authn  e session management}tecniche di session hijacking, come ad esempio eavesdropping se il canale non è protetto. Per poter risolvere ci sono varie strade, ad esempio generando nuovi session ID sul login, usare cookie per salvare i session ID.
+\paragraph{Cross Site Scripting}in relazione con la gestione della sessione delle autorizzazioni: la vittima non è più l'host, bensì gli altri utenti che vi si collegano. Lato utente, quando si comunica con HTTP viene eseguito del codice JS, se l'input dell'utente non viene validato, accade che quando altri utenti vi accedono il browser lo eseguirà (ad esempio, un forum che permette i commenti).
+\\\\ Spesso si arriva alla fase di exploitation o attraverso vulnerabilità di servizi oppure tramite il web. Attaccare una web app può significare molte cose, in particolare ci sono molti meccanismi che funzionano sul web e che permettono di ottenere un punto di accesso. Poiché una web app è solitamente composta da client e server, possiamo attaccare una delle due applicazioni: per il server ci sono:
+\begin{itemize}
+\item injection
+\item buffer overflow
+\item ...
+\end{itemize}
+mentre per il client:
+\begin{itemize}
+\item exploit del JS, che viene eseguito nel browser nel momento in cui si accede ad una web app.
+\item ...
+\end{itemize}
+possiamo iniettare dei contenuti malevoli nell'applicazione in modo che ogni client li esegua quando si connette all'app. Una volta ottenuto l'accesso tramite web, c'è la fase di privilege escalation, intesa sia come aumento dei privilegi lato web, ma anche sulla macchina in se nel caso in cui abbiamo ottenuto una shell sulla macchina (sia client che server). Tipicamente l'attacco client necessita di interazione, l'attacco lo si ottiene quando il client effettua un'azione, come ad esempio un click o l'accesso ad un sito web.
+\subsection{Web Enumeration}
+Raccolta informazioni su applicazioni web.
+\paragraph{Enumeration folder}per scoprire quali path esistono nel sito web, si fa una enumerazione di file e cartelle usando una wordlist, mandando delle GET e vedendo le risposte. Potrebbero esserci file che implementano una parte vulnerabile per la web app, oppure file e cartelle che nascono link. Tutti i tool si basano sulla risposta HTTP: a seconda del codice di risposta, otteniamo delle informazioni:
+\begin{itemize}
+\item 200: richiesta eseguita con successo
+\item 500: server è andato in errore per colpa sua
+\item 400: errore del server causato dal client
+\end{itemize}
+Un'altra informazione di cui avvalersi è il file robots.txt: veniva usato per dare istruzioni ai "robot" del web, ovvero che visitano ed indicizzano i siti web in automatico (come Google) per togliere dall'indicizzazione alcuni file. Lato attaccante, il file deve essere leggibile a tutti, quindi possiamo conoscere dei path che vengono o tolti dall'indicizzazione o aggiunti.\\ Ci sono 2-3 tool utilizzabili:
+\begin{itemize}
+\item Dirbuster
+\item Dirsearch
+\item Gobuster: più recente, scritto in Go e molto customizzabile
+\end{itemize}
+nell'implementazione di dirsearch o gobuster non viene fatta la ricerca ricorsivamente nelle cartelle che si trovano, quindi va fatta a mano. Per quanto riguarda le estensioni da cercare, ce e sono alcune che vale la pena cercare, molte non sono standard:
+\begin{itemize}
+\item con vim è possibile che venga creato un file di backup che termina con (tilde), quindi se quel file non viene cancellato, potremmo enumerare la versione .php(tilde) che quindi non viene eseguito dal server web, bensì restituito così com'è
+\item php con tutte le estensioni 3-4-5-7
+\item .asp, .aspx, .asmx
+\item .js
+\item .py, .cgi, .pl etc...
+\end{itemize}
+\paragraph{Parameter enumeration}in una richiesta HTTP ci sono parametri di GET o di POST, nel caso di GET vengono messo nell'URL mentre nella POST vengono messi nel body. In una GET, sia i parametri che il contenuto devono essere human readable, inoltre l'URL non può eccedere una certa taglia. Quindi, se abbiamo bisogno di flessibilità usiamo la POST. Da un punto di vista protocollare, la GET era pensata per essere idempotente, quindi che il server non cambiasse mai stato, mentre la POST ammette cambiamenti di stato, quindi ad esempio a seguito di un login avviene un cambiamento di stato. Una pagina in php potrebbe avere dei parametri e cambiare il funzionamento in base alla presenza o meno del parametro. Il programma wfazz prende come input un punto della richiesta HTTP, una wordlist e sostituisce in quel punto ogni parola della wordlist; il punto in cui fare fuzzing viene identificato con la parola \textit{FUZZ}. wfuzz non sa quando una richiesta restituisce un valore corretto o no: si può tentare con trial and error
+\subsubsection{Bruteforcing}
+Può rendersi necessario dover effettuare il brute forcing di un form di login web, uno dei tool che si possono usare è hydra: per capire quando il login è fallito o ah avuto successo è possibile specificare un parametro nel comando, viene usato più spesso il messaggio di insuccesso.
+\subsection{Command injection}
+Il solito problema, non esclusivo delle web application, è che occorre prendere dati dall'utente. Bisogna controllare che i dati siano validi, che non implicano problemi di sicurezza, ovvero che non sta cercando di iniettare qualcosa che non siamo pronti a gestire, perché nel momento in cui viene passato qualcosa di non previsto nel flusso dell'applicazione e viene usato per comandi su shell, query SQL etc..., messo così com'è si rischia di incorrere in problemi di injection. Le command injection avvengono nel momento in cui provo a prendere i parametri dall'utente e li uso come comando su shell, o nell'interprete con cui è sviluppata l'applicazione, e permettono di eseguire comandi arbitrari.
+\subsubsection{Common gateway interface}ormai vecchie, anche se è ancora in uso. È un modo per sviluppare una web app usando un qualsiasi linguaggi di programmazione in back-end: si sviluppava l'app, si abilita il modulo di apache e si mette nella cartella apposita lo script e poi viene presentata al client come HTML. La parte dinamica di acquisizione input è lato back-end, l'utente passa i parametri e sta chiamando uno script scritto in qualche linguaggio, che viene eseguito dal server e restituisce una pagina (html) al client. Gli script sono cgi, ovvero scritti in diversi linguaggi che possono esser perl, bash etc..., cambia l'environment in cui lavora il back-end ed è importante capire questo: in base all'environment, ci sarà la possibilità di fare diverse cose dal punto di vista di attacco.\\ Ormai non è più usato, se non per piccoli dispositivi embedded, ad oggi si trovano web-app scritte in php, Java, python + nodeJS etc... Dal punto di vista di command injection non cambia nulla, in quanto la necessità di prendere input dall'utente può sempre essere necessario.
+\subsubsection{Come fare command injection}
+Immaginiamo di avere uno script bash, che fa il cat di un file e l'output viene mandato col comando mail ad un indirizzo passato come input al programma. Nel mondo web, ci sarà uno script cgi che fa una cosa simile nel back-end, cosa può succedere: lo script può essere usato per passare dei file internamente, qualcuno lo mette in un web service come cgi script. Se mi rendo conto che sto facendo questa cosa che l'environment è bash, questo permette di concatenare i comandi e quindi potrei mandare come input una mail e passare qualcosa come ;id questo diventa un problema. Quindi, posso manipolare il flusso dell'applicazione facendo eseguire \textbf{in back-end} dei comandi arbitrari.\\ Tra i linguaggi più diffusi per scrivere il back-end c'è php, che permette di scrivere in una pagina web del codice che permette di renderizzare il contenuto in base all'utente. Il problema del php, come anche di altri linguaggi, è che ci sono delle procedure che eseguono i comandi inseriti all'interno del server stesso:
+\begin{itemize}
+\item exec()
+\item shell\_exec()
+\item passthru()
+\item ...
+\end{itemize}
+quindi se una pagina web contiene qualcosa del genere, è rischioso in quanto i parametri possono essere direttamente eseguiti su shell. Il problema è che se non viene validato l'input, magari il path utente è alterato ed include, ad esempio, comandi concatenati. Quindi, quello che si fa lato attacker è sfruttare la situazione per prendere informazioni, fare una reverse shell etc... Le web app possono essere protetti dai Web Application Firewall (WAF) che sono programmati per cercare di filtrare i comandi passati con "\& | ;" etc... Per poter aggirare questo problema, possiamo sfruttare altri aspetti del linguaggio.
+\subsubsection{Mitigazione di command injection}
+Per poter mitigare il caso in cui è possibile mitigare una command injection è la validazione e sanificazione dell'input:
+\begin{itemize}
+\item nel momento in cui il parametro va usato per qualsiasi cosa (per prendere un file, fare query etc...) bisogna verificare che rientri in quello che ci aspettiamo: se mi aspetto un input un IP addr, devo ricevere solo un IP addr
+\item se ho ricevuto l'input corretto, ma magari ci sono delle cose che non tornano, come le virgole al posto dei punti in un IP, posso sostituirli con dei punti
+\item per parametri non standard, si cercano tutti i caratteri che rimandano ad un possibile attacco o che possono inficiare il comando, tramite regexp, whitelist (la stringa contiene solo caratteri che nella lista) o blacklist (non sono presenti i caratteri della lista)
+\item un altro modo per mitigare i problemi è limitare i privilegi
+\end{itemize}
+
 \end{document}

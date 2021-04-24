@@ -11,7 +11,10 @@
 }
 
 \title{Ingegneria del software II}
+\author{Pierciro Caliandro}
+\date{}
 \begin{document}
+\maketitle
 \Large
 \tableofcontents
 \section{Modulo I - Machine Learning for Software Engineering}
@@ -102,7 +105,7 @@ Una volta trovato un progetto, è possibile selezionare il tipo di ticket da cer
 Quando vedo un commit per un ticket di tipo bug, che ha toccato 3 classi, so che quelle 3 classi prima del commit erano buggate prima del commit. Con il blame so qual è il commit preciso che ha prodotto un determinato stato di una riga. In generale, la predizione dei difetti cerca di individuare quale artefatto software è più propenso a mostrare difetti: ci mettiamo nei panni di chi deve testare la release finale (molte classi) per capire quale classe è opportuno testare. Vorremmo una stima di quanto una classe è probabilmente buggy, per ordinarle in modo crescente (per probabilità).\\ Prima di poter fare delle stime, è necessario misurare cosa stimare: quando si fa una predizione: un conto è farla binaria, un altro è se vanno predetti dei numeri. Quest'ultima è estremamente più complessa di quella binaria.\\ esempio: supponiamo di dover predirre il meteo, a seconda del fatto che io dica che piove o no, o che piove 20 cl. Non ho alcune informazioni, ad esempio se piove più o meno di 20 cl o in media 20 cl. Potrei avere predizioni diverse per giorni diversi. Bisogna fornire \textbf{un grado di confidenza} (e quindi intervallo di confidenza), in modo da rendere la previsione più comprensibile. L'approccio del Machine Learining consiste nell'utilizzo dello storico dei dati: ad esempio per il meteo posso avere delle misure storiche che mi aiutano a stimare le previsioni per un determinato giorno, in base a misure passate che hanno avuto lo stesso risultato conseguente. Quindi per predirre il comportamento di una classe in futuro, devo poter conoscere il suo comportamento passato e quindi le misure passate.\\ Il progetto è un insieme di classi, ho varie revisioni e varie release (o versioni): alcune classi evolvono durante il tempo, che è diviso in versioni, ed ogni tot revisioni (che corrisponde ad un commit) ho delle release.
 \subsection{Difetti dormienti}
 Per definire un classe difettosa, questa deve contenere un bug. Il problema è che per capire se una classe è o meno difettosa bisogna avere come input i bug: in base a questo, troviamo il commit che ha eliminato il bug, che tocca delle classi che quindi erano bug. È possibile che un difetto sia scoperto ed eliminato diverse release dopo la sua introduzione: è stato introdotto nella release 1.0 ed eliminato nella 3.2, ma quando ero in release 3 non avendo fatto il fix del bug non ne conoscevo l'esistenza e non conoscevo le classi che lo contenevano.\\ L'esistenza di un difetto non può essere nota prima che questo sia eliminato, abbiamo diverse versioni.\\
-\\
+\includegraphics[scale=0.4]{images/AV-isw2.png}\\
 le affected version (AV) sono quelle affette dal bug, la AV è definita come la injected version (IV) inclusa e la fixed version (FV) esclusa, ho anche la open version (OV), ovvero quando il ticket è stato aperto. Il problema è capire qual è la IV, ovvero quando il bug è stato introdotto.\\
 Se ho creato il ticket in un certo intervallo temporale, non sapevo quale classe aveva bug. Abbiamo un commit, che ha come commento il fix di un bug relativo ad un ticket e possiamo scoprire quale riga aveva un bug; inoltre, sappiamo che la versione successiva a questa non abbiamo più il bug.\\ Ci accorgiamo di due problemi:
 \begin{enumerate}
@@ -144,12 +147,39 @@ $C_2$ & I & N & F\\
 $C_3$ & II & F & F\\
 \hline
 \end{tabular}\\\\
-Può accadere che sono in una release in cui non ho fatto il fix di un difetto introdotto in quella precedente, quindi non ne conosco l'esistenza. Quindi, quando parte il balme, questo mi classifica la classe come non buggy. Tutte e tre le classi della tabella, in release 2 sembrerebbero non buggy se la misurazione venisse fatta in release II, diverso se fatta nelle altre release: quindi, cambia lo stato a seconda di quando avviene la misurazione.\\ Più la release è recente, più c'è il problema che alcune classi mi sembrano non buggy anche se lo sono. Quindi, le release che è più probabile che abbiano bug dormienti: se sono in release i, le ultime mi sembrano tutte non buggy, perché magari li troverò dopo mesi. C'è il problema di capire se si possono usare i dati di queste release. Il numero di bug nelle release è decrescente, in quanto c'è il problema dei bug dormienti; la predizione fa sempre riferimento alla coppia (classe, release), NON VANNO CONSIDERATI QUELLI PRECEDENTI
+Può accadere che sono in una release in cui non ho fatto il fix di un difetto introdotto in quella precedente, quindi non ne conosco l'esistenza. Quindi, quando parte il balme, questo mi classifica la classe come non buggy. Tutte e tre le classi della tabella, in release 2 sembrerebbero non buggy se la misurazione venisse fatta in release II, diverso se fatta nelle altre release: quindi, cambia lo stato a seconda di quando avviene la misurazione.\\ Più la release è recente, più c'è il problema che alcune classi mi sembrano non buggy anche se lo sono. Quindi, è più probabile che le release abbiano dei bug dormienti: se sono in release i, le ultime mi sembrano tutte non buggy, perché magari li troverò dopo mesi. C'è il problema di capire se si possono usare i dati di queste release. Il numero di bug nelle release è decrescente, in quanto c'è il problema dei bug dormienti; la predizione fa sempre riferimento alla coppia (classe, release), NON VANNO CONSIDERATI QUELLI PRECEDENTI
 \subsection{Snoring}
-Concetto importante nella misurazione dei difetti nelle classi: ho positivi e negativi, il positivo è la classe buggy. Parlo di falso positivo quando la classe mi sembra buggy e non lo è. Il problema è un falso negativo, in quanto la classe mi sembra non defective, quando in realtà lo è. Questo perché la misurazione avviene (ad esempio tramite SZZ) considerando i bug non ancora eliminati.\\ Una classe è snoring se la classe ha uno o più bug di tipo dormiente, una classe in realtà è snoring se sembra non buggy,ma in realtà lo è.\\ Con riferimento alla tabella sopra, nella release 1 le prime due classi mi sembrano non defective, la classe 3 mi sembra defective, in quanto per fare la misurazione sto nella release successiva, quindi avendo un fix la release precedente mi sembra defective. (vedi tabelle slides)\\
+Concetto importante nella misurazione dei difetti nelle classi: ho positivi e negativi, il positivo è la classe buggy. Parlo di falso positivo quando la classe mi sembra buggy e non lo è. Il problema è un falso negativo, in quanto la classe mi sembra non defective, quando in realtà lo è. Questo perché la misurazione avviene (ad esempio tramite SZZ) considerando i bug non ancora eliminati.\\ Una classe è snoring se la classe ha uno o più bug di tipo dormiente, una classe in realtà è snoring se sembra non buggy,ma in realtà lo è.\\ Con riferimento alla tabella sopra, nella release 1 le prime due classi mi sembrano non defective, la classe 3 mi sembra defective, in quanto per fare la misurazione sto nella release successiva, quindi avendo un fix la release precedente mi sembra defective.\\\\
+\begin{minipage}[t]{0.5\textwidth}
+\begin{tabular}{ |c|c|}
+\hline
+Classes & $r_1$\\
+\hline
+C1 & ND\\
+\hline
+C2 & \textbf{ND}\\
+\hline
+C3 & D\\
+\hline
+\end{tabular}
+\end{minipage}%
+\begin{minipage}[t]{0.5\textwidth}
+\begin{tabular}{ |c|c|c|c|}
+\hline
+Classes & $r_1$ & $r_2$\\
+\hline
+C1 & ND & D\\
+\hline
+C2 & \textbf{D} & D\\
+\hline
+C3 & D & D\\
+\hline
+\end{tabular}
+\end{minipage}%
+\\\\
 Domande di ricerca che provano a capire:
 \begin{itemize}
-\item per quanto tempo le classi dormono
+\item per quanto tempo le classi "dormono"
 \item per quanto tempo le classi sono snoring
 \item lo snoring impatta la misura delle stime fatte?
 \end{itemize}
@@ -164,12 +194,14 @@ Ci son due concetti importanti in Machine Learing:
 \item training set: dati con cui viene costruito il modello
 \item testing set: dati che vengono usati per misurare la correttezza del modello
 \end{itemize}
-una parte dei dati non verranno usati (unused data). L'accuratezza della stima, sullo stesso modello migliora considerando le release sempre più avanti nel futuro, ma non è possibile aspettare troppo. Lo step successivo è chiedersi, dato che si sa che lo snoring cresce al crescere delle release, se il modello non prende in considerazione le ultime release migliora la qualità della perdizione, ovvero avere meno dati è meglio che avere dati con snoring: togliere l'ultima release da dei dati talmente snoring che è conveniente non usarla, ma dipende dal tipo di modello che si usa: dipendentemente dal fatto che si vuole aumentare la precisione di uno o più modelli, occorre togliere più o meno release. Esistono poi classificatori che sono più o meno robusti allo snoring.\\ Ultime considerazioni
+una parte dei dati non verranno usati (unused data). L'accuratezza della stima, sullo stesso modello migliora considerando le release sempre più avanti nel futuro, ma non è possibile aspettare troppo. Lo step successivo è chiedersi, dato che si sa che lo snoring cresce al crescere delle release, se il modello non prende in considerazione le ultime release migliora la qualità della perdizione, ovvero avere meno dati è meglio che avere dati con snoring: l'ultima release da dei dati talmente snoring che è conveniente non usarla, ma dipende dal tipo di modello che si usa: dipendentemente dal fatto che si vuole aumentare la precisione di uno o più modelli, occorre togliere più o meno release. Esistono poi classificatori che sono più o meno robusti allo snoring.\\ Ultime considerazioni
 \begin{itemize}
 \item togliere una release è sempre meglio che non toglierne per l'accuratezza
 \item rimuovere 3-4 release è sempre peggio che toglierne una
 \end{itemize}
 rimane come questione se toglierne una o due.
+\subsubsection{Rimozione di release dal dataset}
+Cosa succede se "fotografiamo" la situazione degli stessi dati in punti di vista (release) differenti: vediamo la situazione dopo il training set, e cerchiamo di stimare il testing set. A seconda della porzione di training set che osservo, avrò dei risultati differenti: voglio trarre delle considerazioni come ad esempio il modello o la tecnica più accurata per fare predizioni, mi occorrono quindi dei dati affidabili, per fare questo buttiamo l'ultima metà dei dati, che so che sono poco affidabili. Se voglio trarre delle conclusioni da un punto di vista scientifico, sono in una soluzione in cui non vedo snoring, è utile per fare ragionamenti sulla bontà del modello. Da un punto di vista pratico vado a considerare il training set in diversi punti  e quindi avrò un certo snoring nei dati.
 \section{Leveraging defects}
 Non usiamo SZZ, ma un altro meccanismo: si parte sempre dal presupposto che il bug sia stato versionato da un commit in Jira e che ci sia un ticket a riguardo. Una volta che sappiamo quale riga di codice è stata cambiata per risolvere un bug, sappiamo allora che quella era buggy. Ci sono però tutti i problemi introdotti con SZZ: un fix può essere dovuto ad un refactoring, inoltre occorre capire quali revisioni e versioni del codice erano buggy. Se non riusciamo a classificare una release come buggy o non buggy non posso creare il dataset per le stime.\\ La predizione dei difetti cerca di identificare gli artefatti software che esibiscono un difetto, il vantaggio è quello di ridurre il costo del testing e della code review.\\ Quindi, il lavoro si focalizza sulla creazione di un dataset per poter fare le predizioni. Per fare un ranking delle classi come defective o non: facciamo il \textbf{labeling} di una classe in una release, occorre identificare in maniera separata le due classificazioni:
 \begin{itemize}
@@ -201,10 +233,13 @@ Assumiamo di non avere l'AV, come facciamo a stimare: sappiamo che l'AV è un in
 \end{itemize}
 Ci sono i concetti fondamentali:
 \begin{itemize}
-\item true positive: 
-\item true negative: classificazione corretta, che mi ha classificato una versione come non-defective.
+\item positivo (TP): la versione è misurata come difettosa e viene marcata come difettosa
+\item negativo (TN): versione misurata come non difettosa ed etichettata come non difettosa
+\item false positive (FP): versione misurata per essere non difettosa, ma etichettata come difettosa
+\item false negative (FN): versione misurata per essere difettosa ma etichettata come non difettosa
 \end{itemize}
-(vedi slides). Per la maggior parte dei classificatori, il metodo proportioning è migliore di SZZ, tranne che per la recall (molto affetta dai FP).\\ Qual è la relazione fra l'accuratezza della misurazione e quella della stima: nella predizione usiamo delle caratteristiche come dati di input, una volta creati i dataset per fare ciò, possiamo usarli per fare analisi di correlazione. Ci sono varie metriche che possono essere usate per relazionarle alla buggyness.
+Per la maggior parte dei classificatori, il metodo proportioning è migliore di SZZ, tranne che per la recall (molto affetta dai FP).\\ Qual è la relazione fra l'accuratezza della misurazione e quella della stima: nella predizione usiamo delle caratteristiche come dati di input, una volta creati i dataset per fare ciò, possiamo usarli per fare analisi di correlazione. Ci sono varie metriche che possono essere usate per relazionarle alla buggyness.
+\paragraph{Linee guida generali:}se in un ticket di Jira ci sono buchi nelle AV (ad esempio non si sa cosa c'è nel mezzo) o tra AV e FV, si può procedere in questo modo: si imposta la IV come la prima AV e tutte quelle che $\in [IV, FV)$ sono AV.
 \subsection{Problematiche nel mining Github}
 Abbiamo visto come analizzare i difetti e prendere determinate decisioni. Github è attualmente la codebase più grande del mondo, quindi l'abbondanza dei dati semplifica il problema di collezione dei dati e del processamento. Le analisi possono essere scorrette, ci sono delle difficoltà che possono alterare le conclusioni se i dati sono stati analizzati male o se i dati sono scorretti; ci sono delle difficoltà
 \paragraph{Repository != project}il repository non corrisponde sempre 1-a-1 con un progetto: se è un fork, il commit non appare nella storia del repository principale, ma solo in quello dove il commit è originato. Quindi, per andare a vedere la storia id un progetto occorrerebbe analizzare (in teoria) tutti i fork del repository. Il progetto è dato dal repository base + tutti i fork.
@@ -221,7 +256,113 @@ Per poter predirre lo stato di una classe come buggy o meno, occorrono dei dati 
 \item LOC touched, più ne ho toccate più è probabile che ci sia un bug
 \item age della classe (in settimane)
 \end{itemize}
-Una release è fatta da più revisioni e quindi da più commit, quando si parla di numero di autori, ci si riferisce a quelli della singola release. Avendo diversi commit si possono usare diverse statistiche come massimo, media, mediana etc... ma avere una release in cui ho cambiato un numero più variabile di righe è diverso da avere una relase in cui i cambiamenti dei commit sono più stabili.\\ Ci sono 16 metriche principali: ne vanno scelte 12, considerando solo i file java ed ignorando la seconda metà delle release (misurate nel tempo).
+Una release è fatta da più revisioni e quindi da più commit, quando si parla di numero di autori, ci si riferisce a quelli della singola release. Avendo diversi commit si possono usare diverse statistiche come massimo, media, mediana etc... ma avere una release in cui ho cambiato un numero più variabile di righe è diverso da avere una relase in cui i cambiamenti dei commit sono più stabili.\\ Ci sono 16 metriche principali: ne vanno scelte 12, considerando solo i file java ed ignorando la seconda metà delle release (misurate nel tempo). Ogni colonna del dataset verrà calcolata con uno script apposito, considerando \textbf{tutti} i commit e usandoli in maniera differente in base alle necessità.
+\section{Introduzione al Machine Learning}
+Il ML è lo studio degli algoritmi che migliorano la loro performance nel fare qualcosa mediante l'esperienza: più aumenta l'esperienza e più il grado di accuratezza migliora. In generale, il ruolo della statistica è quella di inferire delle teorie a partire dai dati, il ruolo del ML è quello di offrire algoritmi efficienti per valutare un modello di inferenza.
+\subsection{Esempi di utilizzo}
+Ci sono diversi ruoli del ML, come ad esempio il riconoscimento: può esserci un'identificazione puntuale, oppure applica dei meccanismi di ML che usa dei criteri di \textbf{similitudine}, qualsiasi sia l'algoritmo questo non è preciso\\ Per apprendere si usano diversi meccanismi, come ad esempio la probabilità condizionata: posso usare uno storico di dati per poter fare delle analisi di questo tipo.\\ Uno dei problemi principali è quello di definire il livello di rischio nel fare prestiti/assicurazioni ai clienti.
+\subsection{Modello di ML}
+La prima differenza da fare è fra training set e testing set:
+\begin{itemize}
+\item il training set è utilizzato per allenare il modello
+\item il testing set è usato per valutare le predizioni che vengono fatte dal modello
+\end{itemize}
+il ML può fare, oltre che recognition, stime e predizioni: le stime si usano per valori non misurabili, mentre le predizioni sono fatte per il futuro. Indipendentemente dal fatto che sia una stima o una predizione, possiamo usare un approccio lineare applicando regressioni lineari. Esistono diverse tipologie di apprendimento:
+\begin{itemize}
+\item apprendimento supervised: la più usata. È supervisionata, ovvero il valore che andiamo a stimare è presente nel training set
+\item apprendimento unsupervised: la variabile non è nel training set, si possono fare analisi di correlazione o cluster analysis
+\item apprendimento sem-supervised: a metà fra i primi due
+\item apprendimento reinforcement: va a vedere la sequenza delle azioni, piuttosto che il set di azioni.
+\end{itemize}
+\subsubsection{Supervised learning}
+La cosa più semplice è fare una regressione lineare: date delle coppie $(x_1, y_1)$, $(x_2, y_2)$, ... usiamo x per predire y in modo da identificare la retta ottimale. Se la variabile è \textbf{categorica}\footnote{vedi la differenza con variabili numeriche, ordinali}, ovvero variabili che non hanno nemmeno ordini, si può utilizzare un classificatore o predittore. In molti modelli, non è possibile stimare variabili ordinali.
+\subsubsection{Unsupervised learning}
+Permette solo di creare dei cluster, ad esempio raggruppare individui in base al corredo genetico, organizzare cluster di hardware etc...
+\subsection{Data mining ed etica}
+Ci sono vari aspetti di etica da considerare nel momento in cui si utilizzano i dati come ad esempio la discriminazione: il problema è la differenza fra correlazione e causalità: la correlazione è un grado di legame fra due elementi, la causalità invece risponde alla relazione di causa-effetto. Risulta difficile discernere il fatto che un afro-americano ha più probabilità di commettere un reato dal suo colore della pelle. Se ad esempio una macchina a guida autonoma si trova ad un bivio etico (ad esempio andare su un muro o investire due pedoni), come si comporta? Le specifiche di un modello di ML impongono gli obiettivi del modello, quindi di solito il modello viene creato per ottimizzare l'obiettivo, ma diverso è lo studio degli obiettivi. Dal  punto di vista etico c'è una grande tensione fra efficacia ed etica.
+\subsection{Terminologia}
+Ci sono dei concetti importanti:
+\begin{itemize}
+\item attributi (feature): le colonne del file CSV
+\item istanze: osservazioni di un determinato attributo, ovvero la cella del CSV (o l'intera riga)
+\end{itemize}
+l'ultima colonna è sempre cosa si vuole stimare. L'output del modello può essere in diverse forme: se do un file CSV ad un modello lineare, l'output sarà una retta con determinate caratteristiche. Un modello allenato dato un input fornisce un output: una volta fatto il learning troviamo la retta nel modello lineare e dopo avere dato gli input otteniamo la retta di output. Se abbiamo diversi attributi di qualità, se questi sono categorici (nominale o ordinale) è difficile creare una funzione che li metta insieme. Quindi, ogni volta che vanno messi insieme dei concetti, visto che l'unione non è formalmente definita, si può usare lo storico per capire come farlo.
+\section{Weka}
+Tool con GUI per ML, scritto in Java e distribuito in maniera open source. Ha a supporto un libro, ha come main feature un set di tool per il processamento dati, una GUI, un modo facilitato per comparare i diversi algoritmi.
+\subsection{Input}
+L'input può essere un file .CSV oppure un file ARFF: l'ARFF contiene un file CSV al suo interno, ha inoltre un intestazione che spiega il contenuto e la tipologia dei dati. Quando faremo la stima e ne specificheremo l'accuratezza, occorrerà definire se l'attributo class debba essere present o not present. Quindi, una volta creato il file .csv, conviene creare il file ARFF per Weka. Per trovare tutti i possibili valori di una colonna possono essere trovati via Excel. 
+\section{Valutazione e metriche - Data mining}
+Dopo aver visto come usare i modelli ed i classificatori di ML, occorre capire come valutarli: la valutazione è la chiave per il successo, permette di capire quanto un modello è buono.\\ Spesso, vista la numerosità dei modelli, è necessario prima valutarlo per poterlo scegliere, inoltre per ogni modello esistono vari parametri. Diventa importante capire quanto i modelli sono accurati, in quanto in base a questo può cambiare l'utilità del modello. Per validare un modello che fa delle stime, si usano i dati del passato: 
+\paragraph{Assioma:}la valutazione del modello viene fatta sulla base dell'accuratezza futura, ma si basa sull'accuratezza che avrebbe avuto sui dati del passato.\\\\ Bisogna capire come usare i dati del passato: ne viene fatto lo \textbf{split} in:
+\begin{itemize}
+\item training set, che verrà usato per creare il modello (allenamento)
+\item testing set, per testare il modello 
+\end{itemize}
+Indipendentemente dallo split che si fa, diventa importante cosa viene misurato dopo, o come viene misurata l'accuratezza. Esistono delle metriche di accuratezza che sono indipendenti dalle tecniche di valutazione e di validazione. Se abbiamo un modello che fa una stima, una prima metrica è misurare quante volte è corretto, o meglio errato, si parla quindi di error rate e success rate.
+\subsection{Training e testing}
+Il test set è l'insieme di istanze indipendenti non usate nel training set. Ad esempio, se abbiamo i dati di due città, ne useremo una per il training del modello ed una per il testing. È importante massimizzare l'utilizzo dei dati, ma c'è un duplice problema:
+\begin{itemize}
+\item più grande è il training set, migliore sarà la predizione
+\item più è grande il testing set, meglio è. Questo perché se abbiamo pochi dati potremmo avere degli outlayers o dei dati più facili da stimare, mentre con un testing set ampio l'impatto della componente random è ridotto. Più il sample è grande e più è rappresentativo per la popolazione
+\end{itemize}
+Il problema è che i dati sono in quantità finita, occorre quindi capire il giusto compromesso (è quindi un problema ingegneristico).\\ Vorremmo idealmente sia training che testing set infiniti, ed in più che i due insiemi siano ad intersezione nulla.
+\subsubsection{Holdout}
+Un primo approccio che si può applicare è quello dell'holdout: ho un certo numero di osservazioni, ne trattengo una parte, ad esempio $\frac{1}{3}$ per il testing ed uso il restante $\frac{2}{3}$ per il training. Quello che può accadere è che alcuni valori possono rimanere fuori da training set o dal testing set, una cosa da tenere ben presente è che bisogna avere una porzione rappresentativa dei valori della variabile da stimare.
+\paragraph{Stratification:} i due insiemi hanno la stessa proporzione di dei valori della variabile sotto stima. È una tecnica di complementazione per l'holdout.\\\\ Un altro problema è che nell'effettuare lo split, potremmo essere sfortunati, avendo ad esempio tutti gli outlayer nel testing set.
+\subsubsection{Repeated holdout}
+In questo approccio, vengono eseguiti più round di holdout, in cui si usa la stratificazione, cambiando le parti di dati usate per testing e training. Viene massimizzato l'uso dei dati, in quanto questi vengono riutilizzati molteplici volte, ma c'è sempre un fattore random, in quanto alcuni dati potrebbero essere usati più volte nel training piuttosto che nel testing. Vorremmo quindi poter inibire questo fattore casuale, facendo in modo che ogni dato venga utilizzato lo stesso numero di volte sia in training che in testing set.
+\subsubsection{k-fold cross-validation}
+Definiamo k sottoinsiemi per i dati, usandone sempre una parte per training ed una per testing set, tutti i k sotto-insiemi son stratificabili. Alla fine, verrà fatta una media delle accuratezze ottenute dalle varie run, c'è comunque un impatto della componente random che riguarda come viene effettuato il raggruppamento dei dati nei k sotto-insiemi. Per evitare questo effetto, si può ripetere tutto più volte: non si cambia la divisione in sottoinsiemi, ma solo se uno viene usato come training o testing; cambiando anche i dati nel sotto-insieme viene minimizzata la randomicitità
+\paragraph{10-times 10-fold cross-validation} metodo molto usato in letteratura. In generale, più volte facciamo cross-validation e meglio è, cambia il numero di fold che esistono (sottoinsiemi). Il compromesso è tra quanti volte possiamo fare lo switch dei dati e quanto è grande il testset. Nell'approccio, si usa sempre 1 solo fold come testing set e tutti gli altri come training, più è grande k e più permutazioni si dovranno fare. Nelle diverse run i valori vengono assegnati in maniera differenti ai vari fold, in maniera sempre casuale e che può essere stratificata casuale. La proporzione fra train e test set in questo caso è 90\% 10\%, ma il testing set per via delle ripetizioni copre tutti i dati.
+\subsubsection{Leave one out}
+Abbiamo visto come il testing set debba essere grande, ma è possibile usare molti test set ripetendo il tutto. Per massimizzare il train set, lasciando la condizione di usare tutti i dati nel test set, occorrerebbe avere tante fold: il massimo è il numero di dati totali del dataset, quindi possiamo usare il totale - 1 per il train ed il rimanente per il test. In questo modo 
+\begin{itemize}
+\item si garantisce che non ci sia overlap fra gli insiemi
+\item si massimizza il test set, che è il 100\% se si fanno tutte le run
+\end{itemize}
+Il problema dell'approccio è che se il dataset è grande, il numero di run esplode e non è più fattibile in tempi umanamente considerabili (pensa, ad esempio, a 3.5 miliardi di dati).
+\subsubsection{Bootstrap}
+I principi dell'approccio sono
+\begin{itemize}
+\item massimizzare il training set
+\item massimizzare il testing set, ma non necessariamente per ongi run
+\end{itemize}
+Prevede di utilizzare lo stesso dato per più di una volta. C'è una variante con rimpiazzo, in cui la selezione del dato viene fatta con rimpiazzo. Il training set creato è più grande, visto che lo stesso dato può apparire più volte, l'importante è fare attenzione che non appaia contemporaneamente anche nel testing set.
+\subsubsection{Time-series validation techniques}
+Alcuni eventi e variabili hanno delle connotazioni che dipendono dal tempo, quindi non è ragionevole usare i dati del passato per predirre il futuro se questi hanno delle connotazioni che cambiano nel tempo, con dei pattern dipendenti da esso. Visto che l'obiettivo è quello di valutare un modello per come si comporterà in futuro, un conto è u contesto dove il tempo non influisce ed un altro se invece lo fa.\\ Nella tecnica di validazione bisogna capire bene se occorre o meno considerare la variabile temporale. La famiglia delle time-series validation techniques tiene conto di questo aspetto, non vengono usato i dati del futuro per valutare il passato, ad esempio non ha senso usare la release 5 per valutare cose è accaduto nella 4.
+\paragraph{Ordered holdout}una volta definita la percentuale di split, i dati vengono ordinati, così da avere come risultato una sola combinazione per training e testing set. C'è il problema del fatto che , ad esempio, le ultime release di un progetto erano magari "sfortunate" de quindi non sono rappresentative
+\paragraph{Walk forward}si cammina man mano nel tempo, seguendo l'ordine dei dati, usando via via tutti i dati che rientrano nella finestra temporale scorrevole. Sempre nell'esempio delle release, queste saranno ordinate nel tempo, quindi massimizziamo il testing set andando avanti.
+\subsubsection{Sommario}
+\begin{itemize}
+\item esistono diverse tecniche, tutte hanno dei pro e dei contro anche se alcune in generale sono meglio di alte. Comunque, non esiste l'ottimo
+\item cerchiamo di capire se una tecnica è meglio di un'altra dato un contesto
+\item è importante capire se la variabile sotto test dipende dal tempo Se è vero, va preservato l'ordine temporale
+\item avendo più tecniche a disposizione, può essere utile applicarne più di una e poi confrontarle
+\end{itemize}
+\subsection{Metriche di performace}
+Un classificatore binario produce output in base a due possibili label: si/no, pos/neg etc... Esiste una vasta famiglia di applicazioni per cui il risultato è binario. È importante capire il concetto della \textbf{matrice di confusione}, che è fatta di 4 elementi: il dato può avere due valori, la classificazione può essere vera o falsa e quindi ho 4 valori:
+\begin{itemize}
+\item vero positivo: dato positivo e predizione vera
+\item falso positivo: dato negativo ma predizione vera
+\item vero negativo: dato negativo e predizione vera
+\item false negative: predizione falsa e dato positivo
+\end{itemize}
+nel nostro caso: buggy è positivo e non buggy è negativo, quindi i false positive saranno classi predette buggy, ma che non lo sono. Esistono molte metriche: in molti contesti un valore è più importante di un altro, può darsi che un falso positivo sia più accettata di un falso negativo, e questa cosa va tenuta in considerazione
+\begin{itemize}
+\item Recall: metrica più importante, misurata come $\frac{TP}{TP + FN}$, ora i FN sono i positivi non identificati, quindi è quanti positivi identificati, diviso per quanti ce ne erano.  Se massimizzassimo la Recall, avrei un classificatore "dummy" che darebbe 100\% negativi, ovvero inutile
+\item Precision: definita come $\frac{TP}{TP + FP}$, ovvero i positivi diviso i positivi più i falsi positivi, ovvero l'errore. Dice quanto è  
+attendibile la classificazione dal punto di vista dei positivi
+\item Accuracy: $\frac{Tx}{Tx + Fx}$, percentuale delle stime giuste su tutte le stime (dove x è sia positive che negative).
+\end{itemize}
+se ho un dataset con molti positivi, è facile avere molti positivi (anche falsi) e quindi avere alti valori di Precision e Recall, quindi come approcci per mostrare i risultati è:
+\begin{itemize}
+\item mostrare metriche sui classificatori + risultati di ZeroR, un classificatore dummy che da un lower bound
+\item Kappa: metrica che dice "quanto è meglio" di un classificatore random, che sarà pari a 0 quanto è identico al classificatore random e può anche essere negativo se è peggiore. Non prende in considerazione su quali aspetti è stato migliore, viene definito come (vedi slides).
+\end{itemize}
+\paragraph{Curve ROC}Il problema delle metriche precedenti è che il classificatore binario può essere sempre visto come un classificatore con una sua confidenza, a cui poi si applica una metrica. Possiamo cambiare la threshold sulla confidenza in base alle necessità, ci potrebbero essere classificatori che sono meglio di altri su determinate threshold. L'area under the curve (ROC) rappresenta l'area sottesa alla linea che si calcola utilizzando le diverse threshold. È un area che varia da 0.5 ad 1, calcolata applicando diverse threshold sulle varie predizioni ed ha il vantaggio di essere indipendente dalla threshold, corrisponde anche alla probabilità che un'istanza positiva selezionata randomicamente sia ordinato sopra un elemento negativo. Il vantaggio rispetto ad Accuracy è che quest'ultima ha comunque bisogno di una htreshold, mentre per AUC no ed inoltre è indipendente da quale valore viene considerato come positivo o negativo.\\\\ Le metriche ovviamente cambiano in base a come vengono definiti i valori positivi o negativi: se per me il valore positivo è ad esempio 0 avrò dei valori, diversi se avrò 1 come positivo.
+
+
+
 \section{Misurazione del software}
 L'analisi dei function points serve per misurare il software, che prima veniva sempre misurato contando le linee di codice, cosa che però non va bene in quanto vorremmo farlo a priori del codice. Perché andare a misurare e quanto tempo costa l'attività di misura? Si misura per:
 \begin{itemize}
@@ -252,11 +393,6 @@ Metodo più usato per la misurazione del software, quando parliamo di processi, 
 \item Mostrare una vista dei record (EQ)
 \end{itemize}
 posso definire un peso, che sono i FP del sistema: per ogni EI, ci sarà una determinata fascia di complessità, che può essere in prima battuta impostata come un valore medio.
-
-
-
-
-
 \newpage
 \section{Modulo II - Software Testing}
 \section{Introduzione e concetti generali per software testing}
@@ -460,8 +596,8 @@ In pratica, la scelta delle classi di equivalenza possono essere inferite su uno
 queste sono tutte considerazioni su tipi di dato non strutturati, per le struct o oggetti la cosa è più dedicata, possiamo cercare di applicare le regole viste fin ora sugli elementi della struttura, ricordandosi di 	\textbf{considerare i valori nulli}.
 \end{enumerate}
 Queste sono solo linee guida generali, per cercare di definire classi di equivalenza quindi è errato considerarle in modo esclusivo: supponiamo di considerare un SUT in cui un parametro è una stringa (password). Considero una stringa valida ed una non valida, attenendomi alle linee guida generali, ma questo non è detto che basti a produrre un $T_g$ di qualità: sicuramente i due test sono utili, oltre ai casi limiti, come "" o null o password non valida per regex o policy di sicurezza. Le linee guida sono utili per iniziare a ragionare. Abbiamo quindi il SUT, che espone una serie di parametri, per ognuno di essi cerchiamo le partizioni di quel dominio, siccome il SUT prevede un input con N parametri, per ottenere la $T_g$ minima che mi consente di evidenziare il maggior numero di errori possibili. Possiamo usare due macro-criteri per identificare i test
-\paragraph{Approccio unidimensionale}ogni parametro di input viene considerato indipendentemente nei i casi di test: per ogni partizione di ognuno dei parametri di input ci sarà associato un caso di test. Mi accontento che la classe di equivalenza sia scelta in almeno un caso di test.
-\paragraph{Approccio multidimensionale}se ho più classi di equivalenza per un parametro, voglio che i casi di test coprano una combinazione lineare di tutte le classi di equivalenza su tutti i parametri.
+\paragraph{Approccio unidimensionale}ogni parametro di input viene considerato indipendentemente nei i casi di test: per ogni partizione di ognuno dei parametri di input ci sarà associato un caso di test. Mi accontento che la classe di equivalenza sia scelta in almeno un caso di test. L'approccio potrebbe far si che ci perdiamo delle combinazioni di boundary values che potrebbero dar luogo ad errori, ma questo è un aspetto di trade off fra efficienza ed efficacia.
+\paragraph{Approccio multidimensionale}se ho più classi di equivalenza per un parametro, voglio che i casi di test coprano una combinazione lineare di tutte le classi di equivalenza su tutti i parametri. Approccio più reliable, in quanto aumento il numero di casi di test che eseguo, ma lo svantaggio è che l'approccio è più costoso in quanto devo considerare il prodotto cartesiano.
 \\\\ Consideriamo il metodo \textit{LedgerHandle} di \textbf{Bookkeeper}\footnote{ci riferiamo alle classi di equivalenza}
 \begin{itemize}
 \item \textit{isRecoveryRead}: parametro \textbf{bool}, può avere senso dividere i valori in true e false
@@ -470,8 +606,92 @@ Queste sono solo linee guida generali, per cercare di definire classi di equival
 \item \textit{cb}: tipo di dato complesso, considero il valore null, un istanza valida ed una non valida
 \item \textit{ctx}: stesso discorso di \textit{cb}
 \end{itemize}
-Cercando di applicare della semantica, ho a disposizione la lingua e la segnatura del metodo, riesco a definire delle classi di equivalenza più fini: ad esempio, se \textit{firstEntry} è maggiore, minore o uguale a \textit{lastEntry}.\\ Abbiamo quindi delle classi di equivalenza che per il livello di conoscenza che abbiamo del SUT vanno bene, ma ora rimane il problema di chiedersi quali valori scegliere in questi insiemi: da analisi empiriche risulta che i bug più comuni avvengono sui bordi delle classi di equivalenza, per definizione di classe di equivalenza scegliere qualsiasi valore è indifferente per il SUT. Quindi, è suggeribile identificare i valori limite: ad esempio per \textit{firstEntry} almeno 0 ed 1, per \textit{lastEntry} sceglieremo \textit{firstEntry - 1}, \textit{firstEntry} e \textit{firstEntry + 1}, per l'approccio boundary values. Ora, dobbiamo combinare i valori scelti per le classi di equivalenza: possiamo scegliere sia l'approccio multidimensionale che unidimensionale, nel primo avrò il prodotto cartesiano dei valori dei parametri nelle classi di equivalenza. In molti contesti, l'approccio multi* costa, quindi si cerca di avere un approccio unidimensionale: voglio avere almeno un test case per ciascuna classe di equivalenza.\\esempio: supponiamo di concentrarci solo sui parametri \textit{firstEntry} e \textit{lastEntry} (gli altri parametri sono costanti) e facciamo una scelta dei casi di test guidata da boundary values: prendendo come valori per \textit{firstEntry} -1, 0 ed 1 possiamo sintetizzare 9 casi di test per la $T_g$, con un approccio multidimensionale. Se invece considerassimo un approccio unidimensionale, per ogni classe di equivalenza identificata esista almeno un caso di test e i parametri sono considerati indipendentemente: scegliamo 3 casi che coprano tutte le 6 classi di equivalenza, ovviamente in questo caso non è detto che troverò i bug, in quanto l'approccio di software testing è best effort.
-
+Cercando di applicare della semantica, ho a disposizione la lingua e la segnatura del metodo, riesco a definire delle classi di equivalenza più fini: ad esempio, se \textit{firstEntry} è maggiore, minore o uguale a \textit{lastEntry}.
+\subsubsection{Approccio boundary values}
+Abbiamo quindi delle classi di equivalenza che per il livello di conoscenza che abbiamo del SUT vanno bene, ma ora rimane il problema di chiedersi quali valori scegliere in questi insiemi: da analisi empiriche risulta che i bug più comuni avvengono sui bordi delle classi di equivalenza, per definizione di classe di equivalenza scegliere qualsiasi valore è indifferente per il SUT. Quindi, è suggeribile identificare i valori limite: ad esempio per \textit{firstEntry} almeno 0 ed 1, per \textit{lastEntry} sceglieremo \textit{firstEntry - 1}, \textit{firstEntry} e \textit{firstEntry + 1}, per l'approccio boundary values. Ora, dobbiamo combinare i valori scelti per le classi di equivalenza: possiamo scegliere sia l'approccio multidimensionale che unidimensionale, nel primo avrò il prodotto cartesiano dei valori dei parametri nelle classi di equivalenza. In molti contesti, l'approccio multi* costa, quindi si cerca di avere un approccio unidimensionale: voglio avere almeno un test case per ciascuna classe di equivalenza.\\esempio: supponiamo di concentrarci solo sui parametri \textit{firstEntry} e \textit{lastEntry} (gli altri parametri sono costanti) e facciamo una scelta dei casi di test guidata da boundary values: prendendo come valori per \textit{firstEntry} -1, 0 ed 1 possiamo sintetizzare 9 casi di test per la $T_g$, con un approccio multidimensionale. Se invece considerassimo un approccio unidimensionale, per ogni classe di equivalenza identificata esista almeno un caso di test e i parametri sono considerati indipendentemente: scegliamo 3 casi che coprano tutte le 6 classi di equivalenza, ovviamente in questo caso non è detto che troverò i bug, in quanto l'approccio di software testing è best effort.\\
+esempio:\\ analizzare il metodo \textit{createLedger} per trovare partizioni di dominio per i parametri di input del metodo: ogni Ledger è salvato su n bookies, ed ogni Ledger è composto da n entries. Per l'ensSize, che è il numero di nodi su cui il server deve essere salvato, pensiamo ad una partizione $\geq 0$ ed una per $\geq < 0$, ma per ensSize = 0 può essere un caso speciale, o associato alla partizione dei negativi. Inoltre, è difficile che per ensSzie sia previsto il valore MAXINT, quindi forse ci sarà una size massima disponibile da qualche parte, o comunque l'ensSize consigliato.
+\section{Unit and Integration Testing}
+Abbiamo cominciato a vedere come scegliere potenziali test case per un sistema, ma senza porci l'obiettivo se eravamo in fase di validazione o verifica, o se volevamo testare l'intero sistema o una parte di esso. Esistono diversi livelli della fase di test, ognuno ha una peculiarità e framework e sistemi di riferimento diversi. 
+\subsection{V-model}
+V-model: rappresentazione schematica di due processi, che tradizionalmente nel mondo dell'ingegneria del software viaggiavano parallelamente, mentre ora nell'ottica del continous* tendono ad avvicinarsi, sopratutto nella parte del subsystem, dove c'è una forte commistione fra le attività di sviluppo e di test. Secondo questo modello, per ogni fase, è possibile pensare una fase di test per il sistema che si sta sviluppando:
+\begin{itemize}
+\item a livello di requisiti, definiti parlando con gli stakeholders, vengono messi dei paletti in base alle feature e needs degli stakeholedrs, per definire vengono soddisfatti.
+\item una volta fatto il primo passo, penso ai NFR: design del subsystem, che prevede l'interazione di moduli differenti che interagiscono fra loro. Posso fare questo se e solo se ogni elemento, nella sua atomicità, ogni elemento è in grado di soddisfare le funzionalità per cui è stato introdotto nel sistema. Occorrono una serie di test per validare le responsabilità dei singoli moduli.
+\end{itemize}
+Schematizzando: da un lato c'è il designer o developer del sistema, che ha la responsabilità di specificare e di implementare le funzionalità a seconda del livello di astrazione che stiamo considerando. Ogni qual volta il designer rilascia delle specifiche, il tester prende le specifiche e fa partire le sue attività di pianificazione dell'attività di test in base alle specifiche presenti nella documentazione. Dal developer possono essere forniti:
+\begin{itemize}
+\item requisiti
+\item diagrammi UML
+\item codice
+\item etc ...
+\end{itemize}
+In un ottica DevOps, ogni qual volta il designer rilascia un contribuito, il tester definisce, implementa ed esegue i suoi casi di test. Quindi, se abbiamo messo in piedi una pipeline (ad esempio con TravisCI, Sonar, Maven) dallo sviluppo locale, ad ogni commit del contributo parte in automatico una serie di casi di test progettati potenzialmente in modo del tutto indipendente da come è stato realizzato l'artefatto. In questo approccio, tiro su un ambiente che mi permetta di fare tutto in maniera automatizzata.
+\subsection{Livelli del software testing}
+Con una vista piramidale, possiamo vedere la proporzione dei test che vengono realizzati nel sistema:
+\begin{itemize}
+\item quando siamo nella parte bassa del v-model, riusciamo a produrre un'alta quantità di casi di test, in quanto è più facile realizzarli. Inoltre, si riesce a raggiungere un'alta automazione dell'esecuzione dei test, spesso vengono scritti direttamente dal programmatore.
+\item i test di integrazione cominciano ad essere un po' più complicati, vengono solitamente sviluppati da tester d'integrazione. Ci sono più attori in gioco, c'è il discorso degli obiettivi che sono specifici del particolare prodotto
+\item più difficile per casi di test di sistema, interessati a cosa il sistema deve fare e non al come. La specifica di questi test case è onerosa e tendono ad essere eseguiti solo quando realmente necessario
+\end{itemize}
+tutti e 3 questi casi di test rientrano nella verification, ovvero si accertano che il sistema è costruito secondo le specifiche (is the system built right?)\\ Alla punta della piramide ci sono test in ottica totalmente validation (is the right system?). Vedremo maggiormente casi di test di unità e di integrazione, i discorsi possono essere fatti scalare a casi di test di sistema o di integrazione.
+\subsection{Test di unità}
+L'obiettivo del test di unità ha come scopo principale quello di acquisire confidenza che ogni modulo del SUT si comporti secondo quanto specificato, se eseguito in isolamento. Quindi, uso una classe senza interazioni col mondo esterno, per vedere se fa quello per cui è stato realizzato. Solitamente vengono sviluppati direttamente dagli sviluppatori. In alcuni contesti di metodo Agile, i test vengono scritti prima della scrittura stessa del codice. L'adeguatezza e la bontà dell'insieme di test di unità può essere stabilita in vari modi:
+\begin{itemize}
+\item in base a concetti di code coverage: definisco dei criteri di adeguatezza di qualità della test suite in funzione della specifica implementazione
+\item in base a quanti requisiti vengono tracciati su una specifica classe
+\end{itemize}
+\subsubsection{JUnit}
+Framework che supporta l'implementazione di unit test in ambienti Java. Tra i requisiti principali:
+\begin{itemize}
+\item supportare la definizione di casi di test utili che siano ripetibili nel tempo
+\item cercare di ridurre il costo di scrittura dei casi di test
+\end{itemize}
+Quindi, JUnit è un Domain Specific Language che permette di scrivere test di unità manutenibili, riutilizzabili. \textbf{IMPORTANTE:} JUnit permette di scrivere test, ma NON da nessuna linea guida su quale test eseguire, non aiuta a risolvere il problema del category partitioning.\\ In un test JUnit, ci sono determinate annotazioni e regole:
+\begin{itemize}
+\item @Test indica che il metodo è un test, il metodo deve essere pubblico. Quando trova tali metodi, lancia un istanza della classe ed esegue i metodi che hanno tale annotazione, viene creata un'istanza per ogni test, questo perché potrebbe cambiare lo stato della classe nell'esecuzione dei vari test, mentre io vorrei lanciare tutti i test in un ambiente pulito.
+\item ogni test termina con un \textit{assert}, che asserisce se il risultato attesto è conforme a quello computato dal SUT. Se l'assert termina con successo, non succede nulla, altrimenti il test solleva un'eccezione: JUnit gira su una JVM, quindi se fallisce entra in logica di errore e lancia un eccezione, che viene catturata da JUnit e "messa da parte", per segnalare poi che il test è fallito.
+\end{itemize}
+Quando si lanciano casi di test con JUnit occorre stare attenti alle classi che hanno istanze condivise, ovvero quelle sono soggette al design pattern Singleton, in quanto questa può essere sporcata da test precedenti. Fare test su classi con design pattern Singleton è molto complicato: occorre prestare particolare attenzione a classi Singleton, facendo in modo che il test tocchi un alter-ego della classe Singleton, ovvero una sua specializzazione che elimini il Singleton dalla classe specializzata. Se in fase di design il Singleton è stato accoppiato con una Factory, è facile gestirne la creazione e quindi è facile risolvere il problema, altrimenti occorre verificare che tutte le parti che usano la Singleton siano modificate. Un \textit{runner} ha la responsabilità di far girare i test, un particolare tipo di runner è il \textit{Parametrized runner}, per eseguire dei test parametrici. Quindi, con domain partition capisco quale valori selezionare e quale output mi aspetto, con una classe di questo tipo implemento il test ed i parametri saranno quelli selezionati nella fase di domain partition.\\ Spesso c'è bisogno di cerare dei setup prima di ogni test, che possono essere globali o locali:
+\begin{itemize}
+\item etichetta @BeforeClass: metodi invocati da JUnit \textbf{una volta}, prima dell'esecuzione di ogni metodo annotato come test. Ad esempio per fare in modo di agganciarsi alla giusta Factory che ritorni la classe non Singleton
+\item @AfterClass: clean up della classe
+\item @Before ed @After: chiamati \textbf{ogni volta} prima e dopo dell'esecuzione di un test
+\end{itemize}
+\subsection{Test d'integrazione}
+Nel test di unità, vogliamo assicurarci che un modulo in autonomia funzioni come previsto dalle specifiche e normalmente è responsabilità dello sviluppatore del modulo assicurarsi che funzioni per quello che è stato pensato. Nel test d'integrazione, l'obiettivo è \textbf{far emergere malfunzionamenti} relativi all'interazione di due o più componenti del SUT. Vogliamo quindi provare che i due componenti si parlino e che lo facciano secondo il protocollo previsto. L'assunzione è che le fasi di test unitario sia passata per entrambe i due moduli. Nell'ordine, chi si occupa degli integration test sono: sviluppatori, integratori di sistema, tester etc..., dipende dagli scenari di integrazione considerati. In generale, l'approccio può essere white-box o black-box, ma se è il tester o l'integratore di sistema a fare i test, può non essere interessato ad approcci white-box, ma fare ragionamenti solo su cosa mi posso attendere. Quindi, se assumiamo di conoscere il codice o ci limitiamo a considerare solo i bordi del sistema, abbiamo due approcci differenti:
+\begin{itemize}
+\item white box: guido la strategia di test basandomi sull'implementazione
+\item black-box: so come il componente deve "parlare" con gli altri e mi baso solo su quello
+\end{itemize}
+Nella pratica, l'approccio più conveniente è misto: il draw-back di strategie white-box è che derivando una test suite in modo molto allineata all'implementazione potrei perdere dettagli funzionali ed inoltre se evolve l'implementazione, la qualità della test suite potrebbe degradare in quanto troppo legata alla specifica implementazione. Altro aspetto è che spesso durante i test di integrazione ho bisogno di stub o mock per la gestione: magari, per far cooperare più moduli ho bisogno che ci sia un ambiente che mi consenta la loro interazione. Servono quindi framework ad hoc che consentano la creazione di manichini, dummies, mock che possano essere deployati in fase di integrazione. Quindi il test di integrazione è fatta in maniera incrementale. Uno stub è un elemento software definito in fase di test che non fa parte del sistema, ma fa parte dell'ambiente di test. La responsabilità è quella di mimare le funzionalità di elementi che partecipano  all'interazione nella fase di test ma non sono presenti (in quanto il componente non è sotto test). L'altro elemento di cui si ha bisogno è quello di test driver avanzati: se faccio un test di unità o se test l'intero SUT ho i casi d'uso del SUT e posso usarli per stimolare il SUT. Ma se testo l'interazione fra due moduli, non ho informazione su come questi interagiscono. Devo realizzare dei programmi ad hoc che servono a guidare l'esecuzione del test:
+\begin{itemize}
+\item configurazione dell'ambiente di test
+\item coordinamento delle risorse
+\item clean-up dopo l'esecuzione
+\item etc..
+\end{itemize}
+\subsubsection{Strategie per integration test}
+Abbiamo n moduli che sono interconnessi fra loro e vogliamo identificare una soluzione ottima per il testing. Il problema è NP-completo, quindi occorre usare delle strategie comuni:
+\begin{itemize}
+\item big bang: ho un sistema con determinate interazioni, riassumibili in un grafo, la strategia prevede di integrare tutto e provare a lanciare dei casi di test che coprano più una o l'altra interazione. Problemi dell'approccio:
+\begin{itemize}
+\item se si evidenzia un errore, non si sa a quale interazione è dovuta se ce ne sono molteplici con uno stesso componente. Gestione più difficile del test d'integrazione
+\item l'assunzione di base dell'approccio è che sono necessari tutti i componenti, ovvero temporalmente sono in un ottica a cascata: tutti i moduli sono disponibili, mi metto a testare e vedo che non funziona nulla. Siamo diametralmente opposti da approcci di tipo continous*, in quanto facciamo test alla fine e questo costa tantissimo
+\end{itemize}
+\item integro un modulo alla volta, secondo una logica più o meno strutturata, ovvero con approcci top-down o bottom-up:
+\begin{itemize}
+\item top-down: integrazione guidata dalle interfacce, faccio dei test in cui man mano aggiungo dei dettagli. Parto dalle API della prima classe, ora per testare ho bisogno che esistano i moduli con cui questa è collegata. Quindi, introduciamo le stab che emulino le interazioni. Andando avanti, a partire dalle funzionalità del primo modulo, introduco un altro modulo vero e un che rimane una stab. Se il test passa, rimuovo una delle stab e introduco i veri moduli. Il raffinamento avviene sostituendo alle API di stub delle API più dettagliate per i moduli integrati
+\item bottom-up: parto dai moduli foglia, le parti più lontane dai bordi del sistema. Se devo testare ora i moduli che chiamano questo, occorre pianificare un test driver che stimolerà l'interazione con i moduli più esterni del sistema. Quindi, volendo pianificare un test d'integrazione fra i moduli, il driver simula le invocazioni degli altri moduli su quello in esame (ad esempio simula le invocazioni di C2 su C4 o di C3 su C4). Anche i questo approccio è previsto l'utilizzo di stub o mock.
+\end{itemize}
+\end{itemize}
+\subsubsection{Test d'integrazione in O.O - strumenti}
+Tutto ciò che è stato visto fin'ora per integration test è generale: vale per classi, librerie, package, micro-servizi etc... Per ognuno di questi potrebbe esserci un framework di supporto, vediamo degli strumenti pensati per ambienti O.O, vediamo sia strumenti per driving che per stubbing o mocking. JUnit può essere pensato come un valido framework per quanto riguarda i test drive, per stubbing o mocking una possibilità è mockito (open source), che aiuta nella definizione e nell'injection di stub o mock.
+\paragraph{Mockito}framework per la definizione di stub a supporto dello sviluppo di test in Java, nasce come supporto a paradigmi di programmazione agile guidati alla scrittura di test case, come test case development. I costrutti chiave sono:
+\begin{itemize}
+\item mock(): dichiara un mock
+\item spy(): verifica se un determinato metodo di una certa classe è stato invocato o no
+\end{itemize}
+Ora ci sono le annotazioni semplificate (vedi documentazione). Un uso tipico prevede di dire a Mockito che quando viene intercettato un messaggio su un istanza mockata, invece di invocare il metodo associato alla chiamata, viene ritornato \textit{true}. Quindi, quando viene invocato il metodo la JVM invia un messaggio sull'istanza riferita da i, viene invocato il metodo riferito dal tipo dell'istanza associata con l'istanza. Mockito invece, dice alla JVM che quando arriva un messaggio di questo tipo non deve andare a vedere il tipo riferito dall'istanza, bensì ritornare direttamente true. Questo perché il tipo potrebbe essere un interfaccia, che ad un certo punto viene linkata con una classe concreta, ma magari in fase di test occorre andare ad interagire con il metodo e va bene che ci sia un implementazione dummy che ritorna sempre true.\\ In modo analogo, posso specificare anche un intero algoritmo che simula un comportamento e ritorna un valore voluto.
 
 
 
@@ -479,7 +699,7 @@ Cercando di applicare della semantica, ho a disposizione la lingua e la segnatur
 \newpage
 \section{Modulo III: Enterprise IT}
 \section{Introduzione}
-IBM: azienda nel mercato da 110, nata per cerare dispositivi per il business. Non punta al mercato di largo consumo, bensì alla commercializzazione con altre aziende che acquistano prodotti hardware o software. Enterprise IT: cos'è l'IT di una grande società e quali sono i requisti di una grande società, ovvero adottati da un cliente di tipo enterprise.\\ Enterprise: impresa che può essere:
+IBM: azienda nel mercato da 110 anni, nata per cerare dispositivi per il business. Non punta al mercato di largo consumo, bensì alla commercializzazione con altre aziende che acquistano prodotti hardware o software. Enterprise IT: cos'è l'IT di una grande società e quali sono i requisti di una grande società, ovvero adottati da un cliente di tipo enterprise.\\ Enterprise: impresa che può essere:
 \begin{itemize}
 \item azienda privata
 \item ente governativo
@@ -669,3 +889,4 @@ Considerazioni:
 \end{itemize}
 Sarebbe possibile spalmare nel tempo l'acquisto dell'hardware, in modo che a seconda della crescita del business crescerà l'hardware della percentuale di crescita.
 \end{document}
+\section{Q\&A}

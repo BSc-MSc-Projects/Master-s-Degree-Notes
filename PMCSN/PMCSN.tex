@@ -222,7 +222,7 @@ Come viene definito $\rho$ nel caso del multi-server: in generale, sappiamo che 
 \item $\rho_i$, che è l'utilizzazione del singolo server
 \item $\rho_{glob}$ che è l'utilizzazione globale del multi-server
 \end{itemize}
-Per $rho_i$, abbiamo che il tasso d'ingresso $\lambda$ viene diviso equamente su tutti gli m centri, quindi avremo $\rho_i = \frac{\lambda}{m\cdot \mu}$; per $\rho_{glob}$, il tasso d'ingresso è $\lambda$, ma la frequenza del multi-server è pari a $m\cdot \mu$, quindi abbiamo $\rho_{glob} = \frac{\lambda}{m\cdot \mu}$. Nonostante i due fattori di utilizzazione siano uguali, cambia il significato che hanno: se ad esempio consideriamo un $\rho = 0.7$, nel caso del singolo servente, e quindi di $\rho_i$, questo corrisponde al fatto che il centro sarà utilizzato per il $70\%$, per un periodo di osservazione lungo. Per quando riguarda invece $\rho_{glob}$, avere un valore di 0.7 vuol dire che in media il $70\%$ dei server saranno pieni.\\ Per quanto riguarda le relazioni medie introdotte in precedenza, abbiamo che:
+Per $\rho_i$, abbiamo che il tasso d'ingresso $\lambda$ viene diviso equamente su tutti gli m centri, quindi avremo $\rho_i = \frac{\lambda}{m\cdot \mu}$; per $\rho_{glob}$, il tasso d'ingresso è $\lambda$, ma la frequenza del multi-server è pari a $m\cdot \mu$, quindi abbiamo $\rho_{glob} = \frac{\lambda}{m\cdot \mu}$. Nonostante i due fattori di utilizzazione siano uguali, cambia il significato che hanno: se ad esempio consideriamo un $\rho = 0.7$, nel caso del singolo servente, e quindi di $\rho_i$, questo corrisponde al fatto che il centro sarà utilizzato per il $70\%$, per un periodo di osservazione lungo. Per quando riguarda invece $\rho_{glob}$, avere un valore di 0.7 vuol dire che in media il $70\%$ dei server saranno pieni.\\ Per quanto riguarda le relazioni medie introdotte in precedenza, abbiamo che:
 \begin{itemize}
 \item $E(T_s) = E(T_q) + E(s_i)$
 \item $E(T_q) = f(\lambda, \rho, E(s))$
@@ -374,7 +374,7 @@ Ci poniamo delle domande: può essere utile la migrazione P, o basta la NP? E se
 \item tempo di vita rimanente di un job: si riferisce ad un certo istante di tempo, la rimanente richiesta di CPU
 \end{itemize}
 Non per tutte le applicazioni è possibile conoscere tutti i termini, ma è sempre possibile su un sistema misurare quanta elaborazione è stata fatta, quindi è sempre possibile conoscere l'age (vita di un job).\\ 
-\subsection{Distribuzioni di Pareto}
+\subsection{Distribuzioni di Pareto}\label{pareto}
 (vedi slide)
 Vedo le raccolte dei tempi di vita di job Unix, sembrano distribuiti esponenzialmente ma non è così: per t=2 abbiamo una decrescenza di $\frac{1}{2}$, per t=4 $\frac{1}{4}$ etc..., classe delle distribuzioni di Pareto: $f(x) = \alpha \cdot k^{\alpha} \cdot x^{-\alpha-1}$ con $k \leq x < \infty, 0 \leq \alpha \leq 2$, con code la cui misura è data da $\alpha$:
 \begin{itemize}
@@ -514,7 +514,7 @@ Processo stocastico: possiamo definirlo come un insieme di variabili aleatorie c
 Studiamo il sistema e capiamo le condizioni iniziali\footnote{ovvero al tempo $t_0$}, poi al tempo $t_1$, notando che la probabilità è cambiata, perché magari il sistema evolve in un certo modo. Possiamo vedere dopo quanto tempo si tende ad una probabilità stazionaria, ovvero dalla quale non ci si muove più al trascorrere del tempo: anche se passa altro tempo, il sistema non cambia probabilità. Questo è fondamentale nella simulazione, nel caso in cui siamo interessati alla stazionarietà: se dobbiamo raccogliere un campione, occorre capire da quale punto in poi il campione rappresenta lo stato stazionario
 \subsection{Server a singolo centro con coda finita}
 Se la coda è piena, alcuni arrivi vengono perduti, quindi il throughput e l'utilizzazione cambiano, è necessario un processo di Markov. Da un punto di vista della modellazione, le cose cambiano: supponiamo che la capacità del sistema sia C\footnote{coda + servizio}, il processo X(t) rappresenta in numero di job nel centro. Siccome ho capacità finita, questo \textbf{garantisce che la stazionarietà c'è sempre}: la coda è finita, quindi del tasso di arrivo si perde ed il server si troverà a smaltire C, ed al tendere del tempo all'infinito riuscirà sempre a smaltire C:\\ 
-\includegraphics[scale=0.3]{images/PMCSN-2403-1.jpeg}\\
+\includegraphics[scale=0.5]{images/PMCSN-2403-2.jpeg}\\
 da ogni stato si passa nel successivo con tasso $\lambda$, mentre si torna indietro di stato con tasso $\mu$.\\ Come avviene la risoluzione: scriviamo stato per stato \textbf{l'equazione di bilanciamento globale}, stiamo considerando la stazionarietà:
 \begin{itemize}
 \item $\pi_0 \cdot \lambda = \pi_1 \cdot \mu$, ci deve essere un equilibrio fra i flussi che entrano e quelli che escono , altrimenti non avrei la stazionarietà, da qui possiamo ricavare $\pi_1 = \frac{\lambda}{\mu}\pi_0$
@@ -523,7 +523,7 @@ da ogni stato si passa nel successivo con tasso $\lambda$, mentre si torna indie
 quindi avremo: $\pi_C = (\frac{\lambda}{\mu})^C \pi_0$, e per il generico i $\pi_i = (\frac{\lambda}{\mu})^i \pi_0$. Dobbiamo avere che $\sum\limits_{i=1}^{C} \pi_i = 1$ (condizione di normalizzazione), da qui possiamo ricavare $\pi_0 = \frac{1}{\sum\limits_{i=0}^{C} (\frac{\lambda}{\mu})^i}$. Qual è la probabilità di perdita: $\pi_C = (\frac{\lambda}{\mu})^C \pi_0 = \frac{(\frac{\lambda}{\mu})^C}{\sum\limits_{i=0}^{C} (\frac{\lambda}{\mu})^i}$, quindi il tasso di ingresso reale è $\lambda' = \lambda(1 - p_{loss})$ da cui $\rho = \frac{\lambda'}{\mu}$.\\ esempio: C = 4, $\lambda = \mu = 5 j/s$, la capacità finita fa sì che il sistema si stabilizzi sempre. Da quanto visto prima, abbiamo che $\pi_i = (\frac{\lambda}{\mu})^i \pi_0$, tutti i $\pi_i$ saranno pari ad $\frac{1}{5}$ (andando ad intersecare con la condizione iniziale $\sum\limits_{i=0}^{4} \pi_i = 1$. La $p_{loss} = \pi_4 = \frac{1}{5}$, da cui $\lambda' = \lambda(1 - p_{loss}) = 4 = X$ e $\rho = 0.8$
 \subsection{M/M/m/m - m server loss system}
 Abbiamo un certo numero di risorse parallele, senza alcun buffer delle richieste: quindi, o le richieste trovano subito un server libero, oppure si perdono (ad esempio: chiamate telefoniche o connessioni con circuiti virtuali). Ipotizziamo una distribuzione del servizio esponenziale, la soluzione (di Erlang) usa le catene di Markov: \\
-\includegraphics[scale=0.3]{images/PMCSN-2403-2.jpeg}\\ 
+\includegraphics[scale=0.5]{images/PMCSN-2403-1.jpeg}\\ 
 a seconda del livello di occupazione del server, il tasso di servizio sarà pari a $i \mu$. Abbiamo $\pi_i = (\frac{\lambda}{\mu})^i \frac{1}{i!}\pi_0$, unendo con la somma delle probabilità $\sum\limits_{i=0}^{m} \pi_i = 1$ otteniamo $\pi_0 = \frac{1}{\sum\limits_{i=0}^{m} (\frac{\lambda}{\mu})^i \frac{1}{i!}}$, da cui otteniamo $\pi_i = \frac{(\frac{\lambda}{\mu})^i}{i! \sum\limits_{j=0}^{m} (\frac{\lambda}{\mu})^j \frac{1}{j!}}$, tale formula prende il nome di Erlang-B, lo stato m è la probabilità di perdita, ovvero la percentuale di tempo in cui il sistema perderà richieste in ingresso. Confrontando con la Erlang-C, a parità di $\lambda, \mu, m$: $\pi_m = (\frac{\lambda}{\mu})^m \frac{1}{m!} \pi_0$ vs $P_Q = \frac{(m \rho)^m p(0)}{(\frac{\lambda}{\mu})^m m!(1 - \rho)} = \frac{(\frac{\lambda}{\mu})^m}{m!(1 - \rho)p(0)}$. Ora, la parte $\frac{(\frac{\lambda}{\mu})^m}{m!(1 - \rho)}$ è sicuramente maggiore di $\frac{(\frac{\lambda}{\mu})^m}{m!}$, ed intuitivamente, la presenza della coda rende $\pi_0 > p(0)$.\\ esempio: $\lambda = 5 j/s$, $\mu = \frac{1}{300} j/ms = 3.33333 j/s$, $m = 4 \Rightarrow m \mu > 12 j/s$, abbiamo una $p_{loss} = \pi_4 = 0.048$, $\lambda' = \lambda(1 - p_{loss}) = 4.76 j/s$ con un $\rho = \frac{\lambda'}{\mu} = 0.357$.
 \section{Introduzione alla simulazione}
 Cambia il tipo di approccio per la valutazione delle prestazioni, per caratterizzare un modello di simulazione ci sono diverse tipologie, tutti i sistemi hanno una qualche componente stocastica, differenza fra modello statico e dinamico: nel primo la variabile tempo non è significativa, mentre nel secondo si. Il caso di nostro interesse è un sistema con componente stocastica, dinamica e discreta. Come si sviluppa un modello: non ci sono tecniche automatiche, ce ne sono per delle classi particolari e limitate, in generale si parla di "arte" dello sviluppo dei modelli di valutazione. Occorre seguire una serie di passi, saltarne alcuni porta al fallimento dello sviluppo della valutazione. Quali sono i primi passi:
@@ -882,6 +882,118 @@ Quali sono i tipi di eventi che possono cambiare lo stato del sistema:
 \item i completamenti, che stavolta sono m
 \end{itemize}
 il numero di diversi eventi sono quindi m+1. Facciamo sì che al tempo $\tau$ si spenga il processo degli arrivi, il sistema servirà i job presenti nel sistema per tornare allo stato iniziale. Per questo motivo, l'ultimo evento è sempre un completamento, mentre il primo è sempre un arrivo. Per semplicità consideriamo che i server siano tutti uguali e che la selezione del server venga fatta secondo equity, ovvero scegliendo il server meno utilizzato.
+\section{Priority scheduling}
+Sempre parlando di scheduling astratto, è possibile con un'unica caratterizzazione del flusso degli arrivi: piuttosto che mandarlo in un'unica coda, divido il flusso in più code (simile a quello che accade in Unix). Le classi di servizio del flusso trovano applicazione in diverse situazioni:
+\begin{itemize}
+\item traffico multimediale (non sempre)
+\item QoS
+\item non andare in contro alle penalità
+\end{itemize}
+Software Defined Network: l'architettura suddivide il paino del controllo dal piano dei dati, affidando il piano del controllo al software. Il piano di controllo, rispetto a quello dei dati, ha una flow table per fare un matching dei pacchetti che arrivano rispetto alle azioni da compiere, sostanzialmente decide il routing. Se il pacchetto ha un ID che matcha un'azione, allora viene assegnata la route, altrimenti un controllore verifica perché manca la metrica e rimanda il pacchetto giù.\\ Uno dei lavori modellistici per SDN è del 2016: abbiamo un modello per lo switch ed uno per il controllore, che vengono viste come centri a servente singolo, con code finite o infinite,  per lo switch, il modello è simile a quello del caso Unix, con due code di cui una ha priorità più alta. Questa è l'idea delle classi di priorità, in cui il flusso $\lambda$ viene diviso in diverse classi di priorità. Assumiamo che le code siano FIFO, o comunque astratte, la somma degli r flussi dovrà essere pari a $\lambda$. Ci sono due criteri con cui poter formare le classi:
+\begin{itemize}
+\item criterio astratto
+\item criterio size-based: il più usato nei web server, dove viene data priorità alle size piccole
+\end{itemize}
+A questo si aggiunge il discorso se c'è o meno prelazione: se c'è prelazione ed arriva un servizio di classe k, se c'è un servizio di classe k' vuol dire che le altre code erano vuote, ovvero quelle sopra di lui. Quindi, se arriva k di priorità più grande, il job di classe k' può essere interrotto per dare priorità all'altro; il job interrotto verrà ripreso \textbf{senza predita}, ovvero si riparte dal punto in cui era stato interrotto. Se questo non è possibile, non si fa prelazione. \\ In generale, tutti i parametri potrebbero dipendere dalla classe: tempo di servizio, $\rho$ che sarà la somma delle occupazioni di tutte le classi,etc... Partendo dalla KP, abbiamo che $E(T_Q) = \dfrac{\frac{\lambda}{2}E(S^2)}{1 - \rho}$, il fattore $\frac{1}{1 - \rho}$ è legato al $t_c$ e quindi se la coda non è unica vogliamo misurare il tempo di coda per la classe k $E(T_{Q_{k}})$: il job deve attendere 
+\begin{itemize}
+\item il tempo rimanente al job in servizio, $E(S_{rem}) = \frac{\lambda}{2}\cdot E(S^2)$
+\item i tempi di tutti quelli che arrivano nelle classi dalla 1 alla k-1, proporzionale a $\dfrac{1}{1 - \sum\limits_{i=1}^{k-1} \rho_i}$
+\item i tempi di quelli nelle code da 1 a k, proporzionale a $\dfrac{1}{1 - \sum\limits_{i=1}^{k} \rho_i}$ 
+\end{itemize}
+alla fine quindi, il tempo di attesa in coda per la generica classe k è dato da $E(T_{Q_k})^{NP\_priority} = \dfrac{\frac{\lambda}{2} E(S^2)}{(1 - \sum\limits_{i=1}^{k} \rho_i)\cdot (1 - \sum\limits_{i=1}^{k-1} \rho_i)}$.\\\\
+Il tempo di attesa della classe di attesa k è più piccolo di quello della classe k+1. In termini di tempi di risposta, all'attesa in ogni classe dobbiamo aggiungere il tempo di servizio: siccome la disciplina è astratta, $E(S)$ è uguale per tutte le classi, per cui $E(T_{S_k}) = E(T_{Q_k}) + E(S)$, quindi vale anche che $E(T_{S_k}) \leq E(T_{S_{k+1}})$. Per i numeri medi in coda, si può applicare Little, possiamo ottenere i così detti indici locali, ovvero tutti relativi alla singola classe
+\begin{itemize}
+\item $E(N_{Q_k}) = \lambda_k E(T_{Q_k})$
+\item $E(N_{S_k}) = \lambda_k E(S_k)$, $E(N_{S_k}) = \rho_k + E(N_{Q_k})$
+\end{itemize} 
+Ci sono anche misure globali, ad esempio il tempo di attesa globale indipendentemente dalla classe: la media, ovvero la somma soppesata con la probabilità di essere di classe k: $E(T_Q)^{NP\_priority} = E(E(T_{Q_k})) = \sum\limits_{k=1}^{r} p_k E(T_{Q_k})$ ed $E(T_S)^{NP\_priority} = E(T_Q)^{NP\_priority} + E(S)$. A sua volta, la probabilità di essere di classe k si definisce empiricamente come: $p_k = \frac{\lambda_k}{\lambda}$. Allo stesso modo-, possiamo calcolare il tempo di servizio medio globale: $\lambda_k = \lambda p_k$ da cui $\rho_k = \lambda_k E(S) = p_k \lambda E(S) = p_k \rho$
+\subsection{Confronto senza classi di priorità}
+Dalla definizione di probabilità di classe k, possiamo ricavare $\lambda_k = p_k \cdot \lambda$, sappiamo che $\rho_k = \lambda_k \cdot E(S)$, quindi otteniamo $\rho_k = p_k \cdot \lambda \cdot E(S) = \rho \cdot p_k$. Facciamo il confronto senza le classi di priorità: avevamo un unico flusso $\lambda$ che andava in un'unica coda, l'abbiamo diviso in r code, ovvero classi di priorità. Ci chiediamo se c'è stato un guadagno per qualcuno e la perdita per qualcun altro. Vediamo da un punto di vista della classe k:
+\begin{itemize}
+\item classe 1: $E(T_{Q_1}) = \dfrac{\frac{\lambda}{2} E(S^2)}{(1 - \rho_1)}$, supera tutti, deve solo aspettare i job che trova all'istante del suo arrivo. Quindi, il denominatore sarà solo $1 - \rho_1$, contro $1 - \rho$, ci guadagna sicuro
+\item l'ultima classe ha solo da perderci: $E(T_{Q_r}) = \dfrac{\frac{\lambda}{2} E(S^2)}{(1 - \rho) (1 - \sum\limits_{i=1}^{r-1} \rho_i)}$, ha come attesa la somma di tutti i $\rho$ di tutte le classi, in più si vede superare da tutti quelli avanti. Ci perde sicuramente
+\end{itemize}
+in termini globali non c'è né perdita e né guadagno, ma possiamo fare un discorso singolare. Per il caso di due classi: la media per $E(T_Q) = p_1 \cdot (E(T_{Q_1}) + p_2 \cdot (E(T_{Q_2})$, mettendo dentro i numeri (formulette) otteniamo $\frac{\lambda}{2}\cdot E(S^2) \frac{p_1(1 - \rho) + p_2}{(1 - \rho)(1 - \rho_1)}$, da cui si arriva a $\dfrac{\frac{\lambda}{2}E(S^2)}{1 - \rho}$. Quindi, l'attesa globale è uguale a quella che si attende con la KP.
+\subsubsection{Esempi}
+Supponiamo di avere $E(S) = 0.4 s$, $\rho = 60\%$ da cui $\lambda = 1.5 j/s$, distribuzione esponenziale. Partiamo dalla ripartizione uniforme, ovvero partizioniamo il flusso in due classi equiprobabili: $p_1 = p_2 = 0.5$. Calcoliamo i tempi di attesa:
+\begin{itemize}
+\item $E(T_{Q_1}) = \frac{\rho E(S)}{1 - \rho_1}$
+\item $E(T_{Q_2}) = \frac{\rho E(S)}{(1 - \rho)(1 - \rho_1)}$
+\end{itemize}
+abbiamo $\rho_1 = \rho_2 = 0.3$, riassumiamo in tabella i valori in base alla ripartizione\\\\
+\begin{tabular}{ |c|c|c|}
+\hline
+\% & $E(T_{Q_1})$ & $E(T_{Q_2})$\\
+\hline
+50\% & 0.342857 & 0.857143\\
+\hline
+30\%-70\% & 0.2927 & 0.7317\\ 
+\hline
+70\%-30\% & 0.413793 & 1.03448\\
+\hline
+\end{tabular}
+\\\\ nel secondo caso, entrambe le classi aspettano meno rispetto al primo caso, mentre nel 3° caso le cose peggiorano molto. Da un punto di vista globale, le prestazioni sono uguali, quindi se facciamo una scelta di questo tipo è perché vogliamo avvantaggiare qualcuno. Perché cambia a seconda della partizione: nei diversi casi, la classe meno prioritaria si vede superata da più o meno job nella classe prioritaria. Guardando la configurazione, la scelta di quale prendere va fatta pensando al trade-off: nel confronto fra 1 e 2, il guadagno rispetto allo 0.6 globale lo ottengo solo nel 30\%, mentre nel primo caso il guadagno è più piccolo, ma la 50\%. Se in un sistema si guadagna per ogni job che ha tempi di risposta minori, allora si guadagna di più nel primo caso. Non guardare solo al guadagno, bensì anche alla perdita nell'altro caso: da una parte ho il 50\%, dall'altra il 70\%. Per completezza, calcoliamo anche il tempo di slow down. calcolato rispetto alla size: quando stiamo guardando allo slow down con sheduling astratto, non sappiamo nulla su dove sta la size x in termini di classi, se fosse size based allora le classi verrebbero formate in base alla size x. Quindi, in questo caso vanno calcolati per entrambe le classi. Teniamo a mente la PS: $E(sd)_{PS} = \frac{1}{1 - \rho} = 2.5$, inoltre ricordiamo che $E(sd(x)) = 1 + \frac{E(T_Q)}{x}$\\\\
+\begin{tabular}{ |c|c|c|c|}
+\hline
+\% & x & class\_1 & class\_2\\
+\hline
+50\%-50\% & 0.4 & 1.8571 & 3.1423\\
+\hline
+50\%-50\% & 0.2 & 2.7143 & 5.2857\\
+\hline
+30\%-70\% & 0.2 & 2.4635 & 4.6585\\
+\hline
+70\%-30\% & 0.2 & 3.062... & 6.1724...\\
+\hline
+\end{tabular}\\\\
+come sul tempo di attesa, entrambe migliorano con la ripartizione 30\%-70\%, ma vanno sempre tenute a mente le percentuali.
+\\ Vediamo un altro esempio, in cui partizioniamo il flusso in 4 classi, a seconda del $\rho$ otteniamo dei valori per le $E(T_{Q_k})$. Dalle tabelle, vediamo come la classe 1 va meglio della KP, come anche la 2, mentre la 3 e la 4 vanno peggio. Se la ripartizione è uniforme, succederà sempre che la metà delle classi vanno meglio e l'altra metà vanno peggio. Se la partizione non è uniforme, come fare a capire se una partizione va meglio o peggio? Analiticamente è facile da vedere.\\\\ esercizio: supponiamo di avere un certo requisito di qualità, dobbiamo decidere se per soddisfare questo requisito occorrono le classi di priorità a no. Poiché si parla di schedulign astratto, possiamo tradurre il requisito solo in tempi di attesa (il tempo di servizio  è identico). Supponiamo di avere $E(S) = 0.4$, il requisito può essere che \textit{il tempo di attesa non superi mai il tempo di servizio}, in particolare:
+\begin{itemize}
+\item se $T_Q \leq 0.45$ non ci sarà da pagare penale
+\item se $T_Q < 0.4$ c'è guadagno
+\end{itemize}
+vediamo cosa accade con la KP: supponiamo che i tempi siano esponenziali, poniamoci dai punti di vista di 3 livelli di carico:
+$\rho =$ 0.4, 0.6 0.8 con dei $\lambda= $ 1, 1.5 e 2 j/s, avremmo degli $E(T_Q)$ rispettivamente 0.26, 0.6, 1.6 s.\\ Quindi, quando cominciamo ad andare su fattori di utilizzazione di 0.6, con un unica coda non si riesce a soddisfare nessun QoS. Come impostiamo in generale questo tipo di domanda: $E(T_{Q_1}) = \frac{\rho E(S)}{1 - \rho_1} = $QoS. A sua volta $\rho_1 = p_1 \cdot \rho$, possiamo quindi determinare $p_1 = \frac{1}{\rho} - \frac{E(S)}{"QoS"}$, per $\rho = 0.8$ e considerando di non pagare penalità otteniamo che $p_1 = \frac{1}{0.8} - \frac{0.4}{0.45} \approx 0.36$. Quindi, mandando il 36\% in prima classe, il tempo di attesa è entro 0.45. Se usiamo il requisito per il guadagno, otteniamo $p_1 = \frac{1}{0.8} - \frac{0.4}{0.39} \approx 0.22$. \\\\ Quindi, partendo da un requisito di qualità, voglio capire a quanti far "rispettare il requisito". Ricavo quindi $p_1$ usando il vincolo della QoS, in base a questo so quanta percentuale va mandata in prima classe per soddisfare sull'attesa il requisito. C'è un criterio per cui riusciamo a capire, per una classe generica k, se le prime k guadagnano o no. Confrontiamo la formula della classe k con quella generale. Nella formula generale abbiamo: $E(T_{Q_k}) =  \frac{E(S_{rem})}{(1 - \sum\limits_{i=1}^{k} \rho_i)\cdot (1 - \sum\limits_{i=1}^{k-1} \rho_i)}$. Per la KP, avremmo $E(T_Q) = \frac{E(S_{rem})}{1 - \rho}$, e quindi verifichiamo tramite disuguaglianza quando conviene partizionare: $\frac{E(S_{rem})}{(1 - \sum\limits_{i=1}^{k} \rho_i)\cdot (1 - \sum\limits_{i=1}^{k-1} \rho_i)} \leq \frac{E(S_{rem})}{1 - \rho}$, da cui abbiamo che $1 - \sum\limits_{i=1}^{k} \rho_i)\cdot (1 - \sum\limits_{i=1}^{k-1} \rho_i) \geq 1 - \rho$ e scriviamo $\rho = \sum\limits_{i=1}^{r}\rho_i$, tramite passaggi abbiamo che: $1 - \sum\limits_{i=1}^{k-1} - \sum\limits_{i=1}^{k} + \sum\limits_{i=1}^{k} \cdot \sum\limits_{i=1}^{k-1} \geq 1 - \sum\limits_{i=1}^{k} + \sum\limits_{i=k+1}^{r}$, da cui abbiamo che $\sum\limits_{i=k+1}^{r} \geq \sum\limits_{i=1}^{k-1}(1 - \sum\limits_{i=1}^{k})$. La formula vuol dire che la somma dei $\rho$ per $k = k+1,...,r$ è maggiore o uguale di una porzione dell'occupazione delle code che stanno sopra: il meccanismo delle priorità fa si che c'è guadagno se l'occupazione di quelli che stanno sotto risulta più grande di una parte di quelli che sono sopra. 1 - l'occupazione delle prime k classi è un numero minore di 1, quindi se la quantità di flussi che superano la classe k è maggiore di una parte di quelli che la classe k stessa supera, allora c'è guadagno.
+\\ esempio: \\ prendiamo un caso limite, con $\rho = 0.92$, consideriamo almeno 3 classi. Supponiamo di avere questa partizione astratta (non c'è un criterio per entrare nelle classi): 15\% 25\% 60\%, abbiamo quindi $\rho_3 = 0.138$, $\rho_2 = 0.23$, $\rho_1 = 0.552$. Consideriamo $E(S) = 1$, $\lambda = 0.92 j/s$. Avendo un unica coda, per la KP: $E(T_Q) = 11.5 s$. Ora, usando un sistema di priorità, vogliamo capire il guadagno per la classe centrale, la 3° ci perde sicuramente. Abbiamo quindi $\rho_3 \geq \rho_1(1 - \rho_1 - \rho_2)$, quindi se $0.138 \geq 0.552(0.218) \rightarrow 0.120336$. Applicando le formule, si ricavano tempi di attesa e di risposta per le 3 classi.
+\subsection{Preemptive priority}
+Consideriamo l'idea di aggiungere la prelazione senza perdita: se un job è in servizio e ce n'è uno con priorità maggiore, ne prende il posto in servizio, successivamente il job interrotto verrà ripreso \textbf{dal punto in cui era stato fermato}. Quindi, per la classe k generica, le attese contengono i due termini visti prima, per il meccanismo delle priorità, mentre ora il tempo di servizio rimanente verrà atteso solo se è in servizio qualcuno di classe da 1 a k-1 (non ha senso che la classe k interrompa la classe k), ovvero $E(S_{rem_k}) = \frac{1}{2} \sum\limits_{i=1}^{k} \lambda_i E(S^2)$. Quindi, per $E(S_{rem})$ con prelazione l'utente k deve attendere solo la somma dei primi k $\lambda$, perché su quelli sotto ha diritto di prelazione. Quindi in questo caso, avremo un vantaggio rispetto alla KP, si paga per i job interrotti: finché non riprendono il servizio, sperimentano una nuova attesa. Il job interrotto torna nella classe k' $<$ k. Da un punto di vista di analisi, l'attesa aggiuntiva si calcola come tempo di servizio: il tempo di attesa concettualmente si calcola come tempo che passa dall'arrivo a quando si prende servizio la prima volta, se c'è prelazione. Quindi, tutto ciò che si paga di ulteriore sta nel \textbf{tempo di servizio virtuale:} $E(S_{virt_k}) = \frac{E(S)}{1 - \sum\limits_{i=1}^{k-1} \rho_i}$, quindi da un punto di vista di tempi di attesa c'è un guadagno, ma da un punto di vista di tempi di servizio no, quindi per il tempo di risposta non si può dire nulla, a parte per la prima e l'ultima classe che rispettivamente ci guadagnano e ci predono sempre, ma in generale i tempi di risposta globali non sono confrontabili in quanto vale che:
+\begin{itemize}
+\item $E(T_Q)^{P\_priority} \leq E(T_Q)^{NP\_priority}$
+\item $\sum\limits_{k=1}^{r} p_k E(S_{virt_k}) \geq E(S)$
+\end{itemize}
+Per tempi di servizio esponenziali, abbiamo invece che $E(T_S)^{P\_priority} = E(TS)^{KP}$, quindi globalmente è come non avere guadagno.\\ esempio: \\ flusso in arrivo random (tempi di inter-arrivo esponenziali) con rate 0.8 j/s, processo di servizio con rate variabile di 1 j/s, il QoS è che il tempo di risposta non dovrebbe essere più del doppio della richiesta:
+\begin{itemize}
+\item no penality se $T_S \leq 4$
+\item guadagno se $T_S < 2$
+\end{itemize}
+Abbiamo un $\rho = 0.8$, M/M/1, $E(T_Q) = \frac{\rho E(S)}{1 - \rho} = 4$, $E(T_S) = 5$. Supponiamo di pensare ad un sistema con 3 classi con la suddivisione in classi: 20\%, 30\%, 50\% (formule). Se cambiamo la distribuzione del tempo di servizio con un iper-esponenziale (2 stati) molto variabile (p = 0.1), dove il 10\% chiede $E(S) = 5 s$ ed un 90\% che chiede $E(S) = 0.55555 s$, le cose peggiorano. Si riesce a soddisfare solo per il 20\% il requisito di QoS.\\ esercizio: \\ domanda media per un servizio (exp) 0.4 s. Requisito di QoS:
+\begin{itemize}
+\item tempo di attesa non dovrebbe superare 0.1 s
+\item guadagno di $c_1$ per ogni servizio entro il QoS
+\item pagamento di $c_2$ per ogni violazione
+\end{itemize}
+avendo $\lambda = 0.8 j/s$, quindi $\rho = 0.32$, requisito espresso in termini di tempo di attesa, con la singola coda abbiamo $E(T_Q) = 0.188235 s$, quindi il QoS non è rispettato. Considerando che stiamo parlando di guadagno, dobbiamo calcolare quanto si guadagna e quanto si perde: se pensa ad uno scheduling astratto con prelazione, vedendo la revenue come $R = p_1c_1 - p_2c_2$: nella prima classe c'è il guadagno, mentre nella seconda il vincolo verrà violato.\\ Cerchiamo di fare in modo che la prima classe soddisfi il vincolo: $E(T_{Q_1}) = \frac{\rho_1 E(S)}{1 - \rho_1} \leq 0.1$, di nuovo notiamo come la prima classe trova di fronte a se solo job della stessa classe. Abbiamo che $\frac{\rho_1}{1 - \rho_1} \leq \frac{0.1}{0.4} = 0.25 \rightarrow \rho_1 \leq (1 - \rho_1)\cdot 0.25 = 1.25\cdot \rho_1 \leq 0.25$ da cui $\rho_1 \leq \frac{0.25}{1.25} = 0.2$, da cui abbiamo che $p_1 \rho_1 < 0.2 \rightarrow p_1 \leq 0.625$, questa è la percentuale massima di job che se mandati in prima classe farebbe si che il tempo di attesa fosse minore di 0.1 per la prima classe. Consideriamo $p_1 = 0.6$ e $p_2 = 0.4$, di avere dei costi $c_1 = 5$ e perdite $c_2 = 3$, abbiamo una revenue $R = 2.2$, sostituendo nelle formule possiamo ricavare i tempi medi di attesa e di risposta.
+\subsection{Size-based priority scheduling}
+Le classi vengono formate rispetto a ciò che chiedono, ad esempio in un ordine decrescente o con altri criteri, sempre legati alla richiesta. Quello che fa guadagnare dal punto di vista delle prestazioni è ordinare dalla minima size alla massima, in modo da smaltire il carico che chiede di meno. Se ad un certo istante c'è in servizio l'utente di classe h, vuol dire che la sua domanda è minore della classe k, $E(S_h) < E(S_k)$ se $h < k$. Ora, cambia il tempo di attesa: consideriamo il caso base, $u \in$ classe k se $S \in (x_{k-1}, x_k]$:\\ 
+\includegraphics[scale=0.4]{images/PMCSN-2104-01.jpeg}\\
+i job di classe k sono: P($\{s \leq x_k\}$) - P($\{s \leq x_{k-1}\}$) = $F(x_k) - F(x_{k-1}) = p_k$ (area in verde). Poiché possiamo sempre dire che la probabilità di essere di una determinata classe è $p_k = \frac{\lambda_k}{\lambda}$, allora $\lambda_k = \lambda p_k = \lambda(F(x_k) - F(x_{k-1}))$. Ora, dobbiamo calcolare la media del tempo di servizio della classe k: $E(S_k) = \int\limits_{x_{k-1}}^{x_k} t f^n(t) dt$, ma dobbiamo fare in modo che la somma delle probabilità sia 1 (all'interno dell'area verde), quindi la $f(t)$ è normalizzata ed è $f^n(t)$. Per normalizzare la $f(t)$ dividiamo per l'area sottesa: $f^n = \frac{f}{F(x_k) - F(x_{k-1})}$. Ora, possiamo ricavare $\rho_k = \lambda_k \cdot E(S_k) = \lambda[F(x_k) - F(x_{k-1}]\cdot \int\limits_{x_{k-1}}^{x_k} t \frac{f(t)}{F(x_k)-F(x_{k-1})} dt = \lambda \int\limits_{x_{k-1}}^{x_k} t f(t) dt$. Per il tempo di attesa, le componenti sono le stesse viste prima (caso senza prelazione):
+\begin{itemize}
+\item $S_{rem}$
+\item tutti quelli nella classe dalla classe 1 a k
+\item tutti quelli che arrivano in classi di priorità più alte, quindi da 1 a k-1
+\end{itemize}
+volendo calcolare $\sum\limits_{i=1}^{h} \rho_i = \sum\limits_{i=1}^{h} \lambda \int\limits_{x_{i-1}}^{x_i} tf(t) dt = \lambda \int\limits_{0}^{x_h} t f(t) dt$, che viene sostituito nelle formule viste sopra. Questo per quanto riguarda i tempi locali, ora vediamo i tempi globali in cui tutto dipende dalla distribuzione: $E(T_Q)^{SB\_NP\_priority} = \sum\limits_{k=1}^{r}p_k \cdot E(T_{Q_k})$ (formulazza). Cosa succede rispetto allo schedluing astratto: vediamo il confronto sull'attesa della classe k ed abbiamo che $E(T_{Q_K})^{SB\_NP} \leq E(T_{Q_K})^{abstract\_NP}$: confrontiamo solo il denominatore, ridicendo a confrontare $[\sum\limits_{i=1}^{h} \rho_i]^{SB\_NP} \leq [\sum\limits_{i=1}^{h} \rho_i]^{abstract\_NP}$ per ogni h. La somma generica $\sum\limits_{i=1}^{h} \rho_i = \rho_1 + \rho_2 + ... + \rho_h = [\lambda_1E(S_1) + \lambda_2E(S_2) + ... +\lambda_hE(S_h)]_{SB}$, nel caso astratto avremmo $\lambda_1E(S)+\lambda_2E(S) +...+\lambda_hE(S)$. È noto che la somma del prodotto di due serie motonò ne è minima quando le serie hanno ordinamenti opposti: nel caso astratto una serie è costante, l'altra è creata con un criterio astratto in cui non c'è un ordine. Nel caso size-based, in tutti i casi di funzioni di distribuzione monotòne decrescenti (come esponenziale, iper-esponenziale etc...) succede che $\lambda_1 > \lambda_2 > ... >\lambda_h$ ed esattamente l'opposto per i tempi di servizio, $E(S_1) < E(S_2) < ... < E(S_h)$.\\ 
+\includegraphics[scale=0.3]{images/PMCSN-2104-02.jpeg}\\
+Quindi sicuramente la somma è minima, quindi è più piccola del caso astratto. Possiamo concludere che l'attesa della classe k nel caso size-based è più piccola del caso di una ripartizione astratta. Per gli indici globali, il ragionamento è simile: $E(T_Q)^{SB\_NP} < E(T_Q)^{abstract\_NP}$: scriviamo l'indice come $p_1E(T_{Q_1}) + p_2E(T_{Q_2}) + ... +p_kE(T_{Q_k})$. Si adatta lo stesso tipo di ragionamento, nel caso size-based, le probabilità sono decrescenti e le attese sono crescenti. Il tempo medio di servizio globale è uguale per entrambe i casi, mentre per l'attesa vale quanto detto sopra, quindi anche la risposta avrà la relazione $E(T_S)^{SB\_NP} < E(T_S)^{abstract\_NP}$.
+N.B: gli intervalli sono equidistanti, ma nella pratica ad esempio si possono usare intervalli non bilanciati, ad esempio nell'esponenziale si divide in classe sotto la media e classe sopra la media. Nella pratica si definisce quello che è più adatto al caso.\\ esercizio\\ 
+Riprendiamo l'esercizio visto in precedenza, con il size-based possiamo dividere sulla media: $p_k = F(x_k) - F(x_{k-1})$, otteniamo due classi (a partire da un esponenziale) ed otteniamo $p_1 = 0.63212$ e $p_2 = 0.36788$, da cui calcoliamo i $\lambda_i$. Otteniamo, in base a carichi bassi/medi/alti i diversi valori di $\lambda_i$ \textbf{NB: }fare un controllo di consistenza che $\sum\limits_{i} \lambda_i = \lambda$. Calcoliamo poi i tempi medi (usando le formule viste sopra) ottenendo $E(S_1) = 0.16$ ed $E(S_2) = 0.8$, di nuovo si può fare un controllo di consistenza per verificare che la media pesata torni.
+
+
+
+
+
+
+
 \section{Feedback 1}
 \subsection{Distribuzioni heavy tail}
 Le distribuzioni esponenziali hanno diverse proprietà: consideriamo le distribuzioni a fasi esponenziali, in tutte quante le code vanno presto a 0, ovvero la probabilità dei valori grandi è estremamente piccola. Nella Pareto, anche la parte della distribuzione dei valori grandi ha delle probabilità non trascurabili, quindi le cose cambiano completamente.\\ Nella singola fase dell'esponenziale, la caratteristica principale è la memoryless, ovvero il failure rate è costante. Le distribuzioni con heavy tail hanno comportamenti opposti:
@@ -897,4 +1009,28 @@ Le heavy tail sono presenti in moltissimi aspetti:
 \item n° di flussi di pacchetti IP: l'1\% dei flussi più grandi comportano il 50\% dei bytes della somma di tutti i flussi. Quindi, se indirizzo un flusso verso un certo routing, spostando solo l'1\% dei flussi più grandi si toglie una grande quantità di carico
 \item fenomeni naturali
 \end{itemize}
+Per usare la Pareto, distribuzione che modella questi fenomeni, nei nostri scopi, ci restringiamo alla bounded pareto, che ha momento di ogni ordine finito, consulta \ref{pareto} per le formule.
+\subsection{Tassi dell'iperesponenziale}
+La cosa da enfatizzare è che quando si parla di distribuzioni del tempo di servizio: per la bi-fase, c'è una certa condizione che porta con una certa probabilità p al servizio $S_2$, un'altra che porta al servizio $S_1$. Entrambi i servizi sono esponenziali, il tasso di servizio globale è $\mu$, i singoli tassi sono $2p\mu$ e $2(1-p)\mu$: se facciamo la media, otteniamo che $\frac{1}{\mu} = E(S) = p\cdot \frac{1}{2p\mu}  + (1 - p)\frac{1}{2(1 - p)\mu}$ e questo giustifica il 2 a moltiplicare i singoli tassi.
+\subsection{Multi-server con coda }
+Il modello è costituito da più server, ciascuno potrebbe abere un tempo di servizio modellato con un iperesponenziale. Supponiamo che siano m, che il tasso di arrivo sia $\lambda$, che siano tutti uguali e con tasso di servizio esponenziale, con tasso $\mu$. I discorsi più "critici" riguardano:
+\begin{itemize}
+\item utilizzazione media
+\item tempi di servizio medi
+\item quali tempi nelle formule
+\end{itemize}
+\paragraph{Utilizzazione media:}l'utilizzazione media è sempre il rapporto fra la frequenza media degli arrivi e la frequenza massima di uscita. Quindi, per l'intero centro, serventi più coda, è dato dal rapporto $\rho = \frac{freq\_arrivo\_media}{max\_freq\_servizio} = \frac{\lambda}{m\cdot \mu}$. Potremmo chiederci quanto vale il $\rho_i$, applicando la definizione generale: $\dfrac{\frac{\lambda}{m}}{\mu}$. Sono uguali, ma cambia l'interpretazione:
+\begin{itemize}
+\item $\rho_i$ è la percentuale del tempo per cui il singolo server è occupato
+\item $\rho$ può essere visto come la percentuale dei server occupato sugli m totali
+\end{itemize}
+Quindi, il tempo che passa dall'istante in cui un job "si siede" a quando termina sarà $E(S_i) = \frac{1}{\mu}$, quindi se calcolo il tempo medio di risposta $E(T_S) = E(T_Q) + E(S_i)$, mentre quando calcolo il tempo medio in coda $E(T_Q)$, voglio conoscere quanto tempo in media il job attende in coda, ovvero da quando arriva a quando prende servizio. In questo caso, basta che si liberi uno qualunque dei server: vedo da quando un job prende servizio e dopo quanto tempo esce il successivo, \textbf{che non è per forza lo stesso} e questo tempo è $E(S)$ ed è m volte più piccolo di $E(S_i)$
+\subsection{Multi-server}
+Partiamo da una catena per un centro a servente singolo, dopo aver ricavato le equazioni di bilanciamento globale, ricaviamo il $\pi_C$. Nel caso multiserver, per capire la $\pi_N$ bisognerebbe fare la stessa cosa, ma il problema è che i tassi di uscita cambiano in base allo stato in cui ci si trova. Si ricava il $pi_i$, che ha come termine in più $\frac{1}{i!}$, che tiene in conto le possibili permutazioni dei server.\\ Anche nella Erlang c'è un termine in più che è $\frac{1}{m! (1 - \rho}$, ma il pezzo del $\rho$ è spiegato dal fatto che nella KP il tempo di attesa è fatto da due termini: $t_c$ ed $S_{rem}$, dove il $t_c$ è la costante (fissato $\rho$) di proporzionalità per cui il tempo di servizio rimanente viene amplificato per il numero di job che sono in coda.\\ Anche sul multi-server si potrebbero fare diverse simulazioni, vedendo la Erlang contro un'altra distribuzione a fasi (mi aspetto che per valori di $\rho$ piccoli lo scostamento sia piccolo).
+\subsection{Coda con feedback}
+Una parte del flusso di ingresso torna indietro con una certa probabilità $\beta$, inoltre il flusso in ingresso deve essere pari al flusso di uscita , la saturazione si raggiunge per $\beta = 0.25$
+\subsection{Scheduling astratto non-preemptive}
+Il teorema di Conway si riferisce allo scheduling astratto non-preemptive, il focus è sull'aspetto dello scheduling: tutti gli scheduling astratti hanno gli stessi risultati medi, inoltre le popolazioni hanno la stessa distribuzione. Siccome il teorema dimostra che per tutti gli scheduling astratti le popolazioni hanno le stesse distribuzioni, sicuramente sono uguali medie e varianze, sia nel centro che nella coda. Per quanto riguarda i tempi, da Little, considerando le medie vale l'uguaglianza.
+\subsection{Processor sharing}
+Disciplina di scheduling con prelazione, in quanto la capacitò va divisa fra più job, quindi se arriva un nuovo job è come se ci fosse una prelazione. Da un punto di vista di prestazioni, mostra le stesse della FIFO con distribuzione esponenziale, ma per una distribuzione generale.
 \end{document}
