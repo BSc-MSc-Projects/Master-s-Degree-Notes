@@ -4,6 +4,7 @@
 \usepackage{graphicx}
 \usepackage{geometry}
 \usepackage{listings}
+\usepackage{amsfonts}
 
 \geometry{
 	a4paper
@@ -984,16 +985,61 @@ i job di classe k sono: P($\{s \leq x_k\}$) - P($\{s \leq x_{k-1}\}$) = $F(x_k) 
 \end{itemize}
 volendo calcolare $\sum\limits_{i=1}^{h} \rho_i = \sum\limits_{i=1}^{h} \lambda \int\limits_{x_{i-1}}^{x_i} tf(t) dt = \lambda \int\limits_{0}^{x_h} t f(t) dt$, che viene sostituito nelle formule viste sopra. Questo per quanto riguarda i tempi locali, ora vediamo i tempi globali in cui tutto dipende dalla distribuzione: $E(T_Q)^{SB\_NP\_priority} = \sum\limits_{k=1}^{r}p_k \cdot E(T_{Q_k})$ (formulazza). Cosa succede rispetto allo schedluing astratto: vediamo il confronto sull'attesa della classe k ed abbiamo che $E(T_{Q_K})^{SB\_NP} \leq E(T_{Q_K})^{abstract\_NP}$: confrontiamo solo il denominatore, ridicendo a confrontare $[\sum\limits_{i=1}^{h} \rho_i]^{SB\_NP} \leq [\sum\limits_{i=1}^{h} \rho_i]^{abstract\_NP}$ per ogni h. La somma generica $\sum\limits_{i=1}^{h} \rho_i = \rho_1 + \rho_2 + ... + \rho_h = [\lambda_1E(S_1) + \lambda_2E(S_2) + ... +\lambda_hE(S_h)]_{SB}$, nel caso astratto avremmo $\lambda_1E(S)+\lambda_2E(S) +...+\lambda_hE(S)$. È noto che la somma del prodotto di due serie motonò ne è minima quando le serie hanno ordinamenti opposti: nel caso astratto una serie è costante, l'altra è creata con un criterio astratto in cui non c'è un ordine. Nel caso size-based, in tutti i casi di funzioni di distribuzione monotòne decrescenti (come esponenziale, iper-esponenziale etc...) succede che $\lambda_1 > \lambda_2 > ... >\lambda_h$ ed esattamente l'opposto per i tempi di servizio, $E(S_1) < E(S_2) < ... < E(S_h)$.\\ 
 \includegraphics[scale=0.3]{images/PMCSN-2104-02.jpeg}\\
-Quindi sicuramente la somma è minima, quindi è più piccola del caso astratto. Possiamo concludere che l'attesa della classe k nel caso size-based è più piccola del caso di una ripartizione astratta. Per gli indici globali, il ragionamento è simile: $E(T_Q)^{SB\_NP} < E(T_Q)^{abstract\_NP}$: scriviamo l'indice come $p_1E(T_{Q_1}) + p_2E(T_{Q_2}) + ... +p_kE(T_{Q_k})$. Si adatta lo stesso tipo di ragionamento, nel caso size-based, le probabilità sono decrescenti e le attese sono crescenti. Il tempo medio di servizio globale è uguale per entrambe i casi, mentre per l'attesa vale quanto detto sopra, quindi anche la risposta avrà la relazione $E(T_S)^{SB\_NP} < E(T_S)^{abstract\_NP}$.
+Quindi sicuramente la somma è minima, quindi è più piccola del caso astratto. Possiamo concludere che l'attesa della classe k nel caso size-based è più piccola del caso di una ripartizione astratta. Per gli indici globali, il ragionamento è simile: $E(T_Q)^{SB\_NP} < E(T_Q)^{abstract\_NP}$: scriviamo l'indice come $p_1E(T_{Q_1}) + p_2E(T_{Q_2}) + ... +p_kE(T_{Q_k})$. Si adatta lo stesso tipo di ragionamento, nel caso size-based, le probabilità sono decrescenti e le attese sono crescenti. Il tempo medio di servizio globale è uguale per entrambe i casi, mentre per l'attesa vale quanto detto sopra, quindi anche la risposta avrà la relazione $E(T_S)^{SB\_NP} \leq E(T_S)^{abstract\_NP}$.
 N.B: gli intervalli sono equidistanti, ma nella pratica ad esempio si possono usare intervalli non bilanciati, ad esempio nell'esponenziale si divide in classe sotto la media e classe sopra la media. Nella pratica si definisce quello che è più adatto al caso.\\ esercizio\\ 
-Riprendiamo l'esercizio visto in precedenza, con il size-based possiamo dividere sulla media: $p_k = F(x_k) - F(x_{k-1})$, otteniamo due classi (a partire da un esponenziale) ed otteniamo $p_1 = 0.63212$ e $p_2 = 0.36788$, da cui calcoliamo i $\lambda_i$. Otteniamo, in base a carichi bassi/medi/alti i diversi valori di $\lambda_i$ \textbf{NB: }fare un controllo di consistenza che $\sum\limits_{i} \lambda_i = \lambda$. Calcoliamo poi i tempi medi (usando le formule viste sopra) ottenendo $E(S_1) = 0.16$ ed $E(S_2) = 0.8$, di nuovo si può fare un controllo di consistenza per verificare che la media pesata torni.
+Riprendiamo l'esercizio visto in precedenza, con il size-based possiamo dividere sulla media: $p_k = F(x_k) - F(x_{k-1})$, otteniamo due classi (a partire da un esponenziale) ed otteniamo $p_1 = 0.63212$ e $p_2 = 0.36788$, da cui calcoliamo i $\lambda_i$. Otteniamo, in base a carichi bassi/medi/alti i diversi valori di $\lambda_i$ \textbf{NB: }fare un controllo di consistenza che $\sum\limits_{i} \lambda_i = \lambda$. Calcoliamo poi i tempi medi (usando le formule viste sopra) ottenendo $E(S_1) = 0.16$ ed $E(S_2) = 0.8$, di nuovo si può fare un controllo di consistenza per verificare che la media pesata torni.\\ Cosa possiamo fare di meglio: il problema è che abbiamo delle classi con delle code FIFO, quindi all'interno della stessa classe possiamo avere il problema di un job grande che blocca quelli piccoli. Potremmo formare un numero ipotetico infinito di classi, mettendo in ordine tutti i job che arrivano, quindi ognuno fa classe a se. Da un punto di vista analitico, basta fare un limite $r \rightarrow \infty$  di $E(T_Q)^{SB\_NP} = \frac{\lambda}{2}E(S^2) \sum\limits_{k=1}^{r} \dfrac{F(x_k) - F(Xx_{k-1})}{(1 - \lambda \int\limits_{0}^{x_k} t f(t) dt)(1 - \lambda \int\limits_{0}^{x_{k-1}} t f(t) dt)}$ che diventa $E(T_Q)^{SJF} = \frac{\lambda}{2}E(S^2) \int\limits_{0}^{\infty} \dfrac{dF(x)}{(1 - \lambda \int\limits_{0}^{x} t f(t) dt)^2}$.
+\subsubsection{Size-based con prelazione}
+Aggiungiamo la prelazione senza perdita, come sappiamo se $k < h \Rightarrow E(S_h) > E(S_k)$ allora potrebbe fare prelazione, ma fatto sulle medie ha poco senso, perché magari la classe in esecuzione aveva quasi finito. La prelazione viene fatta sul tempo di servizio, si fa solo se $E(S_k) < E(S_{h\_rem})$, quindi dipende dalla distribuzione (per Exp, avremmo gli stessi tempi).\\ Si usa un piccolo algoritmo:
+\begin{itemize}
+\item se $E(S_k) > E(S_{h\_rem})$ allora non si fa preemption
+\item altrimenti si fa preemption, ma h viene rimandato in una classe che si basa sul suo $E(S_{h\_rem})$, quindi verrà mandato nella classe h' tale che $x_{h'-1} < E(S_{h\_rem}) < x_{h'}$
+\end{itemize}
+Questo complica un po' l'analisi, cambia il numeratore: $E(T_{Q_k})^{SB\_P} = \dfrac{??}{(1 - \sum\limits_{i=1}^{k} \rho_i)(1 - \sum\limits_{i=1}^{k-1} \rho_i)}$, da un punto di vista di analisi occorre valutare:
+\begin{itemize}
+\item $E(S_k^2) = \int\limits_{x_{k-1}^{x_k}} t^2 f(t) dt$ nel caso size-based, mentre $\frac{1}{2}\sum\limits_{i=1}^{k} \lambda_i E(S^2)$. \\ Dobbiamo quindi valutare il tempo rimanente di servizio dei job non preemptible: $\frac{\lambda}{2}\int\limits_{0}^{x_k} t^2 dF(t)$
+\item il secondo termine tiene conto dei tempi di servizio in teoria interrompibili, ma che hanno tempi di servizio rimanente più piccolo di $E(S_k)$. Si dimostra che il tempo di servizio rimanente è $\frac{\lambda}{2}x_k^2$, occorre calcolare la probabilità: P(preemptible job) = P(S $> x_k$) = 1 - P(S $\leq x_k$) = 1 - $F(x_k)$
+\end{itemize}
+quindi la formula risultante è : $E(T_{Q_k})^{SB\_P} = \dfrac{\frac{\lambda}{2} [\int\limits_{0}^{x_k} t^2 dF(t) + (1-F(x_k))x_k^2]}{(1 - \sum\limits_{i=1}^{k} \rho_i)(1 - \sum\limits_{i=1}^{k-1} \rho_i)}$. Come sempre, abbiamo che $E(T_{Q_k})^{SB\_P} \leq E(T_{Q_k})^{SB\_NP}$, c'è il solito problema che chi viene tirato fuori dal servizio attende di nuovo, e sappiamo che quel tempo aggiuntivo va contato come tempo di servizio aggiuntivo, per cui $E(T_{S_k}) = E(T_{Q_k}) + E(S_{virt-k})$ con $E(S_{virt-k}) = \dfrac{1}{(1 - \sum\limits_{i=1}^{k-1} \rho_i)}$.\\ Anche qui, si cerca di capire da un punto di vista globale che ci guadagna, $E(T_Q)^{SB\_P}$ è sempre la media pesata (vedi sopra) ed otteniamo (formulazza).
+\subsection{Shortest Remaining Job First}
+Se confrontassimo $SB\_P$ con $SJF$: non c'è una regola generale, ma dipende dalla variabilità della distribuzione. Con scheduling $SB\_P$ abbiamo la componente astratta delle code FIFO, ma possiamo fare prelazione, dall'altra parte non c'è prelazione ma nemmeno il meccanismo astratto. Occorre capire quale dei due aspetti vince/perde: i web server usando uno shceduling che mette insieme i due aspetti, otteniamo $E(T_Q)^{SJRF} = \frac{\lambda}{2}\int\limits_{0}^{\infty} \dfrac{[\int\limits_{0}^{x} t^2 dF(t) + (1 - F(x))x^2]}{(1 - \lambda\int\limits_{0}^{x} t f(t) dt)^2} dF(x)$, usato in web server con un carico pesante. Partendo dalla PS, questo scheduling fa addirittura meglio
+\section{Sample statistics}
+La simulazione richiede di considerare molti dati, quindi occorre "comprimerli" in statistiche utili. Anche nel caso più semplice del centro a servente singolo con coda, abbiamo 7 indici di output e la statistica ci aiuta a derivare dai dati un comportamento generale. Quindi, tutti i dati vanno compressi in misure statistiche significative di un comportamento più generale. Non possiamo pensare di mandare tutti i valori su dei file in modo grezzo e poi calcolare le medie. La statistica campionaria è più difficile di quella classica, in quanto viene meno l'indipendenza ed identica distribuzione.
+\subsection{Prime statistiche}
+Statistiche che riguardano sia le job averaged che time averaged (dove avremo degli integrali):
+\begin{itemize}
+\item media campionaria : $\bar{x} = \frac{1}{n} \sum\limits_{i=1}^{n} x_i$. La media fornisce una misura della tendenza centrale, che non è il valore più probabile (che è la moda)
+\item varianza campionaria. Misura quanto ci si discosta dalla media 
+\item deviazione standard. È come la varianza, ma dal punto di vista matematico è più complicata essendoci la radice quadrata. Inoltre, questa ha la stessa unità di misura dei dati
+\item coefficiente di variazione: $\frac{s}{\bar{x}}$. Essendo rapporto fra dev std e media è un numero senza misura, è interessante perché un piccolo scostamento nei dati può cambiarlo in maniera significativa
+\end{itemize}
+media e deviazione standard sono legati mediante la disuguaglianza di Tchebichev. Si possono usare delle trasformazione dei dati, quindi partiamo da un campione definito in un certo modo e vogliamo trasformarlo come $x_i' = ax_i + b$:
+\begin{itemize}
+\item la media campionaria si ottiene come $a\bar{x} + b$
+\item dev std moltiplicando per a
+\item ...
+\end{itemize}
+Una trasformazione lineare molto utilizzata è la standardizzazione: basta usare come $a = \frac{1}{s}$ e $b = \frac{-\bar{x}}{s}$, per cui $\bar{x'} = 0$ ed $s' = 1$, può essere utile se si lavora con dati molto grandi (problemi di overflow).\\ Può essere utile anche una trasformazione non lineare: definiamo un insieme A e la trasformazione sarà:
+\[
+x_i' = 
+\begin{cases}
+1 & \text{if } x_i \in A \\
+0 & \text{otherwise}
+\end{cases}
+\]
+si può vedere che $\bar{x'} = p$ ed $\bar{s'} = \sqrt[2]{p(1-p)}$.\\ esempio: supponiamo di avere un servente a centro singolo, sia $x_i = d_i$ il delay per il job i, sia $A = \mathbb{R}^+$, allora $x'_i = 1$ se $d_i > 0$\\
+Per rendere la serie di dati tirata fuori dalla simulazione rappresentativa per tutta la popolazione, da un punto di vista computazionale abbiamo bisogno di usare il campione due volte:  una prima volta per calcolare la media e un'altra per calcolare dev std e varianza. Con dei passaggi, riusciamo a ridurre l'algoritmo in uno che utilizzi un singolo passo. L'algoritmo di Welford calcola iterativamente i valori di media, varianza e dev std man mano che si avanza.\\ esempio: \\ generazione di n variate di una Unif(a, b): sappiamo che se il campione fosse lungo all'infinito, la media dovrebbe tendere a $\frac{a + b}{2}$ e la varianza a $\frac{(b - a)^2}{12}$. Generando il campione, vediamo che i valori sono sparsi in quanto mimano bene le pseudo variabili random (anche se sappiamo esserci una certa componente deterministica). Si può vedere come la media e la deviazione standard delle 100 generazioni si discostano, anche se di poco, da quelle teoriche (si parla di statistiche campionarie).\\ Abbiamo anche il corrispettivo delle statistiche time-averaged:
+\begin{itemize}
+\item sample-path mean: $\bar{x} = \frac{1}{\tau} \int\limits_{0}^{\tau} x(t) dt$
+\item sample-path variance: $s^2 = \frac{1}{\tau} \int\limits_{0}^{\tau} (x(t)-x)^2 dt$
+\item sample-path meastd dev: $s = \sqrt[2]{s^2}$
+\end{itemize}
+anche qui, abbiamo la formula di un passo per il calcolo della varianza passo passo.\\ Tutte le volte che la funzione è una costante a gradino, la facilitazione è che piuttosto che l'integrale, occorre calcolare l'area sotto la funzione prendere il valore * tempo per cui vale, quindi abbiamo (formullette).
 
 
 
 
 
-
-
+\newpage
 \section{Feedback 1}
 \subsection{Distribuzioni heavy tail}
 Le distribuzioni esponenziali hanno diverse proprietà: consideriamo le distribuzioni a fasi esponenziali, in tutte quante le code vanno presto a 0, ovvero la probabilità dei valori grandi è estremamente piccola. Nella Pareto, anche la parte della distribuzione dei valori grandi ha delle probabilità non trascurabili, quindi le cose cambiano completamente.\\ Nella singola fase dell'esponenziale, la caratteristica principale è la memoryless, ovvero il failure rate è costante. Le distribuzioni con heavy tail hanno comportamenti opposti:

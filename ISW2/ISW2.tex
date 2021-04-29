@@ -691,7 +691,75 @@ Tutto ciò che è stato visto fin'ora per integration test è generale: vale per
 \item mock(): dichiara un mock
 \item spy(): verifica se un determinato metodo di una certa classe è stato invocato o no
 \end{itemize}
-Ora ci sono le annotazioni semplificate (vedi documentazione). Un uso tipico prevede di dire a Mockito che quando viene intercettato un messaggio su un istanza mockata, invece di invocare il metodo associato alla chiamata, viene ritornato \textit{true}. Quindi, quando viene invocato il metodo la JVM invia un messaggio sull'istanza riferita da i, viene invocato il metodo riferito dal tipo dell'istanza associata con l'istanza. Mockito invece, dice alla JVM che quando arriva un messaggio di questo tipo non deve andare a vedere il tipo riferito dall'istanza, bensì ritornare direttamente true. Questo perché il tipo potrebbe essere un interfaccia, che ad un certo punto viene linkata con una classe concreta, ma magari in fase di test occorre andare ad interagire con il metodo e va bene che ci sia un implementazione dummy che ritorna sempre true.\\ In modo analogo, posso specificare anche un intero algoritmo che simula un comportamento e ritorna un valore voluto.
+Ora ci sono le annotazioni semplificate (vedi documentazione). Un uso tipico prevede di dire a Mockito che quando viene intercettato un messaggio su un istanza mockata, invece di invocare il metodo associato alla chiamata, viene ritornato \textit{true}. Quindi, quando viene invocato il metodo la JVM invia un messaggio sull'istanza riferita da i, viene invocato il metodo riferito dal tipo dell'istanza associata con l'istanza. Mockito invece, dice alla JVM che quando arriva un messaggio di questo tipo non deve andare a vedere il tipo riferito dall'istanza, bensì ritornare direttamente true. Questo perché il tipo potrebbe essere un interfaccia, che ad un certo punto viene linkata con una classe concreta, ma magari in fase di test occorre andare ad interagire con il metodo e va bene che ci sia un implementazione dummy che ritorna sempre true.\\ In modo analogo, posso specificare anche un intero algoritmo che simula un comportamento e ritorna un valore voluto: ogni qual volta Mockito intercetta un messaggio all'operazione sotto osservazione, esegue il comportamento della \textit{thenAnsware}. Questa cosa è utile, perché se la progettazione è stata fatta in maniera orientata alle interfacce, quindi sul che cosa deve offrire l'interfaccia, possiamo fare test sull'interfaccia.\\ Ci sono anche dei costrutti per verificare se dei mock sono mai stati eseguiti, utile quando vogliamo essere certi che abbiamo raggiunto una determinata parte del codice.
+\subsection{Automazione della build: Maven}
+Maven è un sistema di build, che permette di compilare e deployare gli artefatti in modo automatico. Maven per ogni oggetto prevede una serie di step, ognuno con degli obiettivi ben precisi. Si vuole configurare il file pom in modo da adempire agli obiettivi.
+\paragraph{Fase di test}in questa fase, l'obiettivo è verificare che i test unitari passino, quindi li esegue e genera un report su quali test sono stati trovati, eseguiti ed i loro risultati
+\paragraph{Integration}il test è nell'ottica di verificare l'integrazione dei moduli del sistema. Progettati da un test engineer, che magari si affida solo all'API dei moduli senza scendere nel dettaglio\\\\ Esistono quindi due plugin dedicati alla gestione dei test di unità e di integrazione:
+\begin{itemize}
+\item Surefire: plugin dedicato alla fase di test d'unità
+\item Failsafe: concepito per la gestione dei test d'integrazione
+\end{itemize}
+sono molto simili anche nel modo in cui ci si interagisce, vanno configurati in base alla fase in cui ci si trova
+\paragraph{Maven Surefire}
+Viene attivato durante la fase di test e scansiona il progetto (se di tipo java) nella cartella src/test. Cerca tutte le classi che hanno un nome che abbia in qualche modo \textit{Test} all'interno. Per ognuna di queste classi, cerca tutti i metodo pubblici che presentano una annotazione di tipo @Test, è possibile parametrizzare il comportamento del plugin.
+\paragraph{Failsafe}
+La directory di default in cui vengono cercati i test è la stessa di Surefire, ma il nome delle classi viene battezzato in qualche modo con \textit{IT}.
+\section{Criteri di adeguatezza dei test}
+Stabilire l'adeguatezza di un insieme di casi di test significa rispondere ad una delle domande fondamentali del software testing:
+\begin{itemize}
+\item quanto sono buoni i casi di test?
+\item le attività di test fatte sul SUT sono sufficienti per gli obiettivi?
+\item ho testato in modo conforme  a ciò che mi è stato richiesto? 
+\item qual è la qualità dei test sviluppati?
+\end{itemize}
+Per stabilire metriche di adeguatezza possiamo usare diverse tecniche:
+\begin{itemize}
+\item legate al processo
+\item legare ai tipi di artefatto perso in considerazione
+\item legate alle strategie che applico
+\end{itemize}
+non esiste un metodo univoco che vale sempre, perché il test è un'attività best effort, non dà sicurezza sulla correttezza del sistema. Il risultato può dipendere da vari fattori come i contesti, i trade-off da considerare etc...
+\subsection{Funzionale vs strutturale}
+Possiamo distinguere due macro-famiglie di tecniche di adeguatezza:
+\begin{itemize}
+\item aspetti funzionali: aspetti relativi al che cosa deve essere fornito, le feature offerte dal SUT considerato. Questo è un approccio black box. Le metriche sono basate su modelli o specifiche non direttamente eseguibili, che considerano i comportamenti osservabili ma non scoprono errori dovuti a dettagli implementativi. Quindi, i test che sono stati tirati fuori dal tester, in base al V-model, non sa nulla sul codice, bensì si basa solo sulla specifica: se sono UC, saranno basati sull'interazione fra gli attori e lo UC, etc...\\ L'approccio consente di stabilire dei criteri di adeguatezza che cercano di vedere se i casi di test prodotti coprono tutte le funzionalità richieste: non sto sviluppando il sistema, non conosco il SUT, devo prendere decisioni su quali test sviluppare e quanto sono buoni i test sviluppati fin ora. Sarò contento o non contento dei casi di test in base alle funzionalità richieste dal sistema. Se ci sono errori dovuti a dettagli implementativi, potrei non accorgermene.
+\item aspetti strutturali: considero aspetti di come ho strutturato il SUT. Approccio white box: conosco l'organizzazione del sistema e fornisco gli aspetti di adeguatezza in base al codice, alla struttura etc...
+\end{itemize}
+\subsubsection{Aspetti funzionali}
+Considerando ad esempio, una pagina di documentazione di BookKeeper, considera una garanzia non presente nel codice, che dice che per qualsiasi implementazione di BookKeeper devono essere valide delle guarantees:
+\begin{itemize}
+\item il sistema può tollerare $Q_a - 1$ fallimenti senza perdita di dati
+\item tutti gli update ad un ledger saranno letti nello stesso ordine con cui sono scritti
+\item tutti i client leggeranno la stessa sequenza di update nei ledger
+\end{itemize}
+Possiamo assumere che i 3 statement siano requisiti tecnici per BookKeeper, quindi nella pianificazione dei casi di test vorrei essere sicuro che i 3 requisiti siano coperti, quindi la qualità dei casi di test sarà buona se potrò almeno verificare questi 3 claims.\\ Quindi, potrei definire una serie di criteri di qualità che cercano di coprire i requisiti:
+\begin{itemize}
+\item almeno un test di lettura-scrittura su una entry in cui nessun bookie fallisce
+\item almeno un test di lettura-scrittura su una entry in cui simulo il fallimento di $Q_a - 2$ bookies
+\item almeno un test di lettura-scrittura su una entry in cui simulo il fallimento di $Q_a - 1$ bookies
+\end{itemize}
+cosidero quindi domain partitioning sul valore di $Q_a -1$. A questo punto, avrò dei test per:
+\begin{itemize}
+\item scrivere entry su un ledger e controllare che le recuperi in quell'ordine
+\item un test con un writer e più reader. Il writer scrive le entry in un ordine e verifico che tutti i reader le leggano nello stesso ordine
+\end{itemize}
+Questo è un esempio di definizione di criteri di adeguatezza rispetto a requisiti funzionali. Andando avanti nella documentazione, troviamo che BookKeeper ha un comportamento preciso di cosa deve accadere se un ledger viene chiuso come writer: il testo può essere visto come una sequenza di passi da fare, sintetizzabili in un AD UML. Potrei aspettarmi che il mio insieme di casi di test simuli differenti situazioni che si possono incontrare nella chiusura di un ledger.\\ IL messaggio è che definiamo dei criteri di adeguatezza senza considerare l'implementazione del SUT, bensì solo considerando le funzionalità del SUT, trovati come:
+\begin{itemize}
+\item garanzie del sistema
+\item aspetti presenti nella documentazione
+\item ...
+\end{itemize}
+vogliamo che l'implementazione sia conforme alla specifica, per farlo definiamo dei criteri di adeguatezza.
+\subsubsection{Approccio strutturale}
+Il punto di partenza per stabilire la bontà della test suite non parte da una rappresentazione funzionale del SUT, non mi interessa di cosa il sistema deve fare, mi interessa solo come il sistema è organizzato. I criteri di adeguatezza sono fortemente basati sul codice, in generale si cerca di considerare la maggior parte del codice possibile, quindi la bontà del codice dipenderà da quanto i test si riusciranno ad espandere nel codice. Quali possono essere i vantaggi:
+\begin{itemize}
+\item se i criteri sono agnostici rispetto alle funzionalità è perché tengono conto di concetti elementari di programmazione. Probabilmente, si riescono ad ingegnerizzare tecniche e strumenti che hanno un più largo spettro. Riesco ad avere un forte grado di automazione, cosa non sempre vera nel caso di requisiti funzionali
+\end{itemize}
+e svantaggi: 
+\begin{itemize}
+\item non possiamo rilevare errori su funzionalità mancanti, rischiamo quindi di valutare una test suite buona anche se il SUT non presenta una intera funzionalità
+\end{itemize}
 
 
 
