@@ -7,7 +7,9 @@
 \usepackage{amsfonts}
 
 \geometry{
-	a4paper
+	a4paper,
+	left=1cm,
+	right=1cm,
 }
 
 \begin{document}
@@ -178,7 +180,7 @@ Denotiamo con I gli intervalli in cui il servente è idle (non ha job in servizi
 \end{itemize}
 esempio:\\ 
 \includegraphics[scale=0.25]{images/PMCSN-6.png}
-\\Il server più veloce è comunque utile, in quanto ci saranno dei tempi di risposta più brevi. Però, il minimizzare il tempo di risposta non è detto che migliori il thorughtput, come avviene in questo caso.\\ Se i centri sono in equilibrio stazionario, ovvero il flusso che entra è pari al flusso che esce (se $\lambda < \mu$ o $\rho < 1$), allora il thoughput è pari a $\lambda$. Se invece $\mu$ è maggiore di $\lambda$, il throughput è pari a $\mu$, ma questo vuole anche dire che la coda cresce indeterminatamente, perché il centro non riesce a smaltire le richieste in entrata.\\ Un altra metrica interessante è il tempo medio di servizio, definito in termini di C = della capacità operativa del server ($\frac{op}{s}$) e di Z = domanda media dei job (op): $\frac{E(Z)}{C}$.
+\\Il server più veloce è comunque utile, in quanto ci saranno dei tempi di risposta più brevi. Però, il minimizzare il tempo di risposta non è detto che migliori il thorughtput, come avviene in questo caso.\\ Se i centri sono in equilibrio stazionario, ovvero il flusso che entra è pari al flusso che esce (se $\lambda < \mu$ o $\rho < 1$), allora il thoughput è pari a $\lambda$. Se invece $\lambda$ è maggiore di $\mu$ allora il throughput è pari a $\mu$, ma questo vuole anche dire che la coda cresce indeterminatamente, perché il centro non riesce a smaltire le richieste in entrata.\\ Un altro modo epr definire il tempo medio di servizio, è farlo in termini di C = capacità operativa del server ($\frac{op}{s}$) e di Z = domanda media dei job (op): $E(S) = \frac{E(Z)}{C}$.
 \subsubsection{Server singolo a buffer finito}
 Cosa accade nel caso di buffer finito: quando la coda è piena, l'arrivo si perde (c'è tutto un altro tema quando l'arrivo alla coda piena viene mantenuta dove c'è una certa area). Qual è in questo caso il throughput? Non è più $\lambda$ e cambia anche $\rho$ in quanto non entra $\lambda$ nella coda, bensì $\lambda'$. Dove c'è un buffer finito, c'è sempre l'equilibrio perché più di tanto non entra in coda, il sistema sarà sempre in grado di servire le richieste. Per poter calcolare il throughput, avremo bisogno dei processi di Markov, calcolare la probabilità di avere lo stato vuoto e quello saturo, la probabilità di perdita sarà la probabilità di avere la coda piena.
 \subsection{Server a coda multipla}
@@ -1033,8 +1035,66 @@ Per rendere la serie di dati tirata fuori dalla simulazione rappresentativa per 
 \item sample-path variance: $s^2 = \frac{1}{\tau} \int\limits_{0}^{\tau} (x(t)-x)^2 dt$
 \item sample-path meastd dev: $s = \sqrt[2]{s^2}$
 \end{itemize}
-anche qui, abbiamo la formula di un passo per il calcolo della varianza passo passo.\\ Tutte le volte che la funzione è una costante a gradino, la facilitazione è che piuttosto che l'integrale, occorre calcolare l'area sotto la funzione prendere il valore * tempo per cui vale, quindi abbiamo (formullette).
-
+anche qui, abbiamo la formula di un passo per il calcolo della varianza passo passo.\\ Tutte le volte che la funzione è una costante a gradino, la facilitazione è che piuttosto che l'integrale, occorre calcolare l'area sotto la funzione prendere il valore * tempo per cui vale, quindi abbiamo (formullette).\\ 
+\subsection{Distribuzione}
+Supporto teorico per la definizione delle distribuzioni:
+\paragraph{Definizione}sia X una v.a, sia F la cumulativa della v.a. La funzione inversa di X è $F*: (0, 1)\rightarrow \chi, \forall u \in (0,1)$.\\\\ Partiamo da un campione $\{ x_1, x_2, .... x_n\}$ che modellano i possibili valori della $X$. Partendo da un valore di probabilità, vogliamo capire a quale elemento del supporto $X$ corrisponde. Consideriamo $X = \{a, b\}$, valori interi (discreto), allora la $F(x) = P(\{X \leq x\}) = u_1 > u$, allora $F*(u) = min_{x} \{x: u < F(x)\}$, (i grafici sono il gradino per la discreta, mentre per la continua abbiamo la retta che si schianta ad 1); le distribuzioni possono essere scritte in maniera esplicita. Il risultato che rende la generazione delle variate esplicite
+\subsubsection{Troncamento}
+A volte, è utile usare un sotto-insieme dei possibili valori di una distribuzione, che altrimenti avrà una media e varianza molto elevate e che non sono adatte al caso di studio. Quindi, ha senso troncare, supponiamo di restringere l'insieme infinito e positivo in un sotto insieme $\{a, b\}$:
+\begin{itemize}
+\item se $a > 0$, allora definiamo $\alpha = P(\{ X < a\})$ e $\beta = P(\{X > b\})$. Siccome stiamo parlando di una discreta, $P(X < a) = P(X \leq a-1) = F(a-1)$, mentre $P(X>b) = 1 - P(X \leq b) = 1 - F(b)$. Allora il taglio è $P(a \leq X \leq B) = F(b) - F(a-1)$
+\end{itemize}
+Un troncamento per cui $F(b) \cong 1.0$ ed $F(a) \cong 0.0$, la funzione troncata e quella originaria sono quasi la stessa cosa, ma spesso non è così.\\ Ci sono due modi per fare il troncamento:
+\begin{itemize}
+\item partire dagli estremi a e b, se specificati. Il troncamento viene effettuato come sopra
+\item partire dalla probabilità $\alpha$ e $\beta$ se specificate. In questo caso, $F*(\alpha) = a$ ed $F*(1 - \beta) = b$, la trasformazione non è esatta (l'inversa approssima la funzione), quindi $P(X < a)\leq \alpha$ e $P(X > \beta) < \beta$
+\end{itemize}
+(vedi slides per orientamento sul libro). L'esempio di riferimento è dell'inverntory system, dove bisogna modellare la domanda che arriva dei clienti. A partire da una domanda "flat", che utilizzava l'equilikely per generare le domande, che rendeva il modello non molto realistico. A questo punto ci si chiede se ha senso dire che tutti i valori siano equi-probabili, quindi idealmente si sostituisce nella \textit{GetDemand()} delle distribuzioni diverse, con dev std minori di quella di partenza. Dopo essere passati per la geometrica (per generare le domande), tronchiamo la distribuzione per avere solo valori finiti.\\ Supponiamo ora di generare una Poisson(30), di delimitare con a = 20 e b = 40, e di dire che se un valore cade troppo a sinistra prenda 20 e se troppo a destra 40. Il troncamento in questo modo non va bene, infatti tutta la massa di outlayers si accumula nei punti 20 e 40. Per fare il troncamento, consideriamo la probaiblità di cadere nell'insieme, che è pari a $P(20 \geq D \leq 40) = F(40) - F(19)$, oppure sommare tutti i valori da 20 a 40 usando la densità. Consideriamo ora una densità troncata $f_f(d) = \frac{f(d)}{F(40) - F(19)}$, un po' come quello che accade nella bounded-Pareto, si fa lo stesso nella cumulativa: $F_t(d) = \frac{F(d) - F(19)}{F(40) - F(19)}$.
+\subsection{Distribuzioni nel continuo}
+Nel caso discreto, dobbiamo passare da uno spazio continuo ad un numero discreto di valori e questo rende il tutto più approssimato (mappiamo un insieme di probabilità in un unico punto). Invece nel continuo il mapping valore di probabilità con realizzazione è 1-a-1. Le definizioni sono le stesse, ma stavolta l'inversa della $F$ è esatta. Di nuovo, in alcuni casi è facile calcolare l'inversa della $F$ è facile da calcolare, il supporto teorico è lo stesso del caso discreto: partiamo da X e dall'inversa della sua $F$, $F^{-1}$, ... (libro).  Per il troncamento, abbiamo gli stessi 2 casi:
+\begin{itemize}
+\item a e b noti, abbiamo $\alpha = F(a)$ e $\beta = 1 - F(b)$
+\item se $\alpha$ e $\beta$ sono noti, anche questo caso è esatto (non come nel discreto).
+\end{itemize}
+\subsection{Test di correttezza}
+A questo punto, occorrono dei test di correttezza: generare un campione, calcolare media e varianza del campione (abbastanza grande) e verificare con le distribuzioni teoriche per vedere di quanto si discostano. Ci sono però distribuzioni diverse che possono avere stessa media e varianza, quindi può essere utile generare un istogramma per fare il confronto fra le varie distribuzioni.
+\paragraph{Istogrammi}
+Nel caso discreto, abbiamo il campione lungo n. Vediamo la frequenza di ciascun valore, plottiamo queste frequenze e vediamo i risultati. Sul continuo non abbiamo un insieme discreto di valori, non sappiamo quanti possibili valori abbiamo, quindi per creare i bins dobbiamo scegliere un limite $[a, b)$ e scegliere un numero k di sotto-intervalli in cui dividerlo, di eguale ampiezza $\delta = \frac{b-a}{k}$. Per l'intervallo generico $B_j$ vediamo quanti valori cadono nel bin (\textbf{N.B: } non esiste il concetto di UGUALE nel continuo).\\\\ Mentre nel caso discreto abbiamo solo il problema della naturale variabilità  del campione, nel caso continuo c'è anche la problematica del binning.
+\section{Applicazione di VA continue}
+Pensiamo ai processi di arrivo e di servizio, che dobbiamo modellare usando v.a continue.
+\subsection{Processo di arrivi}
+Per gli arrivi, prendiamo una sequenza di v.a $R_1$, $R_2$, ... e costruiamo i corrispettivi istanti di arrivo $A_1$, $A_2$, ... definiti come $A_0 = 0$, $A_i = A_{i-1} + R_i$, quindi $A_i$ è la somma degli $R_1 + R_2 +..+ R_i$. Se quindi abbiamo una sequenza di tempi di inter-arrivo i.i.d e positivi con $E[R_i] = \frac{1}{\lambda}$ allora la corrispondente sequenza di arrivi è un processo stazionario con tasso $\lambda$, misurato in arrivi per unità di tempo. Il processo stazionario è una "finzione" comoda, nella realtà le frequenze di arrivo cambiano. Rifacendo un punto della situazione:
+\begin{itemize}
+\item siamo in simulazione
+\item abbiamo visto la generazione di numeri pseudo-casuale, col generatore di Lehmer
+\item generazione di variabili casuali, e tutto il problema di suddivisione di parte discreta e continua ed il problema del troncamento
+\end{itemize}
+ora, vediamo le applicazioni delle variate: per il caso discreto, possiamo usare diverse variate aumentando e diminuendo la variabilità, troncando ad un certo intervallo etc...\\ Per il caso continuo, pensiamo al caso della singola coda, in cui ci sono i due processi, di arrivi e servizi. In entrambe i casi di studio, abbiamo modellato usando una esponenziale per i tempi di inter-arrivo, se non ci sono altre ipotesi.
+\subsubsection{Arrivi random}
+Cerchiamo di convincerci che c'è una relazione fra v.a uniformi, esponenziali e di Poisson. Consideriamo
+\begin{itemize}
+\item $t > 0$, fissiamo un intervallo $(0, t)$
+\item n arrivi nell'intervallo t
+\item un intervallo $r$ posizionato randomicamente in $(0, t)$
+\end{itemize}
+abbiamo quindi $\lambda = \frac{n}{t}$, mentre $p = \frac{r}{t}$ è la probabilità che sia un arrivo in r. Quindi moltiplicando $np = \frac{\lambda \cdot r}{t} = \lambda \cdot r$, dove np è il numero atteso dentro r.
+\paragraph{Teorema: }partendo da una sequenza di variabili random i.i.d Unif(0,t) grande n, se n è sufficientemente grande e $\frac{r}{t}$ è piccolo, X è indistinguibile da una Poission($\lambda \cdot r$), ovvero il numero di arrivi si confonde con una Poisson.
+\paragraph{Teorema 2:}se gli arrivi sono random con tasso $\lambda$, allora il tempo di inter-arrivo è Exp($\frac{1}{\lambda}$).\\\\ Osservazione: cosa denota rispetto agli arrivi che l'inter-arrivo sia Exp. Supponiamo che $\lambda = 1$, in un intervallo $\mu$, il numero di arrivi saranno una Poisson($\mu$), quindi gli inter-arrivi sono Exp. Questo fornisce un modo per generare degli arrivi di Poisson. Per come è fatta l'esponenziale, la moda è 0 (punto a più alta probabilità), quindi dire che gli inter-arrivi sono esponenziali vuole dire che il processo degli arrivi assume un aspetto a cluster, ovvero ci sono dei gruppi di arrivo, perché i tempi di inter-arrivo sono piccoli, essendo 0 la moda.\\ Esistono processi non stazionari di Poisson, in cui $\lambda$ cambia nel tempo, un po' come accade nell'esempio delle fasce orarie.
+\subsection{Processo dei servizi}
+Non c'è una linea guida unica come nel caso dei processi di arrivo, dipende molto dall'applicazione. Ad esempio, nel primo esempio ssq1, l'uniforme non è appropriata per i tempi di servizio, anche per il fatto di tagliare il massimo b. Se fossero caratterizzati da una normale, questa andrebbe troncata alla parte positiva. Abbiamo vist che spesso i tempi di servizio sono heavy-tail, quindi vanno bene quel tipo di distribuzioni, etc...
+\section{Reti di code}
+La prima cosa da capire è quando è possibile usare un processo di Markov, ci sono due condizioni:
+\begin{enumerate}
+\item si possono rappresentare tutte le possibili condizioni della rete\footnote{nella rete, ogni "pallino" è un centro, con la sua coda etc...} con un insieme di stati che sono mutuamente esclusivi e collettivamente esaustivi. 
+\begin{itemize}
+\item mutuamente esclusivi: il sistema può trovarsi o in uno stato o nell'altro, non può essere ad un dato istante di tempo in due simultaneamente
+\item collettivamente esaustivi: l'insieme degli stati descrive completamente il sistema
+\end{itemize}
+\item si può ritenere che la scelta dello stato futuro sia dipendente solo dallo stato corrente, in altre parole deve valere la memory-less property, ovvero il sistema non deve avere memoria degli stati passati
+\end{enumerate}
+esempio: partiamo da una rete piccola con 3 centri e chiusa\\
+\\
+per la simbologia,indichiamo con M = 3 il numero di centri ed N = 2 job nel centro, che sono tutti serventi a coda singola con disciplina astratta. C'è una \textbf{topologia} della rete, che va definita. Lo stato s si indica con un vettore di M elementi $s = (n_1, n_2,...,n_M)$ ed indica le popolazioni nei centri. Lo spazio degli stati $E = \{s | n_i \geq 0, \sum\limits_{i=1}^{M} n_i = N\}$. Si parte da uno stato $(N,0,...,0)$, ovvero dove tutti i job sono nel primo centro. Poi si toglie un job passando a $(N-1,1,0,...)$, $(N-1,0,1,...)$ quindi distribuendo il primo job fra tutti. Poi si passa a togliere 2 job etc... in modod ricorsivo. In questo caso: $E = \{ s_1 = (2,0,0), s_2 =(1,1,0), s_3 =(1,0,1), s_4 =(0, 2, 0), s_5 =(0,1,1,), s_6 =(0,0,2)\}$. In generale, lo spazio degli stati può essere grande, perché in pratica è la combinazione di N oggetti su M posti : $|E| = \binom{N+M-1}{M-1}$.\\ Ad ogni stato associamo un tempo di vita, che per definizione è il tempo che passa dall'istante in cui il sistema entra in quello stato all'istante in cui esce. Lo denotiamo con $t_{v_i}$, che avrà una sua media $E(t_{v_i}) = \frac{1}{a_i}$ dove $a_i$ è il tasso di uscita dallo stato i. Ancora, possiamo definire una probabilità di transizione dallo stato i allo stato j denotata con $r_{ij}$.\\ esempio: \\ riprendiamo lo stato $s_2 = (1,1,0)$, pensiamo alla transizione verso lo stato $s_4 = (0,2,0)$. Il tempo di vita nello stato $s_2$ è l'inverso del tasso di uscita in quello stato e si può dimostrare che la condizione sufficiente (\textbf{ma non necessaria}) affinché i tempi di vita negli stati siano esponenziali è che i tassi di uscita siano esponenziali. In $s_2$ ci sono due centri non vuoti, si esce dallo stato o se termina il primo o se termina il secondo, denotato con $\mu_1$ e $\mu_2$ il tasso di uscita dei due centri, abbiamo $E(t_{v_2} = \frac{1}{m_1+m_2})$, quindi il tasso $a_2 = \mu_1 + \mu_2$.
 
 
 
