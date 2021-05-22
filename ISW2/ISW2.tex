@@ -359,10 +359,217 @@ se ho un dataset con molti positivi, è facile avere molti positivi (anche falsi
 \item mostrare metriche sui classificatori + risultati di ZeroR, un classificatore dummy che da un lower bound
 \item Kappa: metrica che dice "quanto è meglio" di un classificatore random, che sarà pari a 0 quanto è identico al classificatore random e può anche essere negativo se è peggiore. Non prende in considerazione su quali aspetti è stato migliore, viene definito come (vedi slides).
 \end{itemize}
-\paragraph{Curve ROC}Il problema delle metriche precedenti è che il classificatore binario può essere sempre visto come un classificatore con una sua confidenza, a cui poi si applica una metrica. Possiamo cambiare la threshold sulla confidenza in base alle necessità, ci potrebbero essere classificatori che sono meglio di altri su determinate threshold. L'area under the curve (ROC) rappresenta l'area sottesa alla linea che si calcola utilizzando le diverse threshold. È un area che varia da 0.5 ad 1, calcolata applicando diverse threshold sulle varie predizioni ed ha il vantaggio di essere indipendente dalla threshold, corrisponde anche alla probabilità che un'istanza positiva selezionata randomicamente sia ordinato sopra un elemento negativo. Il vantaggio rispetto ad Accuracy è che quest'ultima ha comunque bisogno di una htreshold, mentre per AUC no ed inoltre è indipendente da quale valore viene considerato come positivo o negativo.\\\\ Le metriche ovviamente cambiano in base a come vengono definiti i valori positivi o negativi: se per me il valore positivo è ad esempio 0 avrò dei valori, diversi se avrò 1 come positivo.
+\paragraph{Curve ROC}Il problema delle metriche precedenti è che il classificatore binario può essere sempre visto come un classificatore con una sua confidenza, a cui poi si applica una metrica. Possiamo cambiare la threshold sulla confidenza in base alle necessità, ci potrebbero essere classificatori che sono meglio di altri su determinate threshold. L'area under the curve (ROC) rappresenta l'area sottesa alla linea che si calcola utilizzando le diverse threshold. È un area che varia da 0 ad 1, calcolata applicando diverse threshold sulle varie predizioni ed ha il vantaggio di essere indipendente dalla threshold, corrisponde anche alla probabilità che un'istanza positiva selezionata randomicamente sia ordinato sopra un elemento negativo. Viene calcolata, unendo i vari punti che si ricavano, otteniamo una linea, di cui valutiamo l'area sottesa. IL suo valore è = 0.5 se è uguale ad uno stimatore random, mentre è maggiore se è migliore. Il vantaggio rispetto ad Accuracy è che quest'ultima ha comunque bisogno di una threshold, mentre per AUC no ed inoltre è indipendente da quale valore viene considerato come positivo o negativo.\\\\ Le metriche ovviamente cambiano in base a come vengono definiti i valori positivi o negativi: se per me il valore positivo è ad esempio 0 avrò dei valori, diversi se avrò 1 come positivo.
+\subsubsection{Considerazioni}
+Quando AUC va usato piuttosto che F1: in entrambe i casi la misura di accuratezza è totale, mentre quella di Precision e Recall è parziale (F1 è la media fra Percision e Recall). Perché servono sia Precision che Recall: la Recall può essere pari a 100\% se il classificatore è dummy, mentre il valore di Precision sarebbe basso e quindi darebbe una idea di quanto la Recall è corretta.\\ Kappa ed F1 (media pesata fra P e R): un dummy non riesce a fare una F1 del 100\%, quindi facendone una media è una metrica utile. Il dataset influenza Precision e Recall, se ci sono molti positiv la Recall è facile che sia alta, mentre viceversa con pochi positivi diminuisce. Inoltre, la Precision aumenta, visto che considera i positivi. Mentre con Recall, Precision e F1 diamo questi valori, se il ds ha molti positivi anche uno stimatore dummy da le metriche alte, quindi Kappa è l'unico che rimuove la "facilità" del dataset dal valore di accuratezza. Un'altra proprietà della AUC, è che non dipende da quale valore viene considerato positivo o negativo: mentre P e R cambiano in base a qual è il valore di positivo o negativo, per l'AUC questo non fa differenza. P e R gestiscono due cose diverse, con F1 abbiamo il vantaggio di una misura associata al valore della classe di interesse e di avare un solo numero: ci focalizziamo sul valore positivo, rispetto ad AUC, che è quello di interesse. Può però essere uno svantaggio, in dipendenza dal contesto: se il positivo conta molto di più, conviene parlare di F1. La stessa cosa vale per Kappa, che come AUC non dipende dal valore positivo. Accuracy: la peggiore metrica, è indipendente dalla classe di interesse, come AUC e Kappa, ma rispetto ad AUC è basata su threshold, quindi non ci facciamo molto e quindi non andrebbe mai usata. La prima metrica da chiedere sarebbe Kappa, per poi parlare di Precision e Recall in un contesto in cui contano di più i positivi che i negativi. La correttezza è la più debole di tutte, sui cui non fare molto affidamento. Kappa è una buona metrica, anche se nel momento in cui il dataset è facile c'è poco da dire, non si vede bene la differenza fra un classificatore random e quello usato. AUC da il vantaggio di essere un solo valore (rispetto a P e R), così come F1: la seconda viene usata quanto ci interessa un valore piuttosto che un altro, mentre nel caso contrario usiamo F1. Kappa va SEMPRE DETTA. F è una media pesata rispetto a R e P, nel caso di F1 P e R sono considerate con lo stesso peso. Se per due classificatori, diminuisce F ed aumenta AUC, è perché il classificatore in cui F è più alta è migliore per la variabile considerata. Se ho due classificatori in cui entrambi hanno 20 P, ma uno sui TN ed uno sui TP, la F sarà più alta su quello che ha i TP più alti. Essendo la F una media, questa è più attenta ai positivi che ai negativi, mentre la AUC no, quindi nel caso in cui ho una AUC più bassa in relazione ad una F più bassa è perché la classificazione è su più FN. Se sono interessato a classificare bene tutto, mi interessa AUC, mentre se sono interessato ai True, massimizzo F1.\\ Visto che P e R sono relative ad un valore,anche la F è relativa a quel valore, quindi ne avrò due (una per ogni valore), quindi se uno dei due valori è più importante setto le metriche per quel valore.
+\section{Paper}
+Siamo nei panni di un practitioner che vuole utilizzare il classificatore più accurato per fare predizioni sulle release correnti. Abbiamo due RQ: se i classificatori variano in accuratezza, e questo è ovvio perché altrimenti non userei più classificatori. La 2° RQ cerca di vedere se le tecniche variano
+\subsection{RQ 2}
+Ci sono dei lavori simili, in cui ad esempio le release vengono trattate "a compartimento stagno", quindi come se fosse un progetto a se stante, facendo predizioni nella stessa release. Una TS technique evita di usare i dati del futuro per predirre i dati del passato, visto che questo non avrebbe senso essendoci delle connotazioni temporali. Lo studio prende in esame 9 classificatori, usando 3 tecniche:
+\begin{itemize}
+\item 10T 10F cross validation
+\item bootstrap
+\item walk-forward
+\end{itemize}
+e 3 tecniche ideali:
+\begin{itemize}
+\item best
+\item medium
+\item worst
+\end{itemize}
+come variabili dipendenti sono state usate
+\begin{itemize}
+\item Recommended AUC, accuratezza suggerita per il classificatore
+\item Bias: differenza fra accuratezza stimata ed accuratezza attuale (Estimated AUC - Actual AUC)
+\item Absolute bias: $|Bias|$
+\end{itemize}
+Dobbiamo preservare l'ordine dei dati in modo da evitare che un classificatore non sappia qualcosa che non deve sapere: se c'è un pattern, non vogliamo che sia noto al classificatore. I risultati (vedi paper) suggeriscono metriche basate su time series, sono più veloci e più stabili, perché hanno bisogno di meno run. Importante ricordare che non esiste mai la tecnica perfetta: una tecnica di tipo 10T-10F emula uno scenario in cui ho il 90\% dei dati e devo stimare il restante 10\%, quindi è importante scegliere la tecnica in base alo user scenario più adatto. 
+\section{Feature selection}
+Nel mondo ML, una caratteristica di una istanza che riteniamo utile per la variabile in analisi, in termini generali feature = attributo. Esiste una fase di pre-processamento dei dati chiamata feature selection, consiste nel selezionare le feature fra quelle presenti. Tra i vantaggi nell'utilizzare queste tecniche abbiamo:
+\begin{itemize}
+\item una volta fatta la feature selection, implementando l'approccio a livello industriale permette di raccogliere dati per meno feature, solo quelle selezionate. La misurazione delle feature è ostica da sviluppare in maniera automatica
+\item fornisce una performance di learining migliore rispetto ad usare tutti i dati, quindi il modello potrebbe offrire un'accuratezza più alta. Se un informazione è sbagliata, anche il classificatore sbaglia, inoltre può essere che una feature contiene già un'altra feature (ad esempio l'età e la data di nascita) e questo rischia di causare un over-fitting per il modello
+\end{itemize}
+Quindi una feature è interessante se:
+\begin{itemize}
+\item è correlata con la variabile di interesse
+\item se non è correlata con le altre feature
+\end{itemize}
+dopo la feature selection, potremmo avere il caso in cui l'accuratezza non migliora, ma se due modelli hanno parità di accuratezza ed uno usa meno feature, quest'ultimo è migliore, in quanto più manutenibile.
+\subsection{Applicazione della FS}
+Due famiglie di approcci, ognuno ha le sue tecniche:
+\begin{itemize}
+\item Filter approach: approccio che considera una feature importante in base alla variabile da predirre, ignorando il classificatore. Calcolo la correlazione della variabile attuale con quella da stimare
+\item Wrapper approach
+\end{itemize}
+\subsubsection{Filter approach}
+Esistono due tipologie di filtri:
+\begin{itemize}
+\item correlazione con la sola variabile di interesse
+\item non-correlazione fra diverse feature
+\end{itemize}
+Ha il vantaggio di essere molto veloce, ma lo svantaggio che bisogna usare delle threshold: o l'algoritmo ordina le feature e poi applichiamo una trheshold, oppure la threshold viene applicata dall'algoritmo stesso, ma questa potrebbe essere realistica in alcuni contesti ed in altri no. Va fatta a meno che non ci siano evidenze forti che questo peggiora il modello: se alcuni attributi di accuratezza aumentano ed altri diminuiscono, allora la feature selection ha impatto positivo
+\subsubsection{Wrapper approach}
+Al contrario della filter, ottimizza per uno specifico classificatore: assunto quale usare, ci chiediamo il sotto-insieme di attributi che massimizza l'accuratezza del modello. Prova i sotto-insiemi e vede quale da l'accuratezza migliore, ricordiamo che il testing set non può mai essere usato, quindi le tecniche si usano solo sul training set. Possiamo dividere il train set a metà:
+\begin{itemize}
+\item parte di train
+\item parte di validazione
+\end{itemize}
+Cerchiamo di massimizzare i dati di train per predirre quelli di validazione, usati poi per predirre quelli di test. Se nel training set una determinata caratteristica è importante per predirre il validation set, probabilmente questa è anche importante per predirre il testing set. Per usare la tecnica
+\begin{itemize}
+\item possiamo provare tutte le combinazioni di cardinalità diversa degli n attributi, è una ricerca esaustiva. Se ho 3 attributi, avrò 7 combinazioni da testare, lo svantaggio è che provare tutte le combinazioni è costoso. I tempi richiesti sono alti
+\item analizzo meno combinazioni, con una soluzione greedy: la ricerca si ferma in base a delle threshold, con il chiaro svantaggio che ci può essere una combinazione migliore di quelle che abbiamo provato
+\end{itemize}
+le tecniche cercano di minimizzare gli svantaggi. Esistono due tipologie di ricerche greedy:
+\begin{itemize}
+\item forward: vado avanti aggiungendo attributi finché l'aggiunta provoca aumento di accuratezza, mi fermo finché l'aggiunta non provoca aumento di accuratezza. Lo svantaggio è che anche qui potremmo non avere provato alcune combinazioni, ma questo implica che nemmeno in partenza era migliore e quindi è molto poco probabile che la combinazione di due o più aiutino e che le singole non aiutino.
+\item backward: consiste nell'effettuare l'opposto, ovvero partire dall'insieme massimo ed eliminare attributi finché questo non porta a non avere miglioramenti dell'accuratezza. Anche qui lo svantaggio è lo stesso del forward, magari una feature singola era migliore dell'unione, ma se dovessi provare tutte le feature sarebbe una exhausting search.
+\end{itemize}
+Tutti i ragionamenti fatti sulle validation technique possono essere ripetuti nella feature selection, l'importante è che nello scegliere la configurazione non usi MAI il testing set.
+\section{Sampling}
+I valori sono molto spesso sbilanciati in molti contesti, pensiamo ad esempio ad un sistema di intrusione, o alle classi: se la maggior parte delle classi sono buggy tanto vale andare a caso, mentre se c'è circa 1, 5, 10\% del totale, allora serve un sistema di sampling. Quindi, più il contesto è bilanciato, più occorre avere un sistema intelligente. Se una macchina ottiene come training set il 90\% di classi buggy ed il 10\% non buggy, il modello darà lo stesso output come previsione. Il concetto di bilanciamento è un concetto chiave anche della vita di tutti i giorni.
+\subsection{Come acquisire un sample}
+Vediamo come acquisire il campione di dati. La prima caratteristica più importante per il campione è che questo sia rappresentativo per la popolazione, più è grande e più è probabile che sia rappresentativo. Per creare il campione, ci sono varie tecniche:
+\begin{itemize}
+\item simple random sampling: ogni elemento del set ha la stessa probabilità di essere in incluso nel campione. Nella pratica, è molto difficile selezionare in maniera random, in generale si ordinano gli elementi in base ad una caratteristica che sia indipendente da quella che viene analizzata: ad esempio per intervistare degli studenti al fine di verificare la preparazione, ordiniamo per iniziale del cognome e poi selezioniamo un certo numero casuale di studenti. Per le validation techniques, più volte facciamo questa cosa e meglio è. Se la varianza diminuisce all'aumentare della taglia del campione, è bene prendere più valori fino alla stabilità del valore della varianza
+\item stratificata: la tecnica è stratificata nel momento in cui si mantiene uguale la distribuzione dei valori, ad esempio in tutte le fold che creo voglio mantenere la proporzione di classi buggy e non buggy. Il campione è quindi stratificato se deve sottostare ad un specifica distribuzione, l'approccio è migliore perché più il campione è simile ala popolazione in analisi e più è rappresentativo
+\item sistematic random sample: partendo dall'estrazione di un valore, si procede in modo sistematico per l'estrazione degli altri, ad esempio facendo +30 etc...
+\end{itemize}
+\subsection{Sampling in contesto ML}
+Esistono 3 strategie, con i pro ed i contro per ognuna
+\begin{itemize}
+\item under sampling: si riduce il campione, diminuendo il numero di istanze nella classe maggioritaria. Se il ds ha 100 classi, dove il 10\% è buggy, alla fine otterrò un ds di 20 classi. Lo svantaggio è che riduciamo la grandezza del dataset, uno degli assiomi del ML è che più il dataset è grande e più il classificatore funziona meglio. Se ho un dataset grande, l'approccio è consigliabile. Se uso un approccio di tipo 10T, questo non basta perché è limitato alla combinazione dei campioni: se ad esempio scelgo dei dati per la fold di training/testing magari trovo solo classi tutte buggy o non buggy. Occorre quindi applicare  almeno 10T 10F.
+\item over sampling: la variabile minoritaria viene ripetuta più volte, tante quante la grandezza del dataset finale. Quindi se il dataset ha 100 classi, con 90 non buggy e 10 buggy, la grandezza finale sarà 180 classi. Il vantaggio è che ho più dati, ma lo svantaggio è che i dati sono ridondanti, solo in una parte però che è quella aggiunta, mentre quella non toccata rimane uguale. Quindi non viene perso nessun dato. I contesti di utilizzo dell'approccio sono casi in cui i dataset sono piccoli, la definizione di "grande" o "piccolo" viene relazionato a quanto tempo viene impiegato per processare il dataset: se il dataset è grande ma ci mette comunque poco per essere processato, conta come piccolo
+\item SMOTE: con over sampling ed under sampling andiamo rispettivamente ad aumentare e diminuire la classe maggioritaria o minoritaria. SMOTE crea i dati aggiuntivi sinteticamente, tramite delle formule che usano meccanismi di clustering sui dati presenti. \\ Supponiamo di avere, su 100 classi, 90 buggy e 10 non buggy e di volerne aggiungere 80 buggy sinteticamente. Supponiamo che tutte le classi non buggy abbiano Size di 100 righe, e tutte quelle buggy di 1M, un approccio sintetico potrebbe essere quello di creare classi buggy aventi miliardi di righe. Quindi, creo elementi facendo una media di quegli elementi che ho oppure aumentando il valore, ovvero elementi che penso siano rappresentativi per quella popolazione. LO svantaggio è che, essendo i dati non reali, include la predizione nella creazione dei dati, quindi uso dei dati predetti per addestrare il modello per fare la predizione. Il vantaggio è che vengono creati dei dati aggiuntivi con l'assunzione che siano rappresentativi.
+\end{itemize}
+\section{Cost sensitive classifier}
+Classificatore che è attento ai costi. In molte situazioni ci può essere un tipo di errore, più importante di un altro tipo (ad esempio: un falso negativo di un caso covid più grave di un falso positivo). Ha senso tradurre il concetto di importanza in un costo, in modo da poter applicare ragionamenti matematici: ad esempio, se usassimo il ML per identificare a quale cliente dare il mutuo posso fare due errori:
+\begin{itemize}
+\item lo do a chi non può pagarlo
+\item non lo do a chi può pagarlo
+\end{itemize}
+in entrambe i casi, si può definire qual è la perdita della banca e dare come input questo al classificatore. In generale la classificazione viene fatta con una likelihood, non in maniera binaria, quindi darà una percentuale al "si" ed al "no". Quindi il classificatore funziona in almeno due step:
+\begin{itemize}
+\item prima computa la likelihood
+\item poi applica la threshold alla likelihood
+\end{itemize}
+quindi la classificazione è sempre un risultato sulla threshold della probabilità, ovviamente se non si da una threshold, ad esempio per una classificazione binaria, la threshold viene settata in automatico ad esempio al 50\% ed offre il valore con la probabilità più alta.
+\subsection{Aggiustamento delle threshold}
+Se volessimo dare più informazioni in modo che il classificatore aggiusti la threshold, è possibile in Weka assegnare il costo a ciascun tipo di errore: basta ricordare la configure matrix (TP, FN,FP,TN), assegnando i valori a ciascuna cella, possiamo calcolare la threshold:\\\\
+\begin{tabular}{ |c|c|}
+\hline
+0 & CFN\\
+\hline
+CFP & 0\\
+\hline
+\end{tabular}\\\\ da cui otteniamo la threshold come $\frac{CFP}{CFP+CFN}$, solitamente il costo di TP e TN non è comunque mai 0. Quello che fa un cost sensitive classifier è prendere l'input dei costi, calcolare la threshold ed applicarla alle probabilità precedenti; ovviamente se i costi sono uguali, la threshold è 0.5.
+\\ \textbf{IMPORTANTE: }da GUI, cambiando la matrice di cost sensitive evaluation, questo non cambia la classificazione, mostra solo come cambiano i costi. Quando minimizziamo un errore di un certo tipo, la correttezza generale ovviamente diminuisce, perché andiamo a commettere globalmente più errori. Inoltre, facendo cost sensitive, il costo totale diminuisce sempre. Usando il cost sensitive, la threshold cambia ma l'AUC è calcolata sulla likelihood, che non cambia e quindi anche l'AUC non cambia, \textbf{essendo indipendente dalla threshold}.
+\subsection{Cost sensitive learning}
+C'è un altro modo per usare il cost sensitive, quello del balancing: le classi vengono replicate tante volte quanto il loro costo, quindi è come se venissero ri-pesate. Questo va comunicato a Weka, che piuttosto che replicare le istanze, usa un sistema basato su pesi in modo da aumentarlo per alcune istanze. È come se nella pratica venissero replicate, ma invece di esserlo "fisicamente", hanno un peso maggiore.
+\subsection{Considerazioni finali}
+Le considerazioni finali:
+\begin{itemize}
+\item alcune metriche cambiano, ad esempio la AUC (??)
+\item alcune metriche migliorano
+\end{itemize}
+\section{Metriche e GQM}
+Il concetto di metrica e come questo si applica ai progetti software. In generale, le misure e le metriche cercano di dare una misura alla qualità.\\ Una misura è un modo per trovare un valore, comparando questo con una norma. Una metrica è una misura quantitativa del grado con qui qualcosa ha un determinato attributo.\\ Un indicatore è (slides). Una misura offre delle informazioni: ad esempio, il numero di difetti trovati durante una ispezione, mentre una metrica è derivante da una o più misure, in cui abbiamo la composizione di più metriche, ad esempio il numero di difetti per righe di codice.\\ Quando si parla di metrica, si parla in ordine:
+\begin{enumerate}
+\item concetto
+\item unità
+\item misura: valore numerico
+\end{enumerate}
+Usiamo le metriche perché questi sono indicatori sull'attributo di qualità di un oggetto in interesse, queste hanno sempre bisogno di un'analisi e di un'interpretazione: i numeri, presi da soli, non dicono nulla. Per poter trarre delle considerazioni dal valore numerico, bisogna spesso usare delle informazioni contestuali. L'ingegnere della qualità, o in generale quando si mostrano i dati, deve sempre mostrare delle considerazioni a supporto dei dati.
+\subsection{Ingegneria della qualità}
+L'ingegneria della qualità è un approccio sistematico nella misurazione e nel miglioramento del prodotto software. Ad esempio, il debito tecnico, che viene pensato ed accumulato pensando sempre ai risvolti futuri, c'è sempre una relazione fra qualità del prodotto, qualità del processo e successo dell'organizzazione. Ci possono essere metriche che indicano quanto stiamo facendo bene nelle varie attività, nella maggior parte dei casi gli indicatori sono crudi: se abbiamo degli outliers, spesso questi indicano dei problemi\\ Spesso le metriche possono essere generati dai tool e non richiedono dell'effort aggiuntivo, però se c'è del codice generato automaticamente, spesso questo non è comparabile con quello prodotto da "essere umano" quando si applicano le metriche.
+\paragraph{Requisiti} da un punto di vista dei requisiti possiamo vedere:
+\begin{itemize}
+\item la volatilità dei requisiti
+\item variazione a livello di use case
+\item tipologia dei difetti nei requisiti
+\item ... (slides)
+\end{itemize}
+\paragraph{Metriche di testing} ci sono metriche che riguardano il testing, che riguardano la coverage del codice: se ne può parlare o a livello di requisito (approccio black box) o a livello di codice (white box).\\\\ Tutta una carrellata di altre metriche sulle slides.
+\subsection{Reliability e validity}
+Per affidabilità possiamo vedere se la misurazione è consistente nel momento in cui questa viene ripetuta, ad esempio per la misura di una distanza, diverso è per la difettosità delle classi (vedi lo snoring). La validità riguarda la significatività della metrica: misuro la classe buggy, ma non il numero di bug nella classe. Come al solito, ci sarà un compromesso, per cui alcune metriche saranno facili da misurare ma poco significative ed altre difficili da misurare ma che sono molto significative. Ad esempio gli smell di sonar: il debito, in minuti può essere diverso per persone diverse o per errori diversi. La misurazione è inaffidabile, però si può usare in quanto ho il valore temporale.\\ Ci sono delle combinazioni dei due concetti (vedi slides).
+\subsection{Correlazione}
+La causalità include la correlazione, ma la correlazione non implica causalità. Ad esempio, il colore dei capelli rende l'individuo con la pelle più sensibile al sole: non c'è causalità tra il colore dei capelli e la sensibilità (se ad esempio mi tingo i capelli ma sono neri naturalmente, non divento più sensibile al sole). Se nei dati trovo una correlazione di qualche tipo, per passarla al piano della causalità, occorre pensare a cosa accadrebbe se cambiasse un parametro. Inoltre, la correlazione è bi-direzionale, mentre la causalità no: se scrivo molto codice avrò molti difetti, ma non è vero che per avere molti difetti devo scrivere molto codice.\\ Uno fra i code smell più usati è la \textbf{god class}, ovvero piena di funzionalità e righe di codice. Molti studi hanno visto che una god class ha più difetti di una classe che fa poco, altri hanno fatto esperimenti vedendo se a parità di funzionalità un codice con più classi meno piccole ha più difetti di uno con meno classi ma più grandi ed il risultato è stato negativo. La correlazione fra god class andrebbe normalizzato rispetto alle righe di codice, facendo il confronto fra una god class con n righe di codice contro 2 da $\frac{n}{2}$.
+\subsection{Approccio GQM per le metriche}
+GQM è una paradigma in diverse fasi:
+\begin{itemize}
+\item definizione del goal
+\item domande per capire se l'obiettivo è stato ottenuto
+\item una serie di metriche per rispondere alle domande
+\end{itemize}
+una volta fatto questo collezioniamo i dati, misuriamo le metriche e questi mi diranno se l'obiettivo è stato o meno raggiunto.\\ Quindi prima di sviluppano un insieme di obiettivi, che nella pratica sono complicati ed a volte sono in conflitto fra di loro e non così immediati da misurare. A questo punto sviluppiamo delle domande e specifichiamo delle metriche necessarie per dare le risposte dalle domande, sviluppiamo poi i meccanismi per collezionare ed analizzare i dati.\\ Possiamo raggruppare gli step in un QIP, perché una volta definiti gli step e raccolti i dati, tutto verrà implementato.
+\subsubsection{Definizione delle metriche e dei goal}
+Una domanda può appartenere a più goal (relazione uno a molti), similmente una metrica può essere usata per rispondere a più domande. Potremmo identificare, da un punto di vista di change request, come primo goal che il tempo per sviluppare diminuisca e quindi possiamo chiederci quanto siamo veloci nello sviluppo delle CR, etc... Una cosa importante per definire il goal è usare tre caratteristiche:
+\begin{itemize}
+\item cosa si analizza 
+\item con quale scopo
+\item rispetto a quale contesto
+\end{itemize}
+Come tutti i processi software,sono molto ad alto livello ed hanno bisogno di molte guide lines per essere applicati.
+\subsubsection{GQM+}
+Estende il paradigma GQM aggiungendo supporto per determinare azioni in contesti Enterprise. Quello che cambia è che si aggiungono delle strategie, per raggiungere un goal vogliamo definire come lo raggiungiamo. Quindi, per ogni goal abbiamo un set di strategie, le quali possono essere attuate e misurate. Ad esempio, come goal1 potremmo avere l'aumento del profitto dall'uso dei prodotti software, come strategia potremmo adottare quella di offrire più funzionalità e come metrica GQM valutare il profitto. Nella GQM+, potremmo avere il deliver del 5\% delle nuove funzionalità ogni 6 mesi, e questo mappa sul GQM (slides).
+\section{Decision-making techniques}
+Tecniche decisionali, introduciamo cosa è un architettura software: l'architettura del sistema può essere un pattern MCV, ma anche lo stack tecnologico, quindi già si vede che umo stesso sistema ha più architetture. Possiamo dire che diversi punti di vista danno vita a diverse architetture per lo stesso sistema: con i diagrammi UML, diversi modelli rappresentano aspetti diversi. Uno stack architetturale può avere una tecnologia che non va bene con MVC, esistono relazioni fra punti di vista diversi che oltre coesistere devono supportarsi a vicenda.\\ L'architettura potrebbe essere implicita, anche detta accidentale: non è detto che il risultato finale sia dato da decisioni esplicite e volute. Mentre la selezione del software è esplicita, dal punto di vista software, questo potrebbe essere sviluppato da un punto di vista funzionale, che poi risulta in un architettura non voluta. C'è il concetto di architettura non intenzionale, quando si parla di architettura si parla di definire quali sono le parti principali e come si collegano fra loro: nel class diagram, può essere stata fatta una fase progettuale iniziale in cui sono state definite le classi, le relazioni etc..., oppure fare reverse engineering tramite dei tool che ricostruiscono il CD dal codice. Quindi, l'architettura può essere sempre intenzionale o non intenzionale. In generale, l'architettura è l'insieme dei componenti e come questi interagiscono e non interagiscono. L'architettura software deriva dai requisiti e tende a strutturare il codice in modo che l'implementazione soddisfi i requisiti: ad esempio, lo svantaggio del MVC è che per progetti piccoli l'effort è alto, quindi l'effort impatta le scelte architetturali. Le parole chiavi sono effort e performance, ovvero requisiti non funzionali, quindi l'architettura è dettata da requisiti non funzionali, la funzionalità è nel codice quindi l'architettura non impatta le funzionalità, ma ha un impatto enorme su requisiti di business.\\ L'elemento creativo di un "architetto" è sempre limitato dalla scelta di opzioni, quando il progettista software deve decidere l'architettura non inizia da 0 ma sceglie fra alternative possibili, quindi di sono tecniche decisionali che hanno un particolare ruolo di importanza nella definizione dell'architettura del sistema.
+\subsection{Utilizzo delle tecniche decisionali}
+Le tecniche si possono usare in vari contesti, prevedono di avere sempre delle alternative. La vita di un progettista del software, è stata definita come lunga, dolorosa e di decisioni sub-ottime prese al buio. 
+\begin{itemize}
+\item una vita lunga in quanto il ciclo di sviluppo è continuativa, ma l'architettura viene definita dopo i requisiti non funzionali e difficilmente cambia del tutto, in quanto ha un impatto importante sul codice; comunque può essere rivista
+\item doloroso in quanto ci possono essere più alternative valide, ci sono sempre dei compromessi quindi può esserci uno stakeholder che è accontentato e un altro che non lo è
+\item sub-ottima perché nessuna soluzione è ottimale
+\item sono prese al buio in quanto non si può attendere di sapere tutto prima di iniziare a decidere, altrimenti si progetterebbe l'architettura alla fine del progetto. Le decisioni vanno prese assumendo un certo grado di incertezza nei requisiti e nelle aspettative
+\end{itemize}
+L'architetto si trova a dover fronteggiare diversi attributi di qualità (NFR), ognuno interessato da stakeholder diversi e che alla fine vanno messi d'accordo.
+\subsubsection{Sistema, architettura e decisioni}
+(immagine)
+In generale, un sistema ha più di una architettura ma data una vista ha solo un'architettura, un'architettura può essere usata in più sistemi (come MVC, che però è uno stile architetturale, ovvero paradigma che una volta seguito porta ad una architettura che saranno i set di controller, model e view). \\ Il sistema ha delle proprietà desiderate e l'architettura facilita o vincola queste proprietà: se ad esempio questa è non sicura o lenta, c'è poco margine di miglioramento. Le proprietà desiderate del sistema danno vita alle decisioni, in più l'architettura può essere vista come un insieme delle decisioni: l'insieme delle decisioni danno vita all'architettura finale, ma le decisioni non saranno una sola. Una decisione da una o più alternative, altrimenti sarebbe un vincolo, quindi ci sono più alternative. Le alternative hanno un loro livello di soddisfacimento degli attributi di qualità: avrò alternative che danno più sicurezza, altre più velocità etc...\\ Ci sono poi le tecniche decisionali, che permettono di selezionare le alternative, quindi per definizione una tecnica decisionale non è altro che un approccio per la selezione di alternative. Le tecniche decisionali condividono 4 attività principali, si differenziano nei meccanismi usati per implementare quelle attività. Ogni volta che si esegue una attività si usa un meccanismo, i meccanismi hanno come caratteristica delle difficoltà, quindi cerchiamo una tecnica meta-decisionale, ovvero tecniche che aiutano nella scelta delle decisioni: ci sono più approcci per prendere una decisioni, quindi è importante scegliere come decidere.
+\subsubsection{Scelta fra le alternative}
+Un sistema può essere quindi visto come un insieme di proprietà funzionali e non, gli attributi di qualità in sistemi diversi sono gli stessi ma cambia l'obiettivo: vogliamo attribuire ad ogni obiettivo un peso differente. Ci sono gli stessi attributi di qualità nei sistemi, ma con peso diverso. L'architettura del sistema è quel set di decisioni: usando un DB lento da un punto di vista architetturale, questo fa da bottleneck.\\ Una decisione rappresenta il problema da risolvere, non la scelta fatta. Quindi, la decisione viene sempre vista come cosa va scelto, ad esempio lo stack software (e non il particolare DB o framework di front-end). L'alternativa è un'opzione per una decisione, quindi per la decisione metodo di persistenza le alternative possono essere file system o DB. Decisioni alternative possono avere dimensioni diverse: si può decidere prima di usare il DB e poi quale DB usare, quindi c'è ordine fra le decisioni. Le diverse alternative sono capaci di soddisfare, più o meno, un obiettivo: il livello di soddisfacimento indica la capacità dell'alternativa di soddisfare un obiettivo di qualità. Una tecnica decisionale descrive in modo sistematico come scegliere le alternative, è composta da 4 attività, ognuna composta da 4 meccanismi. (slides)La specifica combinazione di 4 meccanismi definisce una attività, non tutte le combinazioni sono possibili, ma tutte le attività devono avere 4 meccanismi.(immagine)\\ 
+\paragraph{1° attività: descrizione dell'attributo di qualità}come può essere descritto, è un qualcosa che interessa e quindi viene scritto nei requisiti. Si usano dei termini per descrivere cosa si vuole, come ad esempio che il sistema si sicuro, abbia determinate performance, sia affidabile etc... Ma se viene solo scritto che il sistema deve essere sicuro, le alternative sono complicate da trovare. Quindi bisogna specificare in termini di caso d'uso come dovrebbe comportarsi il sistema. Per disambiguare del tutto, vanno affiancate delle metriche alla descrizione dell'attributo non funzionale. Ci sono quindi 4 combinazioni (vedi immagine)
+\paragraph{2° attività: quanto interessa l'attributo di qualità:}è di interesse conoscere i pesi. Opzioni
+\begin{enumerate}
+\item la prima opzione non prevede dei pesi, ovvero esistono tecniche decisionali che non discriminano per peso, assumendo che il peso sia uguale per ogni attributo 
+\item Il secondo approccio è diretto, ovvero qualcuno attribuisce un peso diretto in base. Le problematiche di questo approccio sono varie: i pesi sono privi di significato. Supponiamo di definire gli attributi per l'acquisto di una macchina, affiancando poi le metriche e queste possono essere differenti in base a cosa interessa
+\item si trovano i pesi in maniera indiretta: in base a delle combinazioni di coppie, c'è un meccanismo che offre dei pesi che hanno un senso, in modo più sistematico vengono dati i valori ai pesi. Spesso è facile dire che un attributo è più importante di un altro, ma è difficile affiancargli un valore. C'è comunque un problema: concetto della curva di utilità, in cui l'utilità di un attributo diventa eccessivo e non ha più valore. Quindi occorre definire fino a che livello è utile un attributo, occorre catturare catturare questa esigenza limitata
+\end{enumerate}
+\paragraph{3° attività: descrizione degli attributi}
+\begin{enumerate}
+\item può essere on/off, quindi o si o no (ad esempio per la sicurezza)
+\item comparazione fra alternative, senza specificare in termini di misure, ma solo mettendo in ordine
+\item usando una percentuale, se l'obiettivo è stato ben definito è semplice farlo
+\item è possibile anche descrivere l'incertezza, definendo quanto un'alternativa soddisfa qualcosa potremmo conoscere bene un'alternativa, o magari averne una nuova su cui c'è un certo grado di incertezza
+\end{enumerate}
+\paragraph{4° attività: descrizione dell'incertezza}descrive la gestione del rischio
+\subsection{Esempio di tecnica decisionale}
+CBAM: cost benefit analysis method. Ci sono dei business goal derivati da decisioni architetturali, che hanno dei costi ed anche dei benefit.
+\begin{enumerate}
+\item[Step 1] definire la decisione, come ad esempio lo stack software etc...
+\item[Step 2] si attribuisce peso per ogni attributo di qualità. In questa tecnica si una un meccanismo di tipo diretto, in modo che la somma dei pesi sia 100
+\item[Step 3] per ogni alternativa si definisce uno score $\in [-1,1]$
+\item[Step 4] rischio dell'alternativa stessa. In generale, più è basso e meglio è. Fa assegnato da 0 ad 1
+\item[Step 5] si calcola il benefit per ogni alternativa: $Benefit(AS_i) = (\sum\limits_{j}(AS_{i,j} *QAscore_j)) * |Risk_i - 1|$
+\item[Step 8] si esprime il costo in dollari, misurando la desiderabilità di ogni alternativa, tramite lo scopre computato a Step 5, diviso il costo
+\end{enumerate}
+(vedi altri steps, in generale vedi slides di esempio).
+portare un esempio di questa tecnica, decidendo o tra linguaggi di programmazione o tra meccanismi di persistenza, sul progetto di ISPW. Documentare ogni step.
+\subsection{Tecnica meta-decisionale}
+La tecnica meta-decisionale è una tecnica che decide la tecnica decisionale: occorre prendere una decisione, ma per farlo occorre una tecnica che aiuti a prendere la decisione. (Nel paper allegato (file zip), ci sono diverse tecniche decisionali, proposte prima della scelta dei meccanismi). Lo scopo finale di una tecnica decisionale è quello di aiutare in una scelta, quando la scelta non è nota. Se alla tecnica decisionale si da come input qualcosa di non sofisticato, la risposta sarà qualcosa di non sofisticato. Quindi, si migliora usando un meccanismo più sofisticato in cui si passa il termine, lo use case e la misura, ma lo svantaggio è che ci vuole più tempo.\\ Si trovano quindi difficoltà nell'utilizzo di una determinata tecnica decisionale, ad esempio la percezione di un termine è una difficoltà più alta in un meccanismo con solo il termine e più bassa in una che usi termine + UC + misura. Possiamo quindi ordinare le tecniche decisionali in base al grado di difficoltà offerto. Quindi, usiamo le tecniche decisionali come alternative, visto che stiamo decidendo quale tecnica usare, e quindi anche le tecniche avranno degli attributi di qualità con dei modi per gestire il livello di soddisfazione, di incertezza etc...\\ Quindi, nella tecnica meta-decisionale definiamo le difficoltà delle tecniche decisionali, le tecniche che useranno solo il term avranno più difficoltà di quelle che useranno term + UC + misura.\\ È possibile fare il ranking su una particolare difficoltà, ma il problema è anche il tempo: ancora una volta, c'è il concetto di trade-off fra le decisioni, quindi non ci sarà una tecnica decisionale migliore, ma ce ne sarà una con dei buoni compromessi. Più la tecnica è sofisticata, più è a grana fine e più è probabile che mi porti a selezionare la scelta giusta, ma più è sofisticata e più richiede tempo.
+\subsubsection{Funzionamento tecnica}
+Definiamo gli attributi di qualità, poi si fa il ranking dei meccanismi per ogni attributo di qualità. Quali possono essere le difficoltà dell'utilizzo delle tecniche decisionali:
+\begin{itemize}
+\item pensiamo di usare una scala binaria, come ad esempio si/no per gli attributi. Per una tenica decisionale, questo può essere uno svantaggio o un vantaggio in base al contesto
+\item per la selezione delle soluzioni, ci sono due difficoltà:
+\begin{itemize}
+\item la descrizione offerta dalla tecnica è troppo complicata. In questo caso anche il risultato sarà difficile
+\item all'opposto, è troppo poco complicata
+\end{itemize}
+\end{itemize}
+Possiamo quindi definire quanto una tecnica sia suscettibile per una determinata tecnica decisionale. Ogni volta che si migliora un attributo, si peggiora qualcos'altro: la tecnica meta-decisionale termina con un approccio iterativo basato sulla tabella (slide 20), molto più pratico di un approccio pragmatico che sceglie direttamente la tecnica. La tabella indica le possibili strade da prendere, non da una risposta assoluta.
 
-
-
+\newpage
 \section{Misurazione del software}
 L'analisi dei function points serve per misurare il software, che prima veniva sempre misurato contando le linee di codice, cosa che però non va bene in quanto vorremmo farlo a priori del codice. Perché andare a misurare e quanto tempo costa l'attività di misura? Si misura per:
 \begin{itemize}
@@ -744,7 +951,7 @@ cosidero quindi domain partitioning sul valore di $Q_a -1$. A questo punto, avr�
 \item scrivere entry su un ledger e controllare che le recuperi in quell'ordine
 \item un test con un writer e più reader. Il writer scrive le entry in un ordine e verifico che tutti i reader le leggano nello stesso ordine
 \end{itemize}
-Questo è un esempio di definizione di criteri di adeguatezza rispetto a requisiti funzionali. Andando avanti nella documentazione, troviamo che BookKeeper ha un comportamento preciso di cosa deve accadere se un ledger viene chiuso come writer: il testo può essere visto come una sequenza di passi da fare, sintetizzabili in un AD UML. Potrei aspettarmi che il mio insieme di casi di test simuli differenti situazioni che si possono incontrare nella chiusura di un ledger.\\ IL messaggio è che definiamo dei criteri di adeguatezza senza considerare l'implementazione del SUT, bensì solo considerando le funzionalità del SUT, trovati come:
+Questo è un esempio di definizione di criteri di adeguatezza rispetto a requisiti funzionali. Andando avanti nella documentazione, troviamo che BookKeeper ha un comportamento preciso di cosa deve accadere se un ledger viene chiuso come writer: il testo può essere visto come una sequenza di passi da fare, sintetizzabili in un AD UML. Potrei aspettarmi che il mio insieme di casi di test simuli differenti situazioni che si possono incontrare nella chiusura di un ledger.\\ Il messaggio è che definiamo dei criteri di adeguatezza senza considerare l'implementazione del SUT, bensì solo considerando le funzionalità del SUT, trovati come:
 \begin{itemize}
 \item garanzie del sistema
 \item aspetti presenti nella documentazione
@@ -760,7 +967,139 @@ e svantaggi:
 \begin{itemize}
 \item non possiamo rilevare errori su funzionalità mancanti, rischiamo quindi di valutare una test suite buona anche se il SUT non presenta una intera funzionalità
 \end{itemize}
-
+I criteri si basano su un'esplorazione massiva del come è stata fatta una cosa, la test suite è validata in funzione di cosa mi aspetto dall'applicazione. Data un'applicazione under test, ad esempio il metodo \textit{asyncReadEntry} di BookKeeper:
+\begin{itemize}
+\item cercare di capire cosa fa il SUT in questione, che è puramente funzionale. Agli approcci strutturali non interessa cosa fa il SUT, l'importante è assicurarsi una esplorazione più ampia possibile del caso di test. 
+\item Se devo disinteressarmi da cosa fa il metodo, scelgo dei casi di test che attraversano il blocco di codice nel modo più variegato possibile, ad esempio che attraversano tutti gli if, che prendono in considerazione tutte le istruzioni del  metodo etc...
+\end{itemize}
+posso stabilire che un insieme dei casi di test è buono se:
+\begin{itemize}
+\item[CS1] ogni istruzione è attraversata da almeno un test
+\item[CS2] c'è almeno un test per ogni guardia true del test, ovvero il ramo then
+\item[CS3] c'è almeno un test per ogni guardia booleana atomica a false, ovvero il ramo else
+\end{itemize}
+Nell'elaborazione dei casi di test, non ci interessa cosa fa la classe, bensì interessa di coprire quante più istruzioni. \textbf{NOTA: }se si pensa ad un criterio strutturale, non è detto che questo sia applicabile al mio contesto operativo. Potrebbero esserci particolari casi di implementazione che non rendono soddisfacibile il criterio. Prendiamo ad esempio il CS1, genero casi di test finché non copro tutte le istruzioni. (vedi codice esempio \textit{UnreachableCodeSimpleException}).\\\\ Quindi, i criteri di copertura vengono definiti ugualmente sia nel caso black-box che in quello white-box, ma le implicazioni sono fortemente differenti in base a quale approccio si utilizza.
+\subsection{Analisi statica ed intuizione di control-graph}
+Tutti gli esempi possono essere specchiati nel caso di un approccio black-box. Nel progetto l'approccio sarà fortemente guidato al white-box, ma tirare fuori qualcosa con approccio black-box è utile e necessario per puntare alto col voto.\\ Se abbiamo un programma, possiamo pensare al programma come un grafo:
+\begin{itemize}
+\item ogni nodo è un istruzione
+\item ogni arco è un meccanismo di passaggio da un'istruzione ad un'altra
+\end{itemize}
+faccio un'analisi statica dell'implementazione, ovvero vedo come è fatta, la riformulo in termini di un grafo ed esprimo i criteri in base al grafo:
+\begin{itemize}
+\item statement coverage: copertura dell'insieme di test rispetto alle istruzioni del SUT : $\frac{|S_c|}{(|S_e|-|S_i|)}$ dove:
+\begin{itemize}
+\item $S_c$: insieme di istruzioni coinvolte in almeno un test
+\item $S_e$: insieme di istruzioni del SUT
+\item $S_i$: insieme di istruzioni non raggiungibili del SUT
+\end{itemize}
+se so che ci sono istruzioni non raggiungibili, queste vanno decurtate e sono $|S_i|$. Criteri di adeguatezza per la test suite:
+\begin{itemize}
+\item la statement coverage è 1
+\item statement coverage è almeno $X\%$
+\end{itemize}
+se non riusciamo ad ottenere una statement coverage 1, allora c'è una parte di codice unreachable. Ma il test è un'attività best effort: tutto ciò che faccio è relazionato a tempi e costi, quindi il SUT può essere particolarmente difficile da testare in modo esaustivo su ogni statement. Se riesco ad avere una statement coverga ad 1 va bene, ed è quello a cui devo ambire, ma non sempre ci riesco. Il criterio di adeguatezza può essere rilassato, ad esempio in sistemi auto-motive o safety-critical è $\approx 0.99...$
+\item block coverage: non voglio coprire tutti gli statement, mi accontento che ogni blocco sia coperto almeno una volta. La misura è data da $\frac{|B_c|}{(|B_e| - |B_i|)}$, (blocco = sostanzialmente a tutto ciò che è coperto da parentesi graffe) la terminologia è la stessa ed anche l'adeguatezza è definita come sopra
+\item branch decision coverage: copertura definita rispetto ai punti di scelta/decisione del SUT, ovvero se ho esplorato i singoli cammini del grafo, la misura è data da $\frac{|D_c|}{(|D_e| - |D_i|)}$. Il concetto è sempre lo stesso, cambia la vista che viene fornita
+\item condition coverage: nella decision coverage, so se ho preso un ramo piuttosto che un altro, se ho considerato tutti i case di uno switch, ma non mi pongo il problema di COME ho scelto un cammino, per quale motivo ho scelto quello piuttosto che un altro. Voglio fare in modo di coprire tutte le espressioni condizionali, mi chiedo il motivo per cui sono andato in un ramo then o in un else, ma il motivo per cui ci sono andato. Anche qui è definito come $\frac{|C_c|}{(|C_e| - |C_i|)}$, potrei voler entrare in un ramo then perché provo due aspetti differenti della condizione, dove $|C_c|$ è l'insieme delle condizioni validate a seguito dell'esecuzione dell'insieme di test T. Occorre fare la distinzione fra condizioni semplici e composte:
+\begin{itemize}
+\item condizione semplice: coperta se esiste un caso di test che copre il vero ed una che copre il falso
+\item condizioni composte: è validata se include casi di test che validano OGNI singola condizione della composta. Lazy evaluation: molti linguaggi, se c'è un AND non guardano la seconda condizione, quindi tutte le condizioni che non rispettano la prima condizione mi bloccano anche la seconda. Quindi occorre rivedere la misura in caso di lazy evaluation: $\frac{|C_c|}{2*(|C_e| - |C_i|)}$, in cui le condizioni semplici sono validate se T include almeno un caso di test che le rende true oppure uno che le rende false: se si testa per entrambi i casi, la copertura semplice vale 2, se si testa per uno solo dei due casi vale 1, altrimenti vale 0
+\end{itemize}
+\end{itemize}
+Avere una test suite che ha magari 1 in coverage per determinati criteri può sembrare ottimo, ma magari nella test suite viene preso in considerazione sempre lo stesso parametro, oppure non vengono mai presi in considerazione delle guardie booleane etc... (vedi slides 36). Da qui nasce l'idea di proporre nuove metriche: 
+\begin{itemize}
+\item branch decision coverage, che ha come obiettivo di prendere in considerazione sia criteri di coverage basati su condizioni che basati sulle decisioni. La metrica è espressa come $\frac{(|C_c| + |D_c|)}{(|C_e| - |C_i|) + (|D_e| - |D_i|)}$ e l'adeguatezza è espressa come sopra.
+\item multiple condition coverage: se volessimo adottare un criterio che tenga più conto delle condizioni complesse, senza avere una esplorazione completa, cambiamo il denominatore della formula: $|C_{All}|$ è il numero totale di possibili combinazioni che si possono verificare nel SUT, la misura è espressa come $\frac{|C_c|}{(|C_{All}| - |C_i|)}$, dove $C_{All} = \sum\limits_{i=1,...,n} 2_i^k$, ovvero il numero totale di combinazioni del SUT. Il problema di questo approccio è che, dovendo considerare tutte le possibili combinazioni, il problema è NP-completo e quindi poco pratico
+\item nel tempo, sopratutto per sistemi safety-critical, è stato elaborato un nuovo criterio di adeguatezza che cercasse sempre di dare uno sguardo alle condizioni complesse: MC/DC (Modified Condition/Decision Coverage). Un sistema SC deve essere adeguato ad MC/DC ad un certo livello, MC/DC prevede una copertura congiunta dell'insieme di test T rispetto ai punti di scelta/decisione e di tutte le espressioni semplici o atomiche del SUT, senza avere un'esplosione combinatoria degli stati. Questo viene fatto definendo una serie di pre-requisiti:
+\begin{itemize}
+\item ogni blocco del SUT è stato coperto
+\item ogni condizione semplice del SUT è stata coperta sia con true che con false
+\item ogni decisione coperta in ogni ramo
+\item ci assicuriamo che ogni condizione complessa del SUT e formata da un certo numero di condizioni semplici, ogni condizione contribuisce alla selezione di un branch in modo indipendente. (è una copertura mista di branch e decision coverage, vogliamo massimizzarli entrambi: non ammettiamo il nesso di causalità tra le condizioni, evitando l'esplosione combinatoria fra gli stati)
+\end{itemize}
+le pre-condizioni ci suggeriscono una gerarchia di strategie di adeguatezza che vanno applicate: la prima richiesta vuole block coverage ad 1, la seconda che condition coverage sia 1, etc... Verificati i livelli di copertura ed assodato l'ultimo punto, il criterio di adeguatezza è dato da $MC_{c} = \frac{\sum\limits_{j=1}^{N} e_j}{\sum\limits_{k=1}^{N} (s_k - i_k)}$, dove:
+\begin{itemize}
+\item $e_i$ è il numero di condizioni semplici in cui effetti indipendenti sono stati dimostrarti
+\item $s_k$ è il numero di condizioni semplici
+\item $i_k$ è il numero di condizioni semplici non soddisfacibili
+\end{itemize}
+\end{itemize}
+\paragraph{Tools, framework,...}
+Come usiamo in pratica tutto quello appena visto, ci sono numerosi tool avanzati per supportare il testing:
+\begin{itemize}
+\item Jacoco
+\item Emma
+\item SonarCloud
+\item ...
+\end{itemize}
+\subsection{Criteri di adeguatezza data flow}
+I criteri di adeguatezza control flow, basano la loro adeguatezza sui flussi di controllo, a seconda di dove sono presi i flussi di controllo, avremo un approccio di tipo black box o white box. Il problema degli approcci white box, di tipo control flow. Gli approcci white box sono buoni e ci piacciono, ma gli approcci permettono di fare delle valutazioni su quello che c'è e non su quello che non c'è. Se viene tolta una condizione, non possiamo accorgercene con MC/DC e tutti gli approcci white box soffrono di questa problematica: si riesce a fare una misurazione solo su quello che c'è. Nel tempo sono stati sviluppati altri tipi di approcci che non risolvono il problema ma lo mitigano. I dati sono qualcosa di distribuito nell'applicazione, è abbastanza improbabile che elimini tutti i record di quel dato dal SUT, quindi posso fare delle considerazioni sul dato stesso, da qui i criteri di tipo data flow: se analizziamo il metodo (slides) da un punto di vista dei dati, vediamo che esiste un ramo then di un if che viene usata senza mai essere verificata nel codice, in questo caso \textit{lastEntry}, questo può essere usato come spia per un potenziale problema: se nella versione precedente il parametro era prima usata in un predicato condizionale e poi usata in uno statement, possiamo accorgerci che c'è stata una variazione.
+\subsubsection{Criteri basati su data flow}
+I concetti principali sono:
+\begin{itemize}
+\item definizione di dati/variabili
+\item uso dei dati/variabili
+\end{itemize}
+Costruiamo un data flow graph, che è un control flow graph dove vengono arrichite le nozioni di nodo e arco:
+\begin{itemize}
+\item ogni nodo ha associati 3 insiemi: 
+\begin{itemize}
+\item def: insieme delle variabili definite nel nodo
+\item c-use: insieme delle variabili usate in uno statement
+\item p-use: insieme delle variabili usate in un espressione booleana 
+\end{itemize}
+\item se il nodo ha insieme p-use non vuoto, vengono aggiunti due archi per ognuno dei dai presenti in p-use: uno dove la guardia è true ed uno dove è false.
+\end{itemize}
+L'ultimo concetto è quello delle coppie def-use: coppia di nodi ($n_i, n_j$)per cui c'è una variabile definita in $n_i$ ed usata in $n_j$. (esempio: int i = 0; contribuisce sia al gruppo delle def che delle use).\\ Criteri semplici basati su data flow sono i seguenti:
+\begin{itemize}
+\item vogliamo identificare i nodi dcu(i, v) ovvero l'insieme dei nodi $n_j$ etichettati come computazionali e tali che $n_i, n_j$ sia una coppia def-use e che $n_j$ sia raggiungibile da $n_i$
+\item dpu(i,v),ovvero l'insieme dei nodi in cui la variabile V sia usata in un predicato dei nodi $n_j$ tali che $n_i, n_j$ sia coppia def-use ed $n_j$ sia raggiungibile da $n_i$.
+\end{itemize}
+posso usare dei criteri di copertura basati sui criteri di c-use o p-use, a partire dagli insiemi che ho tirato fuori. Con i criteri sopra definiamo quali sono i nodi da considerare, a partire da uno statement iniziale e da una variabile. Otteniamo una collezione di insiemi di nodi che dovremmo poter raggiungere, dipendente dall'implementazione, data una test suite vediamo quanta parte della collezione consideriamo:
+\begin{itemize}
+\item c-use coverage: fra tutti i nodi presi con dcu, quanti vengono effettivamente coperti: $\frac{CU_c}{(CU - CU_f)}$, dove:
+\begin{itemize}
+\item CU$_{c}$ è il numero di nodi coperti
+\item CU$_f$ il numero di nodi non raggiungibili
+\item CU è dato da $\sum\limits_{i=1}^{n} \sum\limits_{j=1}^{d_i} |dcu(v_i. n_j)| $
+\end{itemize}
+le misure dei criteri di adeguatezza sono le stesse introdotte sopra
+\item p-use coverage: analogo della c-use, ma considera i nodi della dpu
+\item all-use coverage: uso entrambe, la metrica è data da $\frac{CU_c + PU_c}{(CU + PU) - (CU_f + PU_f)}$
+\end{itemize}
+Anche qui la coverage sarà definita come nel caso di control flow, ed otterremo dei valori più complessi di quelli precedenti. Il problema, rispetto ad approcci control flow di tipo white box (che è anche il motivo per cui si sono sviluppati di più) è che c'è poca automazione: il Software Testing è strettamente legato al concetto di automazione, e negli approcci white box hanno una mole di tool sviluppati a supporto che è enorme, mentre per questo tipo di approccio non è così. Quindi le tecniche data flow consentono di automatizzare il processo, allora è tutto applicabile, altrimenti non serve a nulla.\\ Un framework per data flow è ba-dua: strumento di ricerca, basato su Java.\\ Come può essere utileun approccio di tipo data-flow sul metodo in esempio: tramite ba-dua, otteniamo il report che ci dice se è stata mai coperta luna variabile per ogni path che scaturisce da essa.
+\section{Mutation testing}
+Abbiamo visto che ci sono criteri di adeguatezza, ovvero strumenti concettuali che aiutano a stabilire quanto è buono l'insieme di test che sono stati prodotti fino a questo momento nel ciclo di design e sviluppo di test program. L'obiettivo era provare a rispondere ad alcune delle domande fondamentali del software testing, per fare questo sono state introdotte due macro-famiglie per i criteri di adeguatezza:
+\begin{itemize}
+\item criteri di adeguatezza funzionali: usati se la bontà della test suite è stabilita basandosi su cosa il sistema dovrebbe fare, con un approccio di tipo black-box.\\ Le metriche in questo tipo di criteri di adeguatezza si basano su criteri osservabili, ad esempio su delle cose che sono state promesse usando un interazione di tipo I/O col SUT. Criteri di questo tipo ci permettono di capire se ci sono funzionalità mancanti o se ci sono errori non dovuti all'implementazione. Il problema è che i criteri spesso dipendono da modelli o specifiche non direttamente eseguibili, ad esempio codificati in UML o in documenti in linguaggio naturale
+\item criteri di adeguatezza strutturali: si basano su concetti di programmazione, comuni a tutti i linguaggi di programmazione di un determinato stile. Riescono ad essere più trasversali rispetto al tipo di SUT, essendo criteri white-box basati su codice. Il loro obiettivo è quello di esplorare la maggior parte possibile del SUT, con l'assunzione non necessariamente reale che più osservo come è fatto il SUT, più aumenta la confidenza che il SUT non abbia errori. Questa affermazione è vera, ma l'approccio non permette ad esempio di scoprire se tutte le funzionalità sono state implementate
+\end{itemize}
+\subsection{Mutuation approach}
+L'assunzione era partire da una implementazione del SUT o da dei modelli di esso, esiste una differente categoria di criteri basati sulla capacità di scoprire alterazioni artificialmente introdotte nel SUT: si parla sempre di adequacy, ma senza assumere l'esistenza di alcune specifiche strutturali o comportamentali del SUT né tanto meno esplicitamente considerando la struttura del SUT, bensì cercando di scoprire tali alterazioni artificialmente introdotte nel SUT.\\ Queste alterazioni sono degli statement o condizioni del programma forzatamente cambiati con altri statement o condizioni. Si crea quindi un'alterazione del SUT, che è identica all'originale meno che in alcuni punti (in verità si inserisce una mutazione alla volta). Quindi le attività di mutation testing sono volte ad alterare il SUT e a verificare se la test suite sviluppata fino a questo momento è in grado di scoprire le alterazioni che sono state introdotte.\\ Cosa rappresenta un test program: è uno specifico comportamento atteso nell'interazione con un SUT. È quindi una specifica parziale del SUT: non si sa cosa il SUT deve fare, ma con un certo input c'è un corrispettivo output atteso. Più i test program sono cablati in modo non parametrico, più la specifica è parziale (perché vuol dire funzionare solo per quel valore). Se invece il test program è parametrico, sono state definite delle classi di comportamenti, dove la variabilità è data dalla coppia (input, valore atteso). Quindi, vorremmo che un insieme di test program e quindi sostanzialmente di test case sia il più robusto possibile e che se ci fossero delle variazioni del SUT non debba essere cambiato, se anche il test program cambia, il comportamento è sempre quello. L'assunzione di mutation testing è controllare la robustezza dei casi di test "rompendo" il SUT: i test program devono accorgesi del problema, se questo accade la specifica parziale dei test program era sufficientemente generale. Se invece i test program non se ne rendono conto, forse vanno migliorati in quanto sono troppo specifici, rendendoli più generali. Mutation testing è quella branca del software testing che si occupa di
+\begin{itemize}
+\item capire alterar il SUT
+\item verificare che nella test suite esiste almeno un test program che si accorge della mutazione al SUT
+\end{itemize}
+È sempre un modo di pensare alla bontà ed alla robustezza delle test suite: è necessaria l'implementazione, ma questa viene alterata. Quindi è interessante vedere come vengono gestiti i comportamenti non previsti, per capire se la test suite è ancora buona. Mutation testing è quindi stimare la bontà di una test suite esistente,  basandosi su delle versioni alterate del SUT. Terminologia:
+\begin{itemize}
+\item mutante: un SUT dove è stata applicata una mutazione
+\item insieme dei mutanti vivi: mutanti ancora non scoperto
+\item mutanti rivelati (killed/distinguished): mutanti dove si è capito che c'è stata un alterazione, attraverso l'esecuzione di almeno un caso di test, rispetto al SUT originale
+\item mutanti equivalenti: mutanti che sono equivalenti rispetto al SUT originale, ovvero dove la mutazione applicata di fatto non cambia il comportamento de SUT
+\end{itemize}
+l'applicazione delle mutazioni avviene in modo black-box per chi esegue i casi di test, non si sa quale mutazione è stata applicata. Considerare il diagramma sulle slides, dove il SUT è un programma:
+\begin{enumerate}
+\item c'è l'insieme di test program ed il programma in questione. Si eseguono tutti i program sulla classe considerata e viene annotato l'output di ogni test program
+\item vengono generate le mutazioni, producendo n mutanti in cui il numero di mutazioni, o n dipendono dalle specificheo dal framework utilizzato. C'è quindi un insieme di mutanti vivi, la domanda è quindi se c'è qualche mutante non considerato
+\item si prende un mutante a caso dal gruppo dei vivi. La domanda ora è se l'intera test suite è stata sperimentata sul mutante. Per ognuno dei test program nella test suite questo viene eseguito contro il mutante
+\item \textbf{Punto chiave:} a seguito dell'esecuzione del test sul mutante, si confronta l'outcome P(t) con M(t) (dove P ed M sono il programma originale ed il mutante, t il test program). Quindi il comportamento può essere o uguale o diverso, se l'outcome è cambiato c'è un problema nel SUT e l'unico punto è stato durante la generazione dei mutanti, quindi M è un mutante rivelato e viene scartato dall'insieme dei mutanti vivi e messo in quelli scartati o morti, altrimenti si riparte andando avanti finché non sono stati considerati tutti i test
+\item se per tutti i test il mutante non è stato rivelato, va reinserito nell'insieme dei vivi e marcato come considerato
+\item il processo viene ripetuto finché non sono stati considerati tutti i mutanti
+\item dopo aver considerato tutto, se l'insieme dei vivi non è vuoto occorre chiedersi se la test suite non è buona, oppure se le mutazioni inserte creano dei mutanti equivalenti. esempio: controllo su una data per verificare la maggiore età. Se si cambia l'if, ma prima c'è un filtro che verifica se la data corrisponde a maggiore età, la condizione è ridondante
+\item si calcola uno score di mutazione, in base al quale di deciderà se la test suite è adeguata rispetto a mutation testing secondo un certo criterio
+\end{enumerate}
+il ruolo dei mutanti equivalenti è analogo ai banch non raggiungibili della decision coverage etc...
 
 
 

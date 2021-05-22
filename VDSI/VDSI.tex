@@ -1,5 +1,7 @@
 \documentclass{article}
 \usepackage{geometry}
+\usepackage{hyperref}
+
 \geometry{
 	a4paper,
 }
@@ -370,4 +372,96 @@ Ultima fase del penetration testing: dopo aver ottenuto l'accesso, lo scopo del 
 \item che servizi attivi ci sono, ed ognuno di questi che privilegi ha e filtrarli per utente
 \end{itemize}
 Il consiglio è sempre di NON focalizzarsi sui comandi presenti nella guida, bensì su COSA stiamo cercando.\\ Trick: se ci colleghiamo tramite ssh col server, abbiamo una connessione cifrata che permette di mandare comandi al server, ssh permette di creare dei tunnel, in cui possiamo far entrare dei pacchetti diretti verso altre macchine.
+\section{Reversing}
+Sfrutteremo delle vulnerabilità presenti all'interno di file binari generati dalla compilazione di programmi scritti male, quindi useremo degli exploit (scritti da 0) per sfruttare la vulnerabilità e prendere la shell. Quando vengono scritti dei programmi di tipo compilato, come C, questi sono scritti ad alto livello, si ottiene un eseguibile e viene lanciato. 
+\subsection{Registri}
+Il PC ha un processore, che è una unità programmabile che prende dei dati in input, li processa e restituisce fuori l'output. Per fare ciò deve salvare i dati e le istruzioni in registri, tutte le operazioni avvengono con numeri in formato binario, ci sono varie architetture di processori, ci focalizziamo sull'architettura x86 (Intel), che si divide in 32 e 64 bit. La conversione da alto livello a codice binario avviene con Assembly, che associa dei simboli a delle sequenze binarie, in maniera 1-a-1.\\ Il processore ha una sua memoria, formata da registri, locazioni di memoria molto veloci e che sono sul processore. Nell'architettura a 32 bit i registri sono a loro volta a 32 bit, ci sono 6 registri general purpose e 3 speciali che puntano allo stack, alla base dello stack ed uno che punta alla prossima istruzione da eseguire. Ci sono due tipologie per manipolare i registri, ci focalizziamo sulla Intel: 
+\begin{itemize}
+\item similmente al C, in una istruzione c'è un operatore, la destinazione e la sorgente
+\item i registri si nominano col loro nome
+\item le parentesi quadre contengono un indirizzo di memoria centrale
+\end{itemize}
+l'Assembly è una serie di istruzioni eseguite in ordine e poi "interpretate" dal processore. (Per le istruzioni, consultare \url{https://www.cs.virginia.edu/~evans/cs216/guides/x6.html}.
+\subsection{Memoria}
+La memoria è visto dal processore come un "array di byte", ogni elemento ha un indirizzo e la lunghezza dipende dall'architettura (32 o 64 bit max). Se l'indirizzo è composto da massimo 32 bit, possiamo indicizzare al massimo $2^{32}$ bit = 4GB, quindi non si potevano a vere più di 4GB di RAM perché non indicizzabili. La memoria deve essere divisa per ogni processo nel SO, se fosse condivisa ci sarebbero gravi conseguenze, per cui l'aera di memoria di un processo è privata, e la porzione è divisa in molte aree: un file compilato contiene diverse sezioni
+\begin{itemize}
+\item text: sezione che contiene le istruzioni assembyl
+\item data: variabili globali e statiche 
+\item heap: memoria dinamica, allocata su richiesta con malloc()
+\item stack: memoria statica: è pre-allocata e di taglia fissa, usata per variabili locali e per chiamate a funzioni
+\end{itemize}
+\subsubsection{Stack}
+Il modo in cui si inseriscono e si prelevano informazioni nello stack, in Assembly, sono le istruzioni di push e pop. Inoltre, lo stack cresce come una pila, ma in senso opposto, al crescere decrementa il valore dell'indirizzo: ci sono stack pointer e base pointer che puntano rispettivamente a cima e coda dello stack, i due contenuti nei registri di CPU. La pop non cancella l'elemento, bensì fa calare lo stack pointer nella unità successiva.\\ In un linguaggio di alto livello, la funzione è una porzione di codice che ha "vita propria", accetta dei parametri, ha dei parametri di stack, etc... la convenzione per la chiamata a procedura in assembly fa parte dell'ABI ed è specifica del compilatore: l'ABI definisce come il codice macchina deve comportarsi quando accede a delle strutture dati o dalle sotto-procedure.
+\paragraph{Chiamata a funzione}la convenzione di gcc è cdecl, che prevede:
+\begin{itemize}
+\item chi chiama la funzione, i parametri vanno messi nello stack con una push per ognuno, in ordine inverso (perché così la pop ristabilisce l'ordine)
+\item il chiamante deve occuparsi di pulire lo stack
+\item la funzione chiamata deve mettere il valore di ritorno in eax
+\end{itemize}
+Il chiamante, prima di trasferire la chiamata, deve inserire nello stack l'indirizzo di ritorno, ovvero della prossima istruzione da eseguire. Il codice del chiamato è contenuto fra il prologo e l'epilogo: la funzione ha il suo stack frame in cui può fare tutto quello che vuole, prima di ritornare cambia il valore dei puntatori originali dello stack usando i valori di prologo ed epilogo.\\\\ Poiché la funzione si è riservata un pezzo di stack, e poiché sotto c'è l'indirizzo di ritorno: se l'exploit riesce a sovrascrivere l'indirizzo di ritorno, verrà eseguita l'istruzione che si trova in corrispondenza di quell'indirizzo.
+\subsubsection{ELF}
+Formato di file su Linux che rappresenta un file eseguibile, composto da un header che contiene:
+\begin{itemize}
+\item l'ABI
+\item l'architettura del processore
+\item ...
+\end{itemize}
+oltre l'header c'è il section header, dove ci sono scritte le informazioni sulle altre sezioni, poi ci sono le sezioni .text, .data etc... copiate a run time quando necessarie.\\ Ogni sezione ha associati dei permessi: prima di eseguire, viene verificato se ci sono i permessi.\\
+\subsection{Reversing del programma}
+Per capire dove può esserci la vulnerabilità, occorre fare reversing, ovvero capire cosa fa il programma senza conoscere il codice. Si può fare in due modi:
+\begin{itemize}
+\item analisi statica
+\item analisi dinamica: si fa partire il programma per vedere come si comporta
+\end{itemize}
+si può convertire il binario in Assembly, oppure usare usare dei tool di debugging come gdb. L'analisi dinamica può essere molto utile non solo nel reversing, ma anche per effettuare la fase di privilege escalation. Una cosa utile da fare quando si parte con l'analisi statica, è lanciare i comandi strings o file sul file, in modo da vedere se ci sono informazioni utili. È utile iniziare con una fase di analisi dinamica base:
+\begin{itemize}
+\item eseguire il programma
+\item tracciare con ltrace/strace tutte le chiamate alle librerie che vengono eseguite, con tutti i parametri
+\item fare debugging con gdb
+\end{itemize}
+queste prime fasi forniscono un buon punto di inizio per il programma.
+\subsection{Stack buffer overflow}
+Supponiamo di avere una funzione, che ha un parametro puntatore a char, una variabile locale che è un array di 16 byte e chiama strcpy() per copiare il parametro di input in buffer. Vengono allocate 4 celle di memoria per contenere i 16 byte della stringa sorgente, il problema della strcpy è che questa copia finché non incontra il byte nullo, non fa controlli sulla stringa destinazione. Quindi, una volta che è terminata la copia, si sovrascrive l'EBP salvato e l'EIP salvato. Quando la chiamata termina, ripristina EIP ed EBP, quindi se mettiamo un indirizzo a piacere nell'EIP riusciamo a manipolare la prossima istruzione da eseguire. L'idea è scrivere nel valore dell'EIP salvato l'indirizzo voluto, manipolando la primitiva di scrittura con strcpy. Dobbiamo quindi mettere nello stack o nell'heap una sequenza di codice nel binary code una sequenza di istruzioni che vogliamo noi, in modo da poter poi farlo eseguire.\\ Per creare il codice malevolo possiamo usare msfvenom, che crea codice malevolo che esegue execve per prendere una shell, oppure codice per prendere una reverse shell/bind shell. Possiamo effettuare lo spawn di una shell come l'utente che è proprietario del binario, quindi se un programma ha bit SETUID esegue come un utente diverso da root, ma chiamando SETUID può diventare root per un determinato periodo di tempo. Quindi se facciamo prima SETUID a 0 e poi execve, possiamo diventare root.\\ Se invece un server TCP/HTTP è vulnerabile a buffer overflow, possiamo far eseguire all'applicazione una shell ed ottenerla, grazie solo al server http vulnerabile. \\ Per eseguire l'injection del programma, dipende dai casi: nell'esempio precedente, il programma prende in input una stringa, che è un array di byte. In C, un byte si rappresenta con \textbackslash x--, (--per le due cifre del byte), stando attenti al byte nullo che interrompe tutto, quindi se la stringa ne ha uno è un problema.
+\subsubsection{Code injection}
+Per sfruttare buffer overflow, dobbiamo preparare un payload nell'applicazione target. Dobbiamo iniettare shellcode + shellcode\_addr, ci sono però alcuni problemi
+\begin{itemize}
+\item se lo shellcode è troppo piccolo, basta aggiungere byte a caso
+\item se lo shellcode è troppo grande, ne dobbiamo prendere uno più piccolo
+\item (slides)...
+\end{itemize}
+Iniettiamo lo shellcode, per riempire i byte aggiuntivi possiamo usare il byte \textbackslash x90, che corrisponde all'istruzione "no-op", che è safe. Una volta scritti i byte per arrivare all'offset nello stack di EIP, sovrascriviamo EIP con l'indirizzo dei primi 4 byte dello shellcode, così che poi questa verrà eseguita all'uscita del chiamato.\\ Per rendere l'attacco completo:
+\begin{itemize}
+\item trovare l'indirizzo di shellcode: usiamo gdb
+\item trovare l'offset di EIP: abbiamo necessità di installare una estensione per gdb. Per calcolare l'offset EIP, possiamo farlo a mano idealmente, ma praticamente non è quasi mai così. Sfruttiamo la creazione di pattern non ripetitivi con gef ed a questo punto passiamo il payload o con $<$ o con \$(cat payload). Sappiamo che il programma è vulnerabile se vediamo segmentation fault, vedendo il log del kernel vedremo l'eccezione (in quanto è grave). Siccome il pattern non è ripetitivo, sapremo il valore dell'offset cercando la posizione del pattern 
+\item generare lo shellcode: shell-storm.org, contiene innumerevoli shellcode
+\end{itemize}
+Una volta messi insieme i pezzi, bisogna fare dei conti per costruire il payload: abbiamo lo shellcode, i byte per fillare fino a raggiungere l'offset di EIP + i 4 byte per inserire l'indirizzo dello shellcode.
+\subsection{x86 Buffer Overflow}
+Quando eseguiamo il programma in Linux, l'indirizzo dello stack viene messo a caso, ma vicino a 0xbfffff. Vediamo quindi quali mitigazioni sono state inserite da Linux e come bypassarle
+\subsubsection{Mitigazioni}
+\paragraph{NX bit} per come è stato pensato lo stack, non dovrebbe avere del codice da eseguire. Quindi è stato tolto il bit di x nello stack, in modo che il processore vada in errore. Ci sono due livelli di NX bit:
+\begin{itemize}
+\item NX bit specifico per il programma
+\item NX kernel-specifico
+\end{itemize}
+\paragraph{ASLR:}oltre ad essere scelto a caso in un indirizzo vicino a 0xbfffff, lo stack viene sempre scelto a caso, così come anche heap. In questo modo, gli indirizzi cambiano ogni volta che il programma viene eseguito nuovamente. Per abilitare o disabilitare la protezione c'è un file in \textsf{/proc/sys/kernel} che è randomize\_va\_space.
+\paragraph{Stack canaries}vengono messi dei valori noti sullo stack, in modo da verificare se, prima di ritornare dalla funzione, questi valori sullo stack non sono stati corrotti. Se sono stati corrottim il programma termina
+\paragraph{Source fortification}se usiamo funzioni sensibili, ad esempio strcpy, queste vengono sostituite con funzioni più sicure.
+\subsubsection{Bypass}
+\paragraph{Bypass di NX}la libc di Linux contiene tutte le funzioni di libreria utilizzate, traimite il suo utilizzo possiamo bypassare i controlli. La tecnica si chiama ret2libc, l'obiettivo è quello di eseguire funzioni della libc per eseguire la shell, ad esempio con i comandi system, execve etc...\\ Dobbiamo scrivere codice assembly che chiama la funzione con i parametri. Ci concentriamo su system, che vuole sono il comando da eseguire: scriviamo uno shellcode che prende come parametro "bin/sh" e chiama system.
+\begin{enumerate}
+\item troviamo l'offset di EIP
+\item riempire il buffer fino ad EIP
+\item scrivere l'indirizzo di ritorno con l'indirizzo della system
+\item configurare lo stack col parametro di system e con il corretto valore di ritorno, lo vediamo tramite comando su shell (slides).
+\end{enumerate}
+A quel punto possiamo preparare lo shellcode. \textbf{NOTA:}quando usciamo dalla shell, verrà eseguito l'indirizzo di ritorno dalla system, se questi sono byte a caso finiamo sui log. Per essere stealth, possiamo inserire l'indirizzo della exit, così da terminare il programma. \textbf{Altra nota:}l'arechitettura x86 è Little Endian, quindi la stringa va copiata in ordine inverso
+\paragraph{Bypass ASLR} il comando ldd che da la base di libc etc... se c'è ASLR da sempre un valore diverso. La randomizzazione non è di tutti i 4 byte dell'indirizzo, ma solo di 1.5 byte centrali, quindi costruendo l'exploit ed eseguendolo x volte (circa 1000), otteniamo la shell, apparendo però nei log del kernel.
+\section{Esempio: macchina di esame}
+Dopo aver analizzato i server web facendo enumerazione di file e cartelle, si analizzano i virtual host e si scopre che c'è una cartella .git su uno dei virtual host\\ Quindi, il prossimo passo sarà prelevare le informazioni della cartella: cerando ".git http dump" si trovano vari risultati per effettuare il dump della cartella. A questo punto, tramite i comandi di git è possibile verificare quali file sono presenti nella cartella: siccome i file sono stati cancellati, vanno ripristinati usando git reset --hard HEAD. Ora, il repository è stato ripristinato come era in origine, si può continuare a fare information gathering, scoprendo nuovi utenti e vedendo le modifiche del commit. Si prosegue con l'analisi di tutti i file restorati, analizzando il file api.py (una cosa del genere), si continua la fase di information gathering, scoprendo che c'è un DB da cui si prendono gli username. Si testa quindi SQL injection, mettendo un apice. Va in errore, di tipo 500 internal, quindi la strada del injection può essere seguita. Tramite burp, mandiamo la richiesta a repeater, ma il problema è che burp non url-encoda i byte in automatico, va fatta due volte o al server non arrivano i caratteri doppi. Tramite ODER BY, si scopre che la query restituisce una sola colonna, poi si procede col cercare i database presenti, prestando attenzione al fatto che il risultato è solo 1, quindi si deve usare il group\_concat sul parametro da selezionare prima della select. Dopo aver ricavato le password dal DB, occorre crackarne le corrispettive hash, per farlo di può usare john the ripper, oppure con crack station (solo per hash non salted). Ottenuta la password di uno degli utenti, si può provare a collegarsi con ssh, ma senza successo in quanto manca la chiave pubblica. Continuando ad esaminare la cartella .git: analizzando i file, si scopre che autenticandosi all'applicazione, è possibile eseguire una LFI. Siccome l'obiettivo è prendere una shell, si possono:
+\begin{itemize}
+\item usare il base64 encoding per leggere i file con dentro le password degli utenti (wrapper php): passiamo tutti i file .php trovati col dump. È necessario il wrapper con php perché se lo si include direttamente, viene eseguito il php e quindi non ritorna nulla su schermo
+\item prendere la shell per poi fare cat direttamente da lì
+\end{itemize}
+È utile ora andare a cercare la locazione del file di log del server web, inferito precedentemente dalla SQLi. Nel file di log di access ci sono scritte varie informazioni, molte delle quali possono essere modificate, come ad esempio lo UserAgent. Possiamo fare una richiesta in cui lo user agent contenga codice php, così che andando ad includere il file di log con LFI, il php verrà parsato ed eseguito. \textbf{ATTENZIONE:} mettere direttamente una reverse shell è RISCHIOSO. Se questa è sbagliata, fallisce il codice e non si può più cambiare. Il consiglio è creare un file php che lascia più scelta possibile, come ad esempio shell\_exec(\$\_GET[0]);, così da mettere poi la reverse in nel parametro. Quindi, ora, passando un parametro get 0 con un comando, questo viene eseguito. Se si usa una reverse sh che contiene caratteri speciali come slash o \& etc..., la richiesta va url-encodata.\\ Presa la reverse, si può tentare di vedere i processi attivi, i permessi per l'utente con cui è stata ottenuta la shell etc...	\\ Dopo aver cambiato utente, possiamo verificare con sudo -l cosa può fare l'utente, con e senza password. NOTA: possiamo ora prendere una shell con ssh, dopo aver trovato i file nella cartella .ssh, per avere una shell più stabile rispetto a quella ottenuta come reverse. Troviamo poi un file .c eseguibile, di cui possiamo iniziare ad analizzare il binario. Si scopre, tramite strace, con opzione per tracciare i figli, che il programma di cat, che viene chiamato dal file, viene chiamato col path relativo.\\ Tramite sudo -u nome\_utente path del binario , "path del file da eseguite; comando", il comando viene eseguito, quindi è possibile prendere una reverse shell per poi autenticarsi con ssh come mark, oppure cambiare la password di mark etc...\\ Per fare analisi statica del file, il file può essere copiato con ssh e passato a ghidra per l'analisi.\\ Si può anche sfruttare il path highjacking: creiamo un file cat, scritto in bash, inseriamo la reverse shell. Eseguendo sudo PATH=/home/utente /home/utente proprietario del file/eseguibile path qualunque. Quando verrà eseguito il comando,viene presa la reverse, ma il sistema non è pulito (?) quindi bisogna appendere :\$PATH a /home/utente.
 \end{document}
