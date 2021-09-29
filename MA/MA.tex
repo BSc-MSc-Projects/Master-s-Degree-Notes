@@ -75,5 +75,72 @@ Esempio di metodologia generale in 9 passi:
 \item verifica dei risultati: occorre verificare che quanto scoperto è corretto
 \item riepilogo in un report: viene riepilogato tutto ciò che è stato fatto, cosa si è appreso, cosa si è ottenuto etc...
 \end{enumerate}
-
+\section{Concetti fondamentali di analisi del malware}
+Per fare analisi del malware, ci sono due grandi possibilità per quanto riguarda i sistemi host:
+\begin{itemize}
+\item Linux
+\item Windows
+\end{itemize}
+La nostra attività di reversing è focalizzata sull'analisi del malware e questo attacca nella maggior parte dei casi sistemi Windows, ma la scelta di usare Windows come sistema per analizzare il malware non è per forza la migliore: su Linux non è possibile eseguire il malware per natura, quindi si evitano eventuali pericoli di esecuzione del malware sulla macchina host.\\ Non vuol dire che non esistono malware per Linux, ma sono rari ed a quel punto è possibile analizzarli spostandosi in ambienti Windows. D'altra parte, è comodo avere anche degli ambienti che esegua in maniera controllata il malware: se il sw è Windows-based, serve anche un ambiente Windows. Si può quindi usare come base un host Linux ed avere Windows come VM:
+\begin{itemize}
+\item è possibile scegliere la versione di Windows più adatta da installare sulla VM, magari per far girare dei malware patchati da determinate versioni di Win (ne usiamo quindi una vulnerabile)
+\item l'host viene usato per l'analisi, mentre la VM per l'esecuzione
+\end{itemize}
+Possono esserci diverse scelte come VM per il reversing:
+\begin{itemize}
+\item VmWare, molto usata per il reversing
+\item VirtualBox
+\item QEmu, rispetto alle prime due, questa è disponibile solo per Linux
+\end{itemize}
+Il vantaggio della VM è che è possibile costruire degli snapshot: se viene perso il controllo e la macchina è infettata, è possibile ripristinare lo snapshot per riparare al danno.\\ È possibile (teoricamente) che il malware si diffonda da una VM Windows al sistema host sempre Windows: tipicamente un malware ha delle contromisure per capire se sono in esecuzione sulla VM o sul sistema host. È necessario da parte dell'analista capire come fa il malware a vedere che è in esecuzione su una VM ed inibirlo. Il malware può fare un numero limitato di controlli, il grande vantaggio di chi fa l'analisi è che avendo il controllo sul codice può patcharlo e farlo eseguire sotto specifiche condizioni.\\ Ci sono comuqnue dei casi in cui è possibile che si riesca ad infettare il sistema host dalla VM, ma in ogni caso l'esecuzione in VM è un grande passo avanti di sicurezza. Inoltre, può accadere che l'antivirus presente nella versione di Windows abbia un anti-virus per-installato che magari blocca il malware, quindi andrebbe disabilitato per un tempo limitato per evitare che ciò accada.
+\subsection{Come fare RCE}
+Possiamo vedere il RCE come una scatola nera, in cui entra codice macchina ed esce una rappresentazione di alto livello che vogliamo ottenere dall'analisi. Il problema sta proprio nel codice macchina, per poter fare reversing occorre capire come è fatto e da dove viene fuori.\\ Il codice macchina è generato nel processo di compilazione:
+\begin{itemize}
+\item la compilazione parte dal file sorgente
+\item i primi componenti che processano il file sono il \textbf{pre-compilatore}. Ad esempio, in C esiste la direttiva \textsf{include}, o definire le macro, il pre-compilatore si occupa di aggiungere gli include e sostituire le macro nel file. Il risulato passa ad un secondo parser chiamato \textbf{compilatore}
+\item l'output della comilazione è il file oggetto, che non è un programma eseguibile, che contiene le istruzioni macchina corrispondenti al programma nel file sorgente. 
+\item Questo meccanismo viene ripetuto per ognuno dei file sorgente, tutti i file oggetto finiscono al \textbf{linker}, il risultato è un eseguibile.
+\end{itemize}
+La differenza fondamentale fra file oggetto ed eseguibili sono i riferimenti: nei file oggetto, tutti i riferimenti ai file sorgente sono appesi, ad esempio le chiamate alle funzioni di libreiria. Non si possono risolvere, il linker mette assieme il contenuto dei file oggetto. Ad esempio, mettere a posto i riferimenti tra diversi file sorgente o le librerie.\\ Nelle librerie ci sono una serie di funzioni già pronte che vanno collegate al file sorgente (es: printf, scanf etc...) ed è il linker a predisporre il collegamento.\\ Il file eseguibile non contiene solo le istruzioni dei file sorgente e delle librerie, ma anche concetti relativamente al processo (vedi meglio); inoltre c'è differenza fra librerie statiche e dinamiche:
+\begin{itemize}
+\item nelle librerie statiche, ogni volta che serve una funzione, si cerca nell'opportuno file il codice che realizza la funzione e viene copiato nel file eseguibile il codice macchina necessario
+\item nel collegamento dinamico, il linker registra nell eseguibile che una certa funzione verrà fornita a run time dal SO, ad esempio le dll di Windows o shared object di Linux. Quindi, alla "creazione del processo" verrà fornito il codice da eseguire
+\end{itemize}
+Nell'analisi del malware, le librerie dinamiche sono un vantaggio da un certo punto di vista ed uno svantaggio da un altro lato: non è banale capire cosa fa del codice, se è linkato staticamente magari è una banalità ma essendo linkato staticamente è difficile capire cosa fa. Se la libreria è dinamica ed il malware fa riferimento alla funzione, capisco dal nome cosa fa la funzione. In generale è un vantaggio se il malware usa librerie dinamiche, anche perché tipicamente l'eseguibile risultante è più piccolo se ci sono librerie dinamiche. È uno svntaggio se chi fa l'analisi del malware non riesce a capire quali sono le librerie dinamiche che il malware usa e questo può diventare un problema.\\ Quindi, non c'è una risposta esatta: entrambe le opzioni hanno vantaggi e svantaggi.\\ Abbiamo quindi del codice macchina, a questo punto va analizzato
+\begin{itemize}
+\item l'analisi statica cerca di prendere il codice e capire cosa fa, ci sono due grandi tool per fare questo lavoro
+\begin{itemize}
+\item disassemblatore, che possono essere
+\begin{itemize}
+\item lineari, ovvero un tool poco complesso da capire e da utilizzare. Va bene per piccoli malware ma diventa più difficile fare dei lavori più complessi. Esempi: objdump di Linux\\ Nell'architettura dei calcolatori (di Von Neumann), i dati ed i programmi sono memorizzati nella stessa memoria, quindi l'eseguibile ha sia dati che istruzioni macchina. Se trovo un byte "103", come lo interpreto? È un dato, una variabile pari a 103? Non c'è modo di capire cosa sia, e questa è la grande differenza fra i disassemblatori lineari e quelli interattivi: il disassemblatore lineare parte dalla prima istruzione macchina che viene eseguita quando si lancia il programma e da lì scende, andando per sezioni. Se nel processo c'è un salto nel codice e in mezzo ci sono stringhe o altro, il disassemblatore va avanti e continua ad analizzare quel codice come se fossero istruzioni macchina.
+\item interattivi: ad esempio Ghidra ed IdaPro (di cui esiste una versione gratuita, ma sta bene dove sta). Il disassemblatore interattivo parte dall'entry point del programma e segue il flusso: dove trova un salto, sa che c'è codice, se trova una chiamata a funzione c'è codice. Dovunque non arriva, lascia in incognito. È interattivo perché è l'analista a dire che in determinati punti c'è codice per far si che il disassemblatore conitnui, questo implica un uso corretto del tool, fornendo informazioni all'interno di essi.
+\end{itemize}
+\end{itemize}
+\end{itemize}
+Quando viene costruito un file oggetto o un esegubile, viene organizzato in modo da riconsocere le informazioni: un file oggetto ha un certo numero di sezioni:
+\begin{itemize}
+\item testo: c'è il codice macchina
+\item data: contiene variabili inizializzate con valore diverso da 0
+\item bss: contiene la descrizione delle variabili inizializzate a 0
+\item read only: dati costanti, ad esempio le stringhe esplicite
+\end{itemize}
+Nel file esegubile, più sezioni sono collassate in segmenti dove ogni segmento è descritto dal modo in cui il SO deve preparare le pagine che contengono i dati e le istruzioni, e potrebbero andare a finire nella stessa pagina perché devono essere pagine read only. In architettura Intel non ha quindi molto senso differenziare testo e read only, poi quando si porta in memoria ci sarà il processo per cui quando si porta in memoria ci saranno le diverse pagine corrispondenti ai segmenti.\\ Windows e Linux usano formati differenti di eseguibili:
+\begin{itemize}
+\item ELF per Linux
+\item PE-Coff storicamente, oggi sono PE(32 bit) o PE+(64 bit)
+\end{itemize}
+È importante sapere del formato del file esegubile, chi scrive malware sa che chi lo analizza usa un debugger interattivo e quindi stravolge il formato del file eseguibile per evitare che chi lo analizza capisca come è organizzato il file. Quindi, provo ad usare il disassembler e quello non capisce niente (cit): magari parte dall'entry point sbagliato o altre conto misure.
+\subsubsection{Eseguibili a 32 bit o 64 bit}
+I processori Intel sono nati a 32 bit, ma uno dei dogmi commerciali è la compatibilità verso i programmi precedenti, quindi c'è la capacità di processori moderni di eseguire programmi a 32 bit.\\ Quindi, ogni pagina di memoria ha un bit che indica se questa ha istruzioni a 32 o 64 bit ed il processore è in grado di fare swapping fra le due dimensioni e quindi di avere SO che supportano esegubili a 32 e 64 bit. \\ Dobbiamo quindi gestire due ISA diversi, uno a 32 ed uno a 64 bit. La gran parte del malware è ancora scritta a 32 bit: se scrivo malware è perché lo voglio diffondere il più possibile, in modo da farlo girare sia su nuove che su vecchie macchine. Quindi ancora oggi gran parte del malware è a 32 bit, ma cominciano a diffondersi anche malware a 64 bit.
+\subsubsection{Little endian vs Big endian}
+I processori Intel sono little-endian: il byte è l'unità di base del processore, che vengono aggregati per rappresentare valori più grandi:
+\begin{itemize}
+\item word: 4 byte
+\item quad-word: 8 byte
+\item etc...
+\end{itemize}
+Nell'interpretazione little endian si mette all'indirizzo di memoria più piccolo il valore meno significativo del numero, mentre big endian è l'opposto. \textbf{esempio: 515} è fatto di due byte: 2 3 (2*256 + 3). Se il valore è codificato in little endian, viene rappresentato in memoria come 3,2 mente in big endian abbiamo 2,3 e può accadere che nel programma si usi un protocollo di rete e se va usato un valore va codificato in big endian, quindi il disassemblatore non lo sa e deve essere l'analista a scoprirlo.
+\subsubsection{Numeri esadecimali}
+Base 16, cifre da 0-9 e lettere da a-f. Importanti perché ogni cifra esadecimale è mezzo byte, quindi è immediato prendere un numero exdec e capire la maschera di bit: 515 = 0x(0)203. Ghidra usa la sintassi assembly della Intel (ufficiale dei manuali), mentre un tool come objdump usa la sintassi AT \& T. Il compilatore gcc ha una toolchain interna che usa AT \& T, quindi può capitare di dover fare reversing di codice che viene fornito con questa sintassi. La grande differenza fra le due sta nell'ordine dei parametri (src e dest), poi ci sono altre differenze minori.
+\subsection{Attività di reversing}
 \end{document}
