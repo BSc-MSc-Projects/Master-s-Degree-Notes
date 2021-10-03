@@ -143,4 +143,96 @@ Nell'interpretazione little endian si mette all'indirizzo di memoria più piccol
 \subsubsection{Numeri esadecimali}
 Base 16, cifre da 0-9 e lettere da a-f. Importanti perché ogni cifra esadecimale è mezzo byte, quindi è immediato prendere un numero exdec e capire la maschera di bit: 515 = 0x(0)203. Ghidra usa la sintassi assembly della Intel (ufficiale dei manuali), mentre un tool come objdump usa la sintassi AT \& T. Il compilatore gcc ha una toolchain interna che usa AT \& T, quindi può capitare di dover fare reversing di codice che viene fornito con questa sintassi. La grande differenza fra le due sta nell'ordine dei parametri (src e dest), poi ci sono altre differenze minori.
 \subsection{Attività di reversing}
+Tentativo di apertura di un programma con Ghidra (fatti un hello world  ed aprilo).\\ Dopo l'analisi del file, ghidra elenca alcune cose iniziali:
+\begin{itemize}
+\item header, dove è inidicato come creare il processo una volta che il programma va in esercizio. Nell'header PE ci sono alcune tabelle, la prima delle quali non è molto interessante poiché descrive il file come se fosse dos (ma ormai i file dos non si usano più)
+\item IMG\_NT\_HEADERS32: i primi patrametri della tabella sono una signature, che permette di riconoscere il file come PE.\\ Ci sono poi due tabelle principali chiamate IMG\_FILE\_HEADER ed altra, che contengono infromazioni molto importanti:
+\begin{itemize}
+\item architettura della macchina
+\item timestamp di quando è stato costruito il file
+\item address o entry point: prima cosa essenziale da capire. Accanto all'interpretazione, sono  mostrati i byte corrispondenti. Ghidra quindi assegna una label ad ogni indirizzo e questa è significativa se ha scoperto a cosa fa riferimento. Doppio click sulla label porta nel punto del file corrispondente.
+\end{itemize}
+\end{itemize}
+La "entry" è una posizione nel file, ma anche una posizione in memoria: c'è una doppia visione di ogni cosa di cui si fa reversing
+\begin{itemize}
+\item visione fisica, del file esegubile
+\item visione della memoria (RAM) associata al processo quando il SO esegue il file eseguibile
+\end{itemize}
+Queste due finestre sulla realtà vanno di pari passo: il file eseguibile è diviso in segmenti, avremo quindi dei segmenti per code, data, bss e read data e ciascuno di questi corrisponde a delle pagine di memoria usati per contenerli, avremo quindi delle pagine dedicate al codice che corripsondono alla zona del file dove ci sono le istruzioni. Un'altra parte sarà dedicata ai dati, che corrispondono però sia al segmento dati che al bss poiché le variaibli sono trattate similmente.\\ Stesso vale probabilmente (ma dipende dall'implementazione) anche i dati readonly finiscono in una zona dati, perché la protezione sulla scrittura dei dati è implementata a compile time, ma non c'è reale necessità ad imepdire che quella zona di memoria non venga scritta perché nel programma non ci sono istruzioni che le scrivono.\\ Ci sono altre almeno due zone di memoria, ovvero stack ed heap:
+\begin{itemize}
+\item heap: zona per l'allocazione dinamica della memoria, in modo quasi arbitrario
+\item stack: zona presente in tutti i programmi, di taglia fissa e che serve per due scopi: realizzare il meccanismo di invocazione delle funzioni e correlato a questo, è usato per allcore le variaibli automatiche:
+\begin{itemize}
+\item variabili globali finiscono nella zona data. Visibili in tutto il programma e persistenti finché il programma gira
+\item variabili locali o automatiche finiscono sullo stack, visibili sono nella procedura dove vengono definite e persistenti finché la funzione viene eseguita. Il meccanismo più comodo per allocarle è lo stack
+\end{itemize}
+Bisgona capire come tutto questo viene getito a livello assembler. Ci sono poi altri tipi di variabili
+\begin{itemize}
+\item statiche e globali: la presistenza è uguale, ma il fatto che sia statica implica che la visibilità è locale all'unità di compilazione, ovvero è visibile sono nel file dove viene dichiarata
+\item statiche e automatiche: la visibilità è identica, ma la persistenza cambia, in quanto la variabile conserva il suo valore anche dopo che la funzione smette. Dove viene allocata la variabile: nei data. Lo stack cresce e decresce di continuo e contiene dati temporali. Lo heap è per allocazioni dinamiche, quindi viene messa nel blocco data perché dal punto di vista del funzionamento delle istruzioni macchina non c'è differenza fra variabili statiche e globali, la differenza sta a compile time nella visibilità 
+\end{itemize}
+\end{itemize}
+\subsubsection{Indirizzi di memoria}
+Abbiamo sempre due visioni: memoria e file eseguibile, cerchiamo però di essere più attenti: in Ghidra, accanto ad ogni costrutto c'è un valore numerico che è l'indirizzo in RAM del costrutto. Per passare dalla posizione sul file all'indirizzo in RAM ci sono diversi passaggi: il linker mette insieme una serie di file oggetto, con le loro sezioni di testo, data etc... e mette insieme tutto il materiale delle sezioni di testo in un unico segmento e comincia a calcolare gli offset delle istruzioni macchina all'interno del file. Costruisce quindi un file eseguibile che si presuppone venga caricato ad un certo indirizzo.\\ Supponiamo di avere: \textsf{l: mov eax, [h]}, a livello di Assembler lavoriamo ancora con i nomi simbolici. Sarà il linker a trasformare l in un indirizzo, e tutte le istruzioni dopo seguiranno di cosneguenza: conta quindi l'indirizzo dove verrà caricato tutto una volta che li programma va in esecuzione.\\ Prima, l'indirizzo di caricamento era fissato nel SO, inoltre programma differenti potevano andare in conflitto fra loro. Oggi è tutto risolto tramite meccanismi hardware e software, l'idea fondamentale è che quando il linker alla fine arriva a generare il codice macchina, questo è basato sugli \textbf{indirizzi logici}. Il processore Intel ha la memoria divisa in segmenti, ogni segmento contiene del codice e per far riferimento ai segmenti c'è un registro di processore apposito, \textsf{cs}. In Ghidra, noi troviamo l'offset rispetto alla base in memoria di dove è messo il segmento codice. Nel caso sopra, h è un indirizzo di un dato, che starà nel segmento dati, che in RAM è identificato da un altro registro segmento che è \textsf{ds}, quindi anche in questo caso è l'offset rispetto al segmento dati.\\ Windows, come molti altri SO moderni, non usa la segmentazione a pieno ma adotta un meccanismo flat memory: l'indirizzo di base di tutti i segmenti è 0, quindi l'offet nel codice macchina è formalmente un offet del segmento, ma è anche un identificativo univoco della memoria. (offest + 0 = offset).\\ Col modello di memoria piatto però, non si può più avere offset uguali, perché tutti partono da 0 e quindi c'è un problema: lo spazio di indirizzo delle istruzioni macchina, dello stack, dei dati etc... coincidono.\\ Ora, partendo dall'indirizzo logico, tramite l'unità di segmentazione arrivo all'indirizzo lineare che non è ancora quello finale perché c'è un altra unità hardware che è la paginazione: tramite le Page Table, è possibile tradurre l'indirizzo finale in un indirizzo fisico che viene usato nel bus per accedere ad una certa cella della RAM.\\ Di fatti, nei SO moderni i segmenti principali sono tutti a 0, quindi quello che veramente lavora è l'unità di paginazione: la funzione principale è realizzare un meccanismo di protezione della memoria:
+\begin{itemize}
+\item un programma viene caricato dal compilatore tipicamente ad un indirizzo prestabilito, che è un indirizzo logico
+\item la paginazione fa si che ogni processo abbia delle PT differenti e che mappino su indizzi fisici differenti ovvero su celle di RAM differenti
+\end{itemize}
+Si parla di \textbf{indirizzi virtuali} quando il mapping fra indirizzi fisici e indirizzi lineari non è fissato ma cambia di continuo. Nel codice macchina siamo ancora a livello di indirizzo logico, e bisogna tenere presente il meccanismo che lo tradurrà in un indirizzo fisico.\\ Andando all'indirizzo indicato da "entry", si arriva ad un indirizzo (CHE È IN LITTLE ENDIAN) a cui va sommato l'offset dove viene caricato il file per ottenere l'indirizzo logico.\\ Non è detto però che quando il programma in Windows, quando lanciato, viene caricato nell'indirizzo prestabilito ma può capitare che il file sia rilocato
+\subsubsection{Regstri del processore}
+A 32bit, abbiamo i seguenti registri:
+\begin{itemize}
+\item registri general purpose
+\begin{itemize}
+\item eax (dove ax è a 16 bit, ah ad 8 bit e al a 4 bit)
+\item ebx
+\item ecx
+\item edx
+\end{itemize}
+tutti con le contro parti a 8, 4 bit
+\item altri registri
+\begin{itemize}
+\item esi
+\item edi
+\item ebp
+\end{itemize}
+\item registri segmento
+\begin{itemize}
+\item cs
+\item ds
+\item es
+\item fs
+\item gs
+\item ss
+\end{itemize}
+\item usa serie di registri speciali
+\begin{itemize}
+\item esp: stack pointer
+\item eflags: bit che contengono lo stato corrente del processore
+\item eip: istruction pointer, non è un registro visibile direttamente, si può manipolare solo con istruzioni di salto e decisioni
+\end{itemize}
+\item registri per manipolare lo stato interno dei processori
+\item registri per manipolare i co-processori: un tempo i componenti con registri floating point erano venduti separatamente
+\begin{itemize}
+\item fpr0 - fpr7 (mmx0 - mmx7)
+\end{itemize}
+\end{itemize} 
+In realtà tutti i processori moderni hanno una ISA a 64 bit, i registri hanno anche una parte composta da 32 bit in più ad hanno la r davanti al nome. Inoltre, vengono aggiunti anche nuovi registri r8 - r15.
+\subsubsection{Gestione dello stack}
+Lo stack dei processori è full descending: il processore lavora a 32 bit ed ogni cella di stack è di 4 byte. Lo stack cresce dal basso verso l'altro, esp in ogni momento contiene l'indirizzo dell'ultimo elemento, ovvero di quello riempito (lo stack è LIFO) da cui si dice che è \textbf{full} perché punta all'ultimo elemento inserito. Descending perché gli indirizzi crescono mano a mano che si scende verso gli elementi più vecchi, quindi ogni volta che metto un nuovo elemento lo inserisco in un indirizzo più piccolo di quello più vecchio.
+\subsection{Chiamata a funzione}
+Le funzioni (sia in archiretture a 32 che a 64 bit) si appoggiano allo stack. Supponiamo di usare una certa parte dello stack e troviamo una CALL ad un certo indirizzo (o etichetta) f, cosa fa il processore: le call possono essere
+\begin{itemize}
+\item nello stesso segmento
+\item fra segmenti differenti
+\end{itemize}
+il risultato pratico è che ci sono più tipi di call. In genere, vediamo quelle nello stesso segmento in quanto lo spazio di indirizzi può essere largo 4G di celle e quindi sufficienti. La CALL quindi salva l'indirizzo a cui ritornare subito dopo aver fatto la chiamata, nello stack viene quindi aggiunto l'indirizzo di ritorno h ed aggiornato esp.\\ Dopo di che, viene caricato l'indirizzo f in eip, ovvero nell'istruction pointer, quando f termina lo fa con la \textsf{ret}, che prende l'indirizzo puntato da esp, lo carica in eip e poi incrementa esp in modo che punti alla locazione che sta sotto (eseguendo quindi la pop). Se la funzione fa cose sbagliate e fa una return quando esp punta ad altro e non ad h succede qualcosa di inatteso. Le funzioni devono tenere lo stack bilanciato, quindi quando si fa la return bisogna tornare ad h, ma "giocare" con lo stack è uno dei tanti modi con cui si tenta di inibire il disassemblatore per non seguire più la logica generale.\\ Quindi, una cosa è l'idea di programmazione ad alto livello, un altra è quello che riguarda il codice macchina.
+\subsubsection{Convenzione per la chiamata a funzione}
+Non c'è un unica convenzione con cui avviene il passaggio dei parametri, a seconda del SO cambiano ma anche in base ad altri fattori. Le due principali sono 
+\begin{itemize}
+\item convenzione del linguaggio C, ovvero cdecl
+\item convezione stdcall, la modalità standard con cui il SO ed i compilatori Microsoft fanno le chiamate a funzione
+\end{itemize}
+\paragraph{CDECL:} andrebbe distinto fra 32 e 64 bit, a 32 bit i parametri sono passati sullo stack in ordine inverso rispetto all'ordine logico della dichiarazione della funzione (perché così poi la pop ristabilisce l'ordine). Siccome vengono fatte delle push sullo stack, questi sono dati temporanei e quindi poi vanno recuperati: questo, nella convenzione cdecl va fatto dal chiamante, quindi ci saranno le pop, ma verosimilmente si fa un \textsf{add esp, 0xc}
+\paragraph{STDCALL:} identica a CDECL, tranne per il fatto che chi toglie i valori dallo stack è il chiamato. Le istruzioni Intel permetto di fare questo con la \textsf{ret 12}, ovvero toglie 12 byte e ritorna al chiamante (dopo aver ovviamente tolto l'indirizzo di ritorno e messo in eip).
 \end{document}

@@ -1,6 +1,7 @@
-\documentclass[14pt]{article} % the document type needs to be change
+\documentclass[12pt, oneside]{extbook} % the document type needs to be change
 \usepackage{geometry}
-%\usepackage{lstlistings}
+\usepackage{listings}
+\usepackage{graphicx}
 
 \geometry{
 	a4paper,
@@ -15,7 +16,8 @@
 \maketitle
 \tableofcontents
 \newpage
-\section{Introduzione}
+\part{Parte Hardware}
+\chapter{Introduzione}
 In cybersecurity, ci sono almeno 5 aree esterne differenti che si mischiano fra loro, e poi 3 aree interne relative all'hardware ed al software.\\ "L'attore principale" sono applicazioni Internet-based:
 \begin{itemize}
 \item vulnerabilità del sistema, della rete etc
@@ -39,7 +41,7 @@ Piattaforme da utilizzare per la parte da 6 CFU (Hardware):
 \item Lubuntu
 \item Ubuntu server
 \end{itemize}
-\section{Lezione 1: Introduzione alla cybersecurity}
+\chapter{Introduzione alla cybersecurity}
 Ci sono 3 fattori principali quando si parla di cyberscurity:
 \begin{itemize}
 \item Cosa bisogna proteggere?
@@ -216,7 +218,8 @@ Il receiver:
 \end{enumerate}
 Si procede con i passi scritti sulle slides\\ Le conclusioni (slides)
 \newpage
-\section{Introduzione - parte II}
+\part{Parte software}
+\chapter{Introduzione}
 Approccio bottom up a partire dall'hardware fino al software. Imparare i componenti interni di ogni livello dello stack prima di imparare l'attacco, in modo da capire meglio come funzionano. A questo punto, capire come e se è possibile incrementare il livello di sicurezza. Perché non dire che renderemo il sistema sicuro? È impossibile rendere un sistema sicuro, \textbf{un computer sicuro è scollegato dalla rete, con l'hw che prende fuoco.}
 Argomenti che vedremo:
 \begin{itemize}
@@ -226,69 +229,81 @@ Argomenti che vedremo:
 \item malware detection
 \item DB security
 \end{itemize}
-\section{Hardware based attacks e contromisure}
-Perché sono interessanti gli attacchi all'hardware: perché ogni sistema IT si basa sull'hardware, quindi compormettendo questo si riesce a compromettere tutto lo stack IT. Quando scrivo sw, mi aspetto qualcosa dall'hw e quindi se lo altero per il software è molto difficile capire che è compromesso.\\ I blocchi fondamnetali per costruire degli attacchi hw based di successo:
+\chapter{Hardware based attacks e contromisure}
+Perché sono interessanti gli attacchi all'hardware: perché ogni sistema IT si basa sull'hardware, quindi compromettendo questo si riesce a compromettere tutto lo stack IT. Quando scrivo sw, mi aspetto qualcosa dall'hw e quindi se lo altero per il software è molto difficile capire che è compromesso.\\ I blocchi fondamentali per costruire degli attacchi hw based di successo:
 \begin{itemize}
 \item leggere primitive, per circumnavigare la sicurezza del sw
 \item scrivere primitive
 \item covertness: se l'attaccante può fare un attacco che non può essere scoperto è impossibile per il sw capire che c'è un attacco in corso
 \end{itemize}
 La prima cosa da fare è capire come funziona l'hw
-\subsection{Storia dell'hw}
-Legge di Moore: il numero di transistor di un calcolatore raddoppia di ogni anno.\\ Quindi possiamo aggiungere sempre più componenti nel chip: tempo fa si aveva il sw, si cambiava la frequenza del processore e il sw andava più veloce. Ma c'è un upper bound nella potenza consumabile, che è 130W e quindi anche aggiungendo componenti non si può sfruttare più potenza. Non si può aumentare la frequenza oltre il power wall, l'ammontare della potenza nel calcolatore è tralemnte alta che non si può aumentare la velocità della CPU.\\ Le CPU inizialmente erano multi ciclo e single core, già complesse ma lente. Quindi la prima cosa fu quella ci cercare di rendere più veloci:
+\section{Storia dell'hw}
+Legge di Moore: il numero di transistor di un calcolatore raddoppia di ogni anno.\\ Quindi possiamo aggiungere sempre più componenti nel chip: tempo fa si aveva il sw, si cambiava la frequenza del processore e il sw andava più veloce. Ma c'è un upper bound nella potenza consumabile, che è 130W e quindi anche aggiungendo componenti non si può sfruttare più potenza. Non si può aumentare la frequenza oltre il power wall, l'ammontare della potenza nel calcolatore è talmente alta che non si può aumentare la velocità della CPU.\\ Le CPU inizialmente erano multi ciclo e single core, già complesse ma lente. Quindi la prima cosa fu quella ci cercare di rendere più veloci:
 \begin{enumerate}
 \item la prima cosa fatta negli 80' fu l'introduzione del pipelining: allo stesso tempo, in parallelo, vengono processare diverse istruzioni che sono in diversi stadi della pipeline.\\ Si può committare una istruzione per ogni ciclo, ma si velocizza l'esecuzione delle istruzioni. Quindi la frequenza della CPU venne aumentata, ma si può sempre committare una istruzione alla volta
-\item architettura superscalare, aggiunge la possibilità di committare più istruzioni perché gli elementi base come alu, più elementi per il fetch etc... sono ridondati. Quindi, c'è l'istruzione nella pipeline e serve della logica nella CPU che dica quale hardware è disponibile e può essere assegnato alle istruzioni ogni volta, quindi serve nu run-time scheduling. In ogni caso, ci sono i problemi della pipeline come i branch condizonali e la neceesità di dati quando non ancora disponibili
+\item architettura super-scalare, aggiunge la possibilità di committare più istruzioni perché gli elementi base come alu, più elementi per il fetch etc... sono ridondati. Quindi, c'è l'istruzione nella pipeline e serve della logica nella CPU che dica quale hardware è disponibile e può essere assegnato alle istruzioni ogni volta, quindi serve un run-time scheduling. In ogni caso, ci sono i problemi della pipeline come i branch condizonali e la neceesità di dati quando non ancora disponibili
 \item dai problemi sopra, nasce la speculazione:
-%\begin{lstlisting}
-%a \[\rightarrow\] b + c
-%if a $\geq$ 0 then
-%	d \[\rightarrow\] b
-%else
-
-%codice di esempio	
-%\end{lstlisting}
+\begin{lstlisting}[mathescape=true]
+a $\rightarrow$ b + c
+if a $\geq$ 0 then
+	d $\leftarrow$ b
+else
+	d $\leftarrow$ c
+\end{lstlisting}
 fetcho un'istruzione prima di avere conoscenza del fatto che devo fare un salto piuttosto che un altro. Quindi ci sono una serie di bolle necessarie anche per un codice semplice, c'è una penalità per gli stalli enorme ed il codice fa molti salti.\\ Quindi, serve cambiare le cose: branch prediction. 
 \end{enumerate}
-\subsection{Branch prediction}
-Se la predizione è sbagliata, si scarta il risultato, quindi di flusha una serie di stadi della pipeline perché incorretti, altrimenti si continua con l'esecuzione delle istruzioni. Ci sono delle parti dedicate nel chip del processore apposite per il branch prediction, migliore sarà la predizione e meno stalli si osserveranno e quindi migliori prestazioni. Le perfromance dipendono da due fattori: quanto presto si può controllare se la predizione è corretta e se la predizione è corretta.\\ Ci sono due tipi di predizione:
+\section{Branch prediction}
+Se la predizione è sbagliata, si scarta il risultato, quindi si flusha una serie di stadi della pipeline perché incorretti, altrimenti si continua con l'esecuzione delle istruzioni. Ci sono delle parti dedicate nel chip del processore apposite per il branch prediction, migliore sarà la predizione e meno stalli si osserveranno e quindi migliori prestazioni. Le performance dipendono da due fattori: quanto presto si può controllare se la predizione è corretta e se la predizione è corretta.\\ Ci sono due tipi di predizione:
 \begin{itemize}
-\item dynamic prediction: implenetata in hw, la predizione cambia in base al comportamento del sw. Basata tipicamente sulla storia dei branch
-\item static branch prediction: determinata a compile time, come ad esempio il \textsf{likely} nel codice del kernel. Viene riflessa a livello assembly con dei prefissi come ad esempio \textsf{0x2e} o \textsf{0x3e} ma nelle architetture moderne non funziona più perché la pipeline è troppo complessa.
+\item \textbf{dynamic prediction}: implementata in hw, la predizione cambia in base al comportamento del sw. Basata tipicamente sulla storia dei branch
+\item \textbf{static branch prediction}: determinata a compile time, come ad esempio il \textsf{likely} nel codice del kernel. Viene riflessa a livello assembly con dei prefissi come ad esempio \textsf{0x2e} o \textsf{0x3e} ma nelle architetture moderne non funziona più perché la pipeline è troppo complessa.
 \end{itemize}
-La branch preduction table è una piccola memoria nella CPU usabile per capire l'outcome di una branch instruction: si usano i bit meno significativi dell'istruzione per indicizzare la taballe e prendere la decisione, il risultato è binario (take or not take). \\ Se la predizione è corretta ed è take ho un ciclo di penalità: questo perché si esegue l'istruzione di salto, ma nella pipeline c'è comunque la fase di fetch per cui semplicmente la carico, ma per poter fare la predizione devo arrivare almeno alla fase di decode.\\ Se la predizione è not take ed è corretta non ho penalità\\ Se invece la oredizione è incorretta, devo 
+La branch prediction table è una piccola memoria nella CPU utilizzabile per capire l'outcome di una branch instruction: si usano i bit meno significativi dell'istruzione per indicizzare la tabella e prendere la decisione, il risultato è binario (take or not take). \\ Se la predizione è corretta ed è take ho un ciclo di penalità: questo perché si esegue l'istruzione di salto, ma nella pipeline c'è comunque la fase di fetch per cui semplicemente la carico, ma per poter fare la predizione devo arrivare almeno alla fase di decode.\\ Se la predizione è not take ed è corretta non ho penalità\\ Se invece la predizione è incorretta, devo 
 \begin{itemize}
 \item cambiare la predizione
 \item aggiornare la tabella
 \item flushare la pipeline, la penalità è la stessa che si avrebbe se non ci fosse la branch prediction, perché ci sarebbero gli stalli.
 \end{itemize}
-L'automa a stati che rappresenta i cambi di stato in base alla predizione è il seguente:
-%immagine dell'automa
+L'automa a stati che rappresenta i cambi di stato in base alla predizione è il seguente:\\\\
+\includegraphics[scale=0.7]{immagini/2bit_pred}\\\\
 si possono usare due bit per decidere come spostarsi in base alla predizione. Come si comporta con dei cicli annidati? 
-%\begin{lstlisting}
-%\end{lstlisting}
-%codice assembly 
-L'unità per la branch prediction continuerà a dire branch taken finché non si arriva a 10, alla fine c'è una decisione sbagliata e si torna al loop esterno. Si cambia continuamente idea per via dell'interazione fra loop interno e loop esterno, per via di questo il 2-bit saturating counter non funziona bene perché sbaglia sempre la prima predizione e l'ultima.\\ La branch prediction è importante, perché da un'analisi risulta che nel codice il 20\% delle istruzioni sono branch condizonali, inoltre ci sono pipeline più complesse e superscalari, quindi la possibilità di trovare delle istruzioni condizionali è più alta ed inoltre c'è la programmazione ad oggetti, dove per capire se una classe è figlia di un altra bisogna navigare l'albero per capire la classe padre e quindi prendere decisioni.\\ Per migliorare la branch prediction:
+\begin{lstlisting}
+	mov $0, %ecx
+.outerLoop:
+	cmp $10, %ecx
+	je .done
+	mov $0, %ebx
+.innerLoop:
+	; actual code
+	inc %ebx
+	cmp $10, %ebx
+	jnz .innerLoop
+	
+	inc %ecx
+	jmp .outerLoop
+.done:
+\end{lstlisting}
+L'unità per la branch prediction continuerà a dire branch taken finché non si arriva a 10, alla fine c'è una decisione sbagliata e si torna al loop esterno. Si cambia continuamente idea per via dell'interazione fra loop interno e loop esterno, per via di questo il 2-bit saturating counter non funziona bene perché sbaglia sempre la prima predizione e l'ultima.\\ La branch prediction è importante, perché da un'analisi risulta che nel codice il 20\% delle istruzioni sono branch condizionali, inoltre ci sono pipeline più complesse e super-scalari, quindi la possibilità di trovare delle istruzioni condizionali è più alta ed inoltre c'è la programmazione ad oggetti, dove per capire se una classe è figlia di un altra bisogna navigare l'albero per capire la classe padre e quindi prendere decisioni.\\ Per migliorare la branch prediction:
 \begin{itemize}
 \item migliorare la predizione
-\item determianre il target prima
+\item determinare il target prima
 \item ridurre la penalità per predizioni errate
 \end{itemize}
-\subsubsection{Correlated prediction}
+\subsection{Correlated prediction}
 L'idea è che alcuni outcome dei branch sono correlati fra loro, quindi serve poter corralre due branch condizionali in assembly. In un correlated predictor si usa una storia degli m branch passati e si può usare la storia per correlare i branch. Si usa la path history table:
 \begin{itemize}
 \item si mette la storia globale in un registro globale della storia
 \item si usa il valore per accedere ad una pht di 2-bit saturing 
 \end{itemize}
-%slides
-\subsubsection{Tournament predictor}
+\includegraphics[scale=0.5]{immagini/corr_pred}
+\subsection{Tournament predictor}
 Si usano due tipi di predittori:
 \begin{itemize}
-\item correlated predictor
-\item local predictor, che usa l'indirizzo del branch
+\item correlated predictor, basato sugli ultimi m branches, acceduto dalla storia locale
+\item local predictor, che viene selezionato usando l'indirizzo del branch
 \end{itemize}
-In queso predittore si confrontano, mediante un indicatore che è la local history table che si indicizza con program counter, confrontata poi con un global predictor.
-% immagine dell'architettura
+Si usa poi un indicatore di quale è stato il miglior predittore per lo specifico branch in esecuzione, che è un contatore a 2 bit, incrementato per uno dei predittori e decrementato per l'altro. Di seguito, uno schema dell'architettura del tournament predictor DEC Alpha 21264\\\\
+\includegraphics[scale=1]{immagini/tourn_pred}
 \subsubsection{Branch target buffer}
 È relazionato ai jump indiretti, che sono difficili da predirre. esempio: la ret è l'istruzione di ritorno da una sub routine. Il problema è capire dove si ritorna: qual è l'istruzione che si mette in pipeline, dovrebbe essere la prossima del chiamante ma è ancora più complicato. Si può fare il jump nell'indirizzo contenuto in un registro, l'output dipende da cosa è scritto nel registro che si vuole usare per il salto.\\ Il BTB è una picccola cache che viene acceduta col program counter 
 %immagine dell'architettura
