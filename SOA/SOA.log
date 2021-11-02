@@ -1,0 +1,802 @@
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2021.9.30)  29 OCT 2021 13:11
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**SOA.tex
+(./SOA.tex
+LaTeX2e <2020-02-02> patch level 2
+L3 programming layer <2020-02-14>
+(/usr/share/texlive/texmf-dist/tex/latex/extsizes/extbook.cls
+Document Class: extbook 1999/01/07 v1.4a NON-Standard LaTeX document class
+(/usr/share/texlive/texmf-dist/tex/latex/base/bk12.clo
+File: bk12.clo 2019/12/20 v1.4l Standard LaTeX file (size option)
+)
+(/usr/share/texlive/texmf-dist/tex/latex/base/exscale.sty
+Package: exscale 2018/09/24 v2.1i Standard LaTeX package exscale
+LaTeX Font Info:    Redeclaring symbol font `largesymbols' on input line 57.
+LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `normal'
+(Font)                  OMX/cmex/m/n --> OMX/cmex/m/n on input line 57.
+LaTeX Font Info:    Overwriting symbol font `largesymbols' in version `bold'
+(Font)                  OMX/cmex/m/n --> OMX/cmex/m/n on input line 57.
+\big@size=\dimen134
+)
+\c@part=\count167
+\c@chapter=\count168
+\c@section=\count169
+\c@subsection=\count170
+\c@subsubsection=\count171
+\c@paragraph=\count172
+\c@subparagraph=\count173
+\c@figure=\count174
+\c@table=\count175
+\abovecaptionskip=\skip47
+\belowcaptionskip=\skip48
+\bibindent=\dimen135
+)
+(/usr/share/texlive/texmf-dist/tex/latex/geometry/geometry.sty
+Package: geometry 2020/01/02 v5.9 Page Geometry
+
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/keyval.sty
+Package: keyval 2014/10/28 v1.15 key=value parser (DPC)
+\KV@toks@=\toks14
+)
+(/usr/share/texlive/texmf-dist/tex/generic/iftex/ifvtex.sty
+Package: ifvtex 2019/10/25 v1.7 ifvtex legacy package. Use iftex instead.
+
+(/usr/share/texlive/texmf-dist/tex/generic/iftex/iftex.sty
+Package: iftex 2019/11/07 v1.0c TeX engine tests
+))
+\Gm@cnth=\count176
+\Gm@cntv=\count177
+\c@Gm@tempcnt=\count178
+\Gm@bindingoffset=\dimen136
+\Gm@wd@mp=\dimen137
+\Gm@odd@mp=\dimen138
+\Gm@even@mp=\dimen139
+\Gm@layoutwidth=\dimen140
+\Gm@layoutheight=\dimen141
+\Gm@layouthoffset=\dimen142
+\Gm@layoutvoffset=\dimen143
+\Gm@dimlist=\toks15
+)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/graphicx.sty
+Package: graphicx 2019/11/30 v1.2a Enhanced LaTeX Graphics (DPC,SPQR)
+
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/graphics.sty
+Package: graphics 2019/11/30 v1.4a Standard LaTeX Graphics (DPC,SPQR)
+
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/trig.sty
+Package: trig 2016/01/03 v1.10 sin cos tan (DPC)
+)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
+File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
+)
+Package graphics Info: Driver file: pdftex.def on input line 105.
+
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-def/pdftex.def
+File: pdftex.def 2018/01/08 v1.0l Graphics/color driver for pdftex
+))
+\Gin@req@height=\dimen144
+\Gin@req@width=\dimen145
+)
+(/usr/share/texlive/texmf-dist/tex/latex/listings/listings.sty
+\lst@mode=\count179
+\lst@gtempboxa=\box45
+\lst@token=\toks16
+\lst@length=\count180
+\lst@currlwidth=\dimen146
+\lst@column=\count181
+\lst@pos=\count182
+\lst@lostspace=\dimen147
+\lst@width=\dimen148
+\lst@newlines=\count183
+\lst@lineno=\count184
+\lst@maxwidth=\dimen149
+
+(/usr/share/texlive/texmf-dist/tex/latex/listings/lstmisc.sty
+File: lstmisc.sty 2019/09/10 1.8c (Carsten Heinz)
+\c@lstnumber=\count185
+\lst@skipnumbers=\count186
+\lst@framebox=\box46
+)
+(/usr/share/texlive/texmf-dist/tex/latex/listings/listings.cfg
+File: listings.cfg 2019/09/10 1.8c listings configuration
+))
+Package: listings 2019/09/10 1.8c (Carsten Heinz)
+
+(/usr/share/texlive/texmf-dist/tex/latex/l3backend/l3backend-pdfmode.def
+File: l3backend-pdfmode.def 2020-02-03 L3 backend support: PDF mode
+\l__kernel_color_stack_int=\count187
+\l__pdf_internal_box=\box47
+)
+(./SOA.aux)
+\openout1 = `SOA.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 17.
+LaTeX Font Info:    ... okay on input line 17.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 17.
+LaTeX Font Info:    ... okay on input line 17.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 17.
+LaTeX Font Info:    ... okay on input line 17.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 17.
+LaTeX Font Info:    ... okay on input line 17.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 17.
+LaTeX Font Info:    ... okay on input line 17.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 17.
+LaTeX Font Info:    ... okay on input line 17.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 17.
+LaTeX Font Info:    ... okay on input line 17.
+
+*geometry* driver: auto-detecting
+*geometry* detected driver: pdftex
+*geometry* verbose mode - [ preamble ] result:
+* driver: pdftex
+* paper: a4paper
+* layout: <same size as paper>
+* layoutoffset:(h,v)=(0.0pt,0.0pt)
+* modes: 
+* h-part:(L,W,R)=(42.67912pt, 512.14963pt, 42.67912pt)
+* v-part:(T,H,B)=(56.9055pt, 731.23584pt, 56.9055pt)
+* \paperwidth=597.50787pt
+* \paperheight=845.04684pt
+* \textwidth=512.14963pt
+* \textheight=731.23584pt
+* \oddsidemargin=-29.59087pt
+* \evensidemargin=-29.59087pt
+* \topmargin=-47.23828pt
+* \headheight=12.0pt
+* \headsep=19.8738pt
+* \topskip=12.0pt
+* \footskip=30.0pt
+* \marginparwidth=47.0pt
+* \marginparsep=7.0pt
+* \columnsep=10.0pt
+* \skip\footins=10.8pt plus 4.0pt minus 2.0pt
+* \hoffset=0.0pt
+* \voffset=0.0pt
+* \mag=1000
+* \@twocolumnfalse
+* \@twosidefalse
+* \@mparswitchfalse
+* \@reversemarginfalse
+* (1in=72.27pt=25.4mm, 1cm=28.453pt)
+
+(/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+\scratchcounter=\count188
+\scratchdimen=\dimen150
+\scratchbox=\box48
+\nofMPsegments=\count189
+\nofMParguments=\count190
+\everyMPshowfont=\toks17
+\MPscratchCnt=\count191
+\MPscratchDim=\dimen151
+\MPnumerator=\count192
+\makeMPintoPDFobject=\count193
+\everyMPtoPDFconversion=\toks18
+) (/usr/share/texlive/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
+Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
+Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
+85.
+
+(/usr/share/texlive/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
+e
+))
+\c@lstlisting=\count194
+LaTeX Font Info:    External font `cmex7' loaded for size
+(Font)              <7> on input line 18.
+
+
+LaTeX Warning: No \author given.
+
+[1
+
+
+{/var/lib/texmf/fonts/map/pdftex/updmap/pdftex.map}] (./SOA.toc
+LaTeX Font Info:    External font `cmex7' loaded for size
+(Font)              <6> on input line 2.
+ [1
+
+] [2])
+\tf@toc=\write3
+\openout3 = `SOA.toc'.
+
+
+[3]
+Chapter 1.
+LaTeX Font Info:    External font `cmex7' loaded for size
+(Font)              <5> on input line 22.
+
+Underfull \hbox (badness 10000) in paragraph at lines 22--23
+
+ []
+
+[4
+
+]
+LaTeX Font Info:    Trying to load font information for OMS+cmr on input line 3
+8.
+ (/usr/share/texlive/texmf-dist/tex/latex/base/omscmr.fd
+File: omscmr.fd 2019/12/16 v2.5j Standard LaTeX font definitions
+)
+LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <12> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 38.
+LaTeX Font Info:    Trying to load font information for OML+cmr on input line 4
+0.
+
+(/usr/share/texlive/texmf-dist/tex/latex/base/omlcmr.fd
+File: omlcmr.fd 2019/12/16 v2.5j Standard LaTeX font definitions
+)
+LaTeX Font Info:    Font shape `OML/cmr/m/n' in size <12> not available
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 40.
+ [5]
+Underfull \hbox (badness 10000) in paragraph at lines 78--79
+
+ []
+
+[6]
+Overfull \hbox (2.16447pt too wide) in paragraph at lines 83--84
+\OT1/cmr/m/n/12 Alla luce di ci^^Ro, sono stati ri-progettati di-versi pro-ces-
+sori, ma il prob-lema sca-tu-rito ^^Re che l'accelerazione
+ []
+
+<immagini/no-pipeline.png, id=36, 1081.03876pt x 269.005pt>
+File: immagini/no-pipeline.png Graphic file (type png)
+<use immagini/no-pipeline.png>
+Package pdftex.def Info: immagini/no-pipeline.png  used on input line 95.
+(pdftex.def)             Requested size: 324.31413pt x 80.70212pt.
+<immagini/pipeline.png, id=38, 916.42375pt x 282.05376pt>
+File: immagini/pipeline.png Graphic file (type png)
+<use immagini/pipeline.png>
+Package pdftex.def Info: immagini/pipeline.png  used on input line 100.
+(pdftex.def)             Requested size: 274.92924pt x 84.61678pt.
+[7] [8 <./immagini/no-pipeline.png> <./immagini/pipeline.png>]
+<immagini/pipeline-i486.png, id=47, 709.65125pt x 207.77625pt>
+File: immagini/pipeline-i486.png Graphic file (type png)
+<use immagini/pipeline-i486.png>
+Package pdftex.def Info: immagini/pipeline-i486.png  used on input line 121.
+(pdftex.def)             Requested size: 283.85547pt x 83.10901pt.
+ [9 <./immagini/pipeline-i486.png>]
+<immagini/ooo-pipeline-1.png, id=52, 701.62125pt x 209.78375pt>
+File: immagini/ooo-pipeline-1.png Graphic file (type png)
+<use immagini/ooo-pipeline-1.png>
+Package pdftex.def Info: immagini/ooo-pipeline-1.png  used on input line 149.
+(pdftex.def)             Requested size: 350.80975pt x 104.8916pt.
+<immagini/ooo-pipeline-2.png, id=53, 595.22375pt x 244.915pt>
+File: immagini/ooo-pipeline-2.png Graphic file (type png)
+<use immagini/ooo-pipeline-2.png>
+Package pdftex.def Info: immagini/ooo-pipeline-2.png  used on input line 151.
+(pdftex.def)             Requested size: 297.61115pt x 122.45718pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 148--153
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 148--153
+
+ []
+
+[10] [11 <./immagini/ooo-pipeline-1.png> <./immagini/ooo-pipeline-2.png>]
+<immagini/pipeline-ooo.png, id=63, 1153.30875pt x 705.63625pt>
+File: immagini/pipeline-ooo.png Graphic file (type png)
+<use immagini/pipeline-ooo.png>
+Package pdftex.def Info: immagini/pipeline-ooo.png  used on input line 165.
+(pdftex.def)             Requested size: 230.65765pt x 141.12474pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 164--167
+
+ []
+
+<immagini/not_valid_instr.png, id=64, 1657.19125pt x 663.47874pt>
+File: immagini/not_valid_instr.png Graphic file (type png)
+<use immagini/not_valid_instr.png>
+Package pdftex.def Info: immagini/not_valid_instr.png  used on input line 171.
+(pdftex.def)             Requested size: 248.56796pt x 99.51752pt.
+[12 <./immagini/pipeline-ooo.png>]
+<immagini/multi-registri.png, id=70, 873.2625pt x 287.0725pt>
+File: immagini/multi-registri.png Graphic file (type png)
+<use immagini/multi-registri.png>
+Package pdftex.def Info: immagini/multi-registri.png  used on input line 187.
+(pdftex.def)             Requested size: 218.31508pt x 71.76794pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 186--189
+
+ []
+
+[13 <./immagini/not_valid_instr.png>]
+Overfull \hbox (0.40616pt too wide) in paragraph at lines 199--200
+\OT1/cmr/m/n/12 bisogna ri-cor-darsi quale ^^Re l'ordine logico con cui an-darl
+e a com-mittare, e questo tiene conto dell'ordine.
+ []
+
+[14 <./immagini/multi-registri.png>]
+<immagini/arch-moderna.png, id=80, 1187.43625pt x 562.1pt>
+File: immagini/arch-moderna.png Graphic file (type png)
+<use immagini/arch-moderna.png>
+Package pdftex.def Info: immagini/arch-moderna.png  used on input line 201.
+(pdftex.def)             Requested size: 296.85834pt x 140.52466pt.
+<immagini/ex-pipeline.png, id=81, 1187.43625pt x 665.48625pt>
+File: immagini/ex-pipeline.png Graphic file (type png)
+<use immagini/ex-pipeline.png>
+Package pdftex.def Info: immagini/ex-pipeline.png  used on input line 204.
+(pdftex.def)             Requested size: 296.85834pt x 166.37115pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 201--205
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 201--205
+
+ []
+
+[15 <./immagini/arch-moderna.png> <./immagini/ex-pipeline.png>]
+<immagini/rob.png, id=87, 548.0475pt x 228.855pt>
+File: immagini/rob.png Graphic file (type png)
+<use immagini/rob.png>
+Package pdftex.def Info: immagini/rob.png  used on input line 207.
+(pdftex.def)             Requested size: 328.83104pt x 137.31404pt.
+<immagini/x86-ooo.png, id=88, 563.10374pt x 579.16376pt>
+File: immagini/x86-ooo.png Graphic file (type png)
+<use immagini/x86-ooo.png>
+Package pdftex.def Info: immagini/x86-ooo.png  used on input line 213.
+(pdftex.def)             Requested size: 168.93242pt x 173.75046pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 213--215
+
+ []
+
+[16 <./immagini/rob.png> <./immagini/x86-ooo.png>]
+<immagini/hypert-ooo.png, id=94, 731.73375pt x 659.46375pt>
+File: immagini/hypert-ooo.png Graphic file (type png)
+<use immagini/hypert-ooo.png>
+Package pdftex.def Info: immagini/hypert-ooo.png  used on input line 218.
+(pdftex.def)             Requested size: 219.52182pt x 197.84064pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 216--220
+
+ []
+
+[17 <./immagini/hypert-ooo.png>]
+Overfull \hbox (7.22554pt too wide) in paragraph at lines 240--241
+\OT1/cmr/m/n/12 Perch^^Se la scelta migliore ^^Re la 2, ed ^^Re stata ap-pli-ca
+ta nell'architettura di pro-ces-sore: quando un'istruzione
+ []
+
+[18] [19]
+LaTeX Font Info:    Trying to load font information for OMS+cmss on input line 
+259.
+LaTeX Font Info:    No file OMScmss.fd. on input line 259.
+
+
+LaTeX Font Warning: Font shape `OMS/cmss/m/n' undefined
+(Font)              using `OMS/cmsy/m/n' instead
+(Font)              for symbol `textbraceleft' on input line 259.
+
+<immagini/address_offset.png, id=106, 494.84875pt x 239.89626pt>
+File: immagini/address_offset.png Graphic file (type png)
+<use immagini/address_offset.png>
+Package pdftex.def Info: immagini/address_offset.png  used on input line 270.
+(pdftex.def)             Requested size: 296.91154pt x 143.93886pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 269--272
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 269--272
+
+ []
+
+[20 <./immagini/address_offset.png>] [21]
+<immagini/KAISER.png, id=114, 1065.9825pt x 620.3175pt>
+File: immagini/KAISER.png Graphic file (type png)
+<use immagini/KAISER.png>
+Package pdftex.def Info: immagini/KAISER.png  used on input line 301.
+(pdftex.def)             Requested size: 319.79721pt x 186.09668pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 300--303
+
+ []
+
+[22 <./immagini/KAISER.png>] [23]
+<immagini/2bit_pred.png, id=122, 411.5375pt x 336.25626pt>
+File: immagini/2bit_pred.png Graphic file (type png)
+<use immagini/2bit_pred.png>
+Package pdftex.def Info: immagini/2bit_pred.png  used on input line 335.
+(pdftex.def)             Requested size: 246.92441pt x 201.75531pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 334--337
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 334--337
+
+ []
+
+[24 <./immagini/2bit_pred.png>]
+<immagini/corr_pred.png, id=128, 523.9575pt x 360.34625pt>
+File: immagini/corr_pred.png Graphic file (type png)
+<use immagini/corr_pred.png>
+Package pdftex.def Info: immagini/corr_pred.png  used on input line 356.
+(pdftex.def)             Requested size: 209.57928pt x 144.13594pt.
+ [25 <./immagini/corr_pred.png>]
+<immagini/jmp_reg.png, id=133, 457.71pt x 231.86626pt>
+File: immagini/jmp_reg.png Graphic file (type png)
+<use immagini/jmp_reg.png>
+Package pdftex.def Info: immagini/jmp_reg.png  used on input line 368.
+(pdftex.def)             Requested size: 228.85445pt x 115.93283pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 367--370
+
+ []
+
+[26 <./immagini/jmp_reg.png>]
+<immagini/spectrev2_branch_pred.png, id=138, 640.3925pt x 221.82875pt>
+File: immagini/spectrev2_branch_pred.png Graphic file (type png)
+<use immagini/spectrev2_branch_pred.png>
+Package pdftex.def Info: immagini/spectrev2_branch_pred.png  used on input line
+ 376.
+(pdftex.def)             Requested size: 320.19547pt x 110.9141pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 375--378
+
+ []
+
+[27 <./immagini/spectrev2_branch_pred.png>]
+Overfull \hbox (44.79941pt too wide) in paragraph at lines 395--396
+[][][][][][][][][][][][][][][][] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 398--399
+
+ []
+
+[28]
+<immagini/multi_proc.png, id=146, 674.52pt x 287.0725pt>
+File: immagini/multi_proc.png Graphic file (type png)
+<use immagini/multi_proc.png>
+Package pdftex.def Info: immagini/multi_proc.png  used on input line 408.
+(pdftex.def)             Requested size: 337.25917pt x 143.53589pt.
+<immagini/cmp.png, id=147, 637.38126pt x 280.04625pt>
+File: immagini/cmp.png Graphic file (type png)
+<use immagini/cmp.png>
+Package pdftex.def Info: immagini/cmp.png  used on input line 410.
+(pdftex.def)             Requested size: 318.68985pt x 140.02277pt.
+<immagini/smt.png, id=148, 632.3625pt x 279.0425pt>
+File: immagini/smt.png Graphic file (type png)
+<use immagini/smt.png>
+Package pdftex.def Info: immagini/smt.png  used on input line 412.
+(pdftex.def)             Requested size: 316.18048pt x 139.5209pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 407--414
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 407--414
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 407--414
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 407--414
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 407--414
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 407--414
+
+ []
+
+[29 <./immagini/multi_proc.png>]
+<immagini/numa.png, id=153, 502.87875pt x 227.85126pt>
+File: immagini/numa.png Graphic file (type png)
+<use immagini/numa.png>
+Package pdftex.def Info: immagini/numa.png  used on input line 416.
+(pdftex.def)             Requested size: 251.43875pt x 113.92534pt.
+ [30 <./immagini/cmp.png> <./immagini/smt.png>] [31 <./immagini/numa.png>]
+<immagini/cache_conn.png, id=164, 580.1675pt x 382.42876pt>
+File: immagini/cache_conn.png Graphic file (type png)
+<use immagini/cache_conn.png>
+Package pdftex.def Info: immagini/cache_conn.png  used on input line 459.
+(pdftex.def)             Requested size: 290.08302pt x 191.2139pt.
+
+Overfull \hbox (13.00464pt too wide) in paragraph at lines 458--461
+\OT1/cmr/m/n/12 Come la-vo-rano ef-fet-ti-va-mente i vari com-po-nenti dell'arc
+hitettura hard-ware per im-ple-mentare l'invalidate
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 458--461
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 458--461
+
+ []
+
+[32] [33 <./immagini/cache_conn.png>]
+<immagini/MESI.png, id=172, 385.44pt x 327.2225pt>
+File: immagini/MESI.png Graphic file (type png)
+<use immagini/MESI.png>
+Package pdftex.def Info: immagini/MESI.png  used on input line 482.
+(pdftex.def)             Requested size: 192.71953pt x 163.61084pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 481--487
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 481--487
+
+ []
+
+[34 <./immagini/MESI.png>]
+<immagini/dir_based.png, id=177, 439.6425pt x 408.52625pt>
+File: immagini/dir_based.png Graphic file (type png)
+<use immagini/dir_based.png>
+Package pdftex.def Info: immagini/dir_based.png  used on input line 519.
+(pdftex.def)             Requested size: 219.82071pt x 204.26262pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 518--521
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 518--521
+
+ []
+
+[35]
+Underfull \hbox (badness 10000) in paragraph at lines 528--529
+
+ []
+
+[36 <./immagini/dir_based.png>] [37] [38]
+<immagini/flrel.png, id=192, 443.6575pt x 400.49625pt>
+File: immagini/flrel.png Graphic file (type png)
+<use immagini/flrel.png>
+Package pdftex.def Info: immagini/flrel.png  used on input line 592.
+(pdftex.def)             Requested size: 221.8282pt x 200.24763pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 591--593
+
+ []
+
+[39 <./immagini/flrel.png>]
+<immagini/dekker.png, id=197, 551.05875pt x 174.6525pt>
+File: immagini/dekker.png Graphic file (type png)
+<use immagini/dekker.png>
+Package pdftex.def Info: immagini/dekker.png  used on input line 624.
+(pdftex.def)             Requested size: 275.52869pt x 87.32603pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 623--626
+
+ []
+
+[40]
+LaTeX Font Info:    Font shape `OT1/cmss/m/it' in size <12> not available
+(Font)              Font shape `OT1/cmss/m/sl' tried instead on input line 633.
+
+ [41 <./immagini/dekker.png>]
+Underfull \hbox (badness 10000) in paragraph at lines 653--655
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 653--655
+
+ []
+
+[42]
+<immagini/wct.png, id=210, 640.3925pt x 410.53375pt>
+File: immagini/wct.png Graphic file (type png)
+<use immagini/wct.png>
+Package pdftex.def Info: immagini/wct.png  used on input line 679.
+(pdftex.def)             Requested size: 384.23846pt x 246.32214pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 678--681
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 678--681
+
+ []
+
+[43] [44 <./immagini/wct.png>]
+<immagini/cas_insert.png, id=218, 1565.85pt x 166.6225pt>
+File: immagini/cas_insert.png Graphic file (type png)
+<use immagini/cas_insert.png>
+Package pdftex.def Info: immagini/cas_insert.png  used on input line 696.
+(pdftex.def)             Requested size: 469.75862pt x 49.98712pt.
+<immagini/cas_delete.png, id=219, 1629.08624pt x 336.25626pt>
+File: immagini/cas_delete.png Graphic file (type png)
+<use immagini/cas_delete.png>
+Package pdftex.def Info: immagini/cas_delete.png  used on input line 698.
+(pdftex.def)             Requested size: 488.72964pt x 100.87766pt.
+<immagini/atom_reg_1.png, id=220, 709.65125pt x 452.69125pt>
+File: immagini/atom_reg_1.png Graphic file (type png)
+<use immagini/atom_reg_1.png>
+Package pdftex.def Info: immagini/atom_reg_1.png  used on input line 700.
+(pdftex.def)             Requested size: 496.75249pt x 316.88171pt.
+<immagini/atom_reg_2.png, id=221, 702.625pt x 459.7175pt>
+File: immagini/atom_reg_2.png Graphic file (type png)
+<use immagini/atom_reg_2.png>
+Package pdftex.def Info: immagini/atom_reg_2.png  used on input line 701.
+(pdftex.def)             Requested size: 491.83414pt x 321.80005pt.
+
+Underfull \hbox (badness 10000) in paragraph at lines 694--703
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 694--703
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 694--703
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 694--703
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 694--703
+
+ []
+
+[45 <./immagini/cas_insert.png> <./immagini/cas_delete.png>] [46 <./immagini/at
+om_reg_1.png>] [47 <./immagini/atom_reg_2.png>] [48] [49]
+Overfull \hbox (4.64917pt too wide) in paragraph at lines 753--754
+[]\OT1/cmr/m/n/12 il reader es-egue fetch&add di con-tinuo, us-cendo ed en-tran
+do nell'epoca, pas-sando come parametri
+ []
+
+[50]
+Chapter 2.
+[51
+
+] [52] [53] [54] [55]
+Underfull \hbox (badness 10000) in paragraph at lines 870--879
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 870--879
+
+ []
+
+[56] [57] [58] [59] [60] [61]
+Underfull \hbox (badness 10000) in paragraph at lines 962--963
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 970--973
+
+ []
+
+[62]
+Overfull \hbox (0.51959pt too wide) in paragraph at lines 981--982
+\OT1/cmr/m/n/12 Inizialmente, l'indice por-tava ad un en-try che por-tava sem-p
+re alla stessa fun-zione. La re-indicizzazione
+ []
+
+[63] [64] [65] [66]
+Underfull \hbox (badness 10000) in paragraph at lines 1051--1058
+
+ []
+
+[67]
+Underfull \hbox (badness 10000) in paragraph at lines 1059--1064
+
+ []
+
+
+Overfull \hbox (56.88281pt too wide) in paragraph at lines 1066--1071
+\OT1/cmr/m/n/12 Nel dis-patcher ^^Re stata ag-giunta un'ulteriore facilty: la p
+age ta-ble iso-la-tion, tramite la \OT1/cmss/m/n/12 SWITCH[]TO[]KERNEL[]CR3\OT1
+/cmr/m/n/12 .
+ []
+
+[68]
+Overfull \hbox (77.63339pt too wide) in paragraph at lines 1074--1075
+[]\OT1/cmr/m/n/12 all'interno di una CPU ab-bi-amo i reg-istri msr, due di ques
+ti ovvero IA32[]GS[]BASE e IA32[]KERNEL[]GS[]BASE
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1090--1092
+
+ []
+
+[69] [70]
+Underfull \hbox (badness 10000) in paragraph at lines 1128--1129
+
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1128--1129
+
+ []
+
+[71] [72]
+Underfull \hbox (badness 10000) in paragraph at lines 1145--1148
+
+ []
+
+[73]
+Chapter 3.
+[74
+
+] [75] [76] [77] [78] [79] [80]
+Underfull \hbox (badness 10000) in paragraph at lines 1307--1319
+
+ []
+
+[81] [82] [83] [84] [85]
+Underfull \hbox (badness 10000) in paragraph at lines 1377--1378
+
+ []
+
+[86] [87]
+Overfull \hbox (1.49947pt too wide) in paragraph at lines 1426--1427
+\OT1/cmr/m/n/12 Analizziamo il file \OT1/cmr/bx/n/12 tls.c\OT1/cmr/m/n/12 : nel
+la strut-tura dati ri-porto il func-tion pointer, quindi il pun-ta-tore all'ind
+irizzo
+ []
+
+[88] [89] [90] (./SOA.aux)
+
+LaTeX Font Warning: Some font shapes were not available, defaults substituted.
+
+ ) 
+Here is how much of TeX's memory you used:
+ 3671 strings out of 483140
+ 54821 string characters out of 5965151
+ 293550 words of memory out of 5000000
+ 18652 multiletter control sequences out of 15000+600000
+ 541013 words of font info for 53 fonts, out of 8000000 for 9000
+ 36 hyphenation exceptions out of 8191
+ 30i,8n,36p,3085b,1552s stack positions out of 5000i,500n,10000p,200000b,80000s
+ </home/pierciro/.texlive2019/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1200.
+600pk></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb>
+</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmcsc10.pfb></usr
+/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/share
+/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/share/texliv
+e/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/share/texlive/texmf
+-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/share/texlive/texmf-dist/f
+onts/type1/public/amsfonts/cm/cmr17.pfb></usr/share/texlive/texmf-dist/fonts/ty
+pe1/public/amsfonts/cm/cmr7.pfb></usr/share/texlive/texmf-dist/fonts/type1/publ
+ic/amsfonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfo
+nts/cm/cmsl12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm
+/cmss12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmssi
+12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb
+></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb>
+Output written on SOA.pdf (91 pages, 2009232 bytes).
+PDF statistics:
+ 430 PDF objects out of 1000 (max. 8388607)
+ 250 compressed objects within 3 object streams
+ 0 named destinations out of 1000 (max. 500000)
+ 166 words of extra memory for PDF output out of 10000 (max. 10000000)
+

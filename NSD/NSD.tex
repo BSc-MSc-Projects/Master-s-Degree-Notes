@@ -209,7 +209,7 @@ Otteniamo un messaggio di Router ? che è autenticato dal fatto che il router ha
 \\ Mettendo tutto insieme, ICMPv6:
 \begin{enumerate}
 \item il nodo 1 vuole scoprire un certo MAC e quindi manda un messaggio di sollecitazione. Avrà una sua chiave pubblica (slides)
-\item dopo tutto il pippone di roba, si firma tutto il pacchetto con la chiave privata usando l'agoritmo e si appende l'opzione della firma RSA e viene mandato il pacchetto
+\item dopo tutto il pippone di roba, si firma tutto il pacchetto con la chiave privata usando l'algoritmo e si appende l'opzione della firma RSA e viene mandato il pacchetto
 \end{enumerate}
 Il receiver:
 \begin{enumerate}
@@ -217,6 +217,430 @@ Il receiver:
 \item (slides)
 \end{enumerate}
 Si procede con i passi scritti sulle slides\\ Le conclusioni (slides)
+\chapter{Virtual LANs}
+Parliamo ancora di sicurezza di Ethernet, quindi siamo ancora nella rete locale. Abbiamo visto degli approcci crittografici per rendere sicura la rete locale, vediamo ora la Virtual LAN come sicurezza per Ethernet, ma servono anche per semplificare la gestione della rete.
+\section{Background}
+Una rete Ethernet ha il problema della comunicazione broadcast e questo è vero sia con gli hub che con gli switch: il dominio broadcast è condiviso fra tutte le stazioni collegate, se la topologia è composta da vari bridge, l'intera rete vede la richiesta broadcast. Ci piacerebbe partizionare la rete Ethernet in segmenti indipendenti:
+\begin{itemize}
+\item usare un router invece di uno switch, prima soluzione triviale. Se mettiamo uno switch dobbiamo gestire differenti LANs, ma poi ci sono diversi problemi di gestione
+\end{itemize}
+vorremmo avere degli approcci differenti per partizionare la rete in diversi segmenti Ethernet, i problemi di avere un router è che dobbiamo avere diversi switch per ognuna delle stanze, ma ciò che vorremmo è un approccio più flessibile che non richiede di avere uno switch per ogni segmento Ethernet: le Virtual LAN. Sono virtuali perché si possono avere diversi domini Ethernet anche con un solo switch fisico, quindi il dominio di broadcast è diverso, quindi non separiamo i segmenti del layer 2 con degli switch ma con delle reti logiche sulla stessa rete fisica.\\ I benefici della VLAN sono
+\begin{itemize}
+\item broadcast confinement: un pacchetto broadcast non viene forwardato alle altre VLAN
+\item isolamento dei fallimenti della rete, la gestione è più semplice
+\item sicurezza, non si può più fare ARP poisoning fra diverse VLAN 
+\end{itemize}
+\subsection{VLAN membership}
+Come viene gestita la membership, ovvero identificare quale è la VLAN associata ad un device:
+\begin{itemize}
+\item per port, approccio tipico. Prendiamo lo switch e lo configuriamo per associare una specifica porta ad una VLAN, quindi una stazione connessa alal porta 1 è automaticamente della VLAN1
+\item per user, se riusciamo ad identificare chi è l'utente connesso ad una stazione che vuole usare lo switch, possiamo far autenticare l'utente e renderlo parte della VLAN
+\item per protocol, definiamo la VLAN per i diversi protocolli. Dobbiamo classificare i pacchetti ed associarli alle diverse VLAN
+\item combinazione degli approcci
+\end{itemize}
+Abbiamo quindi un layer fisico che consiste in diversi switch, definiamo uan topologia virtuale che non ha nulla a che vedere con quella fisica, non c'è mapping 1-a-1
+%immagine della situazione
+\subsection{VLAN e sottoreti IP}
+Ogni VLAN ha bisogno di una sotto-rete IP dedicata, non possiamo avere che la stessa sotto-rete IP copra molteplici VLAN e quindi la conseguenza di questo è che se vogliamo comunicare con un'altra VLAN è necessario un router: una stazione che appartiene a VLAN1 non può più comunicare a livello 2 con una che appartiene alla VLAN2, è come se lo switch avesse due forwarding tables diverse.\\ Come lo colleghiamo alle diverse VLAN:
+\begin{itemize}
+\item diverse interfacce per connettersi alle VLAN
+\item altra soluzione, migliore: abbiamo solo parlato della membership, ma se avessimo due switch e la macchina fosse connessa alla porta 1 dello switch uno e fosse di VLAN1, lo switch 1 dovrebbe mandare qualcosa allo switch 2 per raggiungere la seconda VLAN, quindi serve poter fare \textbf{packet tagging}, in modo da poter indicare quale è la VLAN associata al pacchetto.
+\end{itemize}
+Abbiamo bisogno di un trunk link e di trunk ports: abbiamo le porte di accesso a cui le stazioni si collegano allo switch, tipicamente le porte di accesso fanno riferimento alle diverse VLAN. Le stazioni connesse a queste porte non taggano i pacchetti, ma se bisogna mandare un pacchetto alla VLAN rossa che è connessa dietro un altro switch, lo swtich 1 manda il pacchetto a swtich 2 ma quando questo lo riceve dove lo forwarda? Se il pacchetto non è unicast o non sa a chi mandarlo? Non sa a chi fare il flooding del pacchetto.
+%immagine
+Abbiamo quindi trunk link, a cui si collegano le trunk port, su cui si mandano pacchetti con degli header aggiuntivi in cui si marca la VLAN di appartenenza del pacchetto inviato.\\ Nell'esempio di prima, possiamo connettere il router ad un trunk link (possiamo anche attaccare un server ad una VLAN), che riceverà pacchetti taggati e manderà pacchetti taggati. È possibile fare questo avendo diverse interfacce virtuali, connesse ad una interfaccia fisica ed ognuna delle virtual interface è associata ad una VLAN.
+\subsubsection{Access link}
+Un access link è un link connesso ad una access port, usato per connettere un PC allo switch un piccolo hub-to-switch link, sull'access port le stazioni sono collegate solo ad un VLAN, spesso in questo modo quando si collega una NIC alla porta di accesso non è consapevole di essere in uan VLAN, non serve configurare il SO.
+\subsubsection{Trunk link}
+Tipicamente un link switch-to-swtich o switch-to-router, la cui caratteristica è che permette la trasmissione di pacchetti taggati, quindi porta pacchetti appartenenti a differenti VLAN. Quindi, a differenza delle access link, i pacchetti ricevuti sono taggati, mentre i pacchetti ricevuti da un access port non sono taggati. Ma se avessimo un VLAN unaware switch? Ovvero uno switch che non sa gestire l'header extra associato al tagging, non può fare altro se non droppare il pacchetto. C'è un modo di permettere a dei legacy VLAN switch con degli switch aware: quando lo swithc unaware deve trasmettere un pacchetto, lo fa senza tag ed il pacchetto è assunto essere della VLAN nativa, che è una vulnerabilità.
+\subsection{Formati per VLAN}
+Ci sono due formati, i dettagli sono sulle slides ma al prof non sembra interessare, fa il listato intero ma ce ne frega poco. Siamo interessati all'aspetto di sicurezza.
+\section*{LAB-3}
+La topologia prevede 2 VLAN, due switch ed un router, fra i due switch c'è un trunk link. Quando lo switch riceve un pacchetto destinato alla VLAN1, aggiorna il DB associato alla VLAN1 che è logicamente separato da quello della VLAN2, anche se ci sono le VLAN lo switch fa comunque learning. IMPORTANTE: anche il traffico unicast che fa parte di VLAN diverse viene logicamente separato, il forwarding avviene solo sui trunk links e sulle porte associate alla stessa VLAN. Per cumulus linux, la private VLAN è anche la VLAN nativa e quindi va aggiunta alla configurazione di net. N.B: per Tiny occorre salvare con un backup apposito i cambiamenti al FS (file*.sh -b tipo)\\ Il protocollo per il tagging ha uno specifico tipo, è incapsulato nel frame Ethernet come header aggiuntivo (vedi Wireshark).
+\section{Sicurezza delle VLAN (per device CISCO)}
+Alcuni degli attacchi che vedremo si hanno anche in switch senza VLAN
+\subsection{Media Access Control (MAC)}
+L'idea è quella di fare flooding del forwarding DB, quindi lo switch finisce lo spazio nel DB e comincia a fare flooding verso tutte le porte.  Per mitigare la vulnerabilità ci sono una serie di funzioni implementate nello switch, le \textbf{port security} features.
+%immagine
+\subsection{Basic VLAN Hopping attack}
+L'hop vuol dire che si "salta" in una VLAN. È un attacco base, la cui idea è che se un attacker riesce a connettersi ad una trunk port, può mandare un pacchetto in qualunque VLAN. Il punto è riuscire a connettersi al trunk link: il protocollo DTP dei router CISCO è usato per negoziare il trunking su un link fra due device, ed il tipo di incapsulamento del trunking.\\ Il problema è sempre che si può spoofare un pacchetto DTP per impersonare uno switch ed ottenere un trunk link. Per mitigarlo, si può disabilitare DTP sulle porte che sappiamo non essere connesse a switch
+\subsection{Double encapsulation}
+È sempre un VLAN hopping attack, ma viene fatto incapsulando il pacchetto in due header 802.1Q. L'attacco si basa sul fatto che gli switch VLAN aware supportano la native VLAN, per comunicare con gli unaware switch. Un pacchetto non taggato sul trunk link viene visto come un pacchetto dalla native VLAN: se viene ricevuto un pacchetto col tag della prossima native VLAN e deve forwardarlo ad un altro trunk link con valore della native VLAN, quell'header viene rimosso. In situazioni particolari, la native VLAN può mandare pacchetti con questo double tag: il primo switch rimuove il primo tag, della native VLAN, il secondo rimuove quello più interno ed alla fine il pacchetto arriva alla vittima. Un attacker deve essere attaccato ad una trunk port, oppure ad una access port che ha lo stesso ID della native VLAN, inoltre lo switch deve accettare pacchetti con i tag anche dalle access port.\\ Per evitare l'attacco, non bisognerebbe mai usare un VLAN ID come native VLAN.
+\subsection{ARP attack}
+Sempre lo stesso, non si può fare ad una vittima in un'altra VLAN ma si può comunque fare
+\subsection{VLAN Trunking Protocol Attack}
+VTP riduce l'amministrazione della rete con switch. Quando viene configurata una nuova VLAN su un VTP server, la VLAN viene distribuita (slides)
+\subsection{CDP attack}
+Altro protocollo CISCO, i pacchetti sono in chiaro, c'era una vulnerabilità nei router CISCO che faceva andare oom (slides)
+\subsection{Private VLAN attack}
+Possiamo definire una VLAN privata, abbiamo anche però i concetti di VLAN primarie e secondarie, ma i concetti sono sempre simili. Abbiamo l'attacker in una VLAN privata, quindi la comunicazione non è possibile, per cui l'unico modo per comunicare è passare per il router e fare spoofing
+%immagine
+2 nel caso dell attacker è l'IP della vittima, la destinazione è il MAC del attacker. Stando attenti con le ACL è possibile evitare questo tipo di attacchi.
+\section*{LAB 4}
+La topologia è come quella del LAB3, ma su cumulus l'attacco del double incapsulation non funziona, perché la access port non accetta pacchetti taggati. È tipico che, magari si attiva una porta di uno switch e non si assegna una VLAN, e questa viene assegnata per default ad 1 che è proprio la VLAN native di default e quindi rende fattibile l'attacco.
+\chapter{802.1X}
+\section{Introduzione}
+Protocollo standard IEEE, che definisce un meccanismo di accesso basato sulla porta da cui viene ricevuto un pacchetto. Fornisce un meccanismo di autenticazione ed autorizzazione: ci autentichiamo con 802.1X ma siamo anche autorizzati ad accedere alla rete. Può essere usato in diversi scenari in generale, ma viene usato realmente per:
+\begin{itemize}
+\item LAN
+\item Wireless LAN
+\item usato da 802.11 per la sicurezza. Prima c'era WEP, che però era un casino, quindi per patchare uscì WPA\_1, mentre WPA\_2 è la specifica 802.11 completa, sia per home che per enterprise. Nel caso enterprise si usa 802.1X, non abbiamo una porta fisica ma logica, a cui ogni client wireless è connesso
+\end{itemize}
+I protocolli usati da 802.1X sono tutti interni, i componenti sono quindi definiti tutti in altri standard, per cui possiamo adottare la notazione di framework.\\ Inizialmente EAP non era trasportato da Ethernet, quindi venne ideato un meccanismo per far si che venisse permesso e 802.1X usa EAP over LAN (EAPOL), EAP è indipendente da 802.1X. \\ I vantaggi del protocollo EAPOL:
+\begin{itemize}
+\item è un protocollo di livello 2, quindi non richiede configurazioni IP. C'è quindi una semplicità di utilizzo
+\item (slieds)
+\end{itemize}
+L'architettura ad alto livello è la seguente:
+%immagine architettura
+Il supplicant è un client 802.1X, all'inizio l'authenticator (switch) blocca tutto il traffico dal supplicant e lo manda solo verso l'auths server e quando questo si autentica comincia a forwardarne il traffico.
+\section{EAP}
+EAP è un framework di autenticazione, non implementa di per se un protocollo di autenticazione, bensì solo come trasportare al suo interno un protocollo per l'autenticazione, quindi per l'interfaccia ed il formato. Quindi se TLS vuole essere incapsulato in EAP, bisogna definire come deve avvenire questo incapsulamento.\\ Ci sono diversi metodi di autenticazione supportati, anche vendor specific
+(slides)
+\section{RADIUS}
+(slides) è la scelta standard per l'autenticazione in 802.1X
+\section{802.1X overview}
+802.1X usa classicamente un sistema di autenticazione dell'utente di tipo client/server con 3 componenti:
+\begin{itemize}
+\item client o supplicant
+\item Access Device, ovvero authenticator
+\item Authenticatoion server, tipicamente un server RADIUS o DIAMETER, che mantiene le informazioni per l'autenticazione
+\end{itemize}
+Usando EAP, il supplicant mette i messaggi EAP in Ethernet, tra auth e server auth dipende dal protocollo usato. \\EAP può girare senza IP, è comodo perché la prima cosa da fare quando si accede ad una rete è autenticarsi ed essere autorizzati all'accesso. Ci sono due modalità di autenticazione:
+\begin{itemize}
+\item EAP termination mode: usiamo il classico protocollo RADIUS, quindi col metodo usato da RADIUS
+\item EAP relay mode: l'access device prende lo stesso EAP preso dal client e lo mette nel pacchetto di RADIUS
+\end{itemize}
+(SLIDES)
+\subsection{EAPOL}
+La complessità è relazionata al metodo di autenticazione usato, difatti EAPOL ha una struttura di pacchetto molto semplice:
+\begin{itemize}
+\item PAE Ethernet Type
+\item Protocol version
+\item Type: 4 possibili
+\begin{itemize}
+\item EAP packet
+\item EAP-Start
+\item EAP-Logoff
+\item EAP-Key: usato per scambiare materiale di chiavi
+\end{itemize}
+\item length
+\item body
+\end{itemize}
+Se il type è EAP, abbiamo un pacchetto EAP, anche in questo caso il pacchetto è semplice:
+\begin{itemize}
+\item Code: 1 byte, 4 tipi di messaggi
+\begin{itemize}
+\item Request: il messaggio del client è incapsulato in un Request packet
+\item Respons: messaggio di risposta mandato dall'authenticator
+\end{itemize}
+\item ID
+\item Data: se il tipo è request o response c'è payload 
+\end{itemize}
+(SLIDES).
+\subsection{EAPOR}
+Incapsula i pacchetti in RADIUS, per supportare EAP relay. RADIUS usa gli attributi, il tipo 79 supporta EAP
+%immagini
+\section{EAP in relay mode}
+Se usiamo una MD5 challange-auth mode in relay mode, questi sono i messaggi scambiati
+%immagine
+\begin{itemize}
+\item parte tutto con lo start
+\item 
+\end{itemize}
+(LEGGI LE SLIDES PER I DETTAGLI). Periodicamente è possibile mandare dei messaggi di controllo per vedere se il client è ancora attivo:
+\begin{itemize}
+\item se il client va via, serve chiudere la porta o qualcun altro arriva e si autentica come il client
+\item può esserci accounting, quindi serve controllare se il client è attivo
+\end{itemize}
+\subsection{EAP-TLS}
+Lo scambio di messaggi è più complesso, ma il meccanismo è sempre lo stesso: si incapsulano dei messaggi di tipo TSL in un messaggio EAP, quindi nuovamente EAP trasporta solo i messaggi dei protocolli di autenticazione.
+\subsection{802.1X Authorization: VLAN}
+È la per user membership della VLAN: se vogliamo assegnare la VLAN ad un utente specifico, abbiamo bisogno di poter autenticare l'utente ed in base all'identità dell'utente si decide di quale VLAN fa parte
+\subsection{802.1X Authorization: ACL}
+Possono esserci diverse ACL per diversi utenti, quindi è necessario incapsulare le ACL in EAP per poter determinare chi può fare cosa. L'associazione delle ACL agli utenti sono nel RADIUS server, quindi l'autenticatore (slides)
+\subsection{802.1X Authorization: UCL}
+Possiamo specificare una ACL per un dato gruppo di utenti, sempre tramite EAP.
+(slides).
+\section*{Lab 5}
+Recap: usiamo 802.1X per l'autenticazione nelle aree locali. L'idea è di avere un device di accesso che fa da autenticatore, ad esempio switch, abbiamo i device che vogliono connettersi allo switch e all'indizio possono solo mandare pacchetti di autenticazione. Il 3° attore è il server di autenticazione.\\ 802.1X definisce un modo per incapsulare i pacchetti di sicurezza nelle trame Ethernet.\\\\ Vediamo l'authorization port based e l'assegnazione di VLAN con 802.1X, configuriamo un lab usando md5 challange-response come metodo di autenticazione. Per installare radius (freeradius), basta usare il pakcet manager di ubuntu. Cumulus è stato configurato per essere usato come switch di layer 3: nel lab precedente c'era un router CISCO, qui facciamo la stessa cosa permettendo l'IP forwarding in Cumulus.\\ Per RADIUS dobbiamo configurare il client, ma di RADIUS e non il supplicant che richiede l'accesso alla rete
+\chapter{Firewall and packet classification algorithm}
+\section{Introduzione sul firewall}
+Un firewall ispeziona un pacchetto in ingresso ed in base alle regole definite o le policies, decide se accettare o droppare un pacchetto. Un firewall è necessario perché la connettività ad Internet è necessaria e se c'è accesso ad Internet si è esposti a threats dal mondo esterno. Quindi è usato per proteggere la rete interna dalle minacce esterne, solitamente è posto fra la rete e l'Internet ed è un singolo punto di accesso (ma possono essere anche più di uno) per cui passa il traffico; è usato come difesa perimetrale.\\ Anche avendo un firewall, la sicurezza non è garantita ma è utile per difendere il perimetro della rete chiudendo tutto ciò che non è necessario. I design goal di un firewall sono i seguenti:
+\begin{enumerate}
+\item tutto il traffico verso l'esterno e vice versa deve passare per il firewall;
+\item il firewall deve avere un insieme di policy di sicurezza;
+\item il firewall deve essere immune alla penetrazione
+\end{enumerate}
+il firewall è visto come un bastione. 
+\subsection{Access Policy}
+La prima cosa che si fa quando si installa un firewall è capire come specificare una access policy adeguata alla situazione ad alto livello, non c'è una procedura standard e dipende dalla situazione particolare.
+\subsection{Filtering characteristics}
+Nel firewall, le limitazioni non sono basate solo su porta o IP ma in generale una volta definita la policy occorre configurare il firewall per rintracciare il traffico che fa riferimento a quella policy. Ci sono diversi meccanismi implementabili:
+\begin{itemize}
+\item IP address e valori dei protocolli: si filtra l'header del protocollo per vedere l'IP, la porta src e dest etc...
+\item protocollo applicativo: in termini di performance è costoso, sopratutto se il payload non è un header fisso come nel caso di IP o Ethernet. Per, ad esempio, una GET all'interno di un pacchetto HTTP non è in una posizione fissa, bisogna fare pattern o regexp matching, quindi si può provare a fare ispezione su una particolare stringa dell'header, ma ad oggi il traffico è cifrato
+\item basato sull'identità dell'utente, assumendo che stiamo forzando un certo tipo di autenticazione utente
+\item network activity, più complicato
+\end{itemize}
+\subsection{Limiti e capacità dei firewall}
+Le capacità del firewall:
+\begin{itemize}
+\item il firewall è un punto da cui deve passare tutto il traffico, quindi definisce un singolo choke point 
+\item fornisce una locazione per monitorare gli eventi di sicurezza
+\item piattaforma conveniente per diverse funzioni di Internet che non sono relazionate alla sicurezza
+\item può essere usata come piattaforma for IPSec
+\end{itemize}
+Limitazioni:
+\begin{itemize}
+\item non è possibile proteggersi da attacchi che bypassano il firewall
+\item non è possibile proteggersi dai threat interni
+\item wireless LAN impropriamente sicure possono essere accedute dall'esterno dell'organizzazione
+\item i laptop, PDA, o storage portatili potrebbero essere infettati all'esterno $\rightarrow$ \textbf{letteralmente fa l'esempio di vedere un porno a casa e beccarsi un virus sul PC (GOAT)}
+\end{itemize}
+\subsection{Categorizzazione dei firewall}
+Ci sono 4 diverse tipologie di firewall, ma non è verosimile che non ci siano firewall che implementano più cose insieme
+%immagine dalle slides
+\subsubsection{Packet filtering firewall}
+Il firewall applica le regole ai pacchetti IP in I/O, solitamente i campi ispezionati da questo di firewall sono
+\begin{itemize}
+\item IP src/dest address
+\item porte src/dest
+\item la parte del protocollo IP
+\end{itemize}
+Solitamente ha 2 policy: discard o accept, possiamo definire black o white list. Vantaggi
+\begin{itemize}
+\item sono molto semplici
+\item trasparenti all'utente
+\item molto veloci, possono andare a throughput veloci
+\end{itemize}
+Svantaggi
+\begin{itemize}
+\item non possono prevenire attacchi che usano vulnerabilità specifiche dell'applicazione
+\end{itemize}
+(slides)
+\subsubsection{Stateful Inspection Firewall}
+L'ispezione è basata sul flusso dei pacchetti
+\begin{itemize}
+\item se è un flusso TCP, la socket si identifica con le coppie IP,porta src e dest, in più c'è il protocollo
+\end{itemize}
+I firewall sanno associare lo stato di un pacchetto ad una connessione:
+\begin{itemize}
+\item se vede un sin, sa che è il primo pacchetto della connessione
+\item se vede un altro pacchetto, si salva lo stato in un DB che può essere interrogato per avere informazioni sullo stato della connessione
+\end{itemize}
+(slides)
+Per UDP, non c'è nozione di messaggi di terminazione /inizio, si può usare un timer per considera un flusso UDP concluso ed alcuni firewall avanzati possono andare più in fondo nel protocollo applicativo: in Linux, c'è lo stato related. Se mando una richiesta ICMP e la porta è chiusa, viene mandato un messaggio di port unreachable, il firewall può entrare nei dettagli e capire che il pacchetto è relazionato a quello della richiesta su UDP.
+Dal punto di vista più semplice abbiamo qualcosa del genere
+\subsubsection{Application-level gateway}
+Consideriamo un proxy http, per usarlo occorre configurare il browser e passarvi e nel proxy possiamo forzare delle white list o black list ad esempio per il browsing dei siti web. I firewall sono sicuri, ma non così semplici da configurare, serve il client HTTP per il proxy uno per ogni protocollo (problema più grande), in ultimo si usa ed inoltre sono onerosi computazionalmente.
+\subsubsection{Circuit level proxy}
+Il SOCKS v5 proxy è un server che permette di incapsulare diversi protocolli di livello applicativo. L'applicazione client contatta il server SOCKS (slides)
+\subsubsection{Host-Based firewall}
+Fin ora abbiamo pensato al firewall come un relay, ma si può implementare anche direttamente sull'host. Può essere utile averli perché il firewall dell'access point non è a grana così fine, mentre quello dell'host può essere configurato a grana più fine, portando ad una situazione simile
+%immagine del firewall
+tipicamente l'OS implementa un firewall host-based
+\subsubsection{Personal-based firewall}
+Commercialmente sono personal-based firewall, installati nel laptop. Solitamente nei personal firewall ci sono meccanismi per identificare malware
+(slides)
+\subsubsection{Approcci e topologie tipiche}
+Possiamo avere topologie più o meno complesse, dipendenti dai server, dalle policy da usare etc...
+%immagine
+I firewall sono anche i punti dove tipicamente vengono configurati (slides, immagine)
+\section{NETFILTER}
+NETFLITER è un framework che fornisce un hook nel kernel Linux per intercettare e manipolare i pacchetti. I pacchetti che passano per lo stack IP, quindi quelli generati dalla macchina, vengono intercettati, matchati con delle regole specifiche dell'hook ed ogni matching di una regola triggera uno specifico meccanismo, ci sono 5 hooks: un hook è una callback, nel kernel che vengono chiamate in base alle esigenze come nel seguente esempio:
+%snippet del codice kernel
+Tutti i pacchetti intercettati passano per delle tabelle built-in associate agli hook, sono delle linked list. Ogni tabella è dedicata ad una specifica ad un particolare famiglia di azioni
+\begin{itemize}
+\item filter: inseriamo le regole del firewall, accetta il pacchetto o droppa
+\item nat
+\item mangle
+\item raw: a livello basso, invocata prima della connessione (non la useremo mai)
+\end{itemize}
+L'immagine di alto livello per i pacchetti generati è la seguente: nel local output hook ci sono tutte le possibile tabelle built-in, in quanto è possibile anche definire delle tabelle custom, che vengono ispezionate secondo un certo ordine. L'ordine è importante: se viene messa una regola in una tabella che sta sotto nella catena, ed il pacchetto viene droppato prima, non raggiungerà mai la tabella e la regola.\\ Dopo il local, il pacchetto va nel post-routing hook ed alla fine va via.
+%immagine
+Per i pacchetti ricevuti verso l'utente, nel pre-routing non abbiamo la filter table e dopo il pre-routing sappiamo se il pacchetto è per noi o no.
+%immagine della ricezione
+Tracciare lo stato di tutte le connessioni è importante, NETFLITER si appoggia ad un altro modulo del kernel. Con lo stato di match possiamo controllare chi o a cosa è concesso di iniziare una nuova sessione. Lo stato è importante perché ci sono protocolli con stato, come TCP in cui ogni connessione TCP "esegue" una FSM, anche per flussi UDP dove non c'è il concetto di iniziare e chiudere la comunicazione, è possibile capire lo stato dei pacchetti.
+\subsection{ALG related state}
+Se estendiamo lo stato al protocollo applicativo, occorre andare nel payload per capire lo stato: quando mandiamo un pacchetto ad una porta chiusa, ad esempio un pacchetto ICMP, otteniamo un messaggio di "port unreachable", quindi c'è lo stato RELATED. In NETFILTER c'è un conntrack helper (slides)
+\subsection{iptables}
+È il frontend di NETFLITER, usato a user level per configurare una NETLINK socket. iptables viene usato per inserire le regole nelle tabelle, per interagire con NETFILTER.\\ L'API è usata per set uppare, mantenere, ed ispezionare le tabelle con le regole di filtraggio per IPv4 nel kernel Linux, ogni tabella contiene un certo numero di tabelle, ogni tabella ha un certo numero di chain built-in ma anche definite dagli utenti.\\ Una regola del firewall specifica un criterio per un pacchetto ed un target. Se il pacchetto non trova un matching, viene applicata la regola successiva dalla chain.\\ Se il pacchetto non ha alcun match, allora la prossima regola è specificata dal valore del target (opzione -j) che può essere una chain user-defined:
+\begin{itemize}
+\item ACCEPT
+\item DROP
+\item QUEUE
+\item RETURN
+\end{itemize}
+I matches di iptables: abbiamo sempre dei match built-in
+\begin{itemize}
+\item IP source
+\item IP dest
+\item input interface
+\item output interface
+\item status
+\end{itemize}
+ogni match ha delle opzioni proprie, tutti quanti i campi delle opzioni sono in AND logico.
+\section*{Lab 006}
+Dobbiamo configurare i firewall dopo aver creato la topologia. Andiamo a fare le seguenti cose
+\begin{itemize}
+\item il firewall sul default gateway per default è accetta tutto. Vogliamo cambiare la policy
+\end{itemize}
+Con lo state match possiamo fare una cosa del genere:
+\begin{itemize}
+\item permettiamo tutti i pacchetti dal client al server
+\item non ci preoccupiamo più del flusso dei pacchetti da server a client, perché la regola ci dirà che quando i pacchetti sono in stato ESTABLISHED e saranno accettati.\\ Per configurare il firewall sul client, possiamo fare la stessa cosa ma occorre specificare le policy corrette. Nel caso ad esempio della configurazione per le policy di entrata sul default gateway vanno configurate sulla input chain. \\ IMPORTANTE: per  una policy per ICMP, ricordare che questo viene messo direttamente su IP, non è di livello applicativo nel classico stack ISO/OSI, quindi matchamo -P ICMP.
+\end{itemize}
+\subsection{NAT}
+Il NAT è necessario per un ambiente domestico, in una Enterprise magari c'è un range di IP pubblici, ma non li assegniamo a i PC comuni. In Linux, il NAT è implementato sempre da NETFILTER, le regole del NAT interagiscono con quelle del firewall. Cosa possiamo fare con il NAT
+\begin{itemize}
+\item source NAT, ma se cambia l'IP dell'interfaccia va cambiata a la regola
+\end{itemize}
+Il NAT statico setta le regole prima di ricevere il primo pacchetto, mentre il dynamic NAT, fatto con MASQUERADE, viene fatto in modo dinamico: ogni volta che entra un nuovo flusso, viene introdotta una nuova regola nella NAT table.
+\section{Packet classification algorithms and data structures}
+Perché la classificazione dei pacchetti è così importante: è un operazione fondamentale non richiesta solo dai firewall, abbiamo visto come configurare i firewall. Un algoritmo di PC veloce è un building block fondamentale dei firewall, ma anche in altri campi dell'ingegneria del traffico e delle TLC. Sappiamo che il packet forwarding basato su longest prefix matching è conosciuto, LPM può essere visto come un algoritmo specifico di packet classification. Abbiamo diversi approcci per implementare LPM, come ad esempio il seguente
+%immagine dell'albero
+Abbiamo però bisogno di algoritmi diversi per use case diversi, vista l'evoluzione continua dell'Internet
+\subsection{Problema del packet classification}
+La classificazione avviene facendo il matching con delle specifiche regole, il problema è trovare la regola di costo più basso che matchi il messaggio in input.\\ L'informazione di un lookup è contenuta in K diversi header field, gli header sono denotati con H[i]. Il classificatore consiste in un insieme di regole $R_i$ ed ogni campo in una regola può avere 3 math
+\begin{itemize}
+\item exact match, come ad esempio il look-up del MAC, cerchiamo proprio quel MAC
+\item prefix match, quindi come LPM
+\item range match, ovvero ad esempio droppare tutti i pacchetti tcp da porta 1000 a 2000
+\end{itemize}
+Ogni regola è associata ad una direttiva che dice come processare il pacchetto che matcha la regola.\\ Un pacchetto P matcha la regola R se ogni campo di P matcha il corrispondente campo di R, e questa corrispondenza è implicita nella specifica del campo
+(slides)\\ Per esempio, se abbiamo la regola \textbf{R = (100*, *, TCP, 1024:1080, *)} [ip src (in bit), ip dest (in bit), protocol, port range, non lo so]con \textbf{disp=DROP}; ogni wildcard dice che si matcha qualsiasi cosa.\\ Siccome ogni pacchetto può corrispondere a diverse regole nel database, ogni regola ha un costo non negativo \textbf{cost(R)}, l'ambiguità viene risolta ritornando sempre la regola col costo minimo e l'obiettivo è quello di ritornare la prima regola meno costosa.
+\subsection{Requisiti e metriche}
+I requisiti del matching sono simili a quelli del lookup di IP, vorremmo poter fare classificazione dei pacchetti alla velocità del cavo per i pacchetti di taglia minima, ma anche di ridurre la quantità di memoria usata. Dipende ovviamente dallo scenario, magari abbiamo dell'hardware dedicato che implementa delle tabelle che vengono controllate veloci ma c'è poca memoria etc...\\ Per la maggior parte dei database dei firewall, la velocità di inserimento non è un problema perché le regole vengono cambiate di rado, una volta settate all'inizio rimangono così. Non è sempre vero, ad esempio NETFILTER usa un firewall statefull, quindi serve anche fare le insert nel DB velocemente.\\ Quindi se vogliamo anche insert veloci abbiamo una 3 metrica, che è il fast update time.\\ Abbiamo visto iptables, perché è una implementazione di firewall statefull molto noto, è stata molto usata perché flessibile ma ha problemi di velocità e scalabilità: il problema è l'algoritmo di classificazione, che è lineare ovvero O(N), se abbiamo N regole si fanno N lookups. Ma non è la sola ragione, l'altra è che NETFILTER è molto interconnessa con il resto del modulo di networking di Linux, quindi c'è molto overhead dovuto all'interazione. \\\\
+Una possibile soluzione potrebbe essere il caching della ricerca fatta per il primo pacchetto accoppiata all'intero header. Il rate delle cache hit è al più sul 80/90\% (slides sul perché), quindi il 10\% delle volte si prende la strada più lenta e nel caso peggiore abbiamo quindi 1.1 msec di tempo di processamento che non va comunque bene
+\subsubsection{CAM: Content}
+Una CAM è una memoria dove la prima cella che corrisponde un dato verrà restituito usando un lookup parallelo su hardware. Un CAM ternario permette ad ogni bit di dati di essere 0 o 1 o una wildcard, ma ci sono comunque diverse alternative al considerare tCAMs, tra cui il fatto che comunque serve dell'hardware dedicato (altri sulle slides).
+Questo è il modo di funzionamento di un tCAM
+%immagine
+\subsection{Schema uni-dimensionale}
+Il blocco fondamentale è il \textbf{prefix tree}, un albero usato per localizzare le chiavi, nell'esempio cerchiamo la chiave "ted", ma anche "teddy" sarebbe arrivato lì perché era il prefisso più lungo
+(slides)\\ Consideriamo di avere un database dei prefissi di referenza:
+(slides)
+non ci preoccupiamo dell'azione associata, ma solo del match. Vogliamo cercare il prefisso più lungo che corrisponde ad un indirizzo
+\subsubsection{Prefix tree}
+La prima idea è quella di creare un prefix tree, ottenendo una struttura del genere:
+%immagine della struttura
+per fare il lookup della chiave, prendiamo i bit che la compongono, quindi viene estratto il dest address dal pacchetto e viene scorso bit a bit, ed ogni volta aggiorno quale è il longest prefix che ho incontrato scendendo nell'albero. Ci sono diversi lookups, nel caso di IPv4 facciamo al più 32 lookup, mentre nel caso IPv6 128 e le memorie per lo più usate sono le DRAM, quindi più lente. Quindi, questo motiva la multi-bit tree search
+\subsubsection{Multi bit}
+I nodi possono avere più bit nei nodi, dobbiamo scegliere quanti bit avere in ogni nodo, sopratutto se avere un numero fissato di bit o variabile. Decidiamo di scegliere 3 bit per ogni nodo, dobbiamo implementare la controlled expansion: il problema è che ci può essere una collisione, ad esempio data dall'espansione di P6 con P7.
+%immagine
+il problema è che un albero fissato può portare a dello spreco di memoria. Questo si può migliorare considerando delle stride variabili, come mostrato qui
+%immagine che salva 4 locazioni
+Il problema di scegliere uno stride ottimo non è triviale, ci sono diversi approcci. Possiamo comunque fare di meglio, in quanto stiamo comunque sprecando della memoria, 
+\subsubsection{LC tries}
+la cosa fondamentale da ricordare è che il LPM è un caso particolare di algoritmo di classificazione di tipo prefix, la soluzione più nota è l'LC tries
+%immagine
+\subsection{Algoritmo generalizzato per matching esatto}
+In alcuni casi, lavora bene la soluzione di exact matching, come ad esempio la ricerca binaria che è una ricerca di tipo esatto. Un'altra generalizzazione è quella dell'hash table, usando una pipeline per fare prefix matching
+\subsubsection{Binary search}
+Nella ricerca binaria su range, ogni prefisso è rappresentato con un range, usando l'inizio e la fine del range. (slides)\\ Come costruiamo un albero o tabella di ricerca binaria: abbiamo gli end points dei nostri range
+\begin{itemize}
+\item P4: 1***
+\item P1: 101*
+\end{itemize}
+abbiamo 2 prefissi
+\begin{itemize}
+\item nella prima colonna, abbiamo indirizzi che sono strettamente maggiori dell'end point e sono più piccoli del valore successivo in tabella
+\item sulla seconda colonna, abbiamo indirizzi che corrispondono esattamente all'end point
+\end{itemize}
+quindi abbiamo la seguente tabella, che al più 2N entry, e può essere attraversata in tempo logaritmico
+%immagine tabella
+il lookup sarà dato dalle slides
+\subsection{Hashing exact match}
+Come fare LPM con hash tables, dobbiamo considerare più hash table che devono essere tante quante il più lungo prefisso, quindi in totale 32 per IPv4. Quindi, nell'esempio del DB, dividiamo in 4 hash table, mettendo i prefissi in ordine decrescente di prefissi. I problemi delle hash tables: se facciamo una hash table, se il result set è più piccolo del set di partenza, ci sono collisioni, per risolverlo si può usare ad esempio una lista collegata, che va scorsa per trovare il record corretto. Ci sono anche problemi sul dimensionamento e sul resize.\\ Abbiamo le diverse hash tables, assumiamo di fare il lookup di 0101. 
+\subsubsection{Approccio lineare}
+L'approccio base è fare una ricerca lineare:\\
+nel caso di una wildcard, mettiamo in AND i bit con la wildcard con quelli della chiave cercata.
+(slides)
+\subsubsection{Binary search}
+Costruiamo un albero binario
+%immagine albero.
+se trovo un match, vado a destra e se non lo trovo a sinistra. Ma c'è un problema: se non ho un match, non vuol dire che non posso trovare un prefisso a destra, quindi l'approccio è greedy e serve un match artificiale detto \textbf{marker} quando c'è un potenziale prefisso più lungo che corrisponde:
+\begin{itemize}
+\item ho due marker nella prima tabella, se ho un match non vuol dire che ho trovato la key giusta
+\item vado a destra e trovo il match
+\end{itemize}
+ma anche qui c'è lo stesso problema di prima, ovvero rischio di prendere la scelta sbagliata. La soluzione è best prefix match, ovvero a setup time pre-computiamo un insieme di bmp come mostrato in figura
+%immagine coi bpm
+\section{Schema bi-dimensionale}
+La classificazione dei pacchetti è un problema più generale, partiamo col definire degli schemi efficienti quando ci sono due dimensioni, ovvero basandosi su una combinazione arbitraria di due campi, ad esempio la combinazione di IP src e dest.\\ Il DB delle regole di riferimento è il seguente
+%immagine del DB
+dest e scr sono dei casi speciali di matching di wildcard, se matchiamo la regola 4, potremo anche prendere la regola 1, ma dipende tutto dalla priorità che diamo alle regole. Per poter risolvere il problema, siamo partiti dallo schema uni-dimensionale, quindi abbiamo diversi approcci
+\subsection{Set-Pruning Tries}
+Creiamo un prefix tree per il campo destinazione, ed appendiamo a ciascuno prefissi dell'albero un insieme di sotto-tries che rappresentano le sources che matchano con la regola. Quali sono i prefissi delle source da mettere nei tries dipende dal DB:
+%immagine dell'albero
+in termini di memoria, si spreca molto perché molti prefissi vanno in più sotto-tries. Se quindi abbiamo dei source tries che sono esattamente gli stessi non li replichiamo, che è la prima ottimizzazione ovvia da fare, ma serve qualcosa in più: 
+\subsubsection{Backtracking look up}
+È possibile applicare una strategia di back tracing, dove non si replicano i prefissi che sono inclusi nel sotto-prefisso di una destinazione. Ad esempio nel nodo a sinistra, abbiamo un antenato del prefisso che lo contiene, quindi non occorre replicarlo\\
+L'algoritmo di ricerca procede per back searching, procedendo come in figura
+%mmagine alogritmo
+attraversiamo l'albero per cercare il longest prefix matching nel dest field dell'header. Ora dobbiamo cercare il matching nel sotto-albero. Dobbiamo fare back tracing, fino ad un prefisso che matcha il dest field e quindi andare a vedere se c'è un matching nel src, se troviamo un matching si aggiorna la regola di matching trovata. Diventa una ricerca lineare, ma i src prefixes sono solo in un sotto-albero ma c'è un spreco perché sappiamo già quando non c'è un matching.
+\subsubsection{Grid of tries}
+Si può introdurre uno switch pointer, ovvero un puntatore ad un nodo da cui possiamo far ripartire la ricerca in caso di non matching. \\ Ora abbiamo una griglia di puntatori che dicono da dove ripartire che vanno precomputati. Dall'esempio, abbiamo anche un problema perché tutto funziona solo se la priorità è intrinseca nel fatto che si prende il prefisso più lungo, ma se cambiasse la regola di priorità della regola non funzionerebbe più. Quindi, anche se abbiamo il matching su una specifica regola, aggiungiamo quale è la regola che effettivamente matcha, anche questi valori vengono pre-computati.\\ È il miglior approccio per un approccio bi-dimensionale, ma c'è un problema: chi implementa questo tipo di policy di filtraggio non controlla solo due campi ma verosimilmente molti ed usando un approccio del genere si ha una taglia dello storage che cresce esponenzialmente.\\ Ma in pratica, i veri DB sono strutturati e questa struttura può essere sfruttata per risolvere il problema della classificazione con tecniche algoritmiche.
+\subsection{Estensione dello schema bi-dimensionale}
+""regole"" che valgono in pratica dalle slides. Come è  possibile quindi implementare uno schema multi-dimensionale (slides).\\ La prima idea non naive si basa sul punto 4: creiamo una grid of tries dove connettiamo alla parte finale dell'albero una lista lineare di regole. Questo funziona se non si hanno molte regole, ma in generale non è così. Ci sono dei casi in cui è richiesto di avere soluzioni migliori, abbiamo quindi l'idea del divide et impera: spezziamo il problema in sotto-problemi
+\begin{itemize}
+\item cominciamo col spezzare il DB delle regole in colonne, dove ogni colonna è uno "sliced" DB (vedi immagine)
+\item dato un pacchetto P, determiniamo i prefissi che matchano per ognuno dei suoi campi separatamente
+\item infine, si combinano i risultati dei lookup sul best-matching prefix sui campi individuali
+\end{itemize}
+Ci sono 3 metodi per realizzare l'algoritmo (slides)\\
+Questo è il DB che consideriamo per gli esempi, con la seguente topologia.
+\subsubsection{Bit vector linear search}
+Abbiamo un vettore di bit con un 1 in corrispondenza delle regole che matchamo: 
+%immagine con la tabella delle bitmask
+facciamo questa operazione per ogni DB individuale. Per fare l'intersezione, si mettono in AND tutte le maschere e la regola presa sarà il bit più significativo pari ad 1. Per trovare questo bit più significativo, possiamo costruire una tabella pre-computata ma anche qui la richiesta di memoria creace esponenzialmente. Ma non abbiamo bisogno di salvare tutte le combinazioni, se basta salvare solo il primo bit settato ad 1, basta salvare solo quello: \textbf{Algoritmo di de Bruijn}
+\begin{itemize}
+\item isoliamo il bit ad 1 più significativo, facendo $x \& (-x)$
+\item definiamo una funzione di hash per indicizzare n diverse "parole ad un 1":
+\end{itemize}
+(slides)\\
+Le performance dell'algoritmo
+\begin{itemize}
+\item N regole, le bitmap intersecate sono di N bit, quindi l'AND richiede O(N);
+\item calcolare l'AND di K vettori lunghi N bit richiede O(N*K), ma in realtà le CPU a 64 bit fanno un lookup in un ciclo di clock, quindi è $O(N*\frac{K}{W})$, dove W è la larghezza di banda
+\item 
+\end{itemize}
+\subsubsection{Rule Cross Product}
+Creiamo tutte le possibili combinazioni variando tutte le possibili entry di un campo quando c'è una wildcard, ma di nuovo c'è un problema di esplosione della memoria.\\ Ci sono ottimizzazioni, in quanto gli attuali cross products sono tanti, ma in realtà le classi ottenute da queste sono molte meno e quindi possiamo \textbf{Equivalence Cross-Producting}, in quanto se consideriamo il cross product di diversi campi, questi possono portare ad una stessa regola, quindi si identifica una classification class ed il numero di queste è molto minore del totale dei cross products. Quindi si riduce l'occupazione di memoria in maniera significativa, ma quello fatto fin ora è solo sui campi degli IP, occorre unire gli altri e poi fare quello che veniva fatto anche nel linear search bit vector.
+\subsubsection{Decision Tree}
+L'idea è di creare un albero di decisione per arrivare alle regole scartandone alcune (??), qualcosa del genere.
+\section{Linear Bit Vector Firewall con eBPF/XDP}
+Implementare l'algoritmo di ricerca lineare con bit vector usando eBPF.\\ eBPF è un framework originariamente sviluppato per Linux con cui è possibile scrivere dei piccoli programmi di rete in linguaggi di alto livello, si compila il programma e si inietta il bytecode generato all'interno di specifici hooks del kernel. Il programma viene eseguito nel kernel ma in una sandbox, quindi ci sono importanti aspetti di sicurezza. È possibile inoltre interagire col programma, ci sono differenti interfacce, dette \textbf{maps} che possono essere lette e scritte sia dal kernel space che dallo user space.
+\subsection{Hookse  programmi}
+I programmi eBPF sono guidati ad eventi, l'evento che triggera l'hook è l'arrivo di un pacchetto: questo viene processato dall'hook e poi si passa al prossimo. L'hook più interessante è l'XDP hook, il più efficiente in quanto si bypassa quasi del tutto lo stack kernel e siamo nella parte più di basso livello dove fare qualcosa col pacchetto. (slides)\\ Un programma eBPF si scrive in un linguaggio di alto livello come C (restricted), si usa un compilatore come llvm e si compila il programma di ePBF. Si ottiene un bytecode per un'architettura virtuale in grado di processare l'instruction set di eBPF: quando viene iniettato il bytecode nel kernel si ricompila il binario nell'ISA della macchina host col JIT compiler. La syscall \textbf{bpf} inietta il codice nel kernel:
+\begin{itemize}
+\item la prima cosa che fa il kernel è la verifica del programma, quindi verifica staticamente se non ci sono eccezioni dovute a letture di memoria errate etc... Ci sono varie altre limitazioni; 
+\item viene chiamato il JIT;
+\end{itemize}
+Le due componenti fondamentali di eBPF sono
+\begin{itemize}
+\item maps: strutture di tipo key:value scrivibili/leggibili sia lato kernel che user. il ruolo delle mappe è almeno duplice
+\begin{itemize}
+\item salvare dello stato riguardo l'esecuzione;
+\item configurare il programma, se ad esempio c'è una routing table si può cambiare a run time
+\end{itemize}
+\item helper function: ci sono varie funzioni helper, ad esempio per accedere alla mappa. Sono come delle syscall implementate in dei moduli appositi del kernel.
+\end{itemize}
+\section*{LAB eBPF}
+Occorre fare tutti i controlli sugli accessi di memoria, altrimenti al caricamento del modulo nel kernel si ottiene un errore dopo i controlli effettuati dal kernel. XDP può essere usato in parallelo, la stat\_db map è globale quindi è sharata fra le diverse istanze e quindi occorre mettere un lock per garantire la mutua esclusione degli accessi concorrenti.\\ Le limitazioni del lab sono le seguenti
+\begin{itemize}
+\item il DB è piccolo, solo 32 regole
+\item la ricerca è lineare per trovare il bit più significativo
+\item l'adattamento delle regole è statico
+\end{itemize}
+Ci sono delle possibili estensioni
+
+
+
+
+
+
 \newpage
 \part{Parte software}
 \chapter{Introduzione}
@@ -424,7 +848,7 @@ Possiamo avere diverse consistenze:
 \item consitenza debole: modello implementato dalle architetture moderne. Quella di Intel è Total Order Store. C'è un piccolo buffer che agisce come coda in cui vengono salvate le diverse operazioni di store e che verranno poi processate. Le architetture Intel sono fra quelle in cui c'è il minimo numero di riordini tra le operazioni
 \end{itemize}
 \subsubsection{Memory fence}
-Se ho una qualunque operazioni di memoria, la fence forza l'ordine di una load/store, quindi possiamo creare dei punti in cui siamo sicuri che tutte le istruzioni prima della fence sarà ordinata e stessa cosa se accade prima, ma non si possono riordinare le fence. Sono quindi operazioni speciali che permettono di mettere dei punti di riordino per poter ad esempio avere consitenza sequenziale in Intel.
+Se ho una qualunque operazioni di memoria, la fence forza l'ordine di una load/store, quindi possiamo creare dei punti in cui siamo sicuri che tutte le istruzioni prima della fence sarà ordinata e stessa cosa se accade prima, ma non si possono riordinare le fence. Sono quindi operazioni speciali che permettono di mettere dei punti di riordino per poter ad esempio avere consistenza sequenziale in Intel.
 \paragraph{Fence su architetture x86:} ci sono 3 tipi di fence diverse su x86:
 \begin{itemize}
 \item MFENCE: barriera full memory, ogni operazione prima e dopo non sarà riordinata
@@ -432,7 +856,239 @@ Se ho una qualunque operazioni di memoria, la fence forza l'ordine di una load/s
 \item LFENCE: barriere load/load e Load/Store
 \end{itemize}
 \section{In memory transaction}
-Una transazione in memory permettono di realizzare la sincronizzazione in memoria più semplice. Può essere esplicita, quindi per accedere ad un sezione critica si prende un lock, si accede e poi si esce.\\ Ci possono essere problemi sui locks come deadlock, i deadlocks non sono componibili e quindi possono esserci delle inconsitenze nei risultati di operazioni che usano i lock.\\ L'hardware transactional Memory prevede di usare delle istruzioni di Assembly specifiche per dire che su vuole accedere a dei dati in maniera esclusiva, così che il processore metta un lock privato sui dati e una volta finito, se il commit va a buon fine i dati vengano pubblicati all'esterno\\ Per poter implementare le hw transaction Intel ha modificato il protocollo di CC: i tentativi vengono fatti solo al primo livello della cache e si marcano i blocchi di cache con lock, per poi committare se va tutto bene. Ci sono 4 nuove istruzioni assembly (slides), esempio in C:
+Le transazioni in memory permettono di realizzare la sincronizzazione in memoria più semplice. Può essere esplicita, quindi per accedere ad un sezione critica si prende un lock, si accede e poi si esce.\\ Ci possono essere problemi sui locks come deadlock, i deadlocks non sono componibili e quindi possono esserci delle inconsistenze nei risultati di operazioni che usano i lock.\\ L'hardware transactional Memory prevede di usare delle istruzioni di Assembly specifiche per dire che su vuole accedere a dei dati in maniera esclusiva, così che il processore metta un lock privato sui dati e una volta finito, se il commit va a buon fine i dati vengano pubblicati all'esterno\\ Per poter implementare le hw transaction Intel ha modificato il protocollo di CC: i tentativi vengono fatti solo al primo livello della cache e si marcano i blocchi di cache con lock, per poi committare se va tutto bene. Ci sono 4 nuove istruzioni Assembly (slides), esempio in C:
 % codice del C ed Assembly
 Una transazione può andare in abort per vari motivi (slides)\\ Da un punto di vista di performance il problema è per cosa di fa abort a livello hardware, ma la cosa interessante è che la transazione può essere mandata in abort da qualunque altro CPU core.
+Se mettiamo di mettere del codice per fare delle transazioni, rischiamo che dopo se mettiamo del codice su quello scritto per fare i lock possiamo avere una esecuzione per cui in concorrenza le cose non tornato (vedi l'esempio dei depositi/ritiri sulle slides), perché i lock non si compongono.\\ Si possono usare le transazioni, concetto preso dal DBMS: quindi, vogliamo eseguire tutte le operazioni fra l'inizio e la fine di una transazione come all or nothing, È possibile farlo sia usando un DBMS, sia tramite l'uso di facilities offerte dall'hardware.\\ La facility hardware è quella delle \textbf{Hardware Transaction Memory}: l'idea dietro è che se nulla va storto, si hanno delle performance migliori. Usati molto negli engine per videogiochi, quasi tutti i processori off the shelf offrono transactional memory, Intel li ha disabilitati quasi del tutto per via di una implementazione buggy.\\ Il paradigma HDM lavora in questo modo:
+\begin{itemize}
+\item introdurre operazioni Assembly per capire quando inizia e finisce la transazione
+\item utilizzo delle cache, i controller sono già in grado di capire se operazioni concorrenti stanno accedendo allo stesso dato e quindi se scoprono un conflitto sui dati, droppano il flusso di esecuzione ed anche i side effects sui dati. Ci sarà poi un retry path
+\end{itemize}
+Il tipico hardware off the shelf è mostrato di seguito, usato per fare il reverse engineering di come è fatto l'HTM
+%immagine dalle slides
+la L1 e la L3 possono essere usate per implementare le transazioni, in quanto possono essere usate per rappresentare le transazioni. Ci sono due gruppi di dati, read set e write set. L'implementazione delle HTM introduce un bit aggiuntivo per ogni cache line, che dice se un blocco è stato caricato o letto durante una transazione.\\ Il protocollo di CC sa quali linee sono marcate come transaction access, se se ci sono concorrenze e può agire per rendere lo stato coerente. (slides)
+\subsection{Funzionamento}
+Le istruzioni assembly usare per supportare HTM sono
+\begin{itemize}
+\item \textsf{xbegin}
+\item \textsf{xend}
+\item \textsf{xabort}
+\item \textsf{xtest}
+\end{itemize}
+(vedi slides per dettagli). La cosa buona di questa implemetazione è che sulla base di queste 4 operazioni è possibile scrivere delle transazioni annidate, il che rende la scrittura del codice molto più semplice; il CC controller tiene un contatore delle nested transaction fatte, quando il valore va a 0 pulirà i bit dalla cache.\\ Tutti i compilatori moderni possono generare queste 4 transazioni, a partire da linguaggi di alto livello come C e C++, generando delle Undefined Instruction se HTM è implementato in hardware.\\ Per usare le operazioni, si può scrivere del codice C:
+%codice dalle slides.
+È possibile capire anche se c'è un abort in corso, quindi è utile se abbiamo una transazione grossa capire se c'è un abort perché magari il processore non è in grado di portarla a commit.\\ Il write set è vicino alla CPU, sta nella L1, mentre il read set è sia in L2 che in L3. Quindi, il cache controller setta il T flag sia in L1 che in L3 quando si legge, mentre solo in L1 quando si scrive. Supponiamo di avere l'esempio del bank account: se ci sono due diversi cache controllers che stanno gestendo le transazioni, non possono conoscere lo stato l'uno dell'altro ma possono verificare che ci sia un accesso concorrente e quindi se ogni altra CPU legge una location di un write set, la transazione andrà in abort: c'è un pezzo dati che è marcato con T, non è ancora committata ed il controller deve mandare il dato più fresco e se c'è una read non può mandare il dato fresco e quindi la transazione deve abortire.\\ Vale lo stesso per le altre CPU: se qualcuno scrive in un read o write set, la transazione va in abort, l'algoritmo è quindi locale al controller, può dare delle performance peggiori per via che si mandano in abort anche cose che non dovrebbero. \\Inoltre ci sono anche limitazioni hw, cosa accade se abbiamo un contex switch: non possiamo lasciare dei dati incommittati nella cache, quindi la transazione deve abortire e lo stesso vale per la ricezione di un interrupt, perché non si sa per quanto tempo si starà in questo stato e non si possono lasciare i dati inconsistenti; lo stesso vale per page faults.\\ Quindi è necessario avere della logica di codice per gestire gli abort\\ I codici di errore possono essere vari
+\textbf{esempio:}\\ abbiamo una transazione, vediamo l'effetto sulla cache
+%codice dell'esempio
+Abbiamo solo due locazioni di memoria coinvolte nella transazione, vediamo cosa accade in una possibile run concorrente:
+\begin{itemize}
+\item $CPU_0$ legge $a_0$ dalla cache e setta il T bit
+\item $CPU_0$ scrive su $a_0$, portando quindi lo stato a modified, quindi $a_0$ è nel write set
+\item $CPU_1$ legge $a_1$ nella cache (in maniera esclusiva) e setta il T bit
+\end{itemize}
+Lo stato della cache è il seguente:
+%slides
+quindi è possibile committare semplicemente pulendo lo stato dei bit.\\ Se $CPU_1$ entra in gioco e legge $a_0$, la $CPU_0$ deve per forza fare abort: pulisce i T bit e rende le linee di cache invalide che erano Modified. Ora, $CPU_1$ deve per forza leggere i dati dalla memoria, perché in cache sono invalide, questo avviene proprio quando $CPU_0$ stava per fare il commit.
+\section{Recap sulla gestione della memoria virtuale}
+La memoria virtuale serve per far si che le applicazioni non accedano alla memoria fisica direttamente, bensì tramite degli indirizzi virtuali. L'idea è do astrarre cosa una applicazione vede e cosa il processore dovrebbe fare, per molteplici motivi
+\begin{itemize}
+\item rendere la scrittura del codice più facile;
+\item ingannare l'applicazione, facendole credere di avere più memoria in quanto si può fare lo swapping sulla memoria;
+\item isolamento per processo: se qualcuno nel sistema può trasformare un indirizzo virtuale in uno fisico ed il componente è abbastanza sicuro, ci sono delle delimitazioni che impediscono ai processi di vedere i dati di altri processi, a meno di usare memoria condivisa
+\end{itemize}
+Il supporto alla memoria virtuale usa sia hardware che firmware, che OS (slides).\\ Usiamo la terminologia di virtual page e di segmento di memoria: una pagina virtuale viene mappata su un un frame fisico.
+%immagini
+è possibile che un certo range degli indirizzi virtuali condividano dei frame fisici in memoria. IL firmware deve fare diverse operazioni per poter usare le pagine virtuali, quindi viene introdotto una cache addizionale per facilitare la traduzione tra virtual e phisical address: TLB, che se ha la traduzione in memoria da l'indirizzo fisico corrispondente all'indirizzo virtuale.\\ I passi della traduzione sono riassunti di seguito:
+%immagine slide
+si può avere un indirizzo virtuale valido, che però non è presente nella memoria fisica per via dello swapping, quindi si ha un miss nel TLB o nella page table.
+\subsection{Traduzione in x86}
+Le CPU Intel sono bloated, quindi cercano di fare di tutto per dare retro-compatibilità, quindi ogni volta che c'è una nuova facility viene disabilitata per default, quando parte un nuovo chip Intel è come se fosse un 8086, ci pensa il SO ad abilitare tutto ciò che serve:
+\begin{itemize}
+\item segmentazione di memoria
+\item segmentazione di memoria in protected mode
+\item paginazione
+\end{itemize}
+L'indirizzamento basata sulla segmentazione è fatta in base a questo schema:
+%immagine dalle slides
+Come funziona l'unità di segmentazione: 4 registri a 16 bit (allo startup girano così) per i segmenti
+\begin{itemize}
+\item CS: code segment, dove trovare il codice in memoria
+\item DS: data segment, dove trovare i dati in memoria
+\item SS: stack segment
+\item ES: extra segment
+\end{itemize}
+Intel i386 ha aggiunto due nuovi registri, FS e GS senza uso predefinito.\\ Basandosi sulla segmentazione, si possono definire dei segmenti di memoria in cui ogni segmento è un numero che indica l'inizio del segmento, quindi è possibile avere overlapping. Un esempio è mostrato in seguito:
+%immagine delle istruzioni Assembly dalle slides
+\subsubsection{Registri x86\_64}
+%immagine dei registri
+fra i tanti registi, i due di interesse sono (slides). Abbiamo bisogno di strutture dati, che è un virtual-to-phisical tree che mantiene le tabelle di traduzione e la cui root è indicizzata da CR3.
+\subsubsection{Segmentazione protected mode}
+%immagine
+tra le informazioni che otteniamo, dovremmo avere la base dell'indirizzo ma in realtà si ha un indice che serve per accedere ad un tabella in memoria centrale. La tabella ha dei segment descriptor che mantengono i base address per i segmenti,può essere ovunque in memoria per cui si può avere l'indirizzo nel registro GDTR. Supponiamo di avere una jmp che ha un target: l'indirizzo diventa un offset, nel CS register si trova un indice nella global descriptor table. A quel punto si usa l'index come offset nella tabella e trova il segment descriptror, quindi si prende la base e si somma all'offset per ottenere un indirizzo logico.\\ La base è sempre 0, per via della retro-compatibilità, ma il processo va comunque fatto per rendere possibile la paginazione (lo fa il SO). Quando rendiamo possibile la paginazione, l'indirizzo è lineare e viene passato all'unità di paginazione (firmware) che lo trasforma in un indirizzo fisico e lo passa alla CPU
+\subsubsection{Unità di paginazione}
+L'idea è che l'indirizzo lineare viene diviso in 3 pezzi (32 bit):
+\begin{itemize}
+\item directory: indice alla tabella puntata da CR3
+\item Table: indice nella page table
+\item offset, che viene usato per trovare l'indirizzo fisico del frame
+\end{itemize}
+%immagine
+ogni tabella ha nel record un puntatore al componente successivo, sono tutte mantenute in memoria e la gestione è fatta dal SO. C'è un albero di tabelle per ogni processo. Quando si fa context switch, il valore del CR3 non viene cambiato e quindi è possibile anche trovare indirizzi del kernel.
+\subsection{Traduzione Virtual-to-phisical i386}
+L'istruzione assembly ha un indirizzo logico, che verrà usato come offset per la tabella dall'unità di segmentazione per ottenere un indirizzo logico, che verrà usato dalla page table per navigare una pagina ed ottenere un indirizzo fisico da passare alla CPU. Ogni volta che si accede ad un singolo byte di memoria si triggera tutto il processo
+%immagine
+quindi per questo è stato introdotto il caching, per cercare di ridurre la latenza. Per usare l'indirizzo fisico, il cache controller deve aspettare che tutta la traduzione avvenga, se si usa solo l'indirizzo logico c'è un problema se le tabelle cambiano.\\ È possibile usare entrambe le cose: appena l'applicazione genera un indirizzo lineare, questo viene preso dal firmware del cache controller L1, e se il dato è in memoria c'è un hit. In parallelo c'è il controllo nel TLB per vedere se è possibile tradurre in indirizzo fisico. Se c'è un miss nel TLB parte la traduzione per ottenere l'indirizzo. Quindi diversi livelli di cache sono indicizzati con diversi indirizzi, per cercare di velocizzare il processo di traduzione si fanno diverse cose in parallelo.
+%immagine riassuntiva
+\section{Primitive di lettura}
+Vogliamo trovare un modo per bypassare l'isolamento dei processi, la tecnica da usare sarà il timing: vogliamo mettere su delle primitive di lettura, l'idea fondamentale dietro la sicurezza è che non vogliamo lasciare delle informazioni, a volte anche il tempo impiegato per fare un'operazione dice qualcosa. 
+\subsection{Algorithm Timing}
+Prendiamo il seguente esempio:
+\begin{lstlisting}
+int strcmp(char *t, char *s){
+	for( ; *t == *s ; s++, t++){
+		if(*t == '\0')
+			return 0;	
+	}
+	return *t - *s;
+}
+\end{lstlisting}
+passando le due stringhe "ABCD" ed "ABxDE" possiamo inferire qualcosa dai dati in base al tempo impiegato per fare il confronto.\\ Useremo degli approcci simili sulla cache: ogni volta che leggiamo i dati dalla CPU, questi vengono letti dalla cache e quindi ogni volta che si fa una load, a seconda della della condizione, ci saranno differenti risultati
+\begin{itemize}
+\item supponiamo di avere la cache in modified, siamo i proprietari e possiamo leggere
+\item se il blocco è invalid, occorre fare altre azioni
+\end{itemize}
+dipende tutto dallo stato in cui è la FSM della cache. L'idea è che possiamo fare delle operazioni sulla cache privata in modo da portare la FSM in degli stati che conosciamo, quindi per fare un side channel
+\begin{itemize}
+\item portiamo la cache in uno stato noto
+\item facciamo si che qualcuno faccia delle operazioni sulla cache per cambiarne lo stato
+\item vediamo, tramite timing, come è cambiato lo stato
+\end{itemize}
+con l'hyperthreading è ancora più critico, perché ci sono più thread che girano sullo stesso core e quindi condividono la stessa cache L1 e quindi potremmo leggere i dati di qualcun altro e quindi violare la privatezza della L1 per via del simultaneous MT; ((NB: se non ci fosse, la L1 rimarrebbe privata. Inoltre, la L1 di usa indirizzi virtuali per indicizzare i blocchi dati, quindi è anche più semplice accedere ai dati.))
+\subsection{Code path}
+Ci sono degli algoritmi su cui non si può fare timing, perché l'algoritmo ci metterà sempre lo stesso tempo. Ad esempio abbiamo il Montgomery Ladder, usato per fare operazioni sulle curve ellittiche e blocco chiave della crittografia. Abbiamo delle nonce, che devono essere univoche altrimenti si potrebbe invertire la curva (ricavare la chiave privata), lo pseudocode è il seguente:
+%codice dell'algoritmo
+abbiamo k bit, ma il numero di operazioni è sempre lo stesso. Accediamo allo scalar, 1 bit alla volta, ed a seconda del valore accediamo ad uno dei rami dell'if-else e quindi ci chiediamo se possiamo determinare in quale dei due branch siamo, sfruttando la L1 per ricavare la nonce. Una volta che il codice è caricato, viene messo in cache ed alcune operazioni sono grandi e quindi finiscono su più linee di cache, quindi se riusciamo a portare lo stato della gerarchia della cache in modo da capire in quali linee di cache è stato eseguita l'operazione, possiamo sapere se è stato preso l'if o l'else.\\ Quindi, anche se l'algoritmo è time independent, possiamo osservare quali linee di cache sono state usate per accedere ai dati
+\subsection{Side channel attacks}
+Un side channel è una zona di memoria che permette di leggere un altro contenuto di memoria o accedere a dei pattern di dati. Ci sono diverse tipologie di side channels
+\begin{itemize}
+\item Prime + Probe
+\item Flush and Reload
+\item Flush + Flush
+\item Evict + Time
+(slides)
+\end{itemize}
+l'idea è sempre che la prima parte viene usata per portare la cache in un certo stato, con la seconda si cerca di capire dopo che la vittima ha fatto qualcosa, qual è il side effect sullo stato della cache. Non c'è nulla che il SO può fare per garantire l'isolamento dei processi, perché lo stato dell'hardware è condiviso. Un attacco passa per diversi stati, le differenti macchine cambiano per diversi aspetti quindi abbiamo
+\begin{enumerate}
+\item pre-attack: il pre-target attack serve per acquisire il target, quindi ad esempio la linea di cache o il cache set (nel caso di cache n-associative ) stabilire eventuali timing threshold. Dobbiamo considerare tanti elementi, come ad esempio il carico di lavoro della macchina, se è alto potremmo essere deschedulati e perdere ad esempio la CPU su cui stavamo lavorando venendo rischedulati su un'altra
+\item active attack:
+\begin{itemize}
+\item[a)] Inizializzazione: portare il canale in uno stato noto
+\item[b)] Attendere che la vittima faccia un accesso in memoria
+\item[c)] Analizzare l'accesso, osservando i side effects lasciati dalla vittima
+\item[d)] Ripetere l'accesso fino al leak dei dati
+\end{itemize}
+\end{enumerate}
+Ci sono diversi aspetti da considerare
+\begin{itemize}
+\item Le cache sono cachate sia virtualmente che fisicamente
+\item le cache sono condivise in maniera differente in base al livello
+\item vanno considerati anche gli interleave di esecuzione fra i diversi processi
+\end{itemize}
+mettere su un vero side channel attack è molto più complesso di cosa si legge nei paper
+\subsubsection{Evict + Time}
+Il target è la cancellazione di una linea, quindi inizialmente la vittima gira e fa degli accessi in memoria, quindi carica i suoi dati in memoria. A questo punto, stabiliamo una baseline execution, ovvero sappiamo che la vittima girerà di nuovo e quanto ci metterà quando ha i dati in cache. L'attacker quindi cancella una linea di interesse dalla cache per scoprire se la vittima la usa: in algoritmi crittografici, si ci basa su tabelle di dati condivise che vengono usati in base alla chiave. Quindi se sappiamo quale parte della tabella viene usata, possiamo fare una ricostruzione di discovery code path, quindi capire quale parte dell'algoritmo viene usato mentre gira. Questo stato effettivamente usato per rompere AES, possiamo scoprire quali linee di cache sono state usate per capire ad esempio la chiave di cifratura, usando il tempo: vediamo quanto ci vuole per fare degli accessi per capire se la vittima sta usando una cache line cancellata o no.\\ La parte critica è poter far girare la vittima quando si vuole, ad esempio è stato usato per rompere AES perché è una libreria condivisa e quindi è possibile per l'attaccante far girare la vittima.\\ Non usare solo l'istruzione Assembly \textsf{rdtsc} per contare il tempo che passa, i chip del processore vengono spenti/accesi in base alla temperatura del processore (perché si tocca il power wall) così come anche viene \textbf{decrementata la frequenza del processore}, quindi il numero di cicli effettivi contati è falsato. Usiamo l'istruzione \textsf{rdtscp} perché rispetta il program order, altrimenti bisognerebbe usare le fence (ricorda l'esempio di Quaglia). La cosa interessante è che l'attacco è veloce quanto la vittima è veloce nel computare.\\ Nota: nel codice, vengono usati buffer di caratteri di 4096 byte, perché? La gerarchia delle cache sono state introdotte nel calcolatore per sfruttare la località in modo da fare andare tutto più velocemente. Uno dei principi è la \textbf{località spaziale}, quindi possibilmente se viene caricata una linea di cache, anche se viene caricata una sola linea e quella successiva è associata ad uno stato invalid, la cache potrebbe pre-fetchare una linea di cache. Quindi, dobbiamo considerare il pre-fetching quando buildiamo un attacco, essendo sicuri che le linee pre-fetched vengano flushate. 4KB è una pagina ed è talmente grande che anche col pre-fetching siamo abbastanza sicuri che non ci siano effetti indesiderati dopo la flush della linea di cache.
+\subsubsection{Flush + Reload}
+Basato sull'abilità di usare memoria virtuale condivisa, quindi affinché funzioni il pre-requisito è che sia possibile condividere i dati virtualmente con un altro processo, quindi diverse applicazioni condividono pagine di memoria per risparmiare spazio (si usa la copy on write, appena si cambia un byte si duplica la pagina). Flushamo una linea di cache, possiamo farlo con un indirizzo virtuale, eseguiamo la vittima e poi proviamo a ricaricare le linee di cache flushate prima e misurare il tempo. Se flushamo la linea e viene ricaricata dopo un po', nessuno l'ha toccata, altrimenti vuol dire che una vittima ha toccato quella linea di cache e quindi una parte di dati. La vittima viene fatta girare una volta sola, se non c'è noise sulla gerarchia di cache basta girare una volta sola.\\ Nel codice, viene allineata la pagina di cache, la prima cosa che si fa è materializzare il vettore di probe in memoria: l'approccio di Linux è che il kernel non si fida dello sviluppatore, quindi se chiede molta memoria l'OS ne da di meno se si accorge che è fatto di zeri. Quindi, l'indirizzo di memoria virtuale è valido, ma non è mappato in memoria fisica del tutto, c'è una pagina in Linux che è piena di 0 (la zero page) che viene condivisa da tutte quelle strutture con tutti zeri. In questo modo si dice al kernel che si vogliono davvero le 256 pagine, semplicemente scrivendo un byte.\\ Ora, bisogna discriminare fra cache hit e miss e mettiamo delle lfence per essere sicuri che non ci sia della noise aggiuntiva per via della memory consistency.\\ NB: nell'attacco, creiamo una pagina per ogni singolo valore del byte che andiamo a leggere. Quindi nell'accesso in \textsf{make\_side\_effect} leggo una pagina della memoria prendendo uno qualsiasi dei valori del byte, quindi creo un pointer in una delle pagine del vettore che verrà portata in cache, che sarà associata al valore del byte. Se troviamo la pagina numero 0 in cache, vuol dire che il valore del byte è 0, se invece trovo la pagina 1, vuol dire che il byte letto è 1 e così via.\\ Quindi, mi baso su due cose
+\begin{itemize}
+\item uso la grandezza di una pagina per mitigare il cache pre-fetching
+\item carico un valore in memoria senza far girare la vittima. Se ho l'indirizzo di memoria virtuale e posso leggere un valore in memoria, posso leggere un valore, portarlo in un vettore e poter vedere se quel byte viene acceduto
+\end{itemize}
+perché non leggere direttamente il valore del puntatore? L'indirizzo può essere valido, ma non è detto che siamo in grado di leggere perché non abbiamo privilegi di lettura in memoria.\\ Otteniamo un seg fault se la memoria non è valida, ma lo possiamo gestire con un handler e continuare con l'esecuzione e quindi possiamo bypassare i privilegi di accesso perché abbiamo portato dei dati in memoria. Questo è il fondamento di meltdown.
+\subsubsection{Prime + Probe}
+Si fa girare in cache L3, non serve per forza SMT, si può anche lavorare fra diverse VM. La tecnica prevede di fare un priming della cache, ovvero portarla in uno stato noto caricando dei dati che conosco in cache, mettendo uno o più linee di cache che riempano tutte le linee in quanto la cache è set-associativa.\\ Una volta fatta girare la vittima, questa deve invalidare delle linee di cache e carica i suoi valori, a questo punto possiamo rigirare e fare il probing del cache set caricato prima tramite una operazione di probing: se il tempo di accesso aumenta, sappiamo che la vittima ha toccato quelle linee di cache.\\ Un attacco di successo di Prime + Probe non è così semplice perché mettere su un cache set non è così semplice in una cache set-associativa
+%immagine
+Ci sono delle contromisure hardware, il mapping memory-to-cache cambia di continuo (slides)\\ L'unico modo per mettere su l'attacco è conoscere il mapping a run time:
+\begin{itemize}
+\item scegliere N indirizzi di memoria casuali. C'è la possibilità di un cache collision perché non conosciamo il mapping con la memoria
+\item misuriamo il tempo che ci vuole per caricare la cache accedendo agli indirizzi di memoria
+\item se becchiamo una self cache collision, rimuoviamo l'indirizzo dal set. Possiamo usare CPUID per capire l'architettura della cache
+\end{itemize}
+\subsubsection{Prime + Abort}
+Permette di fare tutto ciò che è stato detto fin ora senza timing. Tramite le transactional memory, avremo delle hardware callback che ci dicono che c'è stato un accesso in memoria. L'idea è quella di fare una transazione, aspettare per un abort e nel momento in cui l'abort avviene sappiamo chi ha fatto l'accesso alla memoria (slides).\\ Possiamo anche mettere su degli attacchi alla cache L3: una linea di cache scritta durante una transazione viene tolta dalla L1, quindi l'accesso transazionale fa una write in memoria (slides)
+\subsubsection{Flush + Flush}
+La clfush non è idempotente rispetto al timing, quindi a seconda dell'input ci metterà tempo diverso. Facciamo una clflush e la CPU dice al cache controller di fare un flush ma a seconda dello stato della cache il tempo impiegato sarà diverso. È una versione del Flush + Reload che permette di capire se la cache line è stata invalidata da qualcuno. È molto stealthy come attacco, perché non si fa molto rumore ed inoltre è veloce. Quindi, anche la \textbf{bandwidth} dell'attacco è aumentata, perché il numero di dati che si riescono a scoprire è maggiore.
+\section{Out of order pipeline}
+Usando i side channel attacks visti, vediamo cosa possiamo fare introducendo la out of order exection pipeline: possiamo fare il leak dei dati, se facciamo girare le micro-istruzioni in pipeline in maniera speculativa. L'architettura non è quindi sicura al 100\% se le micro-istruzioni verranno portate a termine, lo fa per velocizzare la pipeline ed alla fine ci può essere il commit o lo squash della pipeline se i check sulla istruzione non torna: se viene fatto il commit, le conseguenze verranno esposte sull'architettura della CPU, altrimenti no. Ma anche se la CPU capisce che una operazione fallisce e non deve essere portata a commit, le conseguenze sulla micro-architettura ci sono: se facciamo una micro-operazione che fa accesso sulla cache, gli effetti rimangono anche se l'istruzione viene tolta dalla pipeline. Questo è l'effetto degli attacchi di tipo \textbf{Transient Execution}, attacchi come
+\begin{itemize}
+\item Spectre
+\item Meltdown
+\end{itemize}
+che sono usciti nel 2018, ma la comunità di ricerca aveva già intuito della loro potenzialità 10 anni prima. Per riassumere
+\begin{itemize}
+\item eseguiamo istruzioni speculative nella pipeline
+\item possono essere rimosse, ma gli effetti rimangono nello stato micro-architetturale
+\end{itemize}
+\subsection{Meltdown primer}
+Questo è un primo esempio di codice per fare meltdown:
+%codice
+mettiamo su un probe array, abbiamo una pagina per ognuno dei possibili valori di un byte, quindi facciamo il leak di un byte alla volta. Non vogliamo leggere il byte, ma misurare l'effetto delle esecuzioni transienti, per capire se alcuni dati sono stati acceduti durante una esecuzione speculativa.\\ Facciamo il flush del contenuto dell'array dalla cache. Ora, cerchiamo di accedere degli indirizzi di memoria, ad esempio di un buffer del SO e cerchiamo di de-referenziarlo, quindi di leggere un byte.\\ Il kernel non vuole esporre all'utente le strutture dati usate, quindi l'indirizzo del kernel non è leggibile dall'utente e quindi ogni volta che proviamo ad accedere c'è un SEGFAULT:
+\begin{itemize}
+\item cerchiamo di accedere ad un indirizzo
+\item passiamo un indirizzo virtuale
+\item viene tradotto in fisico tramite la page table, c'è un bit che dice che non si può accedere
+\item il SO manda una trap e viene eseguito del codice per gestirlo
+\end{itemize}
+siccome il SEGFAULT è un segnale, si può intercettarlo e fare recovery, come ad esempio dire al SO di continuare a girare.\\ L'attacco è utile in quanto la traduzione indirizzo virtuale-fisico ha bisogno di tempo, siccome giriamo speculativamente, l'istruzione viene lasciata in pipeline per un certo intervallo di tempo. L'attacco funziona per un bug della CPU, poiché se possiamo fare la traduzione dell'indirizzo del kernel il firmware sa già che quell'indirizzo non è accessibile a livello user, ma per via di un design errato della CPU questo controllo viene fatto a ret time. Infatti, CPU come ARM ed alcune AMD questo check viene fatto subito e quindi non sono vulnerabili a questo tipo di attacco, cosa che non avviene in Intel CPU: quindi, in questo caso viene comunque fatta la load nella cache, ma l'attacco in se non ha molto senso di esistere.\\ Ora ci sono delle patch hardware per cui non si soffre più di questo problema: l'istruzione viene considerata phantom, quindi non completerà mai, alla fine dell'esecuzione verrà squshata.\\ Quindi per via di un design sbagliato della CPU, il cache controller fa comunque operazioni di load dell'indirizzo per una istruzione che è doomed e quindi non verrà mai committata. Abbiamo quindi un byte, lo moltiplichiamo per la taglia di una pagina, quindi il byte diventa la probe page nel probe array e quindi un offset con cui possiamo accedere all'address space dell'attacker, ma l'accesso dipende da un byte letto speculativamente. Viene quindi caricata una pagina in cache, ora so che ho rimosso tutte le pagine tranne quella appena caricata e posso fare il timing sulla mia stessa cache di quale di queste pagine è stata caricata.
+\subsection{Inganno della branch prediciton unit}
+L'unità per la predizione dei branch serve per aiutare nella decisione delle istruzioni di salto, quindi dire quale è il migliore valore di guess per una istruzione di salto. Il predittore impara dal passato recente, che però dipende dalla mia applicazione: quindi possiamo fare del poisoning della BPU per fargli fare quello che vogliamo. Eseguiamo una istruzione voluta molteplici volte per fargli capire qual è l'outcome della istruzione, dopo del tempo la BPU diventerà stabile e quindi l'outcome sarà sempre lo stesso. All'improvviso, cambiamo il flusso del codice, quindi verrà fatto un guess errato che era quello che volevamo, ma se il guess è errato il check verrà fatto dopo nella pipeline, intanto verrà fetchata l'istruzione in pipeline e se possiamo controllare le istruzioni, siamo in uno scenario simile al precedente.\\ Qui serve uno step addizionale rispetto a meltdown perché va fatto il trainign della CPU
+\subsubsection{Spectre v1}
+Facciamo girare del codice un numero elevato di volte
+\begin{lstlisting}
+if (x < array1_size){
+	y = array2[array[1x] * 4096];
+}
+\end{lstlisting}
+il valore di x però viene usato per accedere una pagina in un probe array, come in meltdown. Per far si che funzioni, dobbiamo essere sicuri che \textsf{array1\_size} non sia in cache, perché vogliamo che il cache controller starti una transazione per portare in cache il valore. La BPU farà un guess sull'outcome dell if, in modo che se lo facciamo spesso la BPU dirà sempre branch taken, non avendo il valore in cache aumentiamo il tempo per cui il guess fatto dalla BPU sarà vero o no. \textsf{array1[x]} è il byte di interesse, ma nel momento in cui x non sta nei limiti, saltiamo da qualche parte nell'address space, questa cosa viene fatta dopo un certo tempo.  L'attacco è molto più difficile da patchare: non avendo array1 in cache, non ci sono check che la CPU può fare in anticipo, mentre nel caso di meldown il bit di accesso è sempre disponibile. In questo caso il dato non è in cache, il controllo viene appositamente dilazionato, l'attacco va a cambiare il corretto funzionamento della BPU e del funzionamento interno della CPU.
+\subsubsection{Spectre v2}
+Variante di spectre, fin ora abbiamo visto attacchi per cui il codice per l'attacco era nel processo dell'attaccante. Possiamo fare una variante in cui il codice non è nell'address space: cerchiamo una porzione di codice in un altro processo, un buon candidato è codice di livello kernel, o librerie condivise, programmi eBPF. Scegliamo un \textbf{gadget} dall'address space della vittima, ovvero un insieme di istruzioni valide generate dal compilatore per essere eseguite in un certo ordine. Quindi, cosa succede se vengono eseguite in un altro ordine, ovvero ad esempio eseguendole all'interno di una funzione, possiamo fare jump ovunque cambiando il valore del PC, quindi anche fuori dalla logica del mio programma.\\ Dobbiamo poter ispezionare il codice dell'applicazione e saltare da qualche parte, quindi al gadget nell'address space della vittima. Di nuovo, facciamo il poison della BPU, possiamo far girare la funzione corretta in modo da avere un certo comportamento, dopo un certo numero di guess cambiamo le pre-condizioni del gadget, quindi saltiamo direttamente al gadget, quindi il vero payload dell'attaccante è il gadget della vittima che è codice legittimo, semplicemente lo usiamo in maniera impropria, ad esempio saltando nel mezzo di una funzione.\\ Esempi:
+\begin{lstlisting}
+adc edi, dword ptr [ebx + edx + 13BE13BDh]
+adc dl, byte ptr[edi]
+\end{lstlisting}
+istruzioni di Win10, accediamo alla memoria con queste due istruzioni. Le istruzioni sono parte di una funzione più grande, vengono usate per calcolare qualcosa nel kernel, l'unica cosa che mi interessa è che usano quei due registri: se riesco a controllare quei registri e fare il jump a quelle istruzioni, posso controllare i valori. Per controllare le istruzioni, dobbiamo assicurarci che la BPU faccia un guess sul contenuto dei valori. La funzione gira molteplici volte, in modo che la BPU associ alla prima istruzione un certo otucome, la BPU fa il check sul fatto che io possa o meno accedere alla memoria, facendo così la BPU farà semplicemente girare l'istruzione, facendo side effect in cache, e poi la CPU si renderà conto che magari va squashata, ma ormai possiamo misurare i side effects.\\ Per sfruttare le istruzioni, possiamo impostare edi all'indirizzo di base di un certo probe array: vogliamo accedere ad m, quindi dobbiamo sottrarre i valori che vengono sommati nell'istruzione: \textsf{ebx = m - edx - 13BE13BDh}. Quindi stiamo controllando come usare m, la prima istruzione leggerà sempre il mio indirizzo di memoria m, il valore viene aggiunto al registro edi, ma edi sta puntando al mio probe array. La seconda istruzione carica nel probe array il valore m, quindi possiamo far girare qualunque codice del kernel, shared library etc.. in modo da accedere al mio probe array. Il codice è legittimo, accediamo la memoria su una struttura dati controllata da me, il probe array, quindi accediamo a nostro piacimento ed il codice non è semplice da patchare.\\ Ci sono le convenzioni delle chiamate a funzione: se chiamiamo delle chiamate a funzione, il caller deve assicurarsi che i valori siano salvati, se saltiamo nel mezzo di una funzione, il compilatore non si cura del valore perché da per scontato che il chiamante abbiamo salvato lo stato dei registri. Il compilatore genera il codice pensando che questo verrà usato sempre rispettando le convenzioni delle chiamate, ma se si salta nel mezzo della funzione, si può eseguire del codice gadget a nostro piacimento. 
+\section{Mitigare i side channels}
+In generale, gli attacchi basati su timing sono complicati da patchare perché si usano i meccanismi interni della cache. Quindi, dovremmo poter implementare delle operazioni idem-potenti che non diano leaks sul tempo. Ma cercare di nascondere la differenza fra hit/miss della cache e per poter riuscire a liberarsi di questi problemi occorrerebbe non usare la cache che non ha senso.\\ Si potrebbero applicare una strada più dura, quindi ad esempio restringere dei timer ad alta risoluzione come la rdtsc, ma spesso le operazioni sono necessarie. Si potrebbero marcare determinate regioni di memoria come non raggiungibili, ma è molto challenging dal punto di vista hardware.\\ Abbiamo detto che spesso si sfrutta AES come "vittima" per questi attacchi, qui si potrebbe implementarlo completamente in hardware, ma per gli altri algoritmi di cifratura? O se la CPU non ha questa possibilità?\\ Altra possibilità è implementare gli algoritmi in modo che ai dati segreti non sia permesso di influenzare gli accessi in memoria. Per gli attacchi basati sulle istruzioni transazionali, si può disabilitare TSX oppure buttare la OOO-pipeline, che però è performance-critical.\\ Fin ora questi attacchi sono sulla L1, per patchare gli attacchi a questa cache si può disabilitare il SMT (Sim Multi-threading), quindi in pratica per rendere il sistema sicuro consiste nel disabilitare tutto quello che è stato introdotto per essere più veloci.
+\subsection{Detection way}
+L'idea dietro la rilevazione dei side channel: il side channel spesso porta la cache in stato noto in una fase di prepare, quindi c'è molto rumore sulla cache, vengono fatte molte operazioni. Le CPU moderne (dai 90) hanno degli HPC (Hardware Performance Counter): perf è uno user space tool che aiuta a capire se ci sono dei bottle-necks nell'applicazione, per farlo il tool usa dei registri counter che sono programmabili dal SO:
+\begin{itemize}
+\item contare il numero di miss in cache L1
+\item contare il numero di flush nella L3
+\end{itemize}
+i conter sono efficienti perché collegati tramite fili direttamente ai counter hardware. Quindi, se verifichiamo gli effetti più comuni sull'architettura della cache, possiamo creare dei profili di utilizzo dell'architettura di cache per scoprire se sono state fatte determinate operazioni sulla cache. Il problema è che questo tipo di tool sono molto volatili e cambiano spesso, inoltre hanno dei bug perché non sono critici per l'esecuzione delle applicazioni.\\ I problemi per un approccio basato sulla mitigazione: la cache funziona bene perché è basata sul principio di località, se l'applicazione lavora con una mole di dati eccessiva, continuerà a richiedere dati dalla memoria ed a portarli in cache e quindi non possiamo essere al 100\% sicuri che l'applicazione sia malevola, quindi non possiamo usare questo tipo di tecnica ad esempio per far carshare le applicazioni. Potremmo, se c'è SMT attivo, impedire di far girare un altro processo sulla stessa CPU. L'attaccker può aggirare questo tipo di controllo facendo sleep di 1h (ad esempio) dopo il leak di ogni byte, per diminuire il bandwidth dell'attacco, quindi di nuovo non possiamo scoprire l'attaccante con sicurezza.\\ Quindi in generale non è possibile mitigare i side channel attacks.
+\subsection{Mitigare le transient execution: kernel isolation}
+Solitamente, nella memoria abbiamo la parte alta dedicata al kernel ed un'altra dedicata allo user space. Nella page table, ci sono i bit che dicono se si può o meno accedere all'indirizzo fisico, ma questo controllo viene fatto dopo nella pipeline, quindi per evitare che l'indirizzo sia caricato è andare a rimuovere l'indirizzo dalla page table. L'unico modo a livello software è impedire all'applicazione il mapping fra memoria virtuale e fisica, cos la CPU fermerà subito l'esecuzione perché non ha l'indirizzo della memoria valido. L'unico modo è cambiare come il SO viene mappato in memoria virtuale, ovvero usare la kernel page table isolation, tradizionalmente l'organizzazione era del kernel sopra lo spazio user, oggi cambia se siamo in kernel mode o user mode:
+\begin{itemize}
+\item in kernel mode le strutture sono le stesse
+\item in user mode, la gran parte del kernel space non è mappata: se cerchiamo di fare leaking del byte, non otteniamo nulla perché la memoria non è mappata su memoria fisica e quindi non ci saranno side effects in memoria.
+\end{itemize}
+Quindi
+\begin{itemize}
+\item come facciamo ad applicare questo meccanismo, ovvero cambiare la visione velocemente: la traduzione funziona perché CR3 mantiene l'indirizzo della page directory. Il SO riserva una sola entry per il kernel level, se abbiamo due versioni differenti della Page directory, in cui in una la entry del kernel è valida e nell'altro no, possiamo switchare le tabelle a seconda della mode con cui stiamo girando. Per cui, ogni volta che passiamo a kernel mode, nel codice della \textsf{cpu\_entry\_area}, il sistema aggiorna in contenuto del CR3 per cambiare la first level page table usata dal firmware. C'è un componente hardware addizionale, perché fare la traduzione tra indirizzo fisico a virtuale, ma c'è il TLB dove potrei aver cachato le traduzioni degli indirizzi del kernel: quindi ogni volta che si cambia il contenuto del CR3 va flushato il TLB.\\ Questo è un esempio del codice del kernel
+%copia codice
+ogni volta che si chiama il kernel, si flusha il TLB due volte perché si chiama il CR3 due volte, quindi per questo le performance delle applicazioni droppano tantissimo se si leggono/scrivono parecchi dati su/dal disco usando molte syscall.
+\item perché c'è una piccola parte di kernel mappata: ci sono le pagine tradotte da indirizzo virtuale a fisico per lo user space, se c'è un miss nel TLB occorre fare la traduzione. Si deve avere la possibilità di gestire un hardware interrupt, servono le informazioni minime per gestirle ed inoltre serve il codice minimo per entrare in kernel mode, in modo da fare la rimappatura kernel space.
+\end{itemize}
+Quindi la struct mantenuta è la \textsf{cpu\_entry\_area}, dobbiamo avere la global description table, più lo stack da usare quando cambiamo da user a kernel mode più altro
+%copia struttura
+Se giriamo su un sistema multi-core, possiamo avere che su un core l'app gira in modo kernel e quindi c'è una mappatura della memoria, su un altro core ci sarà la configurazione con lo user mode mappato ed il kernel no. Per questo, la struttura dati è per CPU-core, altrimenti lanciamo un attacco multi-thread con cui uno entra in kernel mode e l'altro fa partire meltdown
+
+
+
+
+
+
+
+
+
+
 \end{document}
