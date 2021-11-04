@@ -154,3 +154,11 @@
 \contentsline {paragraph}{Zone di memoria}{86}%
 \contentsline {subsection}{\numberline {3.4.7}Organizzazione in NUMA ed allocazione}{87}%
 \contentsline {subsubsection}{API per buddy allocator}{87}%
+\contentsline {subsection}{\numberline {3.4.8}Caso di allocazione/de-allocazione di strutture dati specifiche}{88}%
+\contentsline {subsubsection}{Quicklist API}{89}%
+\contentsline {subsection}{\numberline {3.4.9}Allocatore SLAB}{89}%
+\contentsline {subsection}{\numberline {3.4.10}Allocazione di area di memoria grande}{90}%
+\contentsline {subsubsection}{kmalloc vs vmalloc}{90}%
+\contentsline {subsubsection}{Rimappatura delle page table}{90}%
+\contentsline {section}{\numberline {3.5}Operazioni sul TLB}{91}%
+\contentsline {subsection}{\numberline {3.5.1}Lavorare sul TLB in Linux ed x86}{91}%

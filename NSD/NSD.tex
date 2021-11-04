@@ -634,7 +634,96 @@ Occorre fare tutti i controlli sugli accessi di memoria, altrimenti al caricamen
 \item la ricerca è lineare per trovare il bit più significativo
 \item l'adattamento delle regole è statico
 \end{itemize}
-Ci sono delle possibili estensioni
+Ci sono delle possibili estensioni (ovviamente, scritte nelle slides)
+\chapter{Secure protocols and overlay VPNs}
+\section{Recap: protocolli di sicurezza di rete}
+Abbiamo visto che i meccanismi base di IP sono insicuri, non c'è nulla. Abbiamo discusso alcuni possibili meccanismi di difesa
+\begin{itemize}
+\item 802.1X auth
+\item firewalls
+\item ACL
+\end{itemize}
+abbiamo anche visto come la crittografia può permetterci di rendere sicuri i protocolli, vediamo ancora come usare i tool crittografici: tramite questi, tutto quello che non viene offerto dal protocollo di base può essere fatto con la crittografia simmetria / asimmetrica.\\ Definiamo gli standard che usano le funzionalità crittografiche, applicate a diversi livello dell'ISO/OSI
+\subsection{Livello applicativo: SSH}
+SSH serve per avere un accesso remoto sicuro ad un server, dobbiamo accedervi perché non vi abbiamo accesso fisico. Ci sono gli stessi problemi di prima:
+\begin{itemize}
+\item il server a cui ci loggiamo è quello giusto?
+\item username e password mandate sul canale vengono captate?
+\item data integrity
+\end{itemize}
+telnet era un protocollo usato per la comunicazione fra due host, ma fu progettato senza minimamente pensare alla sicurezza, infatti ci sono diversi problemi. Si è cercato di fare delle patch di sicurezza a telnet, ma era meglio ripartire da 0 ed è quello che è accaduto con telnet.\\ SSH è un protocollo di sicurezza per il login remoto, è formato da una serie di protocolli tra cui i 3 principali sono
+\begin{itemize}
+\item Il protocollo di transport layer
+\item User auth protocol
+\item Connection protocol
+\end{itemize}
+ci sono svariate implementazioni OS di ssh, una delle più famose in Linux è openssh che offre diversi servizi (scritti sulle slides).
+\paragraph{SSH transport layer} Gira tipicamente su tcp/ip, la secure shell ha bisogno di una consegna sicura del messaggio quindi si usa tcp piuttosto che udp. Il layer di trasporto gestisce la parte iniziale dell'handshake, alla fine si ottiene una shell sicura per poter creare altri canali
+\paragraph{user auth} Ci sono diversi modi per autenticarsi con ssh
+\begin{itemize}
+\item password based
+\item public key
+\item keyboard interacting
+\end{itemize}
+\paragraph{SSH conenction layer} dopo l'handshake, si possono usare diversi servizi come ad esempio sftp, scp etc... che si possono negoziare e far partire dopo l'handshake iniziale\\\\
+SSH usa diversi algoritmi di cifratura, molti dei quali simili a quelli usati da TLS.\\ All'atto dell'handshake, si negoziano gli algoritmi da usare etc.. (slide con immagine). \\ La prima volta che ci si connette via ssh, viene ricevuta dal client lo SHA256 della chiave pubblica del server di ECDSA: ssh non usa certificati x509 e quindi siccome non c'è una CA di terza parte non possiamo certificare l'autenticità del server. Dobbiamo certificare manualmente l'autenticità del server: la connessione è critica, è la prima volta che il server manda la sua chiave pubblica ed è fondamentale. Se qualcuno è nel mezzo della connessione, è non protetta. Come possiamo essere sicuri che la chiave è corretta? Verificando se il fingerprint corrisponde con quella del server e c'è un comando apposito: le chiavi del server sono tutte in \textsf{/etc/ssh/...}\\ Possiamo quindi loggarci con la password, fatto una volta non verrà più richiesto di assicurarsi se ci si fida dell'identità associata alla chiave pubblica. Lo scenario è ragionevole per non avere un certificato X509 per ogni server a cui connettersi, il che rende il tutto più scalabile ma non è applicabile a server web, cosa accade se nei prossimo login non si verifica questa associazione? C'è un grande warning dal client: ricevo una chiave pubblica diversa, spesso però non è un qualcosa di malevolo perché magari semplicemente sono stati rigenerate le chiavi, quindi per sbloccarsi occorre cambiare l'associazione fra identità e chiave.
+\subsubsection{Mutual public key auth}
+Il client si autentica per default usando username e password. Per default, utenti di root non si possono loggare, sappiamo che nella catena di sicurezza gli utenti sono quelli più deboli perché scelgono password deboli, quindi il server si autentica con chiave pubblica sempre, ma il client no. Dobbiamo abilitare lo scenario di autenticazione con chiave pubblica del client: si può fare durante l'handshake oppure cambiando il file di configurazione di ssh. Serve una coppia di chiavi per il client, che vanno generate esplicitamente, tramite \textsf{ssh-keygen} e viene sempre creato un file nella home directory. Il problema è lo stesso del server, la chiave non è certificata e quindi va resa sicura per il server o meglio va installata nel server
+\begin{itemize}
+\item si può fare manualmente
+\item si concatenano tutte le chiavi a cui è permesso fare PKA nel file \textsf{authorized\_keys} per l'utente sul server. Si può fare copiando il file sul server oppure col comando \textsf{ssh-copy-id}
+\end{itemize}
+\subsection{Transport layer: TLS}
+Anche se è possibile incapsulare dati IP raw in SSH, si può penare di usarlo per proteggere il traffico IP, ma non è l'approccio migliore. Se dobbiamo rendere sicuri tutti i protocolli applicativi con HTTP, dobbiamo rifare lo stesso approccio per tutti i protocolli. Possiamo quindi far si che meccanismi di sicurezza siano in layer sotto quelli applicativi ed esposti come servizi.\\ TLS è un protocollo fra il livello 5 e 4, è una protezione per applicazione perché è per singola porta.\\ Prima di far partire lo scambio dati si fa un handshake, fornisce gli stessi servizi di ssh. I passi per come sempre sulle slides.\\ L'handshake si fa quando si crea una sessione di TLS ma anche quando si vogliono rinegoziare le chiavi, da una chiave master si generano tutte le sotto-chiavi.
+\subsection{Livello rete: IPSec}
+IPsec usato per rendere sicura la comunicazione su IP. Gli obiettivi sono gli stessi di TLS, ma ci sono delle differenze
+\begin{itemize}
+\item IPsec è una suite di protocolli, combinazione di diversi standard (ESP, AH etc...)
+\item operano su due livelli diversi, IPsec è a layer 3 quindi con IPsec si protegge l'host, mentre TLS protegge l'applicazione
+\item in IPsec ci sono le security associations
+\item IPsec ha delle policy di sicurezza esplicite
+\item IPsec ha diverse modalità di operatività che vanno definite
+\item mentre TLS spesso è implementato user space, IPsec è kernel space
+\end{itemize}
+\section*{LAB 007}
+IL motivo per cui l'HTTPs downagrade è ancora possibile è dovuta alla possibilità di fare ridirezione su https quando si ci collega ad un sito che supporta ssl ma per default il brownser prepende all'URL http.
+\subsection{Attacchi a TLS}
+\subsubsection{HTTPs downgrade}
+L'attaccante riesce a mettersi nel mezzo di una comunicazione HTTPs e rimuove la "s" fra se stesso e la vittima e forwarda i pacchetti con una sessione HTTPs reale col server. Possiamo anche metterci nel mezzo ma anche fare reply come il target server ma senza forzare l'uso di TLS nella comunicazione.\\ Funziona davvero? Come fa il browser della vittima a non rendersi conto che viene rimosso TLS? Il problema è storico, in quanto nel passato i siti web erano ibridi, quindi permettevano http per il sito, si è poi deciso di usare ancora http magari per la home page ed oggi è ancora così. Ad esempio per configurare un server https serve la ridirezione esplicita, ma se il browser può mandare una http get in chiaro l'attacco funziona.\\ L'attacco può essere fatto così
+\begin{itemize}
+\item ci mettiamo nel mezzo fra la vittima ed il router
+\item redirigiamo il traffico da un certo sito web ad un proxy interno
+\item non redirigiamo il traffico https
+\item ...
+\end{itemize}
+Si può mitigare l'attacco tramite HSTS, meccanismo per il cui il server informa il browser che la connessione al sito dovrebbe sempre usare ssl/tls. Quindi l'header HSTS è dentro la richiesta http dentro cui il server specifica che supporta solo https. Ci sono delle limitazioni
+\begin{itemize}
+\item la prima richiesta rimane non protetta
+\item c'è un timeout, alla fine del quale viene ricevuto un altro HTST header
+\item non tutti i client usano HSTS
+\end{itemize}
+alcuni siti più noti usano una lista pre-caricata di nomi, ma non copre tutti i siti.
+\section{Overlay VPN}
+Una VPN estende una rete privata, permettendo agli utenti di mandare traffico fra reti pubbliche come se fossero connessi nello stesso segmento di rete. È una rete privata, quindi nessuno dall'"esterno" può accedere al traffico di rete. Cifratura ed integrità sono comuni, nella overlay VPN sono obbligatorie ma in altri tipi di VPN non lo sono, ad esempio le intra-AS VPN non forzano la cifratura.\\L'overlay VPN ha una topologia costruita su una topologia esistente non sicura, come ad esempio Internet. La rappresentazione grafica è la seguente:
+%immagine della topologia
+costruiamo quindi la nostra topologia virtuale sulla cima di un'altra rete. Ci sono 2 problemi da risolvere
+\paragraph{Creare una rete privata} Come realizzare una rete privata che consiste in nodi deployati su reti diverse, è un problema di addressing e routing. L'addressing si risolve, il problema è il routing. Serve poter raggiungere un nodo centrale che abbia un IP pubblico, che poi deve saper raggiungere i nodi privati, la soluzione di come parlare con i nodi è il \textbf{tunneling}. Il tunneling è un concetto generico, in quanto si fa tunneling quando si incapsula un protocollo come payload di un altro. 
+%immagine
+Per risolvere il problema, serve comunque avere un server con IP pubblico, il pacchetto esterno può raggiungere il secondo router, il pacchetto interno è in qualche modo nascosto e non viene visto dal router, i router fanno forwarding solo guardando l'header esterno.\\Abbiamo quindi una rete virtuale, ma non è privata perché tutti i router nel percorso sono in grado di capire chi è il destinatario
+\paragraph{Problema 2: usare protocolli di sicurezza} Occorrono protocolli di sicurezza per incapsulare il traffico interno, non è solo un problema di integrità, encryption etc... ma anche di verifica di identità. Possiamo avere diversi tipi di encryption + authentication, sia gateway to gateway ma anche host to host.
+%immagine
+\subsection{OpenVPN}
+VPN lato user space con openvpn: tool open source per creare delle VPN. Ha un protocollo costum, usa due canali uno per controllo ed uno per i dati, supporta sia tunneling UDP che TCP, lo scenario più comune è UDP tunneling. Il canale di controllo usa TLS per negoziazione delle chiavi e autenticazione etc... e poi c'è lo scambio dati sull'altro canale, openvpn usa openssl ed offre un sacco di feature.\\ Un building block fondamentale di openvpn è il tun/tap driver:
+\begin{itemize}
+\item un TUN driver è un device di rete point-to-point per tunneling IP. Quindi, le applicazioni possono usare questa interfaccia virtuale configurando le tabelle IP, il TUN manda i pacchetti IP allo user space dove un'altra applicazione è in ascolto ed è un modo per integrare in maniera trasparente openvpn con i programmi in esecuzione, non è openvpn l'applicazione che manda il traffico e quindi si aggiungono delle rotte che mandano il pacchetto per il TUN device in modo che sia opevpn che riceve il traffico. È un modo per "fregare" l'applicazione quando manda il traffico, quando opevpn riceve il pacchetto lo manda attraverso la vera NIC. Le applicazioni non se rendono conto, il sysadmin lo sa e configura le tabelle di routing
+\item un TAP: device di livello 2, mentre il TUN è di livello 3. Quindi, ad esempio possiamo fare tunneling di richieste broadcast etc...
+\end{itemize}
+%immagine
+%altra con cosa accade
+openvpn è NAT friendly perché è un protocollo di tipo client/server, quindi il client parla per primo e se c'è una NAT è come un qualunque scambio client/server. Abbiamo quindi l'openvpn server, che riceve il pacchetto con l'IP virtuale configurato dalla VPN, incapsulato in un TCP/UDP header oppure IP header, dove l'IP è quello reale della rete. C'è un collegamento point-to-point, quindi serve solo conoscere l'IP dell'altro end. Il PKI di opevpn usa TLS, da un punto di vista alto basta sapere questo, viene usato nell'handshake: il server usa una chiave pubblica per autenticarsi, il client può usare username e password ma anche certificati x509. Se vogliamo fare nel modo migliore, dobbiamo mettere su il PKI con la CA etc..., che è un normale PKI x509 e possiamo usare un tool completamente compatibile con openvpn che è easyRSA, serve un certificato separato per client e server ed anche una CA master per certificare i coefficienti di DH. Al server basta avere chiavi pubbliche e private ed il certificato che ha la chiave pubblica associata alla chiave privata usata per firmare gli altri certificati (quella quindi di root o della CA intermedia). Se viene compromessa una chiave privata, c'è la revoca dei certificati classica di x509.\\Possiamo creare quindi ACL basate sui client facilmente identificandoli con i common name all'interno dei certificati
+\section*{LAB 008}
+La prima cosa da fare è crearsi la propria PKI, usiamo easy-rsa. La prima cosa da fare è . ./vars per importare l'ambiente virtuale. Buildiamo i certificati della ca con ./build-ca, ogni cosa creata viene salvata nella directory keys. In seguito, con ./build-key-server col nome del server, siccome va trustata solo localmente va bene avere una CA "non trusted", si fa tutto automaticamente. Lo stesso per i clients. Serve poi creare i certificati per i coefficienti DH. Ogni nodo ha una coppia di chiavi ed un certificato, il certificato del client sta solo sul client perché lo manda lui durante l'handshake. Il certificato della CA sia sul server che sul client perché serve avere la chiave pubblica della CA e siccome è self signed serve installare la root CA in tutte le macchine che devono verificare le chiavi.
+
 
 
 

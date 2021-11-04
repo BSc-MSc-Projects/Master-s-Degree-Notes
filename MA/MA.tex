@@ -19,7 +19,7 @@
 \section{Introduzione alla RCE}
 Reverse Code Engineering del malware, quando si analizza il malware bisogna ricostruire quello che fa a partire dal codice macchina: programma eseguibile o anche un frammento di codice macchina. La pratica di risalire da un frammento di codice al codice sorgente è il RCE.
 \subsection{Definizione di Reverse Engineering}
-Per definizione, per RE si definisce il processo di estrazione della conoscenza e degli schemidi progetto di qualunque oggetto costruito dall'uomo. È una attività già formalizzata nell'800, quinid ben definita già da molto tempo.\\ Un modo per capire come funziona l'attività del RE è di accostarla alla ricerca scientifica:
+Per definizione, per RE si definisce il processo di estrazione della conoscenza e degli schemi di progetto di qualunque oggetto costruito dall'uomo. È una attività già formalizzata nell'800, quinid ben definita già da molto tempo.\\ Un modo per capire come funziona l'attività del RE è di accostarla alla ricerca scientifica:
 \begin{itemize}
 \item il ricercatore scientifico accumula dei dati quantitativi, che non sono sufficienti. Bisogna estrarvi una conoscenza più astratta della realtà che c'è dietro e derivare un modello formale che rappresenti in modo formale la realtà che c'è dietro. Dall'insieme e dalle osservabili non è immediato derivare il modello formale, il processo è difficile e richiede intuizione, creatività: non basta leggere i dati, il modello va inventato. La stessa cosa vale per chi fa RE: il lavoro non è di tipo meccanico.
 \item si usano opportune metodologie, altrimenti non ci sarebbe certezza che la teoria che si sta costruendo è sensata e può ragionevolmente spiegare i dati che si stanno osservando
@@ -506,6 +506,143 @@ La prima cosa da fare, è prendere uno snapshot della VM: quando ci si dispone a
 \item scritture sul file;
 \item il file viene creato sul desktop, quindi troviamo al suo interno quanto digitato.
 \end{itemize}
+\chapter{Lezione 12}
+\section{Analisi dinamica avanzata}
+Abbiamo visto tool sia per analisi statica che dinamica di base. Cominciamo a parlare dell'analisi dinamica avanzata, quindi l'uso del debugger.\\ Un debugger nasce come strumento per analizzare un codice e determinare se sta funzionando come il programmatore si aspetta, quindi localizzare tutti i punti in cui il programma fa qualcosa di differente da quanto pensato dal programmatore. Esistono diverse tipologie di debugger
+\begin{itemize}
+\item source level: si concentra sul programma ad alto livello scritto dal programmatore. Il debugger interagisce direttamente con le singole istruzioni ad alto livello, quindi ha senso se il linguaggio usato è ad esempio interpretato come Java e Python. Alcuni ambienti di sviluppo offrono debugger di livello source level;
+\item assembler level: cercano di ricostruire il funzionamento del programma dalle istruzioni assembly. Ci focalizziamo su questi, in quanto quando si analizza il malware non c'è codice sorgente.
+\end{itemize}
+Un'altra distinzione chiave è fra
+\begin{itemize}
+\item debugger kernel mode
+\item debugger user mode
+\end{itemize}
+parliamo di SO, perché fondamentalmente ogni volta che analizziamo il programma vediamo come questo interagisce con SO. Ogni processo può lavorare in modalità privilegiata o no, tipicamente il codice scritto dall'utente gira in user mode, poiché il SO lo isola per farlo coesistere con gli altri programmi, quindi ogni volta che il programmatore deve debuggare la sua applicazione, usa un debugger del secondo tipo. Il primo tipo può fare debugging anche del codice di SO: perché siamo interessanti anche ai debugger kernel mode? Ci sono vari tipi di malware ed alcuni si inseriscono direttamente nel SO, ad esempio il \textbf{rootkit}, che è un programma che modifica il modo di funzionamento interno del SO ad esempio nascondendo un'intera classe di processi ai tool ed agli analisti. Se un malware riesce a modificare il SO a livello kernel ha vinto, perché ora nella macchina non ci di può più fidare di cosa dice il SO, poiché è possibile che le risposte vengano modificate.\\ Una terza distinzione fra i debugger è data da 
+\begin{itemize}
+\item quelli che lavorano in modalità remota;
+\item quelli che lavorano in modalità locale
+\end{itemize}
+i debug in modalità locale lavorano su un SO dove esegue sia l'applicazione da controllare e sia il debugger. Molti possono lavorare in modalità remota, ovvero servono due macchine: su una gira il target, sulla seconda il debugger e serve che esista comunicazione fra le due macchine e può essere una socket a livello SO o anche un collegamento fisico come un cavo USB, una porta seriale etc...\\ Supponiamo di star sviluppando un programma per un sistema embedded che usa un certo processore ma sto usando un cross-compiler, ovvero che produce codice adatto al sistema embedded, se devo fare debugging il sistema embedded non può contenere il debugger quindi occorre una soluzione del primo tipo.\\ Si applica anche a tutti i casi in cui non si vuole contaminare l'ambiente di lavoro in un caso in cui il malware possa infettare l'ambiente target: il debugger deve eseguire il malware e può accadere che questo sfugga dalle gabbie che il debugger crea.\\ Un'ultima categorizzazione
+\begin{itemize}
+\item debugger basati su GUI
+\item debugger a riga di comando
+\end{itemize}
+\subsection{Ghidra}
+Ghidra è l'ambiente di riferimento per il disassemblaggio, il debugger è un'aggiunta recente (versione 10 $>$) ma si possono dire alcune cose al riguardo
+\begin{itemize}
+\item è un meta-debugger, ovvoernon ha un motore di debugging interno ma fa interfacciare Ghidra con dei debugger a più basso livello. Idealmente, chi sviluppa Ghidra sceglie di fare questo perché di impara una sola interfaccia, quella di Ghidra, potendo così cambiare il motore di debugging sottostante. Il secondo motivo è che Ghidra riesce meglio ad integrare quello che si scopre a livello di disassembler e a livello di debugging, però questa associazione è ancora molto primitiva
+\item Il tool di disassembleggio è un'interfaccia verso un DB dove vengono raccolte tutte le informazioni sul disassemblaggio, l'approccio al debugging è uguale. Il DB di debugging è chiamato traccia in Ghidra, l'idea è che raccogliendo informazioni sul debugging stiamo raccogliendo informazioni su una esecuzione specifica del programma. Un valore aggiunto del debugger di Ghidra è di salvare le tracce e di eseguirle avanti ed indietro, quindi si può navigare la traccia.
+\end{itemize}
+Il debugger è però ancora parecchio primitivo e quindi si riescono a fare solo poche cose essenziali con i debugger a basso livello, quindi occorre interagire direttamente col debugger a basso livello. Ghidra lavora sia in modalità remota che in modalità locale, è assembly level. I motori di basso livello con cui si interfaccia sono 
+\begin{itemize}
+\item GDB
+\item WinDBG
+\end{itemize}
+\subsection{IdaPro}
+Altro debugger molto diffuso ma che non useremo. È un ottimo disassemblatore, ha anche un debugger integrato in maniera dignitosa: funziona abbastanza bene
+l'integrazione fra disassembler e debugger
+\begin{itemize}
+\item è assembly level;
+\item principalmente user mode, ma si può anche usare in kernel mode;
+\item basato su GUI;
+\item permette di fare debugging sia a livello remoto che locale.
+\end{itemize}
+IdaPro ha un debugger interno ma può usarne anche altri come WinDebug. È un debugger dignitoso, non lo usiamo perché se paga e perché ci sono alternative migliori
+\subsection{GDB}
+È assembly level, nasce come debugger user mode (i meccanismi per fare debugging user mode sono più che altro trucchetti) a differenza degli altri è orientato alla riga di comando
+\begin{itemize}
+\item 'b' indirizzo mette un breakpoint all'indirizzo
+\item si possono aggiungere diverse GUI, il vantaggio è che essendo a riga comando è flessibile
+\end{itemize}
+molti ambienti di sviluppo integrano GDB, il vantaggio di questo debugger è che ovunque abbiamo codice per il quale è supportata la toolchain gcc è possibile usarlo. È quindi sempre possibile usarlo ed a cui ci si affida quando non si può usare altro. Non è però un debugger sofisticato come quelli di Win, ma fa il suo lavoro. GDB funziona sia in remoto che in locale
+\subsection{WinDBG}
+È il debugger ufficiale Microsoft. Sono uscite diverse GUI per questo debugger, in realtà i debugger veri e propri sono command line, quindi i motori veri e propri ricevono comandi da riga di comando e ci sono due possibilità
+\begin{itemize}
+\item alcuni dei debugger a basso livello sono user mode. Questi possono lavorare sia locale che remoto
+\item altri sono kernel mode, il lavoro è solo remoto: se si debugga kernel mode, si sta facendo debug del vero e proprio SO. Quindi, come si fa a mettere breakpoint nel SO e a far girare allo stesso tempo il debugger? Quindi, la filosofia è farlo in modo remoto, tramite VM e macchina fisica.
+\end{itemize}
+WinDBG è anche usato per debuggare i device driver sviluppati per il SO, quindi anche per fare debugging del codice del SO, i programmi a basso livello sono differenti ma le interfacce grafiche sono le stesse.\\ WinDBG è gratis ma non si scarica come prodotto a se stante, bensì con tanta altra roba dentro l'SDK di Windows.\\ C'è comunque la necessità di dover dare comandi a basso livello oltre alla GUI
+\subsection{SoftIce}
+Debugger vecchio, è assembler level e kernel mode ma locale: fa esattamente ciò che era impossibile fare per WinGBD, ovvero debuggare il SO all'interno di se stesso. Riusciva in questo compito, quindi era molto usato ma poi è scomparso: l'ultimo aggiornamento è del 2007 ma non è stato più aggiornato, quindi è fortemente legato al SO da debuggare, quindi ormai non si usa più.
+\section{Il debugger che useremo: OllyDbg}
+OllyDgb: è il debugger più ppopolare ed usato per fare debugging delle applicazioni Windows a 32 bit. Funziona solo per codice a 32 bit, quindi per malware a 64 bit occorre tornare ai debugger che supportano il 64 bit che sono WinDBG, GDB ed IdaPro.\\ È assembly level, user mode: non ci sono eccezioni per usarlo kernel mode, lavora solo in locale e basato su GUI. In termini di funzionalità è il miglior debugger in circolazione, ma ha questi limiti: si è tentato di superare i limiti, c'è la versione 2 che è un prodotto differente riscritto da 0. La versione 2 avrebbe qualche feature migliore della versione 1, ma chi fa analisi di malware o RCE non si fida della v2, viene ancora considerato una beta.\\ C'è stato un altro fork dalla versione 1, da cui è uscito fuori \textbf{ImmDbg}, che è una versione di un'azienda commerciale: è possibile estendere le funzionalità del debugger usando Python, tutti i debugger visti sono estendibili con script, ma il linguaggio è solitamente specifico del debugger.
+\subsection{Azioni nel debugger}
+Una delle prime operazioni da fare nel debugger è l'esecuzione step by step: quando si carica il processo in memoria, il debugger parte in modalità "paused". Il programma interattivo di solito aspetta l'interazione con l'utente, quindi bloccare l'esecuzione mi porta tipicamente a DLL che aspettano l'input utente. Quindi, la prima cosa da fare è il single stepping:
+\begin{itemize}
+\item f7, ogni volta che viene premuto, esegue una singola istruzione. La finestra sulla destra elenca il contenuto di tutti i registri del processore. Vengono sempre modificati i registri toccati dall'istruzione
+\item f8 è lo "step over".
+\end{itemize}
+f7 ed f8 sono praticamente equivalenti tranne che se si incontra una CALL: f8, ovvero "step over", la considera come singola istruzione e quindi esegue tutto come se fosse una singola istruzione e riblocca l'esecuzione all'istruzione seguente alla call; con f7 si entra dentro la call, è "step into". L'esecuzione step into è realizzato sui processori x86 con un flag particolare di registro di tipo "trap flag", ovvero con f7 il debugger imposta il trap flag nel registro di processore e quindi quando il codice verrà eseguito, automaticamente verrà alzata un'istruzione di debug: viene quindi gestito l'evento sincrono dell'eccezione (come ad esempio se ci fosse page fault, divisone per 0 etc...), quando si verifica l'eccezione di debug se il programma è stato registrato con un debugger, ovvero con un processo che lo controlla, il SO informa il processo che controlla dell'eccezione ricevuta e quindi il debugger può intervenire ed eseguire una singola istruzione.\\ Lo step over funziona col sistema dei breakpoint\\\\ 
+Altra funzionalità importante è "execute till return": sono in una funzione di cui non mi interessa il contenuto e voglio ritornare a dopo la CALL, un'altra è "execute till user code": il debugger si ferma non appena capisce che è tornato ad eseguire codice dell'applicazione.
+\subsubsection{Finestre}
+C'è una finestra che indica i moduli eseguibili dell'applicazione: indica tutte le DLL usate, alcune sono sempre usate perché realizzano le syscall di Windows, altre invece sono presenti perché il programmatore ha scelto di usarle.\\ 
+\begin{itemize}
+\item Con "M" si apre la memory map, dove vengono elencate tutte le zone di memoria del processo: è un blocco contiguo di indirizzi di memoria che corrisponde a text, codice dell'applicazione, risorse etc...
+\item "T": finestra dei thread, possono essere creati dal SO, OllyDbg analizza l'intero processo, quindi si può sospendere l'applicazione ma di fatto OllyDbg non riesce a far mandare avanti gli altri thread se ne viene sospeso uno.
+\item "W": finestra che indica tutta la gerarchia delle finestre.\\ "H": gli handle che Windows usa per fare riferimento agli oggetti dell'applicazione.
+\item "I": patch, permette di fare patch sia al programma in memoria che al file sul disco\\ "K": finestra della call stack, analizza lo stack di ogni funzione e mostra i parametri passati ad ogni funzione
+\end{itemize}
+\chapter{Lezione 13}
+\section{Ancora su OllyDbg}
+Ci sono diversi tipi di breakpoint, che vanno capiti bene: i due tipi fondamentali sono
+\begin{itemize}
+\item breakpoint di tipo esecuzione, ovvero che scattano quando si prova ad eseguire una certa istruzione macchina memorizzata in un certo indirizzo
+\item breakpoint di accesso, ovvero il processore prova a leggere/scrivere il dato dentro una certa cella di memoria
+\end{itemize}
+chi scrive malware cercherà di ostacolare chi fa analisi, mettendo in piedi dei meccanismi per rilevare se sono stati inseriti dei breakpoint nell'eseguibile. Un'altra differenza nei breakpoint è quella fra
+\begin{itemize}
+\item di tipo software, ovvero gestiti dal debugger in maniera pesante
+\item di tipo hardware, sono in qualche modo implementatati dal processore "gratis" ovvero forniscono una metodologia di breakpoint a più alto livello
+\end{itemize}
+\subsection{Breakpoint di tipo esecuzione software}
+Servono due meccanismi per l'implementazione
+\begin{itemize}
+\item interrompere l'esecuzione all'istruzione successiva a quella in cui mi trovo: faccio partire il programma è poi do f7 da ollydbg, in questo caso il breakpoint viene realizzato tramite il trap flag, quindi ogni volta che viene eseguita una istruzione macchina si genera un'eccezione di debug, in questo caso asserita perché ogni istruzione macchina setta il flag TF;
+\item uso delle istruzioni macchina dette INT3, tali istruzioni se eseguite comportano da parte del processore l'asserzione della debug exception. In ollydbg si può fare con tasto destro oppure f2, il debugger prende il contenuto in memoria corrispondente al primo byte dell'istruzione macchina, lo salva ed al suo posto mette il codice operativo della INT3;
+\item memory o page protection: in ollydbg si può aprire la memory map che contiene le regioni di memoria in cui è organizzato il processo. In ciascuna di queste si possono settare dei breakpoint sull'accesso. Non appena l'eseguibile accede alla sezione di memoria del programma (dove è settato il breakpoint), il debugger interviene: prende tutte le pagine in memoria associato al segmento e ne modifica il flag di accesso in modo che si alzi una eccezione di tipo page fault
+\item breakpoint di tipo esecuzione hardware, in quanto il processore ha dei registri speciali che possono essere usati per programmare alcuni breakpoint hardware, ovvero gestiti direttamente dal processore. All'interno di ollydbg può essere anche disabilitato, inoltre in "hardware breakpoint" definiamo l'evento che porta al breakpoint. Sono molto flessibili ed efficienti, ma hanno come grosso limite di essere solo 4, sono molto più utili per gli accessi. Se dobbiamo mettere un breakpoint software di accesso, il debugger deve cambiare tutta la pagina per poter catturare l'eccezione e quindi l'overhead è più grande, con quello hardware è più semplice.
+\end{itemize}
+I breakpoint sono persistenti, quindi anche se si va avanti rimane nel debugger. Le contromisure che si possono mettere in atto sono
+\begin{itemize}
+\item vedere se il trap flag è settato, per il malware è un chiaro indice che qualcosa non va;
+\item molti malware hanno routine che prendono tutto il proprio codice in RAM e cercano le istruzioni INT3 e si rendono conto che c'è un debugger che cerca di eseguire
+\end{itemize}
+int3 si può rappresentare sia con un codice da 1 byte che con uno da 2 byte
+\subsection{Breakpoint in accesso}
+Qui si usano sopratutto breakpoint hardware, ci sono delle contromisure perché anche il malware può controllare i registri per vedere se i valori contenuti sono stati inseriti dal malware stesso oppure no. Ci sono anche breakpoint software, sono basati sulla protezione delle pagine e quindi abbastanza lenti.
+\subsection{Breakpoint condizionali}
+Sono breakpoint come tutti gli altri, in OllyDbg solo quelli software possono essere condizionali (scelta progettuale), ma sono comunque attivi: quando si arriva ad una condizione o si esegue una istruzione macchina il debugger interviene e controlla una condizione, se falsa si continua col flusso di esecuzione, altrimenti si ridà il controllo all'utente.\\ Si può mettere sempre col tasto destro, va messa una condizione che deve essere vera, si usa il solito meccanismo della [] per l'indirezione.
+\subsection{Gestione delle eccezioni}
+L'eccezione è tale per cui nel flusso di esecuzione c'è una istruzione che fa si che il flusso di esecuzione venga dirottato o ad una procedura nell'applicazione oppure da un handler pre-definito dal SO. Il debugger permette una 3° possibilità in quanto al verificarsi dell'eccezione il primo ad esserne informato è proprio il debug, nella fase detta \textbf{first\_chance} handling, ovvero c'è una prima possibilità di intervenire sulla eccezione:
+\begin{itemize}
+\item può scegliere di buttare via l'eccezione
+\item può scegliere di non gestirla e restituirla al programma sotto debugging, come se il debugger non esistesse
+\item può mettere un breakpoint in caso di eccezione
+\end{itemize}
+c'è poi una \textbf{second\_chance}, può accadere che il debugger dica di passare l'eccezione al gestore definito nell'applicativo, ma se mentre si gestisce l'eccezione ne capita un'altra, spesso dello stesso tipo, questo è problematico e quindi spesso non si gestisce la second\_chance perché queste seconde eccezioni spesso sono legate a dei bug legati al programma originale. Nelle opzioni di debugging possiamo indicare quali sono le eccezioni da non gestire e da passare direttamente al programma, in quanto magari sono dovute a problemi del programma stesso; si possono anche ignorare eccezioni di un certo range.\\Le eccezioni sono largamente usate dal malware per identificare la presenza di debugger
+\subsection{Trovare il main loop usando il debugger}
+Al caricamento del programma, siamo nell'entrypoint del programma, quello che possiamo fare è provare ad eseguire passo passo il programma come step over, ovvero considerare la CALL come unica istruzione: se alla fine della CALL c'è il main loop non se ne uscirà più finché non termina il programma, perché appunto è un loop. Il tasto f4 permette di fare la run fino alla riga selezionata, viene fatto con un breakpoint non persistente. Metto un primo breakpoint sulla CALL, ogni volta che vado avanti e perdo il controllo metto un breakpoint sulla CALL successiva, se troviamo dei cicli andiamo avanti con f4. Troviamo il MessageLoop, probabilmente abbiamo trovato la WinMain, anche OllyDbg ha la capacità di associare delle etichette agli indirizzi, come disassemblatore Ghidra è migliore quindi conviene lavorare in parallelo.
+\section{Analisi di un file di laboratorio del libro di testo}
+Analisi del programma "lab9".\\Si parte sempre facendo uno snapshot pulito, va anche disabilitato il riconoscimento del malware. Una delle prime cose utili da fare può essere aprirlo con PEiD, aprendolo in Ghidra proviamo a cercare le stringhe
+\begin{itemize}
+\item vediamo delle stringhe che fanno riferimento al protocollo HTTP
+\item stringhe download, upload, magari carica/scarica contenuti
+\item cmd.exe, il programma fa qualcosa con la shell dei comandi di Windows
+\item \%SYSTEMROOT\%: in Windows, il meccanismo di accesso alle variabili di ambiente usa i "\%", mettendosi in \%SYSTEMROOT\%$\backslash$system32 si mette nella cartella che contiene i programmi per eseguire il codice a 32 bit, col meccanismo di emulazione "WOW".
+\end{itemize}
+Chi scrive malware cerca in ogni modo di depistare: la chiave SOFTWARE$\backslash$Microsoft $\backslash$XPS è una chiave legittima, ma c'è uno spazio bianco nel secondo slash che non è normale, in quanto non è una chiave ufficiale di Microsoft ma magari è interessante per il programmatore.\\ Proviamo a fare dell'analisi dinamica di base, quindi come minimo lanciamo ProcessMonitor e ProcessExplorer: potremmo prendere uno snapshot dei registri di sistema e vedere cosa cambia, lanciamo Explorer e Monitor e proviamo a lanciare il programma: l'eseguibile scompare, quindi o l'eseguibile ha fatto quello che doveva e non reputa più utile restare nel sistema oppure si è trasferito altrove e non reputa sia necessario che resti traccia di dove era prima. Altra possibilità è che l'eseguibile si renda conto della presenza di debugger etc... in tutti i casi, siamo andati oltre, perché se il file è cancellato non c'è più possibilità di vedere cosa è stato fatto.\\Applichiamo dei filtri alla traccia di Process Monitor:
+\begin{itemize}
+\item molti eventi sono di sistema, ad esempio relativi al Session Manager e che quindi sono relativi alla gestione dell'eseguibile da parte di Windows
+\item alla fine, l'eseguibile si chiude cancellando se stesso e apparentemente senza lasciare processi attivi.
+\item cerchiamo la chiave di registry che avevamo visto: non è presente nel sistema e quindi sembra che il programma l'abbia solo creato ma senza scriverci nulla. Oppure, vediamo se c'è stata la creazione di un processo nei filtri. Troviamo la Process Create di cmd.exe, col tasto destro$\rightarrow$ proprietà si arriva alla command line usata per creare il processo. Troviamo il comando dos per cancellare un file, a cui viene passato il percorso del file.
+\end{itemize}
+Non si trovano punti in cui il processo ne crea altri: il malware viene messo in esecuzione ma non si fida dell'ambiente dove sta eseguendo: non esegue azioni malevole e quindi si "toglie di mezzo", cancellandosi\\Occorre quindi
+\begin{itemize}
+\item aprire il disassembler e leggere il codice
+\item aprire il debugger e vedere il flusso: ci facciamo guidare da cosa vediamo nel debugger anche per capire cosa cercare nel disassembler
+\end{itemize}
+
 
 
 \newpage

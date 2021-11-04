@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2021.9.30)  26 OCT 2021 17:30
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2021.9.30)  3 NOV 2021 17:30
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -266,80 +266,96 @@ Overfull \hbox (13.77501pt too wide) in paragraph at lines 584--585
 -par-tire che vanno pre-com-pu-tati. Dall'esempio,
  []
 
-[32] [33] [34] [35] [36
+[32] [33] [34] [35]
+Chapter 6.
+[36
 
 ]
-Chapter 6.
-[37
+Underfull \hbox (badness 10000) in paragraph at lines 668--670
+
+ []
+
+[37] [38]
+Overfull \hbox (4.30853pt too wide) in paragraph at lines 707--710
+\OT1/cmr/m/n/12 come se fos-sero con-nessi nello stesso seg-mento di rete. []E 
+una rete pri-vata, quindi nes-suno dall'"esterno"
+ []
+
+[39] [40] [41
 
 ]
 Chapter 7.
-[38
+[42
 
 ]
-<immagini/2bit_pred.png, id=135, 411.5375pt x 336.25626pt>
+Chapter 8.
+[43
+
+]
+<immagini/2bit_pred.png, id=151, 411.5375pt x 336.25626pt>
 File: immagini/2bit_pred.png Graphic file (type png)
 <use immagini/2bit_pred.png>
-Package pdftex.def Info: immagini/2bit_pred.png  used on input line 687.
+Package pdftex.def Info: immagini/2bit_pred.png  used on input line 781.
 (pdftex.def)             Requested size: 288.07428pt x 235.37776pt.
 
-Underfull \hbox (badness 10000) in paragraph at lines 686--689
+Underfull \hbox (badness 10000) in paragraph at lines 780--783
 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 686--689
+Underfull \hbox (badness 10000) in paragraph at lines 780--783
 
  []
 
-[39] [40 <./immagini/2bit_pred.png>]
-<immagini/corr_pred.png, id=144, 523.9575pt x 360.34625pt>
+[44] [45 <./immagini/2bit_pred.png>]
+<immagini/corr_pred.png, id=160, 523.9575pt x 360.34625pt>
 File: immagini/corr_pred.png Graphic file (type png)
 <use immagini/corr_pred.png>
-Package pdftex.def Info: immagini/corr_pred.png  used on input line 717.
+Package pdftex.def Info: immagini/corr_pred.png  used on input line 811.
 (pdftex.def)             Requested size: 261.9781pt x 180.17268pt.
-<immagini/tourn_pred.png, id=145, 320.19624pt x 186.6975pt>
+<immagini/tourn_pred.png, id=161, 320.19624pt x 186.6975pt>
 File: immagini/tourn_pred.png Graphic file (type png)
 <use immagini/tourn_pred.png>
-Package pdftex.def Info: immagini/tourn_pred.png  used on input line 725.
+Package pdftex.def Info: immagini/tourn_pred.png  used on input line 819.
 (pdftex.def)             Requested size: 320.19545pt x 186.69704pt.
 
-Underfull \hbox (badness 10000) in paragraph at lines 724--726
+Underfull \hbox (badness 10000) in paragraph at lines 818--820
 
  []
 
-[41 <./immagini/corr_pred.png> <./immagini/tourn_pred.png>] [42] [43]
-Underfull \hbox (badness 10000) in paragraph at lines 767--768
+[46 <./immagini/corr_pred.png> <./immagini/tourn_pred.png>] [47] [48]
+Underfull \hbox (badness 10000) in paragraph at lines 861--862
 
  []
 
-[44] [45] [46] [47] [48] [49] [50]
-LaTeX Font Info:    Trying to load font information for OMS+cmr on input line 9
-42.
+[49] [50] [51] [52] [53] [54] [55]
+LaTeX Font Info:    Trying to load font information for OMS+cmr on input line 1
+036.
 
 (/usr/share/texlive/texmf-dist/tex/latex/base/omscmr.fd
 File: omscmr.fd 2019/12/16 v2.5j Standard LaTeX font definitions
 )
 LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <12> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 942.
- [51] [52] [53]
-[54] [55] [56]
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 1036.
+
+ [56] [57] [58]
+[59] [60] [61]
 LaTeX Font Info:    Trying to load font information for OML+cmr on input line 1
-042.
+136.
  (/usr/share/texlive/texmf-dist/tex/latex/base/omlcmr.fd
 File: omlcmr.fd 2019/12/16 v2.5j Standard LaTeX font definitions
 )
 LaTeX Font Info:    Font shape `OML/cmr/m/n' in size <12> not available
-(Font)              Font shape `OML/cmm/m/it' tried instead on input line 1042.
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 1136.
 
 
-[57]
-Overfull \hbox (1.77698pt too wide) in paragraph at lines 1055--1056
+[62]
+Overfull \hbox (1.77698pt too wide) in paragraph at lines 1149--1150
 \OT1/cmr/m/n/12 Si potreb-bero ap-pli-care una strada pi^^Ru dura, quindi ad es
 -em-pio re-strin-gere dei timer ad alta risoluzione
  []
 
-[58] [59] [60] (./NSD.aux) ) 
+[63] [64] [65] (./NSD.aux) ) 
 Here is how much of TeX's memory you used:
  3419 strings out of 483140
  49162 string characters out of 5965151
@@ -358,10 +374,10 @@ cm/cmmi8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr1
 re/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsl12.pfb></usr/share/tex
 live/texmf-dist/fonts/type1/public/amsfonts/cm/cmss12.pfb></usr/share/texlive/t
 exmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb>
-Output written on NSD.pdf (61 pages, 338704 bytes).
+Output written on NSD.pdf (66 pages, 352407 bytes).
 PDF statistics:
- 253 PDF objects out of 1000 (max. 8388607)
- 169 compressed objects within 2 object streams
+ 268 PDF objects out of 1000 (max. 8388607)
+ 179 compressed objects within 2 object streams
  0 named destinations out of 1000 (max. 500000)
  16 words of extra memory for PDF output out of 10000 (max. 10000000)
 
