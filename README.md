@@ -1,5 +1,5 @@
 # Master-s-Degree-Notes
-All the notes taken during the Master's Degree in Computer Engineering @ the Univeristy of Roma Tor Vergata 
+Tutti gli appunti che ho preso durante le lezioni (o almeno c'ho provato)
 
 ## NOTA BENE
 A chiunque sia interessato ad usare / prendere spunto da sti appunti
