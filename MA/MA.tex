@@ -642,6 +642,127 @@ Non si trovano punti in cui il processo ne crea altri: il malware viene messo in
 \item aprire il disassembler e leggere il codice
 \item aprire il debugger e vedere il flusso: ci facciamo guidare da cosa vediamo nel debugger anche per capire cosa cercare nel disassembler
 \end{itemize}
+\chapter{Lezione 14}
+\section{Analisi del malware lab9}
+Ricordiamo che il malware, nel momento in cui lanciato, si cancella da solo.\\Occorre usare una tecnica di analisi dinamica avanzata, ovvero un debugger, per capire come mai c'è questo comportamento, usando comunque anche le informazioni che trovano dall'analisi statica avanzata. Apriamo con OllyDbg, occorre mettere un breakpoint e possiamo farci aiutare da Ghidra:
+\begin{itemize}
+\item cerchiamo il main, sappiamo che circa in fondo alla entry ci può essere la chiamata;
+\item facciamo lo stesso in OllyDbg, conosciamo l'indirizzo di main e con ctrl+G andiamo all'inizio del main e mettiamo la stessa etichetta;
+\item mettiamo quindi un breakpoint su main
+\end{itemize}
+Lanciamo il programma con f9, poi su main cominciamo a fare f7 ed f8, dove f8 su tutte le chiamate di cui non si sa il comportamento. Notiamo la compare con argc, per verificare se è pari ad 1 e c'è  quindi una differenza in base a tale valore. A seguito della seconda call, abbiamo una test su EAX, che dal debugger ha valore 0, dopo f8 la CALL presa salta alla ret. Entriamo nelle funzioni, notiamo che se il valore è pari a 0 si salta in una funzione in cui viene fatta una ShellExecute in cui si cancella il file.\\Quindi, abbiamo capito dove il programma esce:
+\begin{itemize}
+\item numero di argomenti pari a 0
+\item CALL alla funzione ritorna 0
+\end{itemize}
+Dobbiamo quindi convincere il programma a non terminare, cercando di non far capitare una di queste condizioni. Andiamo sulla CALL, facendo ripartire il programma e seguendo con f7:
+\begin{itemize}
+\item si invoca \textbf{RegOpenKeyEx} con argomento quello sopra con lo spazio, la key fittizia di Windows
+\item si esegue la funzione ed il valore di ritorno è 2: la chiave nel registro di sistema non si trova, quindi azzera EAX e ritorna.
+\end{itemize}
+Torniamo quindi nel programma di partenza. Quindi il ritorno di 0 è dovuto anche al fatto che non è stata trovata la chiave nel registro di sistema. Bisogna convincere il programma per superare il blocco:
+\begin{itemize}
+\item la chiave avrà uno scopo, quindi magari non funziona il resto
+\item passiamo un argomento a caso, così da poter avanzare nel flusso
+\end{itemize}
+si passa un argomento tramite OllyDbg, una stringa a caso. Si continua nel programma, dove si mette l'ultimo argomento di argv. Viene chiamata una funzione passando come argomento quello e si fa un test sul valore di ritorno e se questo è pari a 0 si ritorna ad uscire come prima.\\Per poter forzare ad andare avanti possiamo forzare il valore di EAX oppure col flag di stato 'Z' per non fare la JNZ.\\Ma si vuole cercare di capire cosa fa la funzione chiamata: dal decompilatore si vede proprio come può essere fatta la stringa, ma magari la routine potrebbe essere molto sofisticata quindi vogliamo fare in modo che la funzione restituisca 1.\\Facciamo quindi una patch all'eseguibile: possiamo sempre modificare il file eseguibile in modo da facilitarne l'analisi, facciamo una patch con OllyDbg:
+\begin{itemize}
+\item XOR EAX EAX
+\item INC EAX
+\item RETN
+\end{itemize}
+i byte sono stati modificati in memoria, non sul file eseguibile, per rendere la modifica effettiva tasto dx $\rightarrow$ "copy to executable". Ora occorre salvare il file, chiudiamo poi tutto e riapriamo il nuovo file patchato.\\Ora il file è differente, quindi va re-inserito il brakpoint. Una volta superato il punto, si riprende argv ed una variabile in memoria globale non riconosciuta da Ghidra. C'è modo per capire se una funzione è stata scritta dal programmatore oppure è di libreria ed è stata inclusa automaticamente? Non è facile per il decompilatore capirlo, ci sono alcune tecniche: occorre attivare in Ghidra, con "Configure" si spunta "Functions", ora abbiamo il function ID sotto tools e permette di selezionare il DB: le funzione di librerie statiche sono comunque manipolate dal linker quando inserte nel codice e quindi la sequenza di byte della lbireria non è identica a quella del programma, quindi avere solo la firma con l'hashing non basta.\\Quindi, la firma è stata fatta sui dati non mutati, come
+\begin{itemize}
+\item costanti pre-stabilite
+\item invocazioni di funzioni interne
+\end{itemize}
+la firma quindi non viene direttamente fatta sulla sequenza di byte della funzione ma su delle invarianti della funzione. Il secondo passo della tecnica è accumulare i file per prenderne le firme, per molte varianti di VS questo è già fatto. Trovata la funzione che fa una string compare, ha senso vedere dove viene chiamata per capire quali argomenti si attende il malware:
+\begin{itemize}
+\item caso 1 : "-in"
+\item caso 2: "-rm"
+\item caso 3: "-c"
+\item caso 4: "-cc"
+\end{itemize}
+quindi il malware si aspetta questi, quindi si confronta se il primo argomento è uno di questi. Questi sono tutti e soli gli argomenti, tranne se non c'è  nessuno argomento. Ci sono 5 casi quindi di usare il programma, compreso il caso di 0 parametri, cerchiamo di convincere il programma a fare qualcosa piuttosto che un altra.\\Vediamo i diversi casi possibili
+\begin{itemize}
+\item nel caso di -in, occorre passare anche un altro parametro;
+\item in realtà sembra vero per tutti i casi, per -c si aspetta 6 argomenti.
+\end{itemize}
+altra cosa da ricordarsi sono le funzioni che invoca per gestire ciascuna delle opzioni, assegnandogli dei nomi appositi, la stessa cosa va fatta su OllyDbg.\\Cerchiamo quindi di capire se c'è modo di evitare l'analisi dinamica avanzata per capire il funzionamento: abbiamo patchato l'eseguibile e possiamo provare ad invocarlo con le opzioni che si vuole, usando le tecniche di analisi dinamica di base, che è molto più efficiente in termini di tempo.\\ Qui occorrerebbe prendere uno snapshot, altrimenti tutte le informazioni di OllyDbg verrebbero perse, copiare il file patchato di sicuro perché ci aspettiamo che potrebbe auto-cancellarsi se qualcosa non dovesse piacergli.\\Apriamo quindi Process Explorer, Process Monitor, sappiamo inoltre che è coinvolto un registro di sistema quindi usiamo RegShot.\\Il programma va lanciato con gli argomenti, quindi dalla linea comando passando uno dei 4 individuati prima + qualcosa che vogliamo noi (tanto l'eseguibile è patchato).
+\subsection{Lancio con -in}
+Fermiamo la traccia di Process Monitor e prendiamo il secondo scatto dei registri di sistema.\\Dal Process Monitor, cerchiamo i filtri per il nome dell'eseguibile.\\Il prossimo obiettivo è cercare di capire quando sopravvive, in quanto il malware deve cercare di rimanere persistente nel sistema, dallo shot di RegShot troviamo l'aggiunta di una chiave ed una serie di modifiche, ma nessuna sembra quella del software, ma c'è stato anche un errore: il malware potrebbe fare delle operazioni che hanno bisogno di un livello di privilegio maggiori di quelli con cui viene lanciato, ad esempio tipicamente l'utente normale non può inserire programmi da lanciare all'arrivo.\\Proviamo a lanciare il programma da una shell con diritti di amministratore.\\Riprendendo gli shot dei registri, vengono aggiunte 4 chiavi
+\begin{itemize}
+\item una di queste è quella del programma, con lo spazio
+\item aggiunge il nome alla chiave ControlSet ed a CurrentControlSet
+\end{itemize}
+Viene creato un valore "Configuration" che ha una sequenza di byte, crea anche altri valori per le chiavi create:
+\begin{itemize}
+\item cambia il path del file, che viene messo in \%SYSTEMROOT\%
+\item cambia il nome mostrato (display name)
+\end{itemize}
+le chiavi installate nel registro di sistema sono una configurazione propria, le due chiavi modificate invece sono legate ai demoni di sistema di Unix, che nel mondo Windows sono i sistemi che possono essere lanciati in automatico quando il SO parte. Il software quindi dice di rendere il programma un servizio, da far partire in un certo contesto (ad esempio allo statup del sistema) e questo fa parte del meccanismo con cui il malware cerca di restare attivo nella macchina.\\Quello che si vede nel registro di sistema, in pratica è tradotto da uno strato di software del sistema operativo nel WOW (WindowsOnWindows), visibile da dentro Process Monitor, filtrando per i file. Dovremmo, tramite hashing, verificare che il file sia uguale a quello originale; ormai se anche l'utente cancella il file questo si è nascosto nel sistema.
+\chapter{Lezione 15}
+\section{Continuo dell'analisi di lab009}
+Abbiamo visto i modi con cui può essere eseguito il malware, inoltre almneo per "-in" serve un altro parametro ed abbiamo patchato l'eseguibile in modo da accettare qualunque valore del parametro in input.\\Siamo poi passati ad analisi dinamica di base per scoprire cosa fanno i comando ed abbiamo scoperto che dai risultati di RegShot (leggi sopra non me va de riscrive la stessa roba).\\Ora si potrebbe anche cercare di capire il significato di ognuna delle costanti prodotte come valori dal malware, ma è un lavoro molto faticoso, proviamo ad eseguire il malware con lo stesso comando per verificare se è stato installato il servizio all'interno del SO. Possiamo verificare tramite "services-mc" (o punto) da console per cercare il servizio "lab-009", cerchiamo quindi di confrontare ciò che è stato fatto dal malware col servizio che è stato creato (confronto con il risultato di RegShot):
+\begin{itemize}
+\item sono state create due chiavi, una sotto ControlSet ed una sotto ControlSet001;
+\item il nome del servizio è Display name;
+\item start = 02 è l'avvio automatico, che è lo scopo del malware;
+\item sappiamo anche qual è l'eseguibile che corrisponde a questo servizio, che va cercato attraversando lo strato di WOW;
+\item il malware installa il servizio ma non lo avvia, si può avviare manualmente oppure facendo il reboot della macchina.Evitiamo di farlo perché non sappiamo cosa fa e se fosse avviato sarebbe utile arrestarlo per poterlo avviar in maniera controllata, inoltre il debugger non fa solo debugging partendo da un file eseguibile, ma anche attaccandosi ad un processo in esecuzione, quindi possiamo attaccarlo al servizio.
+\end{itemize}
+il servizio appare così perché esiste una chiave di sistema con questa configurazione, che viene scandita all'avvio dal SO per creare il servizio\\Quindi "-in" installa il servizio, senza avviarlo, proviamo a capire cosa fanno gli altri comandi
+\subsection{Comando "-re"}
+Abbiamo il servizio già avviato, possiamo procedere in diversi modi, tra cui ripulire e rifare RegShot facendo uno snapshot pulito, per rapidità facciamo uno snapshot con il malware già installato.\\Dalla console quindi diamo il comando "-re", sempre con lo stesso parametro, prendiamo i due shot dei registri:
+\begin{itemize}
+\item ci sono due chiavi cancellate, che sono quelle relative ai servizi creati. Quando vengono cancellate le chiavi, necessariamente anche i valori sono cancellati;
+\item viene anche cancellato il valore "Configuration", quindi la configurazione del sistema;
+\end{itemize}
+Una volta tolto, ci può essere ancora traccia del passaggio del malware: può esserci ancora traccia della chiave "Microsoft ".\\In ogni caso, abbiamo scoperto che con "-re" viene reso non operativo il malware, resterebbe da vedere se le chiavi di sistema sono state cancellate, inoltre non è detto che sia stato cancellato il file dentro la cartella di sistema.\\Rimangono da analizzare "-c" e "-cc" ed infine l'esecuzione senza comandi.\\Avendo visto che viene creato un servizio, sarebbe utile vedere quale API di sistema usa per creare o distruggere il servizio, così da poter inferire in futuro che se vengono usate quelle API sta vendendo creato il servizio. Apriamo il malware nel debugger e proviamo a dare degli argomenti per capire le API di sistema per fare il suo lavoro:
+\begin{itemize}
+\item mettiamo un breakpoint sul main;
+\item seguiamo con f8;
+\item in parallelo su Ghidra, sappiamo che prima viene fatto il confronto col numero di argomenti per fare poi una serie di strcmp in base al numero di argomenti passati
+\item andiamo sul "-in", si fanno le istruzioni e si arriva a quello che è l'handler sia di "-in" che di "-re" all'interno di Ghidra. In realtà il malware invoca quello che è l'handler, ma poi fa dei controlli ed invoca altri funzioni quindi non è detto che sia quello l'handler.
+\end{itemize} 
+Vengono messi sullo stack due argomenti, uno puntato da ECX ed uno pari a 400, potrebbe essere un puntatore ad un buffer di output. Ritroviamo nel buffer puntato la stringa Lab09-01 etc..., esiste una API di sistema che ritorna la stringa completa del file eseguibile che ha dato luogo alla funzione.Quindi possiamo capire che dalla funzione viene preso il base name del modulo, ovvero del file eseguibile, abbiamo visto che il nome dell'eseguibile viene usato per il nome del servizio.\\Qui c'è una cosa interessante: si confronta se il numero di parametri passati a "-in" sia proprio 2, se non sono 2 salta a fare un controllo se siano 3 argomenti dopo cui se sono meno di 3 fa harakiri.\\Se sono 3 argomenti, si prende l'argomento dopo "-in" e viene messo sullo stack per chiamare una funzione, che è la stessa che veniva chiamata prima, ma quindi questo è il basename.\\Possiamo avere l'argomento opzionale che è il basename del servizio, si potrebbe provare a vedere che succede ma ogni volta che si pensa di aver scoperto qualcosa bisogna anche fare le verifiche.\\Si invoca poi la funzione 402600, che è probabilmente il vero handler del comando "-in", per  verificarlo basta vedere i riferimenti, quindi questo vuol dire che il meccanismo è uguale per il comando "-re":
+\begin{itemize}
+\item se si rimuove senza passare il basename quello è di default;
+\item altrimenti va passato quello registrato con "-in"
+\end{itemize}
+troviamo quindi i due veri handler di "-in" e "-re".\\Dentro in\_handler, si mette in EAX 1408 e si fa una call ed una volta finita cambia lo stack pointer: questa cosa in generale non viene fatta dalla funzione, lo stack va lasciato bilanciato altrimenti il compilatore non sa più ricostruire gli indirizzi di ritorno etc... quindi vuol dire che il compilatore se lo aspetta, per cui la funzione alloca spazio sullo stack.\\Viene fatto così forse perché si vuole allineare a certe dimensioni, oppure per inizializzare certi parametri a 0 (ad esempio la \textsf{alloca} in Linux fa una cosa simile).\\La funzione in analisi è analoga ad una \textsf{alloca}, possiamo indicarla in Ghidra.\\La funzione viene usata in molti punti, ogni volta che bisogna allocare una quantità di memoria non banale nello stack.\\Entriamo in una funzione dove c'è allocato un buffer, da spiazzamento EBP - 1404, in Ghidra se seguo le cose in parallelo ad OllyDbg posso riuscire a capire cosa succede, posso saltare nel debugger con f8 e verificare il contenuto della memoria.\\Tutte le istruzioni che cominciano con "REPNE" sono istruzioni macchina per gestire stringhe, quindi quello è codice macchina scritto a mano quindi è una funzione di libreria statica inserita nel codice che è ottimizzato e scritto direttamente in Assembly.\\Ghidra è in grado di ricostruire ad alto livello, nel decompilato, di ricostruire il funzionamento della funzione.\\Il codice va quindi a concatenare il basename per formare il path assoluto dove copiare il file.\\È interessante capire come vengono usate tutte queste stringhe, ovvero le DLL
+\begin{itemize}
+\item OpenSCManager, prende un handler al manager dei servizi
+\item OpenService, apre il servizio
+\item OpenServiceConfig, configura il servizio
+\end{itemize}
+si scopre che il servizio non esiste e si costruisce a mano, per poi invocare la CreateServiceA e di tutte va cercata la documentazione.\\Troviamo poi la CopyFileA: mettiamo un breakpoint sull'istruzione per vedere gli argomenti passati alla DLL
+\begin{itemize}
+\item ECX è la stringa del path
+\item EDX è il percorso del sorgente
+\end{itemize}
+Ci sono ancora due funzioni invocate, in una delle due fa riferimento alla dll kernel32: è in qualunque sistema Windows e quando un malware installa un ile nel sistema non lascia le date associate al file a quelle dell'ora e giorno in cui si è effettivamente installato, perché altrimenti si capisce che c'è qualcosa che non va. Il malware come operazione di default prende il file che ha copiato e ne trasforma le date usandone una dei programmi del sistema.
+\subsection{Comando "-c"}
+C'è un'ultima funzione, che avevamo chiamato c\_handler poiché l'avevamo incontrata prima, quindi esegue anche il comando "-c" a cui passa 3 stringhe: ci manca un intero aspetto, perché dopo il gestore del comando "in" conclude quindi manca la gestione delle chiavi, quindi occorre far si che il sistema scriva la configurazione.\\Arriviamo a c\_handler sia dalla gestione di "-in" che da un altro punto in cui gli argomenti sono stringhe vuote nel .bss, e sopra c'è una occorrenza a DeleteFile, quindi siamo probabilmente nel percorso che disinstalla il malware e quindi vengono azzerate le chiavi.\\L'ultima occorrenza è legata al comando "-c", vediamo quindi che fa il c\_handler
+\begin{itemize}
+\item ci sono una serie di funzioni con cui manipola le stringhe;
+\item le API di sistema creano la chiave con la RegCreateKeyEx
+\item andiamo nel debugger a mettere un breakpoint sulla RegCreateKeyEx per vedere gli argomenti: si crea una chiave sotto HKEY\_LM, poi un attributo usando l'handle (quindi per la chiave), di configurazione. Il contenuto del valore è quello di un buffer, 1000 byte e quindi abbiamo l'interpretazione di cosa vedevamo con RegShot.
+\end{itemize}
+"-c" quindi serve a modificare la configurazione nel registro di sistema, quando cambio la configurazione va passata ed infatti quando si arriva a "-c" si controlla se ci sono 7 argomenti:
+\begin{itemize}
+\item nome programma
+\item stringa "magica"
+\item "-c"
+\item le 4 stringhe passate a c\_handler.
+\end{itemize}
+Vediamo l'ultimo comando, ovvero "-cc"
+\subsection{Comando "-cc"}
+Rilanciamo il debugger cambiando argomento, mettendo "-cc", sempre con disassemblatore +  debugger: viene chiamato il cc\_handler se tutti gli argomenti sono ok, possiamo vedere gli argomenti: numeri tutti pari a 1024 e degli indirizzi, perché sono indirizzi sullo stack quindi sono buffer locali.\\Se vediamo cosa contengono, non sembra ci sia nulla di interessante, andiamo avanti con f8 per vedere cosa diventano: sono stati riempiti con i valori dal registro di configurazione. C'è un'altra CALL, che riceve gli stessi parametri + 1, che è una stringa di formato e siccome il primo parametro è una stringa formato e poi ci sono tutti i parametri è per forza la printf.\\Il "-cc" quindi fa il dump della configurazione, abbiamo capito quasi tutto ed una prova che effettivamente abbiamo capito è d'obbligo: potremmo andare a lanciare il programma con -c cambiando la configurazione e con -cc stampare la configurazione.
+\subsection{Caso senza parametri}
+Manca il caso senza parametri, ovvero quando il programma viene invocato all'avvio di Windows. Proviamo a rientrare nel debugger e rifarlo senza parametri, facendo finta di essere il servizio che il malware realizza.\\Vediamo che si apre la chiave per leggerne i valori e se non la trova restituisce 0, ma noi abbiamo installato il malware in version patchata (rida sempre 1).\\Non sembra che ci siano altri effetti, se la configurazione non va bene rida 0, altrimenti 1 e chiude gli handles per cui il malware funziona bene anche con la patch.\\Quindi, è vero che è stato installato il malware ma se proviamo a lanciarlo senza parametri il programma termina e questo non è ciò che dovrebbe fare un servizio, che deve rimanere in attesa indefinita per accettare e gestire gli eventi.\\Se lanciamo a mano il programma non viene avviato, qualcosa non funziona e quindi lo scopo ora è capire cosa non funziona e fare eseguire il malware nel modo previsto e che ora non funziona, quindi come un servizio vero e proprio.
+
+
 
 
 

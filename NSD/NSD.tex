@@ -720,15 +720,62 @@ VPN lato user space con openvpn: tool open source per creare delle VPN. Ha un pr
 \end{itemize}
 %immagine
 %altra con cosa accade
-openvpn è NAT friendly perché è un protocollo di tipo client/server, quindi il client parla per primo e se c'è una NAT è come un qualunque scambio client/server. Abbiamo quindi l'openvpn server, che riceve il pacchetto con l'IP virtuale configurato dalla VPN, incapsulato in un TCP/UDP header oppure IP header, dove l'IP è quello reale della rete. C'è un collegamento point-to-point, quindi serve solo conoscere l'IP dell'altro end. Il PKI di opevpn usa TLS, da un punto di vista alto basta sapere questo, viene usato nell'handshake: il server usa una chiave pubblica per autenticarsi, il client può usare username e password ma anche certificati x509. Se vogliamo fare nel modo migliore, dobbiamo mettere su il PKI con la CA etc..., che è un normale PKI x509 e possiamo usare un tool completamente compatibile con openvpn che è easyRSA, serve un certificato separato per client e server ed anche una CA master per certificare i coefficienti di DH. Al server basta avere chiavi pubbliche e private ed il certificato che ha la chiave pubblica associata alla chiave privata usata per firmare gli altri certificati (quella quindi di root o della CA intermedia). Se viene compromessa una chiave privata, c'è la revoca dei certificati classica di x509.\\Possiamo creare quindi ACL basate sui client facilmente identificandoli con i common name all'interno dei certificati
+openvpn è NAT friendly perché è un protocollo di tipo client/server, quindi il client parla per primo e se c'è una NAT è come un qualunque scambio client/server. Abbiamo quindi l'openvpn server, che riceve il pacchetto con l'IP virtuale configurato dalla VPN, incapsulato in un TCP/UDP header oppure IP header, dove l'IP è quello reale della rete. C'è un collegamento point-to-point, quindi serve solo conoscere l'IP dell'altro end. Il PKI di opevpn usa TLS, da un punto di vista alto basta sapere questo, viene usato nell'handshake: il server usa una chiave pubblica per autenticarsi, il client può usare username e password ma anche certificati x509. Se vogliamo fare nel modo migliore, dobbiamo mettere su il PKI con la CA etc..., che è un normale PKI x509 e possiamo usare un tool completamente compatibile con openvpn che è easyRSA, serve un certificato separato per client e server ed anche una CA master per certificare i coefficienti di DH. Al server basta avere chiavi pubbliche e private ed il certificato che ha la chiave pubblica associata alla chiave privata usata per firmare gli altri certificati (quella quindi di root o della CA intermedia). Se viene compromessa una chiave privata, c'è la revoca dei certificati classica di x509.\\Possiamo creare quindi ACL basate sui client facilmente identificandoli con i common name all'interno dei certificati.\\\\C'è una regola generale che dice che se UDP funziona va usato, altrimenti si usa TCP, ma in generale UDP è la scelta migliore quindi assumiamo che il layer 4 usato sia UDP da adesso in poi.\\OpenVPN usa TLS, usato solo per autenticazione e per scambiare materiale per le chiavi, usiamo però UDP come layer 4 e TLS si aspetta di lavorare sotto TCP e c'è la versione apposita di TLS che è DTLS che non supporta diverse cose invece supportate da TLS.\\OpenVPN usa TLS sul top di TCP ed implementano un meccanismo di ACK semplice per garantire la consegna.\\Vengono usati due canali
+\begin{itemize}
+\item un canale di controllo con TLS, usato allo start della connessione fra client e server
+\item un canale dati, incapsulato nello stesso tunnel udp, riconosciuto tramite l'header openvpn dove viene scambiato traffico enrcypted.
+\end{itemize}
+C'è una versione meno sicura di openvpn in cui le chiavi sono configurate staticamente (pre-shared).\\Durante l'inizializzazione del canale, c'è il classico tls handshake, dove quindi si possono scegliere i chipersuite voluti, gli algoritmi di cifratura e autenticazione sono staticamente messi nel file di configurazione.
 \section*{LAB 008}
-La prima cosa da fare è crearsi la propria PKI, usiamo easy-rsa. La prima cosa da fare è . ./vars per importare l'ambiente virtuale. Buildiamo i certificati della ca con ./build-ca, ogni cosa creata viene salvata nella directory keys. In seguito, con ./build-key-server col nome del server, siccome va trustata solo localmente va bene avere una CA "non trusted", si fa tutto automaticamente. Lo stesso per i clients. Serve poi creare i certificati per i coefficienti DH. Ogni nodo ha una coppia di chiavi ed un certificato, il certificato del client sta solo sul client perché lo manda lui durante l'handshake. Il certificato della CA sia sul server che sul client perché serve avere la chiave pubblica della CA e siccome è self signed serve installare la root CA in tutte le macchine che devono verificare le chiavi.
-
-
-
-
-
-
+La prima cosa da fare è crearsi la propria PKI, usiamo easy-rsa. La prima cosa da fare è . ./vars per importare l'ambiente virtuale. Buildiamo i certificati della ca con ./build-ca, ogni cosa creata viene salvata nella directory keys. In seguito, con ./build-key-server col nome del server, siccome va trustata solo localmente va bene avere una CA "non trusted", si fa tutto automaticamente. Lo stesso per i clients. Serve poi creare i certificati per i coefficienti DH. Ogni nodo ha una coppia di chiavi ed un certificato, il certificato del client sta solo sul client perché lo manda lui durante l'handshake. Il certificato della CA sia sul server che sul client perché serve avere la chiave pubblica della CA e siccome è self signed serve installare la root CA in tutte le macchine che devono verificare le chiavi.\\Nella topologia c'è un access gateway che è un client in openvpn, quindi può essere sfruttato dall'host connesso per entrare nella vpn. I due nodi all'interno delle sotto-reti sono completamente ignari dell'esistenza della vpn.\\Nel router CISCO abbiamo un'access list per matchare i pacchetti che passano.\\Il modo migliore per poter scrivere i file di configurazione di openvpn è partire da quelli già presenti nell'applicazione, le opzioni più importanti sono
+\begin{itemize}
+\item port: porta di ascolto del server, è la porta di destinazione del pacchetto tunneled verso il server;
+\item proto: tpc o udp
+\item dev
+\item ca: il path ai certificati
+\item cert
+\item key
+\item dh
+\item client: dice ad openvpn che siamo dei client 
+\item remote: da specificare in caso di nodo client
+\item server, il duale di client
+\item client\_to\_client
+\item push route
+\item route
+\item client\_config\_dir
+\end{itemize}
+Ci sono 3 diverse direttive di route
+\begin{itemize}
+\item route è per la macchina locale
+\item push route è lo stesso, ma facciamo il push
+\item iroute influenza il routing della overlay: se dobbiamo mandare un pacchetto nella rete di overlay abbiamo bisogno delle informazioni relative. Il server è il forwarder della overlay network, è lui che manda i pacchetti nel tunnel e deve conoscere quale rete si trova dietro quale tunnel.\\Quindi, i client vengono confiugrati in modo che i pacchetti verso la vpn abbiamo come next hop l'indirizzo di un link point-2-point, quindi non ci saranno arp request.\\L'unico che deve conoscere informazioni sulla rete di overlay è il server perché la topologia è di tipo "hub and spoke"(??)\\Per far partire opevpn, è possibile configurarlo anche per girare con systemctl oppure da shell
+\end{itemize}
+Test cases per verificare la configurazione:
+\begin{itemize}
+\item (slides per il primo test case)
+\item secondo test case: client1 pinga tiny1 (rispetto alle slides). Tiny1 può essere raggiunto solo dal server in quanto è connesso via il router, servirebbe una destination NAT ma non è quello che vogliamo: la vpn non è solo raggiungere qualcuno in una rete privata, ma anche rendere sicura la comunicazione. Abbiamo aggiunto una regola di MASQUERADE sul server, quindi tiny1 vede un ping dall'IP pubblico 2.0.0.2, che è quello del server.\\La reply torna al server, viene de-nattato e inviato al client.Se non ci fosse stato il masquerade, ci sarebbe stato come indirizzo IP destinazione del echo reply 192.168.100.x, che era l'IP virtuale del server ed il router 2 non saprebbe come raggiungerlo (non ha la route) e quindi il pacchetto sarebbe discardato;
+\item test case 3: client1 pinga tiny2: il pacchetto interno ha dest address 10.0.0.100, la route sul server vpn per questo indirizzo è su tun0, ma ora il server ha due possibilità: ha un tunnel verso client 1 ed uno verso client2 ed è un problema di routing di overlay.\\Abbiamo scritto nel file di configurazione del client2 l'iroute, quindi il server sa che il pacchetto deve essere forwardato a client2 perché viene matchata la regola.
+\end{itemize}
+\subsection{Interazione con NETFLITER}
+Supponiamo di voler configurare un firewall sul server, abbiamo tutte le regole in drop e dobbiamo permettere alcune regole per far si che tutto funzioni:
+\begin{itemize}
+\item partiamo con tutto in drop tramite iptables
+\item ora, tutti i collegamenti nella vpn non funzionano
+\item il primo layer è il tunnerl esterno, quindi vogliamo sbloccare la comunicazione per il control channel, ma facendo così sblocchiamo anche il data channel che è sullo stesso canale udp
+\item come prima cosa quindi, sblocchiamo con iptables udp sulla porta 1194 in input. Ora ho usiamo lo state match con cui permettiamo solo le connessioni established oppure lo facciamo permettendo i pacchetti di risposta
+\item ora l'handshake iniziale parte, ma non basta. Quando viene decapsulato il pacchetto, vogliamo permettere che il pacchetto si accettato quando l'interfaccia di input sia tun0, in modo da riconoscere che il pacchetto appartiene alla vpn;
+\item occorre anche sbloccare i pacchetti da e verso tun0 ma in FORWARD, ovvero quelli che vanno verso i due tiny nelle sotto-reti private.
+\end{itemize}
+\section*{Lab09}
+IP over GRE over IPses. In questo esempio configuriamo una vpn staticamente, usiamo una gw2gw vpn: la modalità che usiamo è la tunnel mode, ovvero vogliamo incapsulare i pacchetti dentro altri pacchetti IP.\\Un problema di IPsec è che non si possono usare indirizzi multicast, una soluzione è usare GRE quindi
+\begin{itemize}
+\item creiamo un tunnel GRE fra i due gatweay
+\item usiamo IPsec in transport mode per protegge i pacchetti nel tunnel GRE
+\item le SA (Security Association) quindi si applicano ai pacchetti GRE
+\end{itemize}
+così possiamo incapsulare anche pacchetti multicast.
+(slides per vedere come finisce il laboratorio)
+Dobbiamo creare le due SAs per entrambe le direzioni, la cryptomap mescola la policy alla SA.
 
 \newpage
 \part{Parte software}
@@ -1169,7 +1216,108 @@ ogni volta che si chiama il kernel, si flusha il TLB due volte perché si chiama
 \end{itemize}
 Quindi la struct mantenuta è la \textsf{cpu\_entry\_area}, dobbiamo avere la global description table, più lo stack da usare quando cambiamo da user a kernel mode più altro
 %copia struttura
-Se giriamo su un sistema multi-core, possiamo avere che su un core l'app gira in modo kernel e quindi c'è una mappatura della memoria, su un altro core ci sarà la configurazione con lo user mode mappato ed il kernel no. Per questo, la struttura dati è per CPU-core, altrimenti lanciamo un attacco multi-thread con cui uno entra in kernel mode e l'altro fa partire meltdown
+Se giriamo su un sistema multi-core, possiamo avere che su un core l'app gira in modo kernel e quindi c'è una mappatura della memoria, su un altro core ci sarà la configurazione con lo user mode mappato ed il kernel no. Per questo, la struttura dati è per CPU-core, altrimenti lanciamo un attacco multi-thread con cui uno entra in kernel mode e l'altro fa partire meltdown.\\ Il cr3 è quindi un registro per-CPU, per ogni processo il kernel mantiene due page tables, in una di queste non c'è la traduzione virtual to phisical degli indirizzi kernel.\\ Ogni volta che si invoca un syscall si vede questo codice, ad esempio per processori x86\_64
+%codice della entry syscall
+la transizione avviene flippando un singolo bit poiché le due page table sono contigue. C'è il TLB, quindi abbiamo delle traduzioni virtual-to-phisical cachate e quindi ogni volta che si scrive in cr3 l'architettura intel flusha immediatamente il TLB.
+\subsection{Mitigazione retpoline}
+È una costruzione software, l'idea è di una tecnica che permetta di isolare i branch indiretti da istruzioni speculative, quindi si evita di fare esecuzione speculativa di qualunque cosa che possa fare leaking dei dati. Quindi in uno scenario in cui la branch predicition unit, una istruzione che fa salto indiretto esegue un loop infinito, si basa sulla tecnica dei thunks, ovvero fare il delay di una computazione solo al momento in cui fosse necessario. Le istruzioni che possono soffrire di attacchi spectre sono
+\begin{itemize}
+\item jmp *\%rax
+\item call *\%rax
+\end{itemize}
+rax può contenere l'istruzione corretta oppure no, quindi si fa il fool della branch prediction in modo che si salti a codice che non dovrebbe eseguire.\\Vediamo quindi un esempio
+%codice della retpoline
+la \textsf{set\_up\_target} scrive sul top dello stack l'indirizzo di \%r11, quindi mettiamo un certo target in r11 che è quello che vogliamo. All'inizio della funzione modifichiamo il top dello stack con l'indirizzo contenuto nel registro. Lo stack di return nella CPU deciderà l'istruzione da mandare in pipeline, che è la pause che dirà al processore che siamo in uno stato di looping. Questo va avanti finché non siamo davvero in grado di determinare il contenuto di \%rsp, a quel punto si può flushare dalla pipeline il codice della retpoline.\\In questo modo un attaccante non può fare leaks, poiché ogni outcome del branch predictor viene controllato.\\Il compilatore deve generare un thunk per ogni registro general purpose per cui può accadere che ci sia un salto indiretto
+\subsection{Prevenire branch poisoning}
+Ci sono delle capabilites delle CPU moderne per prevenire il poisoning del branch predictor:
+\begin{itemize}
+\item IBRS, istruzioni specifiche che permettono di entrare in una modalità per cui la BPU non viene influenzata dalle predizioni false. Ci sono quindi delle BPE differenti a seconda della modalità
+\item STIBP: ci sono molteplici BPE, quindi con hyperthread su un singolo core si usano BPU diverse per i diversi thread virtuali. Non si possono quindi fare attacchi sullo stesso core, si duplica l'hardware ma aumenta la sicurezza
+\item IBPB: include nuove istruzioni a livello ISA che creano una barriera di esecuzione per la BPU. Quindi, ogni cosa che la BPE ha imparato prima della barriera non è più valido, flushando le informazioni imparate dalla BPU.
+\end{itemize}
+Quindi, in pratica, applicando tutte le pacth si torna ad una i386
+%immagine super carina, va messa PEFFORZA
+a seconda dell'applicazione che si sta girando, occorre applicare alcune patch piuttosto che altre. Non c'è un sistema sicuro, occorre mettere la sbarra di sicurezza al livello più adatto al caso specifico.
+\section*{Esempio pratico: spectre + meltdown}
+Vediamo il file del kernel Linux \textsf{/proc/version}, che da informazioni sul kernel di Linux. L'informazione è mantenuta dal kernel, si contatta una API che copia in user space un'informazione da stampare, quindi c'è una variabile nel kernel space che contiene una informazione di stringa.\\Se lanciamo il programma, si vendono delle stringhe di formato. Nel codice c'è hardcoded l'indirizzo della variabile nel kernel, c'è un file che da gli indirizzi dei file nel kernel, ogni volta che si re-starta il sistema gli indirizzi cambiano, inoltre passando il cat senza root non si vede nulla (tutti i byte degli indirizzi sono 0 per questioni di sicurezza).\\ Invochiamo una operazione per aprire il file in memoria, quindi vogliamo spostare in cache i dati da accedere. A questo punto c'è l'attacco: forziamo la vittima, in questo caso il kernel, a caricare i suoi dati in cache per accedervi.\\Si usa un array per calcolare un indirizzo di memoria come avviene in spectre, si allena quindi il branch predictor per fargli credere che sia tutto giusto. Viene continuamente fatto un bound check, ovvero un tentativo di controllo sul probe array per ingannare l'unità di predizione dei branch in modo che questa creda che l'istruzione possa essere eseguita anche se non è così.\\Ora c'è un meltdown attack
+\begin{itemize}
+\item si prende il tempo di accesso alla cache
+\item se il tempo speso nella lettura del byte va oltre la threshold si può restituire il valore del byte misurato
+\end{itemize}
+perché si possono mescolare le due tecniche: meltdown è solo una variante di spectre, c'è un miss-uso implicito del branch predictor. Quindi, la maggior parte degli attacchi che ci sono oggi sono varianti di spectre, quindi si possono usare insieme perché meltdown ne è solo una variante. È necessario disattivare la protezione
+\chapter{Recap sulle DRAM}
+\section{Funzionamento della RAM}
+La memoria funziona in termini di scrittura/lettura di celle: ogni banco è organizzato in piccole celle di memoria, ci sono 3 segnali che vi operano
+\begin{itemize}
+\item select: seleziona una cella di memoria
+\item control: scelta dell'operazione da fare
+\begin{itemize}
+\item se write: si prendono i dati da scrivere dal data bus
+\item slides
+\end{itemize}
+\end{itemize}
+%immagine dello schema
+In una RAM, abbiamo un piccolo capacitore, che è carico / scarico: se carico porta valore 1, altrimenti 0. C'è un transistor controllore che da accesso al bit mantenuto nel capacitore. Quindi, se si vuole scrivere occorre dare corrente / rimuovere corrente, se si legge si cerca di scaricare il capacitore per vedere se era carico o no. Il problema è che il livello di carica del capacitore da il valore del bit, ma il capacitore si scarica nel tempo, quindi serve un modo per ricaricalo per tenere il bit ad uno "vivo".\\ Ogni byte è fatto da 8 schemi come questo, ogni volta che si legge una linea occorre fare il write back di quella linea.\\ È interessante vedere il funzionamento per due motivi
+\begin{itemize}
+\item lo scaricamento del capacitore è una esponenziale negativa, misurata con una costante (ricorda la costante di decadimento)
+\item quindi, a seconda di dove si fa il sensing del capacitore non è detto che si riesca a dire con certezza se c'è un 1 o uno 0
+\item in base ad una threshold, si ricarica il capacitore
+\end{itemize}
+Quindi, il memory controller legge periodicamente il contenuto della memoria per poi riscriverlo, anche quando non è ha bisogno solo perché una lettura ricarica il capacitore.\\Tipicamente, ogni 64ms il memory controller rilegge le linee per evitare di perdere il contenuto del condensatore, ogni volta che si fa un refresh il contenuto della memoria non è disponibile e quindi occorre aspettare. Questo è il motivo per cui la RAM è più lenta del processore, ci sono diversi modi per implementare il refresh
+\subsection{Refresh della RAM}
+Il refresh distribuito fa un refresh distribuito nel tempo dei 64 ms in modo da avere alcune aree di memoria disponibili mentre si fa il refresh, ma più si incrementa la grandezza della RAM si spende più tempo per fare il refresh, quindi a 16 GB spendiamo circa il 20\% del tempo operativo per refreshare la RAM.\\Quindi questo spiega ancora il perché le RAM sono più lente delle CPU.
+\section{Primitive di lettura}
+Siamo in grado di scrivere dei bit random in memoria. Il problema è la densità dei chip: i condensatori sono molto molto vicini, organizzati in matrice e che vengono caricati / scaricati ed ogni volta che si legge una riga vanno ricaricati i condensatori. Ogni volta che si legge quindi, la corrente che scorre c'è fluttuazione del voltaggio, che genera un EMF indotto che si espande fra le diverse linee. Quindi, questo genera effetti nei capacitori vicini, si possono quindi
+\begin{itemize}
+\item aumentare lo scaricamento del capacitore
+\item ricaricare
+\end{itemize}
+quindi, se si scarica prima, la deadline è più stretta ed il memory controller legge uno 0 piuttosto che un 1. Se si ricarica invece, si riesce ad andare oltre la threshold e si può ricaricare il capacitore. Quindi fare letture continue permette di flippare bit, nessuno se ne accorgerà e la cosa da fare è trovare delle righe adiacenti in memori fisica. Ma siccome l'organizzazione dei banchi di memoria è nota, vogliamo fare qualcosa del genere
+%codice dell'attacco
+questo è il blocco fondamentale di uno RowHammer attack, è semplice generarlo perché c'è duplicazione nel SO in quanto diverse pagine di memoria sono condivise fra le applicazioni, la maggior parte degli attacchi sfruttano il JS dei browser che sfruttano molto le pagine condivise.\\Quindi semplicemente leggendo pagine di memoria e conoscendo l'organizzazione della memoria, possiamo capire dove sono delle linee di memoria vicine.\\ Una pagina interessante che può essere sharata è codice di libreria crittografica, quindi possiamo fare il flip di un bit di una chiave
+\subsection{Mitigazioni possibili}
+Le possibili mitigazioni
+\begin{itemize}
+\item inserire dei CRC nel codice, ma gli attacchi possono flippare più bit e quindi non è detto che il CRC riesca a correggere i dati
+\item Ridurre l'intervallo dei 64 ms, ma già così il 64\% dell'uso della memoria di 64 GB viene speso per il refresh e quindi è un prezzo troppo alto da pagare
+\item Detection: creiamo molto rumore sulla cache, in quanto si fa load/flush dalla cache, ma una volta che è stato scoperta la posizione in memoria si genera meno rumore
+\item  Pseudo target row refresh: tracciamo l'accesso alle linee di memoria, così che il memory controller capisca che una linea di memoria è sotto attacco e cominci a refresharla più spesso. È però un tipo di approccio di "security by obscurity", quindi è fatto internamente dal memory controller ed inoltre è comunque possibile fare il lavoro su più di una linea di memoria adiacente.
+\end{itemize}
+Fare un attacco pratico non è semplice, occorre capire quali blocchi di memoria sono più soggetti ad essere flippati. Poi, si fa girare del codice shared e si aspetta che il SO mappi il codice su una zona di memoria su cui si sa di poter fare bit flipping e poi si fa l'attacco. Abbiamo tanto tempo per fare l'attacco, anche settimane, per capire l'organizzazione fisica della memoria, perché può girare anche in VM.
+\section{Memory performance attacks}
+\subsection{Architettura di memoria}
+L'implementazione di un memory controller non è così semplice, è datata e non è semplice da re-ingegnerizzare.\\ Ora c'è il multi-core, quindi è stato necessario un layer in più, lo scheduler. Il ruolo dello scheduler è implementare una specie di caching a livello di memory controller
+\begin{itemize}
+\item il MC deve fare sempre il refresh, ogni volta che si legge si spreca tempo. Si vuole quindi evitare di fare operazioni di memoria se non è necessaria
+\item c'è un row buffer nel MC: ogni volta che si legge una riga, questa viene cachata e se vi si ri-accede la si trova. Può esserci hit o miss, ma pensando alla località è verosimile leggere tutti i byte della stessa riga
+\end{itemize}
+Si cerca prima nel row buffer, se c'è miss si fa write back della riga e poi si fa l'operazione di lettura.\\ Questa è l'organizzazione di come funziona la memoria in un'architettura multi-core moderna
+%immagine dell'architettura
+Per avere un accesso fair alla memoria fra tutti i cores, tutto dipende dal protocollo usato all'interno del DRAM bus scheduler.\\L'algoritmo è FR-FCFS
+\begin{itemize}
+\item il bank scheduler prende riordina le richieste in base allo stato corrente del row buffer, inoltre implementa una policy FCFS in cui thread che generano più richieste hanno priorità maggiore, perché mettono più richieste in coda
+\item bus scheduler 
+\end{itemize}
+Se abbiamo un thread che fa molte richieste con alta località nel row buffer, le sue richieste supereranno quelle degli altri threads. Indipendentemente dal numero di richieste degli altri thread, sarà sempre lui ad avere la priorità rispetto a tutti gli altri per come funziona il protocollo. Quindi, se un attacker ha diversi thread che fanno molteplici richieste sullo stessa linea di memoria dello stesso banco di memoria, tutte le richieste vengono prese dallo stesso memory bank e per questo motivo sfruttiamo la località.\\Per fare questo memory hogging attack, occorre fare flush cache per poter sempre leggere dalla memoria.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
