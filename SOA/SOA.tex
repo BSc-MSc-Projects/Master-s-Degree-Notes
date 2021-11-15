@@ -1797,12 +1797,90 @@ abbiamo sicuramente una tabella delle interrupt, in modo da poter identificare u
 \item esecuzione multi-threaded dei task bottom half
 \item non è più vero che se c'è un thread a priorità più alta, si fa carico dell'esecuzione delle attività, lo fanno dei demoni di sistema
 \item è possibile fare il binding sulle CPU
-\item si può ancora fare accodamento, ma questo avviene sulle tasklet, strettamente legate alle softirq
+\item si può ancora fare accodamento, ma questo avviene sulle tasklet, strettamente legate alle Softirq
 \end{itemize}
-
-
-
-
+\subsubsection{Tasklet}
+Introdotte per avere un architettura di deferred work tale per cui alla chiamata del bottom half, questo può fare n cose differenti.Quindi, considerando le due entry viste sopra, il gestore delle SoftIRQ guarda in due liste eventuali informazioni per eseguire delle attività da portare avanti quando l'handler prende il controllo.Abbiamo quinid function pointer e data pointer per portare avanti il lavoro, ciascun oggetto è una tasklet, abbiamo due liste una associata alle high priority ed una alle normal priority
+%immagine dello schema
+Abbiamo che questi le teste di oggetti sono mantenuti per CPU, quindi qauando si risveglia un SoftIRQ deamon su una specifica CPU, lui guarda le code
+della specifica CPU, quindi non si hanno problematiche di sincronizzazione per gli inserimenti nelle code.\\Vediamo come è possibile usare le tasklet, la maggior parte dei driver Linux sono tasklet-based: possiamo, in Linux, di usare due macro per dichiarare le tasklet e quindi variabili strutturate da collegare alla lista
+\begin{itemize}
+\item \texttt{DECLARE\_TASKLET(tasklet, function, data)}
+\item \texttt{DECLARE\_TASKLET\_DISABLED(tasklet, function, data)}: nella variabile strutturata, in un campo specifico, si indicherà che la tasklet non può essere correntemente processata. Abbiamo quindi una facility che permette di inserire un oggetto in coda che però non può essere processato al momento, in modo da renderlo tale quando serve
+\end{itemize}
+Vediamo le API
+\begin{itemize}
+\item \texttt{tasklet\_enable}: abilita una tasklet dinamicamente;
+\item \texttt{tasklet\_disable}: disabilita la tasklet, ma è possibile che questa sia correntemente attiva, quindi l'API in quel caso porta a sincronizzarsi finché la tasklet non è completa;
+\item \texttt{tasklet\_disable\_nosync}
+\end{itemize}
+vediamo anche come schedulare le tasklet
+\begin{itemize}
+\item \texttt{tasklet\_schedule}: mette la tasklet nella coda normal priority della CPU corrente
+\item \texttt{tasklet\_high\_schedule}: la mette nella coda high priority
+\item \texttt{tasklet\_high\_shcedule\_first}: la mette nella testa della coda delle tasklet ad alta priorità
+\end{itemize}
+La tasklet è processata una volta quando inserita nella coda.\\Ci sono anche altre funzioni importanti
+\begin{lstlisting}
+void tasklet_init(){
+	t->next = NULL;
+	t->state = 0;
+	atmoic_set(&t->count, 0);
+}
+\end{lstlisting}
+%codice dalla slides
+\texttt{state} pari a 0 implica dire che la task può essere schedulata. Possiamo abilitare/disabilitare atomicamente la tasklet.\\Nota importante: se smontiamo dei moduli in Linux, è possibile che questo includa al suo interno la funzione \texttt{f()} puntata da una tasklet. La tasklet nella coda analizzata dal SoftIRQ deamon può starci un tempo indeterminato, perché potrebbe essere in stato disabled, quindi quando si implementano dei device driver che usano anche delle tasklet occorre stare attenti allo smontaggio che non ci siano deamon che fanno suo della funzione.\\Ci possono anche essere problemi di sicurezza se si sovrascrive ad esempio l'aera di memoria puntate dalla tasklet.\\Riassumendo quindi
+\begin{itemize}
+\item le tasklet permettono di fare lavoro concorrente;
+\item limitazione: le tasklet non possono essere migrate in code di altre CPU. È un limite importante che è coinvolto anche nei parametri che si possono passare alle API, in quanto non è possibile ad esempio indicare che la tasklet va installata su un altro CPU core.\\Non possiamo quindi a livello del driver fare spreading del lavoro su diverse CPU core, nel caso in cui vadano svolti n task
+\item le tasklet hanno un livello di priorità simile a \texttt{tq\_schedule}
+\item attenzione a cosa si scrive nella funzione \texttt{f()}, se questa si fa puntare da uno degli elementi della tasklet queue, andrà comunque inserito l'utilizzo di costrutti non bloccanti. Se ad esempio serve chiamare allocazione di memoria va fatto con parametri non bloccanti, quindi si blocca il SoftIRQ deamon.
+\end{itemize}
+\subsection{Work queues}
+Si hanno da kernel 2.5 $>$ e si cerca di recuperare l'utilizzo delle task queue originali e l'idea di essere scalabili. Occorre cercare di capire quando è necessario utilizzarle:
+\begin{itemize}
+\item gli utenti di \texttt{tq\_immediate} dovrebbero usare le tasklet
+\item gli utenti \texttt{tq\_timer} dovrebbero usare timer 
+\end{itemize}
+Altrimenti si usano le work queue, si chiede di eseguire del lavoro secondo uno schema di deferred work a qualcuno che è un demone multi-threaded, che esegue quando uno dei thread viene schedulato dalla CPU.\\Le funzioni che si possono usare nella work queue possono anche essere bloccanti, in ogni caso il demone è organizzato per venire incontro all'esigenza di bloccarsi per determinate attività.\\Questa cosa è gestita e quindi permettono di avere una sorta di automatismo per capire che qualcosa richiesto è bloccante e di proseguire con l'esecuzione globale delle attività postate verso la work queue.\\Vediamone il funzionamento: c'è una default queue in Linux, all'interno del sistema ci sono API per inserire informazioni all'interno delle code: sono molto simili alle task queue, abbiamo come API
+\begin{itemize}
+\item \texttt{schedule\_work(struct work\_struct *work)}: inseriamo il nodo nella work queue. Non ci sono altri parametri, quindi non c'è il concetto di identificare la CPU
+\item \texttt{schedule\_work\_on(int cpu, struct work\_struct *work)}: bypassiamo il problema delle tasklet, possiamo inserire del lavoro su una coda associata ad una CPU diversa da quella dove siamo in esecuzione, quindi il lavoro di inserire nella work queue sarà fatto dal demone su quella CPU
+\item \texttt{INIT\_WORK()}
+\end{itemize}
+Quindi, la singola work queue è formata da code multiple, una per CPU. Possiamo anche dichiarare altre code, con delle apposite API
+\begin{itemize}
+\item \texttt{create\_workqueue()}: supponiamo di avere D, workqueue di default, ne creiamo una nuova con nome N. Quella di deafult è una multi-coda, così come anche N quindi quando si crea una nuova work queue si crea una nuova struttura di questo tipo.\\Quando si crea N, vengono creati anche dei demoni? Fino a certe versioni di Linux venivano creati, da versioni recenti ci sono dei meccanismi automatici per la gestione della concorrenza nella gestione delle work queue; ci sono diversi automatismi interessanti.
+\item \texttt{create\_singlethread\_workqueue()}: quando processiamo le attività della coda creata solo una attività per volta può essere attivata, quindi è come avere un singolo thread che esegue le attività. Rispetto ad una work queue originale, non si può mettere un thread su ogni CPU per guardare i diversi livelli, uno per livello. Con una workqueue single thread un solo thread va a guardare gli oggetti. Può essere utile per motivi di serializzabilità, inoltre se il lavoro può essere processato secondo uno schema deferred è necessario avere uno schema di sincronizzazione che per alcuni moduli nativamente single threaded non ha senso.
+\item \texttt{destroy\_workqueue()}: possiamo distruggere una work queue che non serve più
+\end{itemize}
+Quindi, creare una work queue vuol dire comunque avere molteplici code, una per CPU, cambia se è single thread o multi-thread
+%immagine carina delle CPU
+Vediamo come usare le work queue, sia di sistema che non
+\begin{itemize}
+\item \texttt{queue\_work()}: inserisce lavoro da fare
+\item \texttt{queue\_delayed\_work()}: il lavoro viene messo in coda per essere processato dopo lo scadere di un certo tempo
+\item \texttt{cancel\_delayed\_work()}
+\item \texttt{flush\_workqueue()}: flushare la work queue implica dire che il thread chiamante processa le attività contenute
+\end{itemize}
+\subsubsection{Schema attuale}
+All'inizio, venivano generati diversi thread demoni per la loro gestione e non ci piace molto perché si usano diverse risorse di sistema.Il livello di concorrenza elevato sulle work queue inoltre implica dire che siamo più proni a deadlock, quindi c'è una problematica importante anche sulla garbage collection ed il riuso della memoria.\\Supponiamo di avere due lavori da processare, gestiti da due thread diversi, occorre avere un context switch, se le code cominciamo a diventare tante servono tanti context switch, specialmente se il lavoro è costituito da poche istruzioni macchina.\\Questi motivi hanno portato, su Linux (dal 2010 in poi) sono le \textbf{concurrency managed work queues}: il numero di thread che gestiscono le work queues sono gestiti dal sistema, così come anche la concorrenza.\\Avviene questo: abbiamo diverse work queues A,B,C,D (multi-code) per processare qualunque cosa messa nelle code ci va un unico thread preso da un thread pool. È interessante che il sistema può determinare se serve lanciare altri thread per fare il lavoro, inoltre tutto questo è collocato nell'architettura di Linux in una nuova API \texttt{alloc} che viene incapsulata nella \texttt{create\_workqueue}, la alloc crea la workqueue ma non il pool di thread eccetto per scenari particolari legati ai parametri di input
+\begin{itemize}
+\item possiamo specificare il livello di concorrenza effettivo all'interno della work queue, ad esempio dicendo che al più un singolo thread può essere attivo sulla coda, ad esempio esisteranno dei try lock per cui quando un worker locka la coda, gli altri non possono;
+\item possiamo avere almeno un thread specifico attivato ex-novo per processare le attività della work queue.Il thread nuovo sarà però associato solo alle attività di quella workqueue, questo è molto importante quando sulla workqueue ci sono operazioni per rilasciare risorse, quindi ci deve sempre essere un thread pronto ad eseguire le operazioni.
+\end{itemize}
+\subsubsection{Altra cosa software}
+Quando gestiamo deferred work, abbiamo sicuramente una struttura dati che rappresenta il deferred work da inserire da qualche parte, ma è anche vero che quando si processa il lavoro questo può essere correlabile ad una attività di uno specifico sotto-sistema del kernel. Sebbene identifichiamo una funzione \texttt{f()}, questa lavora su un sotto-sistema, quindi è possibile che la tabella sia visibile da sotto-sistema e che quest ultimo correli la tabella ad un altra struttura più ampia quindi in generale possiamo avere una struttura che rappresenta le informazioni necessarie a qualcuno embeddata in una struttura con informazioni necessarie qualcun altro.\\Abbiamo una macro \texttt{container\_off}: se abbiamo una struttura dati, che contiene un certo elemento con una certa struttura, la macro restituisce l'indirizzo della struttura più esterna.\\È fondamentale, perché la fuznione \texttt{f()} interna può andare a lavorare su altri campi della tabella, quindi è importante poterla navigare.
+\subsection*{Esempi software}
+Vediamo due esempi in cui introduciamo una nuova syscall, quando chiamata si inserisce del lavoro da fare deferred
+\begin{itemize}
+\item in uno primo running example si mette in una tasklet
+\item nel secondo in una workqueue
+\end{itemize}
+\subsubsection{Primo esempio}
+Abbiamo una struttura dati packed task, che contiene la struttura che indica il lavoro da fare per una work queue. Inseriamo una funzione da fare, quindi non possiamo smontare il modulo, che deve eseguire il deferred work. Usiamo quindi la \texttt{try\_module\_get}.\\Chiamiamo la kzalloc per ottenere memoria in maniera non bloccante.\\Andiamo poi nel campo interno della tabella ad inserire la tasklet, a cui diamo come parametro l'indirizzo di memoria di tutta la tabella contenitore.\\La chiamata ad \texttt{audit}, a valle dell'esecuzione, deve rimuovere una unità dal blocco altrimenti non sarà possibile smontare il modulo. Nell'applicazione utente chiamiamo lavoro da fare da parte del SoftIRQ deamon, per un certo numero di volte. Con le tasklet si inserisce del lavoro da fare solo sulla coda della CPU su cui si gira in quel momento.
+\subsubsection{Secondo esempio}
+Utilizzo delle work queue, l'architettura è molto simile. Qui però possiamo specificare il processor ID dove mettere il lavoro deferred, cosa che non si poteva fare con le tasklet.\\Possiamo fare il deferred work bloccante, perché c'è un thread pool che permette di processare le altre cose, in questo caso possiamo essere più bilanciati e flessibili per come si bilancia il lavoro. Spesso quando si implementano dei driver è interessante la parte delle workqueue per fare deferred work, inoltre c'è un ulteriore cosa da considerare: secondo uno schema deferred si chieda che qualcuno esegua l'attività nel kernel. Abbiamo un thread T che inserisce nel workqueue Q un'attività, processata dal demone della workqueue per processarla. È importante per aspetti di scalabilità ma anche di sicurezza: molte delle soluzioni orientate alla sicurezza prevedono di monitorare un thread, ma se questo richiede di fare delle cose ad un altro thread diventa difficile scoprire qual è il thread che esegue, quindi è possibile costruire un rootkit che inserisce del lavoro non tracciabile da tutte le soluzioni moderne in circolazione (vedi l'esempio di Pellegrini, è proprio QUEL rootkit deamon).
 
 
 

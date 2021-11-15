@@ -1299,16 +1299,80 @@ Per avere un accesso fair alla memoria fra tutti i cores, tutto dipende dal prot
 \item bus scheduler 
 \end{itemize}
 Se abbiamo un thread che fa molte richieste con alta località nel row buffer, le sue richieste supereranno quelle degli altri threads. Indipendentemente dal numero di richieste degli altri thread, sarà sempre lui ad avere la priorità rispetto a tutti gli altri per come funziona il protocollo. Quindi, se un attacker ha diversi thread che fanno molteplici richieste sullo stessa linea di memoria dello stesso banco di memoria, tutte le richieste vengono prese dallo stesso memory bank e per questo motivo sfruttiamo la località.\\Per fare questo memory hogging attack, occorre fare flush cache per poter sempre leggere dalla memoria.
-
-
-
-
-
-
-
-
-
-
+\chapter{OS Security Principles}
+\section{Principi di sicurezza}
+Consideriamo due principi di sicurezza base
+\begin{itemize}
+\item il sistema deve essere usato solo da utenti legittimi
+\item l'accesso è permesso in base ad un'autorizzazione, data dal sysadmin
+\end{itemize}
+Il primo punto sembra facile, ma come un attacker possiamo fare un DoS per rendere il sistema non usabile anche ad utenti legittimi.\\L'idea è concentrarsi sul primo punto
+\section{Kerenl User Space API}
+Il kernel non vuole lasciar fare tutto all'utente, quindi si accede al kernel mediante syscall. Il kernel gira sull'Intel CPU in proteceted mode, possiamo sfruttare 4 ring di protezione, più basso il ring maggiore il privilegio.\\All'inizio, a ring 0 c'è il kernel, a 1-2 i device hardware, a 3 lo user space. Girando a livello 3 non si possono usare diverse operazioni privilegiate ma bastano per poter implementare sicurezza a livello kernel. In SO comuni si usano i livello 0 e 3, diverso se si installano hypervisor per la virtualizzazione.\\Ad un certo punto dell'esecuzione, vorremmo cambiare ring, ad esempio passando da user space a kernel space etc... in ogni momento si può de-privilegiare l'utente in Intel, ma l'inverso va controllato e possibilmente non permesso.\\Per accedere ad un ring più privilegiato si passa per un GATE, come mostrato in figura:
+%GATEs
+da user space non si salta alla funzione kernel, si passa per una routine che è registrata per un security GATE. Questo si ottiene con i registri segmento, come SS,BS etc... non mantengono più numeri bensì descrittori di tabelle, che dicono quali sono le capability di accesso ad una area di codice. Ogni volta che si vuole passare per un GATE si sovrascrive il contenuto del registro, ma prima di farlo il firmware fa dei controlli di sicurezza: ci sono due campi coinvolti
+\begin{itemize}
+\item si legge il campo CPL nel CS per sapere il ring corrente
+\item nella tabella dei descrittori, che si accede con l'indice dei registri, c'è il DPL che dice qaul è il livello di privilegio a cui quel ring può essere acceduto
+\end{itemize}
+Da user space siamo a CPL = 3 e possiamo cambiare ring se il DPL = CPL. Se vogliamo invece abbassare il privilegio possiamo semplicemente sovrascrivere il registro segmento.
+\subsection{GATE}
+Un GATE è un segment descriptor, ce ne sono diversi tipi che descrivono il motivo per cui si cerca di passare per un security GATE.\\Ce ne sono di diverso tipo
+\begin{itemize}
+\item Call-gate, non più usati (?)
+\item Interrupt-gate
+\item Trap-gate: interrupt software asincrono
+\item Task-gate
+\end{itemize}
+Un GATE, per poter fare una transizione dei privilegi, su architetture tradizionali, si basa su un trap-gate descriptor: si genera una trap sincrona dal software che triggera l'esecuzione di un trap-descriptor. La tabella in memoria che mantiene i trap-gate descriptor è la IDT, puntata dal registro IDTR.\\Abbiamo quindi il seguente schema
+%immagine dello schema
+l'interrutp handler è una routine, il suo address è specificato nel campo offset del SD.L'entry ha anche un selettore, che specifica un SD nell GDT; entrambe le tabelle sono popolate a startup time dal SO.\\Non si usano i Call-gate descriptor, perché guardando lo schema vogliamo chiamare una funzione kernel dallo user space, poiché il descrittore andrebbe mantenuto nella IDT che permette solo di mantenere 256 entry per costruzione, quindi ci sarebbero meno campi possibili per le syscall kernel.
+\subsection{Syscall}
+Si basano su software trap che vada a targettare una specifica entry dell'IDT, l'idea è che quando gestiamo gli interrupt, ad un certo punto va scelta l'entry dell'IDT da associare con la ricezione dello specifico interrupt.In Linux, l'istruzione macchina corrispondente alla software trap è 0x80 (0x2E in Windows), il codice che è nell 'interrupt handler è un preambolo che determina quale syscall va chiamata, dopo essere transitato in kernel mode.\\È possibile quindi scrivere in un registro segmento solo se il DPL è $\geq$ del CPL attuale, un GATE è un'eccezione alla regola: il DPL in questo caso è il livello di privilegio a cui si può girare. Vediamo il seguente esempio:
+%immagine del cambio CPL
+se cerchiamo di sovrascrivere il contenuto del DPL, viene fatto il check mostrato, per evitare la transizione da ring 3 a ring 0. Ma se viene generato un interrupt, come una trap, il check è diverso e quindi alla fine possiamo scrivere nel GATE descriptor 3 e quindi il GATE diviene attraversabile se giriamo a livello 3.C'è un segment selector che prende il segment descriptor trova un DPL pari a 0: un GATE dice quindi qual è il privilegio minimo per cui si può transitare ad un livello di privilegio maggiore.
+\subsection{Syscall table}
+Agglomeriamo in un unico handler diverse syscall, che è il syscall handler che controlla qual è la syscall da accedere. Questo è possibile controllando la system call table, che è una tabella di function pointer a funzioni di livello kernel.\\Quando si gira in kernel mode quindi, si prende dalla syscall table l'indirizzo della funzione da chiamare e quindi possiamo fare tutti i controlli di sicurezza nel syscall dispatcher, è possibile quindi semplificare la manutenibilità dell'OS.\\Il dispatcher ha bisogno dell'offset per identificare la syscall corretta, si usa un intero che è il syscall number. La syscall si attiva con un meccanismo indiretto, quindi si può accedere su un attacco tipo spectre, perché si accede con un intero quindi si può trainare il branch predictor per far si che poi si salti male e quindi molti OS moderni usano le retpoline per fare la chiamata. Lo schema è quindi il seguente
+%schema
+\subsubsection{Dispatcher}
+Attiviamo il dispatcher, troviamo sullo stack l'interrupt frame, che è come lo stack frame ma modificato dal firmware per indicare che questo è stato modificato da una trap. Il dispatcher copia i contenuti dei registri sullo stack, tra cui ad esempio gli argomenti della syscall, poi si fa l'invocazione della syscall e quindi sotto lo stack della funzione corrente si può trovare uno snapshot completo della CPU. Questo ha il ruolo fondamentale di tornare allo user space con l'effetto di ritrovare tutti i valori dei registri come se non fossero stati manipolati.\\La struttura dati è in Linux \texttt{pt\_regs}, dove si trova tutto il contenuto sotto lo stack frame della syscall chiamata.\\Sono stati introdotti dei meccanismi di fast syscall per evitare tutto questo overhead
+\begin{itemize}
+\item su architetture a 32 bit vengono usati dei model-specific registers aggiuntivi, si usa il meccanismo della \texttt{SYSENTER}. Un insieme di 
+registri vengono usati per mantenere il valore di CS quando si transita kernel mode + vari altri registri
+\item \texttt{SYSEXIT} è la controparte della precedente
+\end{itemize}
+Non occorre più usare l'organizzazione vista prima, ma scrivere a startup i valori nei 4 registri per transitare in kernel mode e questo può essere fatto solo una volta a stratup time.\\L'implementazione è molto patchy, una volta che AMD ha sviluppato l'architettura a 64 bit è stata introdotta la coppia \texttt{SYSCALL/SYSRET} che sono basate di nuovo su registri model-specific.\\Allo startup del kernel, nella funzione di \texttt{syscall\_init(void)} si trovano le istruzioni per scrivere i valori del Code Segment sia per user che kernel space.L'entry point per il stscall dispatcher viene scritto nell'ultima istruzione.
+%copia lo snippet
+Intel ha un approccio backward compatible, quindi entrambe gli approcci sono validi, quindi ad esempio per raggiungere la syscall di read abbiamo diversi execution flows
+%immagine finale
+\section{User identification}
+Un altro aspetto fondamentale, che da la possibilità di identificare chi fa operazioni su quale file. Questo viene fatto con due file:
+\begin{itemize}
+\item \textsf{/etc/passwd}
+\item \textsf{/etc/shadow}
+\end{itemize}
+Sono vecchi DB di tuple in cui si trovano le seguenti informazioni
+\begin{itemize}
+\item \textsf{/etc/passwd}: username:passwd:GID:full\_name:directory:shell. La parte della password è critica perché si potrebbe copiare il file e cercare di fare bruteforcing di tutte le password degli utenti. Con lo shadowing si rimpiazza il campo col placeholder x
+\item lo shadow file ha sempre delle tuple: username:passwd:ult:can:must:note:exp:disab:reserver (slides per il significato)
+\end{itemize}
+La cosa importante è come il kernel guarda gli utenti: per il kernel la cosa importante è l'UID, che è un identificativo con cui il kernel fa i check di sicurezza, lo stesso vale per il GID
+\subsection{UID/GID in Unix}
+Il kernel associa ad ogni processo running diversi UID:
+\begin{itemize}
+\item l'UID reale è un intero che dice chi è l'utente reale che ha lanciato il programma
+\item il secondo UID è l'UID effettivo in termini di quale utente puoi diventare, quindi ad un certo punto si può cambiare l'utente con cui si gira
+\item il 3° è il saved UID, quindi chi si può nuovamente ridiventare, ad esempio di tornare all'utente originale
+\end{itemize}
+lo stesso vale per i GID.\\ Ci sono delle syscall apposite per cambiare utente: l'utente root è sempre associato a uid pari a 0, abbiamo le syscall \texttt{setuid()/seteuid()} che possono essere invocate solo da applicazioni che girano con privilegi di root. Se volgiamo scoprire i valori di uid e euid ci sono le get, chiamabili senza privilegi.\\ La \texttt{setuid()} non è reversibile, quindi di sovrascrivono tutti e 3 i valori, mentre la \texttt{seteuid()} lo permette. Quindi se un'applicazione ha l'euid impostato a 0 permette di divenire temporaneamente root.\\Introduciamo come lavorano su e sudo: vengono mantenute le informazioni dell'euid. Se cerchiamo le informazioni legate al binario SUDO c'è un bit aggiuntivo che dice che una volta lanciato l'applicativo l'euid va mantenuto dal SO (è il bit "s") e quindi real e saved uid sono dell'account che ha chiamato ma l'euid è 0, quindi root ed a questo punto si possono chiamare le syscall viste prima. Si può anche chiamare su con sudo, per cambiar utente e su richiederà la password per poter verificare nello shadow file se è corretta.\\Quindi avere un binario con S attivo è un grande problema se è possibile trovare un bug nell'applicazione perché si può fare di tutto.
+\subsubsection{Rottura di un modulo kernel}
+Installiamo un modulo nel kernel:
+\begin{itemize}
+\item nella funzione di inizializzazione, possiamo fare cosa volgiamo perché siamo a ring 0. La prima cosa è prendere l'indirizzo della syscall table, per scandire la memoria un func pointer alla volta a partire da un certo indirizzo e troviamo la syscall table nel momento in cui troviamo l'indirizzo di una syscall. Si può fare, in kernel mode, l'accesso al file kallsysm, ma è stato disabilitato.\\Quindi si può fare profiling della funzione, si inserisce una funzione di callback (hook) tramite kprobe per poter leggere l'indirizzo della kallsyms\_lookup\_name\_t e poterlo restituire.\\ Quindi, ogni volta che si incrementa la sicurezza si perde qualcosa, in questo caso si perderebbe la possibilità di fare kernel profiling
+\item per poter scrivere la nuova syscall nella syscall table si accede al cr0, dove c'è un bit che dice se occorre fare check della protezione della memoria, si flippa quindi il bit di protezione stando attenti a fare memory reordering delle operazioni.
+\item ri-scrittura della kill per gestire determinati segnali
+\item per nascondere un processo, basta ricordare che in Linux tutto è un file, quindi si può nascondere anche un processo.
+\end{itemize}
 
 
 
