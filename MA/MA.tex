@@ -761,8 +761,113 @@ Vediamo l'ultimo comando, ovvero "-cc"
 Rilanciamo il debugger cambiando argomento, mettendo "-cc", sempre con disassemblatore +  debugger: viene chiamato il cc\_handler se tutti gli argomenti sono ok, possiamo vedere gli argomenti: numeri tutti pari a 1024 e degli indirizzi, perché sono indirizzi sullo stack quindi sono buffer locali.\\Se vediamo cosa contengono, non sembra ci sia nulla di interessante, andiamo avanti con f8 per vedere cosa diventano: sono stati riempiti con i valori dal registro di configurazione. C'è un'altra CALL, che riceve gli stessi parametri + 1, che è una stringa di formato e siccome il primo parametro è una stringa formato e poi ci sono tutti i parametri è per forza la printf.\\Il "-cc" quindi fa il dump della configurazione, abbiamo capito quasi tutto ed una prova che effettivamente abbiamo capito è d'obbligo: potremmo andare a lanciare il programma con -c cambiando la configurazione e con -cc stampare la configurazione.
 \subsection{Caso senza parametri}
 Manca il caso senza parametri, ovvero quando il programma viene invocato all'avvio di Windows. Proviamo a rientrare nel debugger e rifarlo senza parametri, facendo finta di essere il servizio che il malware realizza.\\Vediamo che si apre la chiave per leggerne i valori e se non la trova restituisce 0, ma noi abbiamo installato il malware in version patchata (rida sempre 1).\\Non sembra che ci siano altri effetti, se la configurazione non va bene rida 0, altrimenti 1 e chiude gli handles per cui il malware funziona bene anche con la patch.\\Quindi, è vero che è stato installato il malware ma se proviamo a lanciarlo senza parametri il programma termina e questo non è ciò che dovrebbe fare un servizio, che deve rimanere in attesa indefinita per accettare e gestire gli eventi.\\Se lanciamo a mano il programma non viene avviato, qualcosa non funziona e quindi lo scopo ora è capire cosa non funziona e fare eseguire il malware nel modo previsto e che ora non funziona, quindi come un servizio vero e proprio.
-
-
+\chapter{Lezione 16}
+\section{Completamento dell'esercizio di analisi del malware lab-009}
+Avevamo identificato una serie di opzioni che controllavano lo stato del malware.Non abbiamo del tutto chiaro il ruolo di tutti i parametri del malware, alcuni li conosciamo:
+\begin{itemize}
+\item url
+\item numero di porta (80)
+\end{itemize}
+ma poi abbiamo la stringa "ups" ed il valore 60 che non sappiamo a cosa corrisponde. Manca un solo caso da coprire, ovvero quello per cui l'eseguibile viene invocato senza argomenti sulla command line, in quanto è il caso tipico per cui viene invoca un eseguibile che implementa un servizio.Abbiamo però anche visto che facendo partire il servizio, il processo non viene attivato ma fallisce.\\Dobbiamo cercare di fare debug e vedere il meccanismo di funzionamento del programma come servizio, quindi nuovamente apriamo la coppia OllyDbg + Ghidra
+\begin{itemize}
+\item dentro main, si guardano il numero di parametri, che se era 0 portava a guardare la configurazione del registro;
+\item se si trova la configurazione, si va a chiamare una funzione, quindi è quella che implementa il servizio: la chiamiamo \texttt{service\_main};
+\item andiamo nel debugger e mettiamo un break point sull'istruzione;
+\end{itemize}
+Si arriva ad invocare una funzione, che riceve sullo stack la stringa ASCII 80 e restituisce, consultando i registri in OllyDbg, il valore 80 e quindi abbiamo beccato la \texttt{atoi}. C'è poi una successiva invocazione, che riceve come parametri 
+\begin{itemize}
+\item la stringa "http..."
+\item come secondo argomento il valore 80
+\item ci sono altri valori sullo stack che sembrano essere puntatori a buffer che puntano al risultato della funzione
+\end{itemize}
+Ci aspettiamo che una delle funzioni invocate restituisca un errore, quindi col debugger dobbiamo cercare di fare ricerca di ciò che non funziona per metterci nelle condizioni di far funzionare il malware per evitare di ricadere nel caso dell'analisi statica che è più onerosa.\\La rete della macchina non è connessa, quindi conviene farlo perché abbiamo capito che si collega alla rete: cosa accade se proviamo ad aprire l'url mostrato si apre realmente un sito e quindi forse è quello il motivo per cui il malware non funziona, ma guardando fra i servizi di sistema lo troviamo ancora non attivo.\\Torniamo al debugger nella funzione trovata, il valore di ritorno è 1. Viene fatto un test di eax e se non è 0 viene messo EAX ad 1e si salta a cancellare e chiudere il programma.\\Ripartiamo quindi ed analizziamo la funzione per capire come mai restituisce 0 e non 1
+\subsection{Analisi delle funzioni chiamate}
+Vale sempre la pena vedere se Ghidra riconosce la funzione, ma la funzione non sembra semplice e conviene seguirla col debugger: viene invocata la 401e60, che termina mettendo in EAX il valore 1, ed abbiamo lo stesso meccanismo di prima. Quindi mettiamo un breakpoint sulla funzione e ripartiamo
+la funzione 401e60 
+\begin{itemize}
+\item riceve un buffer + una dimensione di 1024 byte;
+\item dopo la \texttt{alloca} ci si prepara ad invocare la 401420, cerchiamo di capire con f8 l'effetto: lo stack pointer punta alla stringa "http...", quindi legge l'url dalla configurazione;
+\item va avanti chiedendosi se è stato letto l'url e prosegue, possiamo chiamare la 401420 \texttt{conf\_get\_url};
+\item si prepara ad invocare la 401e98, il risultato è la stringa 80, quindi recupera la porta e possiamo rinominare anche questa funzione;
+\item ci prepariamo ora ad invocare la funzione 401de80 a cui viene passati un buffer ed una volta invocata nel buffer c'è una stringa "strana";
+\end{itemize}
+se ripetiamo l'esecuzione ogni volta, scopriamo che c'è sempre una stringa differente, quindi è possibile che la funzione restituisca una stringa casuale, quindi abbiamo dato un significato più o meno anche a questa funzione. Mette tutte le stringhe + altri due puntatori sullo stack per poi invocare la 401af0, per cui il valore di ritorno è 1 e sappiamo già il meccanismo, per cui dobbiamo capire cosa fa la 401af0
+\begin{itemize}
+\item da qui dentro, viene invocata la 401640 passando un pointer, la stringa http ed il valore 80;
+\item di nuovo vediamo con f8 il valore di ritorno, è 1 quindi si riparte da capo;
+\item troviamo al suo interno un'invocazione alla DLL: le funzioni dinamiche si possono linkare in due modi
+\begin{itemize}
+\item dando la stringa della DDL;
+\item dicendo qual è la DLL e dicendo di invoca la 115 (numero a caso eh) API della DLL. Ghidra non conosce la DLL e quindi conosce solo il codice
+\end{itemize}
+Si va quindi ad aprire il database msdn per vedere le API riconosciute
+\item la \texttt{WSAStartup} implementa i meccanismi di base del networking con le socket, inizializzando l'uso della \texttt{Winsock} DLL.
+\item siamo arrivati al punto dove si cerca di usare la rete, cambiamo in Ghidra il nome della funzione per ritrovarla quando serve
+\end{itemize}
+Andando avanti, si cerca di invocare la DLL numero 52 che è la \texttt{GetHostByName}, che restituisce 0 e scopriamo che il valore di ritorno è un puntatore a NULL nel caso di errore. Se infatti il valore di ritorno è 0, viene chiamata la \texttt{CleanUp...} che chiude tutto l'ambiente, tutte le informazioni vanno salvate in Ghdira; a questo punto c'è qualcosa che non va in \texttt{GetHostByName} perché il parametro ricevuto in input è una url, ma in realtà funziona avendo il nome DNS. Quindi, il problema qui può essere che la configurazione è fatta in maniera tale da non rendere funzionale il malware: proviamo a cambiare la configurazione, mettendola nel programma con "-c ups www.practicalmalwareanalysis 80 60 AMW21" e poi col -cc facciamo si che la configurazione venga salvata.\\ Una volta cambiata la configurazione, ripartiamo dal debugger: viene invocato \texttt{socket} ed il valore di ritorno è 288, ovvero il file descriptor del \texttt{socket}, troviamo poi la \texttt{ntohs} e la \texttt{connect} che hanno tutte successo. Dopo di che ritorna e si prepara a fare altro, ma ritorna con EAX = 0 e quindi la funzione ha avuto successo e possiamo chiamare la 401640 come \texttt{server\_connect}.\\Il codice comincia a fare manipolazione di stringhe: "HTTP 1.0", "GET", la prima CALL che usa le stringhe è una \texttt{send} che manda sul socket i dati a 19b188, che dal debugger vediamo contiene "GET/stringa random di prima HTTP 1.0": se anche continuiamo, il programma si aspetta una riposta e qui il problema è metodologico: il server scopre subito che il malware è stato attivato o che qualcuno ne sta facendo l'analisi. Occorre prima avere un'idea chiara di vedere cosa ne fa il client di questa informazione. Può essere un'idea mettere un server nostro di mezzo con ApateDNS o cambiando il codice del malware mettendo una stringa a piacere.\\Possiamo però configurare il malware per non contattare il sito ma un nostro server: possiamo usare la macchina Linux che ospita la vm, ovvero l'ip della macchina viene messo nel "-c" (tanto \texttt{gethostbyname} funziona", ma ritorna a fallire in quanto la macchina non ha la porta 80 aperta: possiamo usare netcat per aprire il server web.\\Riprendiamo l'analisi e vediamo che dopo la send c'è la recv bloccante: mandiamo qualcosa mediante netcat e in Ollydbg vediamo che abbiamo la funzione \texttt{strstr} si cerca l'occorrenza di "$\backslash$n$\backslash$n" nella stringa passata con netcat. Se non lo trova, torna a fare \texttt{recv}, abbiamo un ciclo che si interrompe quando viene visto il carattere "$\backslash$n$\backslash$n", che vuol dire che è stato completato di costruire il pacchetto che si aspetta di ricevere dal server.\\Andando avanti, troviamo una clean up che chiude la connessione, magari perché ha letto tutto il necessario e può chiudere. In seguito, si torna alla 401af0, che possiamo chiamare con \texttt{get\_server\_packet}, cominciano dei controlli con delle stringhe: vediamo delle virgolette e si aspetta di ricevere dal server una stringa con questo tipo di formato. Il lavoro è questo: cercare di andare un po' avanti e capire cosa non funziona, mettere in piedi il meccanismo per farlo funzionare. Occorrerebbe ora rilanciare il server e provare a vedere se si convince il malware con una stringa nel formato trovato nel debugger e se va avanti vediamo che altro si aspetta.\\La 402020 quindi si connette al server ed ottiene le istruzioni su cosa c'è da fare, si aspetta il formato della stringa ed un comando, ma se vediamo il \texttt{service\_main} questo è un ciclo senza fine quindi nella 402020 non c'è solo la logica per ottenere il comando, ma anche per eseguirlo: vedremo probabilmente una serie di confronti fra una parte di quello che abbiamo ottenuto e la stringa Sleep, che farà dormire il processo, troviamo poi la stringa "Upload", "Download" etc...\\Seguendo questa logica, riusciamo a ricostruire tutti i comandi che il malware riceve: i due fondamentali sono "Download" ed "Upload", c'è l'ultimo comando che è "CMD", che non fa altro che aprire una shell di comandi ed eseguire il comando eseguito.\\Il server remoto può fare qualunque cosa sulla macchina target, perché è un servizio di sistema installato con diritti di amministratore.
+\chapter{Lezione 17}
+\section{Metodi del malware per contrastare l'uso del debugger}
+Ci sono diversi modi con cui il malware può ostacolare il processo di analisi dinamica, probabilmente centinaia quindi cerchiamo di capire come trovare una soluzione, anche in presenza di nuove misure.\\Possiamo suddividere le tecniche in 4 classi
+\begin{itemize}
+\item identificare che c'è un debugger in esecuzione, così che l'eseguibile abbia un comportamento diverso;
+\item identificare il comportamento del debugger, quindi cercare di sfruttare alcuni meccanismi che ogni debugger usa per ostacolare il meccanismo di analisi;
+\item interferire col comportamento del debugger;
+\item sfruttare le vulnerabilità dei debugger, in quanto i debugger in quanto software hanno dei bug.
+\end{itemize}
+la distinzione sembra netta, ma la differenza non è così netta.
+\subsection{Prima classe di tecniche}
+Se il programma cambia comportamento quando eseguito da debugger, si apre con Ghidra il programma per cercare di capire come mai: se ad esempio il programma apre una MessageBox, ci chiediamo dove avviene tale creazione che nel debugger non si vede. Ad esempio. questa modalità può essere ottenuta mediante API come la \texttt{IsDebuggerPresent()} della DDL Windows, possiamo pensare quindi anche a delle contro-misure, ad esempio facendo una patch, oppure cambiando il valore del registro EAX quando avviene la chiamata etc...\\La API è molto banale, quindi nessun malware lo usa realmente, inoltre in Ghidra con l'analisi statica si vede subito se tale API è presente, di API equivalenti ce ne sono altre
+\begin{itemize}
+\item \texttt{CheckRemoteDebuggerPresent}, cambia la sintassi ma fa una cosa molto simile. Mentre \texttt{IsDebuggerPresent()} si applica solo al processo corrente, questa può chiedere fare la query anche per un altro processo del sistema.
+\end{itemize}
+Apriamo il programma in Ghidra e non vediamo API che fanno riferimento al check dell'esistenza di un debugger, questo può avvenire perché il programma usa sempre una API di sistema per controllare la presenza di un debugger ma questa non compare nella così detta "Import address table", cioè la sezione della testata PE di un file che contiene il nome di tutte le API usate a livello di compilazione. Una DLL può essere collegata ad un eseguibile anche a run time: in Windows, ci sono le funzioni
+\begin{itemize}
+\item \texttt{LoadLibrary}: carica una DLL (modulo) nello spazio di indirizzamento del processo corrente, il processo può essere ricorsivo.\\Il valore di ritorno è un handle per invocare la DLL;
+\item \texttt{GetProcAddress}: prende in input l'handle al modulo ed il nome dell'API e restituisce l'indirizzo della funzione. Così, è possibile saltare dentro all'API.
+\end{itemize}
+Una delle DLL di importanza è la \texttt{NtQueryInformationProcess}, per conoscere se c'è o meno un debugger in azione su un processo.\\Un altro modo, ma meno sicuro, è usare \texttt{OutputDebugString}, meno sicura in quanto dipende dalla versioni di Windows usata.Questa funzione serve per mendare una stringa da far mostrare al debugger, quindi se il debugger non è presente la funzione dovrebbe fallire, quindi chi la invoca può capire la presenza del debugger in base al valore restituito, ma in realtà la funzione non restituisce valore. In vecchie versioni di Windows, scrivere una stringa senza debugger impostava la variabile di errore di Windows (simile ad \texttt{errno} di Linux), il problema è che con le versioni più recenti di Windows non funziona più questo meccanismo.\\Un altro modo è quello dell'accesso diretto alla struttura PEB: questa è una struttura del SO, mantenuta anche user mode e quindi accessibile direttamente dall'applicazione. Un programma per accedere alla struttura, può semplicemente andare all'offset 0x30 del registro FS (FS:[30h]) che quindi punta alla struttura PEB del processo e ad offset 2 della PEB c'è un campo \texttt{BeingDebugged}, pari a 0 se non c'è un debugger.\\Ci sono dei plugin ad esempio per OllyDbg, con cui andare a settare il bit di flag a 0 per impedire questo comportamento.\\Ci sono poi cose meno documentate, ad esempio ad offset 0x18 della PEB c'è la ProcessHeap che descrive come è fatto lo heap iniziale del processo. Ci sono due flag
+\begin{itemize}
+\item \texttt{ForceFlag}
+\item \texttt{Flags}
+\end{itemize}
+che sono diversi da 0 se c'è un debugger. Il problema è che l'offset dei flag cambia in base alla versione di Windows
+\begin{itemize}
+\item 0x10/0x44 per WinXP/Win7
+\item 0xc/0x40 per WinXP/WIn 7
+\end{itemize}
+quindi il malware deve capire su quale versione di Windows sta girando. C'è poi un altro flag chiamato \texttt{NtGlobalFlags}, che cambia anch'esso a seconda del fatto che il processo sia debuggato o no in quanto descrive come deve essere gestito l'heap, se il processo è debuggato vale 0x70.\\Ci sono quindi diversi modi in cui il malware può scoprire di essere debuggato.\\C'è poi il problema, sempre nella detection, di controllare i così detti "residuals" ovvero delle tracce lasciate dal debugger nel sistema: quasi tutti i malware hanno una routine che fa la scansione del disco della vittima, quindi tanto vale verificare se uno dei file è uno dei tool che l'analista usa per fare debugging, che non sono programmi usati da utenti "ordinari", quindi il malware può stabilire che è il caso di cambiare comportamento.\\Oppure, si possono guardare le tracce lasciate dai tool sul registro di sistema: ad esempio, aprendo RegEdit, possono esserci delle voci che dipendono dal fatto di usare un debugger piuttosto che un altro, ad esempio in HKLM si può trovare la chiave AeDebug, dove c'è un valore che contiene il percorso al debugger usato dal SO, che di default è quello installato da Visual Studio, ma magari avremmo potuto trovare OllyDbg se avessimo voluto impostarlo.\\Non è sensato aspettarsi che in un malware serio ci sia una sola misura, in quanto costa poco inserirle e quindi poi diventa oneroso da un punto di vista di tempo andare a capire quale misura è stata inserita.\\Diverso è chiedesi, che al di là del fatto che sia il processo stesso ad essere debuggato, se c'è un debugger attivo e chiudere a prescindere. Per cercare ciò, c'è  l'API \texttt{FindWIndow}, a cui passa il nome del programma da cercare e se esiste tale debugger aperto ne restituisce l'handler
+\subsection{Seconda classe di tecniche}
+Quando carichiamo il processo e facciamo run, è come se il processo non ci fosse, sui breakpoint si giocano molto le tecniche di identificazione. Una tecnica è la così detta INT3 scanning: in memoria, il debugger funziona perché sostituiamo un byte del codice con la INT3, che ha codice operativo 0xcc.\\Quando il processo è debuggato viene generata una eccezione di debug, il SO manda risveglia e passa il controllo al debugger, l'anti.miusra consiste nell'eseguire un ciclo che controlla il codice per vedere se esiste il byte "cc" che corrisponde al INT3.
+\begin{lstlisting}
+CALL $ + 5
+POP EDI
+SUB EDI, 5
+MOV ECX, 0x400
+MOV EAX, 0xcc
+REPNE SCASB
+JZ DebuggerPresent
+\end{lstlisting}
+\$ è l'IP, a facciamo puntare EDI all'inizio del codice. Si mettono poi una quantità predefinita di byte da controllare in ECX. Infine, mette in EAX la stringa '0xcc' che viene cercata fino alla prima occorrenza con la \texttt{REPNE SCASB} che è un'istruzione di stringa che continua finché il confronto non ha successo, quindi si esce o quando viene trovato cc oppure quando si finiscono i 1024 byte.\\L'approccio ha due problemi:
+\begin{itemize}
+\item falsi positivi: cc può essere un operando di una istruzione macchina, perché magari è un offset da sommare per un'istruzione di jump
+\item falsi negativi: creare il breakpoint usando INT 3, ovvero codice 0xcd, con argomento 0x03. È vero molti debugger non lo usano, ma molti possono usare breakpoint hardware, per cui si imposta un registro hardware per far creare l'istruzione di debug quando l'IP arriva ad una certa istruzione
+\end{itemize}
+(inoltre può darsi che si trovi già 'cc' in quanto si salta dietro)\\Varianti usare la malware:
+\begin{itemize}
+\item checksumming: il malware caloca il checksum su qual è la zona totale di RAM usata dal codice in memoria, se il debugger cambia il codice in memoria, il malware ricalcola il checksum e scopre che c'è un debugger. Anche qui però, usando i breakpoint hardware, sfugge
+\item timing checks: se l'eseguibile viene eseguito normalmente, le istruzioni sono eseguite una dopo l'altra ed i tempi non sono mai grandi come quelli che si hanno con un debugger che aspetta l'input dall'utente. Per analizzare i tempi, ci sono vari metodi
+\begin{itemize}
+\item l'istruzione macchina \texttt{rdtsc}, che restituisce il numero di cicli di bus dal boot del sistema. Si può quindi fare una certa operazione e vedere il tempo trascorso (??)
+\item a livello di SO, c'è la \texttt{QueryPerformanceCounter} oppure \texttt{GetTickCount}
+\end{itemize}
+\end{itemize}
+\subsection{Terza classe di tecniche}
+Quando si carica il debugger, questo si ferma su un certo indirizzo di partenza, ovvero l'entrypoint letto dalla testata. Si è portati a pensare che siccome il debugger si ferma sull'entrypoint, il processo non è riuscito ad eseguire alcun codice ma in realtà non è vero, in quanto l'entrypoint non è necessariamente la prima istruzione eseguita dal processo.\\Ci sono dei meccanismi legati al TLS: tramite questo, è possibile per un thread avere una proprio zona di memoria, in Windows c'è del codice che può essere eseguito prima dell'entry point per inizializzare il TLS. Sono delle callback, che non si può scegliere di non usare e se presente è nella sezione .tls ed il debugger può eseguire quel codice prima dell'entry point e quindi il malware può mettere dei controlli lì e rendersi conto dell'esistenza del debugger prima che questo parta.\\Come contromisure:
+\begin{itemize}
+\item analisi statica: verificare la presenza delle zone .tls e fare patch
+\item andare nel debugger, fra le opzioni e cambiare dove viene fatta la prima pausa. Dipende ovviamente dal tipo di debugger
+\end{itemize}
+Esiste poi il discorso dell'handling di eccezioni strutturate, per cui è possibile fare in modo che il processo reagisca differentemente con delle eccezioni particolari in base alla presenza del debugger.\\Se supponiamo che il malware registri un'eccezione per l'istruzione INT3, se è lui stesso ad usare l'istruzione avendo lui stesso registrato l'handler, lui sa che verrà eseguito l'handler di default impostato da lui. Sotto debugger, l'INT3 non è passata al gestore, ma al debugger, perché è questo che il SO fa e dice al debugger cosa fare. Se il debugger è superficiale, può pensare che sia un breakpoint messo da lui e quindi si ferma e dice cosa fare all'utente, se l'utente dice al debugger di continuare viene saltato l'handler messo dal malware e questo capisce che c'è qualcosa non ha funzionato e c'è un debugger.\\Ci sono dei bug nei debugger: WinDbg ha come bug che se nel flusso di codice si incontra INT 3 (0xed03), al recupero del esecuzione non salta all'istruzione successiva a INT 3, poiché assume che ogni breakpoint corrisponda ad un'istruzione di un byte e quindi salta a 03.\\In OllyDbg è possibile dire di passare tutti i tipi di eccezioni al processo, in modo da fare sempre eseguire il gestore dell'eccezione del programma per frustare il meccanismo detto ora.
 
 
 
