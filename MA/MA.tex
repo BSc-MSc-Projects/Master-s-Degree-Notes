@@ -1,6 +1,7 @@
 \documentclass[12pt, oneside]{extbook}
 
 \usepackage{geometry}
+\usepackage{listings}
 
 \geometry{
 	a4paper,
@@ -868,6 +869,107 @@ Quando si carica il debugger, questo si ferma su un certo indirizzo di partenza,
 \item andare nel debugger, fra le opzioni e cambiare dove viene fatta la prima pausa. Dipende ovviamente dal tipo di debugger
 \end{itemize}
 Esiste poi il discorso dell'handling di eccezioni strutturate, per cui è possibile fare in modo che il processo reagisca differentemente con delle eccezioni particolari in base alla presenza del debugger.\\Se supponiamo che il malware registri un'eccezione per l'istruzione INT3, se è lui stesso ad usare l'istruzione avendo lui stesso registrato l'handler, lui sa che verrà eseguito l'handler di default impostato da lui. Sotto debugger, l'INT3 non è passata al gestore, ma al debugger, perché è questo che il SO fa e dice al debugger cosa fare. Se il debugger è superficiale, può pensare che sia un breakpoint messo da lui e quindi si ferma e dice cosa fare all'utente, se l'utente dice al debugger di continuare viene saltato l'handler messo dal malware e questo capisce che c'è qualcosa non ha funzionato e c'è un debugger.\\Ci sono dei bug nei debugger: WinDbg ha come bug che se nel flusso di codice si incontra INT 3 (0xed03), al recupero del esecuzione non salta all'istruzione successiva a INT 3, poiché assume che ogni breakpoint corrisponda ad un'istruzione di un byte e quindi salta a 03.\\In OllyDbg è possibile dire di passare tutti i tipi di eccezioni al processo, in modo da fare sempre eseguire il gestore dell'eccezione del programma per frustare il meccanismo detto ora.
+\chapter{Lezione 18}
+\section{Eccezioni in Windows}
+Le eccezioni sono un meccanismo complicato, specialmente in Windows, per cui diventa facile per il malware cercare dei modi per eluderlo. Occorre cercare di capirne il funzionamento: il processore a livello hardware gestisce un flusso di esecuzione, composta da diverse istruzioni generalmente eseguite in sequenza, ma una di queste può causare un'eccezione che non fa altro che "dirottare" l'esecuzione del processore su un altro flusso di esecuzione.\\Questo flusso inizia a livello di SO, che cerca di capire il motivo dell'eccezione. Ad esempio, se si fa al mov di una pagina di memoria non ancora assegnata al processo (non materializzata), si verifica un page fault ed il SO la risolve restituendo la pagina mappata in memoria. Ci sono però eccezioni che il SO non può gestire e quindi quest'ultimo verifica se è definito a livello di processo un così detto gestore delle eccezioni, che fa parte del programma e possono essere di due tipi
+\begin{itemize}
+\item definiti dal programmatore
+\item assegnati di default dal SO
+\end{itemize}
+Gli handler girano sempre user mode, anche quelli forniti dal SO.\\L'handler può fare due cose a sua volta
+\begin{itemize}
+\item terminare il processo, tipico caso di molti gestori di default: se divido per 0, viene generata un'eccezione e quindi il gestore di defualt lancia un messaggio di errore e termina il programma;
+\item è possibile che venga definita la gestione per l'eccezione in maniera differente
+\end{itemize}
+Le varie eccezioni si dividono in varie classi, alcune portano a ri-eseguire l'istruzione che l'ha generata (come un page fault), mentre altre naturalmente portano ad eseguire l'istruzione successiva all'eccezione.\\Dobbiamo capire come si gestiscono le eccezioni in Windows, i modi di farlo sono molteplici, oggi si parla di due varianti principali ma in realtà se ne possono trovare ancora almeno 5 tipi: SEH sta per \textbf{StructuredExceptionHandling}
+\begin{itemize}
+\item SEH 1: tipo molto "antico", in pratica non si incontra più
+\item SEH 2: ancora più raro, in quanto usato in alcune versioni di WindowsNT
+\item SEH 3
+\item SEH 4
+\item SEH 5
+\end{itemize}
+Oggi, con SEH si indicano solo i tipi 3, 4. I tipi 3 e 4 sono il modo con cui Windows implementa le eccezioni nel linguaggio C, mentre il tipo 5 è il modo con cui vengono implementate per C++. La SEH 5 spesso è chiamata "EH", alle volte si parla anche di "vectored", questi tipi di modalità di gestione delle eccezioni hanno difficoltà crescente.
+I\\Innanzitutto, questo tipo di gestione delle eccezioni si trovano solo nei compilatori Microsoft, perché è stato inventato per i compilatori Bovland, che poi hanno venduto il brevetto alla Microsoft quindi gli infamelli hanno il brevetto. Nei compilatori Microsoft, esistono delle estensioni del linguaggio per come si creano queste cose:
+\begin{lstlisting}
+...try{
+	block
+}
+... except(cond){
+	block
+}
+\end{lstlisting}
+in alternativa, c'è 
+\begin{lstlisting}
+...try{
+	block
+}
+... finally{
+	block
+}
+\end{lstlisting}
+I blocchi possono essere innestati uno dentro l'altro. In C++ c'è qualcosa di simile, il costrutto è 
+\begin{lstlisting}
+...try{
+	block
+}
+... catch(...){block}
+\end{lstlisting}
+ma questo costrutto è totalmente differente dall'altro perché genera delle strutture a livello di memoria del processo completamente differenti, perché si lavora con le classi.\\
+\subsection{SEH3}
+C'è una catena di gestori delle eccezioni, implementata come una lista dinamica che è fatta quindi da diversi elementi collegati tramite puntatori. C'è un campo chiamato \texttt{prev}, che è quello che punta all'elemento precedente nella lista, l'ultimo elemento ha un valore convenzionale per indicare che è l'ultimo. Il contenuto dell'elemento è un particolare gestore definito dal flusso di esecuzione. Supponiamo che il codice effettui una divisone per 0: il SO fa quello che deve fare per esaminare l'eccezione e la ripassa ala processo in user mode, il quale comincia a capire se è definita una catena di gestore delle eccezioni per il flusso di esecuzione, \textbf{la catena più che al processo è legato al thread} e sostanzialmente va a prendere il primo elemento della lista che identifica in una certa maniera ed esegue il gestore delle eccezioni. Tale gestore ha modo di recuperare il tipo di eccezione, in questo caso divisione per 0, ma magari lui gestisce il SEGFAULT e quindi risponde che non può occuparsene. Rispondendo in questo modo, il SO trova il secondo elemento della lista ed invoca il secondo handler, e così via... arrivando all'ultimo elemento, c'è un campo con un valore particolare (-1) che identifica l'ultimo handler definito. Quindi vuol dire che non c'è più alcun handler che può gestire l'eccezione e quindi si esegue un gestore di eccezioni predefinito.\\Il programmatore può anche definire un proprio gestore di eccezioni di default (non definito), tramite la API \texttt{SetUnhandledExceptionFilter} che permette di indicare il gestore predefinito nel momento in cui nessuno degli handler della catena ha potuto gestire l'eccezione.\\Il punto chiave è avere quindi la catena di gestione delle eccezioni: la catena è gestita tramite lo stack, quindi questi dati relativi alla gestione delle eccezioni strutturate si mischiano alle informazioni che sono già sullo stack ed il malware può sfruttare questo.\\Quando viene invocata una funzione, sullo stack 
+\begin{itemize}
+\item il chiamante ha messo gli argomenti in ordine inverso;
+\item sopra, c'è il valore di ritorno in quanto la CALL mette sullo stack l'indirizzo al quale tornare quando c'è una RET;
+\item il prologo della funzione generalmente fa PUSH EPB, MOV EBP ESP quindi fondamentalmente c'è l'EBP salvato sopra;
+\item ancora sopra, si trovano le variabili globali, tipicamente si fa SUB ESP *numero* per riservare le variabili locali
+\end{itemize}
+Nel momento in cui c'è un blocco try/catch nella funzione, in realtà lo schema viene complicato: fra le variabili locali e l'EPB salvato si aggiungono un po' di informazioni (da leggere in ordine inverso)
+\begin{itemize}
+\item si mette un \textbf{try level}, che indica il livello di annidamento del blocco try;
+\item puntatore ad una \textbf{scopre table}, in quanto ogni blocco try ha una posizione di partenza e di fine ed ha un suo gestore dedicato. È un pointer ad una struttura dati fatta da una tabella in cui ogni record definisce un blocchetto in cui agisce il try;
+\item indirizzo del \textbf{SEH handler}, ovvero il gestore delle eccezioni
+\item indirizzo del \textbf{next SEH frame}, questo insieme al campo sotto costituiscono la lista collegata di handlers; questo può puntare ad ulteriori blocchi che contengono SEH handler e next SEH handler
+\item c'è  poi un saved ESP
+\item variabili locali...
+\end{itemize}
+Quindi tutte le informazioni vengono recuperate in quanto sono sullo stack, per cui sullo stack ci possono essere diverse informazioni legate alla gestione dell'handler.\\Per trovare l'inizio della lista è in una posizione prefissata, ci sono una serie di strutture dati a cavallo fra user mode e kernel mode, la prima di queste è chiamata \texttt{TEB}, che sta per Thread Environment Block: ad offset 0 della TEB inizia un altra struttura dati chiamata TIB, che è il ThreadInformationBlock. Sotto ancora ci sarà il puntatore alla PEB, che è relativo al singolo processo.\\Il primo campo del TIB non è altro che il puntatore al primo elemento della catena SEH, quindi ad offset 0 della TIB troviamo l'SEH chain ptr, che punta al primo blocchetto della catena.\\Per trovare la TEB di un thread si accede al registro segmento FS, che seleziona un segmento particolare che include la TEB del thread che sta accedendo al registro segmento: \texttt{FS:[0]}\\Il minimo da fare quindi sarebbe allocare un struct di tipo \texttt{EXCEPTION\_REGISTRATION}, che ha due puntatori dword:
+\begin{itemize}
+\item \texttt{prev};
+\item \texttt{handler};
+\end{itemize}
+Per poter allocare un nuovo gestore, abbiamo FS:[0], che punta al primo elemento della chain quindi per poter invocare un nuovo elemento va allocato da qualche parte e la scelta naturale è farlo sullo stack. Quindi si alloca il nuovo handler, si cambia il puntatore di FS:[0] per farlo puntare al nuovo elemento e questo viene fatto puntare a quella che era la vecchia testa.\\Possiamo quindi farlo con 
+\begin{lstlisting}
+PUSH ExceptionHandler
+PUSH FS:[0]
+MOV FS:[0], ESP
+\end{lstlisting}
+così è stata realizzata la catena di ExceptionHandler. Servono poi istruzioni per ritornare indietro, ovvero come fare all'interno di un gestore delle eccezioni a recuperare l'esecuzione originaria: nel gestire un'eccezione, il SO aggiunge un suo blocco try e quindi nella gestione delle istruzioni c'è il gestore definito dall'utente, sopra cui il SO aggiunge un proprio gestore che punterà a quello definito dall'utente. Quindi, come istruzioni macchina occorre come togliersi di torno il blocco aggiunto dal sistema
+\begin{lstlisting}
+MOV ESP, [ESP + 8]
+MOV EAX, FS:[0]
+MOV EAX, [EAX]
+MOV EAX, [EAX]
+ADD ESP, 8
+\end{lstlisting}
+con la prima istruzione, recuperiamo quello che era il saved ESP precedente. Ora, con la terza istruzione (dereferenziazione), otteniamo il puntatore al secondo blocco, lo facciamo ancora ed abbiamo il puntatore al primo blocchetto non definito da noi, che mettiamo in FS:[0], infine si aggiunge 8 ad ESP per rimuovere l'handler dallo stack, ovvero il primo handler che era quello originariamente presente nella lista (a cui punta quello definito da noi).
+\subsection{SEH 4}
+SEH 4 fondamentalmente è differente da SEH perché vengono introdotti dei "biscottini" (GS cookies) sullo stack: sono dei valori predefiniti ed inseriti nello stack per essere controllati in punti specifici. Vengono controllati per verificare che non siano cambiati, in quanto può accadere che il malware cerchi di sfruttare un buffer ovrflow e quindi se vengono sovrascritti i GS cookies il SO se ne rende conto, in modo che si eviti che prima del return della funzione o prima dell'intervento di un handler. Viene quindi interrotto il programma in caso di mismatch cui cookies, in modo da evitare l'esecuzione di flussi di esecuzione arbitrari, quindi SEH4 supporta anche la gestione di questi cookies.\\SEH 5 ha una idea di fondo simile, ma le strutture dati che ci sono dietro cambiano completamente.
+\subsection{Esempio di esecuzione}
+Una delle tecniche usate dai debugger è quello di usare INT3, vediamo un programma con un blocco di codice Assembly: il pezzo di codice prova a rilevare un debugger e interrompere il funzionamento: viene messo sullo stack
+\begin{itemize}
+\item ESP, che punta ad L0, quindi FS:[0] conterrà l'indirizzo di L0 e quindi è il gestore di una nuova eccezione
+\item l'indirizzo del primo blocco per la gestione degli handler
+\item L0
+\end{itemize}
+Facciamo INT3: se non c'è un debugger, succede che il SO controlla se c'è un gestore associato, lo trova ed è L0, quindi salta ad eseguire L0. Se invece c'è un debugger, non è detto che riesca gestire il flusso e quindi se viene incrementato B si fa la exit, altrimenti si mostra la messagebox.\\L'eccezione creata salta come handler al flusso normale di esecuzione, mentre aprendolo col debugger: apparentemente funziona, ma poi esce un errore che dice che il flusso non può continuare. Mettendo un breakpoint ed andando avanti con f7 parte l'iNT3 ed il debugger non riesce a fare l'esecuzione passo passo: siamo convinti di avere il controllo del programma, ma ci sono istruzioni che facciano si che è il programma a prendere il controllo. Ci sono dei meccanismi, ad esempio mettendo il breakpoint su INT3 rimane sempre lì in quanto si interferisce col breakpoint del debugger in modo che anche eseguendo passo passo non è detto che il programma non riesca ad eseguire in piena libertà ed una volta ottenuto tale scopo il debugger non riesce più a seguirlo.
+
+
+
+
+
+
+
 
 
 
