@@ -962,9 +962,72 @@ Una delle tecniche usate dai debugger è quello di usare INT3, vediamo un progra
 \item l'indirizzo del primo blocco per la gestione degli handler
 \item L0
 \end{itemize}
-Facciamo INT3: se non c'è un debugger, succede che il SO controlla se c'è un gestore associato, lo trova ed è L0, quindi salta ad eseguire L0. Se invece c'è un debugger, non è detto che riesca gestire il flusso e quindi se viene incrementato B si fa la exit, altrimenti si mostra la messagebox.\\L'eccezione creata salta come handler al flusso normale di esecuzione, mentre aprendolo col debugger: apparentemente funziona, ma poi esce un errore che dice che il flusso non può continuare. Mettendo un breakpoint ed andando avanti con f7 parte l'iNT3 ed il debugger non riesce a fare l'esecuzione passo passo: siamo convinti di avere il controllo del programma, ma ci sono istruzioni che facciano si che è il programma a prendere il controllo. Ci sono dei meccanismi, ad esempio mettendo il breakpoint su INT3 rimane sempre lì in quanto si interferisce col breakpoint del debugger in modo che anche eseguendo passo passo non è detto che il programma non riesca ad eseguire in piena libertà ed una volta ottenuto tale scopo il debugger non riesce più a seguirlo.
-
-
+Facciamo INT3: se non c'è un debugger, succede che il SO controlla se c'è un gestore associato, lo trova ed è L0, quindi salta ad eseguire L0. Se invece c'è un debugger, non è detto che riesca gestire il flusso e quindi se viene incrementato B si fa la exit, altrimenti si mostra la messagebox.\\L'eccezione creata salta come handler al flusso normale di esecuzione, mentre aprendolo col debugger: apparentemente funziona, ma poi esce un errore che dice che il flusso non può continuare. Mettendo un breakpoint ed andando avanti con f7 parte l'INT3 ed il debugger non riesce a fare l'esecuzione passo passo: siamo convinti di avere il controllo del programma, ma ci sono istruzioni che facciano si che è il programma a prendere il controllo. Ci sono dei meccanismi, ad esempio mettendo il breakpoint su INT3 rimane sempre lì in quanto si interferisce col breakpoint del debugger in modo che anche eseguendo passo passo non è detto che il programma non riesca ad eseguire in piena libertà ed una volta ottenuto tale scopo il debugger non riesce più a seguirlo.
+\chapter{Lezione 19}
+\section{4° tipo di tecniche anti-debugging}
+Sono simili nello scop dei meccanismi anti-debugging. Fra i meccanismi anti-debugging, abbiamo la 4° categoria che cerca di sfruttare i bug nel programma di debugging stesso, in quanto software ne avrà sicuramente. Le tecniche sono specifiche per il tipo di debugger, quindi vediamo qualche esempio basato su OllyDbg. OllyDbg nelle sue prime versioni era più suscettibile a come era fatto il file eseguibile, uno di questi  bug in OllyDbg non è un vero e proprio bug ma una "pignoleria": chi ha scritto OllyDbg ha preso le specifiche di come è fatto un ELF di Windows ed ha implementato OllyDbg, ma ci può essere una differenza fra come è fatto il file e come viene interpretato da OllyDbg.
+\subsection{PE header bugs}
+Una delle tecniche che si utilizza, o meglio è stata usata nel passato, è quella di modificare la testata PE del file eseguibile in modo che continui ad essere eseguibile per Windows ma mandi in crash OllyDbg. Per modificare la testata PE si può usare un tool specifico, come \textbf{PE Bear} in modo da inserire nella testata PE ciò che si vuole. Questo tipo di tecniche vanno sotto il nome di \textbf{PE header bugs}, specifiche per OllyDbg: si prende la \texttt{IMAGE\_OPTIONAL\_HEADER}, che contiene alcuni campi fra cui
+\begin{itemize}
+\item numeor di versione
+\item dimensione del codice
+\item dimensione dei dati inizializzati e non
+\end{itemize}
+Uno dei campi è\textbf{Number of RVA and Size}: le testate PE contengono un vettore, in cui ogni elemento è una struttura che contiene un RVA ed una taglia. È una specie di descrittore del processo. Lo standard Microsoft dice che ci possono solo essere al massimo 16 elementi nel vettore. ma modificando il valore ad un numero molto più grande di 16, abbiamo due effetti
+\begin{itemize}
+\item OllyDbg dice che il campo checksum che controlla l'integrità del file stesso che non è più valido
+\item Diciamo che il vettore è molto grande rispetto alle 16 entry, ma se eseguo il programma funziona. Questo perché il caricatore del SO ignora qualunque valore superiore a 16, mentre OllyDbg (o meglio le prime versioni), non faceva questo controllo.
+\end{itemize}
+La vulnerabilità era così famosa che le versioni di OllyDbg in esercizio oggi hanno patchato tale problema: viene mostrata una finestra di errore, ma dopo viene caricato il file che può essere correttamente disassemblato (v 1.10 $>$).\\Una variante prevede di usare l'informazione, sempre della testata PE, che è il \texttt{SECTION\_HEADER}, che descrive
+\begin{itemize}
+\item dove viene caricato in memoria
+\item la dimensione su file
+\item la dimensione in memoria
+\item etc...
+\end{itemize} 
+Lo standard si aspetta che le dimensioni su file ed in memoria siano grossomodo coincidenti, ma in realtà quando il SO deve caricare l'eseguibile legge una quantità di dati dal disco pari al valore minimo fra al row size e la virtual size.\\Versioni precedenti di OllyDgb scartavano completamente la virtual size e prendevano direttamente la row size, la differenza fra ciò che fa OllyDbg e ciò che fa il SO è la strada per inserire qualcosa che rompa il debugger, in questo caso si può provare a "giocare" con la dimensione dei row size:  in PE Bear, possiamo modificare tale valore ma il programma stesso sa che viene letto il minimo ma se OllyDbg non lo sa carica troppi dati in memoria e fa crashare il programma.
+\subsection{}
+OllyDbg v2 risolve questa vulnerabilità, quindi le vulnerabilità sono specifiche anche per le versioni e non solo per il solo programma. Esiste una API di sistema che è la \texttt{OutputDebugString}, che serve per mandare una stringa al debugger, che ha un formato printf-like e quindi possono seguirvi degli argomenti da visualizzare. Che succede se passiamo come stringa formato una sequenza di "\%s", l'effetto è di dire a OllyDbg di aspettarsi di leggere i successivi N valori sullo stack come indirizzi di valori da stampare, quindi si arriverà ad un certo punto a qualcosa che non è un indirizzo di memoria a cui si può accedere e quindi manderà in seg fault il programma, che si chiuderà.\\Nella versione 10 dell'API si utilizzano le eccezioni, quindi si può usare anche per cercare di capire se un programma è debuggato o no perché ci sarà un gestore esplicito se c'è un debugger attivo oppure partirà un handler di default.
+\section{Meccanismi anti-disassembling}
+Nessuno mette in piedi meccanismi anti-debugging senza usare anche meccanismi contro disassembler. Sono più complessi, perché non si possono sfruttare delle condizioni a run time e ci sono metodi estremamente sofisticati per fare questo, che vedremo nelle prossime puntate. Vediamo dei metodi semplici ma comunque efficaci. Occorre innanzitutto capire come funzionano i disassembler:
+\begin{itemize}
+\item disassembler lineari, come gdb che cominciano a guardare dall'entry point del programma e poi vanno avanti oppure prendono tutto il contenuto della sezione testo delle eseguibile e lo disassemblano. Ci sono due :
+\begin{itemize}
+\item sule architetture di calcolatori che hanno un ISA di tipo RISK va bene, in quanto ogni istruzione macchina ha una lunghezza prefissata, dove un indirizzo di partenza è sempre multiplo di un valore fisso(es: ARM32 ogni istruzione è 4 byte, quindi ogni istruzione inizia a multipli di 4)
+\item su architetture che hanno un ISA CISC-like, ovvero ogni istruzione può essere lunga un numero arbitrario di byte. Per capire i confini, si comincia da un punto in cui c'è un istruzione macchina e si verifica quanto è lunga per sapere dove va presa la prossima istruzione macchina. Se una istruzione macchina è "eb 03", sappiamo che richiede un byte, quindi sommo due all'indirizzo del byte iniziale.
+\end{itemize}
+Il grosso problema è se si perde "il filo": se avviene un salto, per cui il disassembler deve decodificare in un punto casuale del segmento non sa più dire come sono allineate le istruzioni macchina, non sa più se il byte è di una istruzione macchina o è l'inizio di una nuova
+\item disassembler interattivi o flow oriented, come Ghidra. In questo caso, il disassemblatore fa un bel bagno di umiltà e si limita a fare ciò di cui è certo. C'è un entrypoint, viene decodificata la prima istruzione e così via ma se ad un certo punto del codice c'è un byte a cui non si arriva e non sa cosa c'è, i "?" sono dovuti al fatto che non si riesce a stabilire il byte da cui inizia quella istruzione macchina. Fare una previsione vuol dire sbagliare, quindi è chi analizza a dire dove inizia la nuova istruzione.
+\end{itemize}
+Tutte le tecniche vengono strutturate per far si che il disassembler non riesca a disassemblare.\\Vediamo alcuni esempi
+\subsection{Primo esempio: salti condizionali finti}
+in quasi tutti i programmi che usano il compilatore GCC per Windows, si può vedere il riferimento alla \texttt{initenv} e quasi sicuro dopo questa c'è la chiamata a \texttt{main}.\\Scopriamo che il programma fa una CALL ad un indirizzo che non è nella memoria del programma, perché altrimenti il programma dovrebbe andare in crash, ma invece parte e questo è quindi un meccanismo anti-disassemblaggio: se c'è un salto condizionale, questo può essere preso oppure no, il disassemblatore flow oriented, man mano che analizza il flusso si rende conto che c'è una divergenza nel flusso. in quanto può andare all'indirizzo q che segue la JZ, oppure andare su l0. Il disassemblatore ha al suo interno uno stack, mette entrambe sullo stack e continua a disassemblare cosa c'è dopo ed una volta finito il flusso passano all'altro salvato e non ancora analizzato, ricorsivamente.\\Il proseguire può contenere una istruzione JNZ l0, quindi di nuovo si mette l0 nello stack e prosegue.Ma non è un vero salto condizionale, perché fare JZ e poi JNZ è equivalente, da un punto di vista di codice eseguito a run time, ad una JUMP l0 e quindi il disassemblatore sbaglia nel cercare di seguire il flusso perché non è in grado di dire che i due salti condizionali sono un unico non condizionale.\\In Ghidra troviamo un salto ad una etichetta label + 1, quindi salta all'interno di una istruzione macchina: e8 è l'indirizzo di una CALL e quindi lui prende 4 byte come indirizzo di una CALL ma è sbagliato perché la CALL non verrà mai presa. Quindi, si usa la clear code e si dice che sotto c'è del codice, abbiamo poi sotto una variante: si fa un salto condizionale su una condizione certa, ovvero si fa un salto condizionale che si sa che viene preso o non preso. Ad esempio si azzera un registro, il risultato viene preso e quindi a tutti gli effetti il jump viene preso.\\Vedremo sempre una jump ad un indirizzo impossibile, il punto è che il disassemblatore non ha funzionato. Se il meccanismo viene usato su programmi molto più ampi, so cazzi amari. Per realizzare tale obiettivo, basta definire delle macro da poter "sparpagliare" nel codice a piacere.
+\subsection{Disassemblaggio impossibile}
+Ci sono dei pezzi di codice impossibili da disassemblare, per cui il programma di disassembling mi fa vedere una versione o l'altra ma entrambe sono valide. Consideriamo questa serie di codici operativi:
+EB FF C0 48, cominciamo a disassemblare dal primo byte
+\begin{itemize}
+\item EB è la JUMP, quindi abbiamo un JUMP -1 (FF), ovvero un offset rispetto all'IP corrente.
+\item L'IP sta su C0 quando si esegue la JUMP, quindi si parte da C0 e si torna nell'istruzione precedente
+\item qui, il processore dice "AO, adesso il mio codice operativo è FF". FF ha quindi due ruoli: offset del salto e codice operativo dell'istruzione da eseguire. FF C0 è un istruzione a 2 byte che corrisponde a inc eax
+\item la 48 corrisponde a dec eax
+\end{itemize}
+L'effetto pratico della sequenza di 4 byte è nulla, ma potrebbe aver modificato i flag rispetto alle istruzioni precedenti ma di fatto dal punto di vista degli altri registri non ha modificato nulla ed il codice procede. Ha l'effetto di confondere il disassemblatore, il codice è valido per il processore ma nessun compilatore lo può generare ed i disassemblatori non sanno come interpretarlo.\\Una volta capito il trucco è facile capire come proseguire il flusso
+\begin{itemize}
+\item mettere delle nop
+\item saltare un byte per proseguire l'esecuzione
+\end{itemize}
+La CALL ad un indirizzo impossibile è un'altra variante, che è data dai codici operativi:\\
+66 B8 EB 05 31 C0 74 FA E8 ...
+\begin{itemize}
+\item i primi 4 byte fanno la MOV AX, 05EBh;
+\item dopo di che, i successivi 3 byte dovrebbero essere XOR AX AX;
+\item abbiamo poi una JUMP -6, jump relativo a 2 byte
+\item tornando indietro di 6 byte, arriviamo su EB. L'EB è ancora un istruzione di salto relativo che stavolta salta a +5
+\item il salto arriva dopo E8
+\end{itemize}
+Il disassemblatore vede il salto come condizionato e considera E8 che è il codice della CALL, quindi falsa completamente. Non esiste quindi modo di disassemblare correttamente, perché i due byte EB 05 appartengono a due istruzioni macchina differenti, che per il disassemblatore non può accadere.\\Per risolvere, si fa il clear code fin quando si trova il byte E8, per poi tornare a disassemblare.
+\subsection{Offuscare il flusso di esecuzione}
+Uno dei modi è usare i puntatori, in particolare i puntatori a funzione. Questo perché tipicamente il puntatore a funzione è qualcosa che un disassemblatore non sa seguire, alcuni disassembler "intelligenti" come Ghidra riescono a seguire un assegnazione statica, ma ha dei limiti legati alla complessità di cosa può fare del codice a run time. Ghidra trova dei riferimenti a delle label, ma gli indirizzi vengono caricate ni due variabili sullo stack e fa delle operazioni su delle variabili ad esempio leggere il valore e poi fare un shift aritmetico verso destra di un certo numero di posizioni e poi scrivere il valore per poi metterlo nel registro e fare la CALL. A questo punto lui si è perso, quindi l'obiettivo di far si che il disassemblatore non sappia dove sta andando è riuscito. Il dsassembler si è perso perché il codice usa i puntatori e fa delle operazioni che noi sappiamo che dovrebbero essere trasparenti, ma il disassemblatore non lo sa dire.\\Anche in questo caso è solo la fantasia ad essere l'arma: PROVATECI ANCHE VOI, GIOCATE CON I PUNTATORI E CREATE IL VOSTRO PROGRAMMINO CHE ROMPE IL DISASSEMBLATORE, VEDIAMO COSA DICE IL CAPO.
 
 
 

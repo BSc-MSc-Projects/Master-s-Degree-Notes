@@ -1675,14 +1675,108 @@ la logica di controllo starà nella \texttt{my\_inode...}\\Ci sono quindi 5 cate
 Il seguente è un esempio di hooks per il file system preso dal kernel legacy 2.4
 %snippet
 \texttt{may\_create} verifica se è possibile creare la directory nel VFS, altrimenti si verifica se è possibile eseguire la mkdir nel vsf. Si esegue poi l'operazione e se c'è un errore il kernel ritorna ed altrimenti si crea la directory. Si possono poi cambiare le modalità di accesso alla directory, quindi ci sono diversi kernel hooks all'interno del kernel.
-
-
-
-
-
-
-
-
+\subsection{MAC on Linux}
+Vediamo S.M.A.C.K: è basato sulle labels, ogni label è associata a subject, object ed actions (vedi sopra), le labels sono stringhe senza una particolare semantica.\\Il security module cercherà di matchare la label per verificare la access rule (nella classica forma ottale), le labels associate agli oggetti sono salvate in attibuti estesi, quindi serve un file system che li supporta (come ext4), ogni processo con una capability \texttt{CAP\_MAC\_ADMIN} può cambiare le label ed è facile ricadere nelle DAC se chi ha la capability può lanciare altri processi.\\SELinux permette di avere le stesse cose di S.M.A.C.K, ma è più complesso di quest'ultimo. Ci sono delle label di default nel modulo S.M.A.C.K, che hanno le seguenti regole:
+\begin{itemize}
+\item ogni accesso da un subject identificato con * viene negato;
+\item un subject identificato con \^ può accedere in read e execute mode;
+\item se un oggetto è labellato con \_, può essere acceduto in read mode o executed
+\item se un oggetto viene labellato con * si può fare tutto
+\end{itemize}
+Per configurare S.M.A.C.K, si usa uno pseudo filesystem apposito, montato in \texttt{/sys/fs/smack}, ci sono diversi file  possono essere usati per configurare il sistema (slides):
+\begin{itemize}
+\item \texttt{access2}: può essere usato per fare query riguardo i permessi di accesso;
+\item \texttt{change-rule}: è possibile cambiare i permessi di accesso per un subject associato ad una certa label
+\item \texttt{revoke-subject}: permette di revocare i permessi per un determinato subject. È utile se ad esempio si verifica nell'ambiente di deployment che c'è una violazione di qualche regola nel filesystem di deployment
+\end{itemize}
+La difficoltà di configurare S.M.A.C.K è dovuta al fatto che c'è questa organizzazione in labels.\\\\Tomoyo Linux è un modulo che non usa la e labels esplicitamente ma usa i path dei file come label, quindi possiamo specificare delle regole di accesso basate su file paths, non serve quindi salvare byte aggiuntivi  ma può avere problemi ad esempio per i link simbolici, perché non è più semplice determinare il path corretto.\\In Tomoyo c'è il concetto di \textbf{domain transition:} se un processo A forka un processo B, le regole che possiamo voler usare per B dipendono dal fatto che è stato forkato da A: quindi se lanciamo B come utente deve essere considerato un dominio differente dal fatto che B viene lanciato dopo una fork.\\ Supponiamo di usare sshd, che se ha successo si forka in una shell remota: abbiamo una shell remota che deve essere diversa da una shell locale nella macchina, dove vogliamo avere delle AC più permissive. Mentre invece se la shell viene generata dopo ssh, vogliamo permessi diversi: magari da \texttt{bash} si lancia \texttt{ls}, possiamo avere diversi domini:
+\begin{itemize}
+\item \textbf{$<$kernel$>$}, \textbf{$<$/usr/bin/sshd$>$}, \textbf{$<$/bin/bash$>$}
+\item allow\_execute /bin/ls
+\item ...
+\end{itemize}
+ed avere invece (slides).\\Quindi, abbiamo diversi domini ma diventa complicato pensare a tutti i possibili domini per permettere un accesso legittimo a tutti i possibili utenti.\\\\Un terzo security module è AppArmor, che segue un paradigma diverso in cui l'approccio è che processi individuali possono avere il loro profilo, che è essenzialmente un confinamento per un processo o un gruppo di processi. L'idea è simile a quella di S.M.A.C.K, data la complessità di definire i profili AppArmor adotta la policy del \textbf{selective confinment}, quindi se un processo non matcha nessuno profilo, quel processo girerà solo con il DAC tradizionale, quindi tende ad essere più permissivo. AppArmor quindi confina i processi che sono considerati dannosi per il sistema, mentre gli altri sono lasciati liberi, quindi c'è più usabilità ma può lasciare dei buchi di sicurezza in mancanza delle policy.\\Le policy sono in \texttt{/etc/apparmor.d}, le policy sono espresse nel linguaggio di AppArmor che è poi compilato in unar rappresentazione binaria nel kernel. Questo è un esempio:
+\begin{lstlisting}
+/bin/bash{
+	/bin/ls cx -> childprofile,
+	network raw,
+	profile childprofile{
+		capability setuid,
+		/home/pierciro/** rw,	
+	}
+}
+\end{lstlisting}
+Impostare le policy può essere complesso come in Tomoyo, ma a differenza fondamentale è che se manca una policy per un processo, AppArmor permette di eseguire con i classici DAC Linux.\\\\SELinux è il 4° modulo, che è il più complicato modulo di sicurezza Linux perché è basato su diversi DB (file di testo) e basato su security hooks. C'è una distinzione di invocazione già dallo user space, come mostrato in figura
+%immagine
+ci sono una serie di tool forniti da SELinux per cui si riconosce un certo servizio come trusted e permette l'accesso a determinati file in base alle regole di SELinux. Si invoca una syscall, l'hook chiama il Build Authorization Module che costruisce la query per il DB che verrà processata dal SELinux Policy Store, che mantiene in memoria kernel associate alla configurazione MAC e valuta la query in base alle MAC mantenute in memoria.\\Le regole configurabili nel sistema appartengono a 3 diversi DB, di nuovo si parla di labels
+\begin{itemize}
+\item il protection state specifica delle regole che  è possibile associare
+\item il labeling state
+\item il protection state entra in gioco in quanto ci sono delle regole dinamiche che si attivano quando cambia il dominio
+\end{itemize}
+Ogni volta che qualche security module hook viene eseguito, c'è al costruzione della query di autorizzazione. In SELinux, i parametri per una call al LSM
+\begin{itemize}
+\item Subject: il processo corrente
+\item Object: inode, a differenza di Tomoyo dove c'era il path e quindi il problema sui link simbolici. Sfrutta le capacità di Linux per capire già qual è il file finale.
+\item Operazioni richieste
+\end{itemize}
+I subject sono convertiti in delle labels, che sono dei contesti in SELinux, per un singolo utente ci possono essere diversi ruoli che possono essere associati a diversi contesti e che permettono di definire cosa un processo può fare.\\Il secondo step è trovare delle policy entry specifiche per un access reqeust: ci sono nuovamente dei file, che vengono compilati in binari per il kernel una volta caricato il modulo. Uno statement per la policy può essere di questo tipo: allow \-subject\_type- \-object\_type-:\-object\_class- \-operation\_set-.\\Per generare le label c'è il labelling state, che è un DB aggiuntivo che mappa le risorse nel sistema a delle label specifiche, in particolare ogni volta che si lancia un processo o si esegue una risorsa, questo viene mappato nel DB di SELinux. Lo schema è:
+\begin{tabular}{|c|c}
+-file path expr- & context\\
+/etc/shadow.* & system\_u:object\_r:shadow\_t:s0\\
+\end{tabular}
+Abbiamo anche i transition state, che definiscono quali label condizionali possono essere cambiate per determinati subject/object: se ad esempio creo un file in /etc/, avrà la label passwd\_exec ma se il file crea un certo file che verrà labellato come etc\_t, allora la policy farà si che questo avrà un label diversa (vedi slides), un po' come accadeva in Tomoyo per i diversi profili. Possiamo anche avere delle transizioni per gli utenti, quindi se un utente spawna un processo può accadere quanto segue (slides)\\Il punto fondamentale in SELinux è identificare le label di default nel labelling state, ma a seconda dell'utente che gira il trasition state permette di avere delle regole a grana più fine ed il tipo finale avrà le regole definite nel policy state.\\L'organizzazione può divenire complessa per setuppare un MAC, abbiamo sempre dei trade off fra la semplicità della regola e la granularità con cui è possibile specificarla.
+\section{Boot time security}
+Ogni cosa vista fin ora riguardo la sicurezza del SO è basata su due cose fondamentali:
+\begin{itemize}
+\item il sistema è live, quindi configurato e con i moduli caricati
+\item il kernel non è compromesso (ricorda il rootkit)
+\end{itemize}
+C'è il punto in cui si fa il booting che è ancora critico, in quanto i DAC e MAC lavorano prendono per certo che il sistema non sia compromesso. Possiamo fare il boot in un kernel compromesso, in modo che nessuna ACL riesca ad essere attivata.\\Ad alto livello, questo è come viene bootato un sistema:
+%immagine
+il bootloader è il pezzo di software che carica l'immagine del kernel in memoria, quindi poi il kernel parte ed una volta che si è configurato il controllo passa all'init RAM disk.\\L'init RAM disk tipicamente mantiene una copia di systemd, dove una volta loggati siamo nel SO.\\Abbiamo Secure Boot, gli attacchi prima di Secure Boot erano semplici ma ora il bootloader è un immagine firmata che viene verificata dal firmware, anche il kernel è firmata crittograficamente, quindi non si possono lanciare dei kernel non firmati.\\Una volt fatto partire il kernel, abbiamo le MAC e quindi l'unico punto rimasto scoperto è l'init RAM disk che ad oggi è suscettibile all'horse pills attack: il target è un kernel di OS funzionante, al punto prima che parta systemd e sfrutta i container.\\ Il RAM disk deve portare nella macchina dei moduli addizionali, questo è ad esempio vero se il kernel è firmato e non ci sono dei moduli per usare parte del mio hardware, che è necessario, trovo i moduli nell'init RAM disk.\\Mentre l'init carica i moduli necessari, potrebbe rispondere a degli hotplug events, oppure setuppare la crittografia (ad esempio per un file system cifrato), inoltre occorrerà localizzare il filesystem da montare come root filesystem da qualche parte sul disco, dopo questo si può saltare al processo di init che pulisce quanto caricato dal RAM disk e parte col boot vero e proprio.
+\subsection{Horse pills}
+In RAM disk ci sono degli init script, in cui è possibile nascondere delle back doors sfruttando i name spaces (sì, come mettere una pillola in culo ad un cavallo). Abbiamo l'init process, che è associato al PID 1 e ci saranno dei processi relativi al name space dell'init, ma l'init non è il processo con PID 1 fuori dal suo name space, quindi dal suo container.\\Se un init script compromesso crea un container per fare il boot del reale processo di init: questo avviene nell'horse pill attack: si fa tutto quello che avveniva precedentemente, ma poi si enumerano tutti i kernel threads che stanno girando, si chiama poi la \texttt{clone} syscall che è una variante della fork che permette di specificare dei flags per creare un nuovo namespace, quindi un container nuovo. Nel container
+\begin{itemize}
+\item si può rimontare /proc, quindi si nasconde quello che c'è fuori dal container
+\item si creano dei fake kernel thread, che non fanno nulla ma hanno lo stesso nome dei kernel thread veri
+\item si fa il cleanup di initrd
+\item si esegue init
+\end{itemize}
+init non è però quello regolare, fuori dal container si può rimontare qualunque root filesystem, che sarà diverso da quello visto nel namespace creato prima, quindi si può fare qualunque cosa:
+\begin{itemize}
+\item montare qualunque filesystem
+\item fare fork() di qualunque programma come shell di backdoor
+\item \texttt{waitpid()}, ovvero si aspetta il completamento della \texttt{clone}, in modo che se avviene uno shutdown o reboot avviene il catch dell'evento e si fa sul proprio volere
+\end{itemize}
+Per mitigare l'attacco:
+\begin{itemize}
+\item in \texttt{/proc/$<$pid$>$/ns links} si trovano delle informazioni che indicano che si sta eseguendo in un container e quindi è probabile che ci sia un attacco in corso
+\item verificare che le entries dei threads abbiano ppid $\neq$ 0
+\item fare auditing
+\end{itemize}
+Per risolvere davvero è non assemblare il ramdisk sul sistema, che è quello che avviene quando si aggiorna il kernel ma è poco fattibile in quanto assemblare il RAM disk viene fatto dalle distro per le differenti macchine. In questo modo, servirebbe un kernel firmato per ogni macchina diversa, quindi rendere sicuro il RAM disk iniziale richiede una configurazione MAC adatta che però può arrivare dopo che è avvenuto lo script di inizializzazione compromesso.
+\section{OS-level Network Security}
+Il trend corrente è che non vengono più usate, ma possono portare ad avere una sicurezza migliore sul sistema. Ci sono diverse applicazioni di rete che aprono porte alla cazzo di cane e quindi impediscono a questi servizi di essere efficaci.\\Se sulla macchina gira un qualche servizio di rete, è possibile renderlo più sicuro con le ACL. Un approccio usato nelle architetture erano due servizi:
+\begin{itemize}
+\item super-servers
+\item TPC containers
+\end{itemize}
+che rispondevano alle richieste in ingresso con delle ACL apposite
+\subsection{Inetd}
+Servizio legacy che installa una socket listening, riceve una connessione e spawna una applicazione trasferendo la socket su quella applicazione. C'è un file \texttt{/etc/services} che serve per configurare il maapping fra la porta/protocollo e l'applicazione. L'obiettivo di inetd (nei 70-80) era quello di salvare le risorse, in quanto se la macchina ha poca memoria e ci sono diversi servizi di rete, occorre lanciare diversi demoni di rete e così c'è un singolo demone. Inetd può essere esteso con parti di sicurezza, in particolare c'è il file \texttt{/etc/inetd.conf} in cui si associano le applicazioni con una struttura su una linea:
+\begin{itemize}
+\item nome del servizio
+\item (altri su slides)
+\end{itemize}
+inted è stato quindi esteso in xinetd, dove ci sono diversi tipi di ACL:
+\begin{itemize}
+\item address based
+\item time frame
+\end{itemize}
+è possibile specificare qualcosa come: è possibile ricevere una connessione da questo range di indirizzi o che duri questo tempo massimo.\\Tutti i log generati sono centralizzati e può essere usato per prevenire DOS ad esempio limitando il numero massimo di istanze per servizio o il numero massimo di istanze totali di server.
+\subsubsection{TCP deamon}
+È un demone arrivato dopo initd e che viene chiamato a sua volta da initd, per supportare regole di AC aggiuntive. È possibile specificare per ogni applicazione la lista di client che si sono connessi all'applicazione, ad esempio si può dire che è possibile accedere ad ogni servizio se connessi localmente: (slides)\\tcpd ha una capability che permette di controllare se un attacker sta cercando di bypassare tcpd con DNS tampering, come mostrato in (slides), quindi tcpd fa un forward name to IP ed anche un reverse IP to name, che viene fatto con diverse zone DNS quindi con dei record DNS diversi e frega l'attaccante che può fare tampering con solo una zona DNS.\\L'unico requirement dell'applicazione che lancia tcpd è di poter leggere dati da stdin e rimandarli su stdout, ci centralizza il controllo e si verifica chi può usare un certo servizio senza replicare il demone di sistema.
 
 
 

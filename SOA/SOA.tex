@@ -2132,18 +2132,206 @@ Nel perfect load sharing avevamo 40 livello di priorità differenti, da +19 a -2
 \end{itemize}
 Il check sul processo corrente avviene nel seguente blocco di codice:
 %listato
-ci rendiamo conto qui se il thread va eliminato dalla run queue oppure, a seconda di cosa c'è nel TCB o se ci sono segnali pendenti, va mantenuto nella run queue. Si controlla se il thread è stato flaggato come interruptible (passato per una API della wait queue), si controlla la maschera dei segnali e nel caso ci sia si cambia lo stato. Il defualt è essere cancellato dalla run queue; infine, resettiamo \texttt{need\_resched}. Il thread è stato eliminato dalla run queue, ma è ancora lui ad eseguire e sarà lui finché non effettuiamo il context switch.
-
-
-
-
-
-
-
-
-
-
-
+ci rendiamo conto qui se il thread va eliminato dalla run queue oppure, a seconda di cosa c'è nel TCB o se ci sono segnali pendenti, va mantenuto nella run queue. Si controlla se il thread è stato flaggato come interruptible (passato per una API della wait queue), si controlla la maschera dei segnali e nel caso ci sia si cambia lo stato. Il defualt è essere cancellato dalla run queue; infine, resettiamo \texttt{need\_resched}. Il thread è stato eliminato dalla run queue, ma è ancora lui ad eseguire e sarà lui finché non effettuiamo il context switch.\\Dopo questa attività, facciamo l'analisi della run queue ed in particolare una cosa molo interessante sono queste due macro:
+%scrivi le macro
+la prima macro è parametrica su \texttt{pos} ed \texttt{head}, dove \texttt{head} è un puntatore a qualche cosa che ha un next con cui identifichiamo quindi l'oggetto iniziale di qualche cosa che è una lista doppiamente collegata. Possiamo fare quindi l'analisi di una lista circolare, che nel kernel è fatta di oggetti disparati e potremmo quindi avere oggetti che seguono una struttura A ed una di oggetti che seguono una struttura B, le macro permettono di analizzare qualunque lista di oggetti perché il campo è semplicemente \texttt{next}. Se ad esempio tocchiamo una lista di TCB, ci interessa il contenitore dell'elemento \texttt{next}, quindi con \texttt{container\_of} possiamo fare il retrieve della task struct. Possiamo quindia avere un oggetto di questo tipo:
+%immagine
+usiamo l'oggetto per costruire delle liste in Linux, che sono liste doppiamente collegate circolari, la lista ha sempre quel valore fittizio che evita di scrivere codice per il caso in cui la head si parai a \texttt{NULL}.\\Abbiamo quindi il blocco di codice che ci permette di fare l'analisi dell'unica run queue
+%snippet del codice
+Usiamo \texttt{list\_for\_each}, dove analizziamo ciascuno degli elementi, dove diamo la testa della run queue ed abbiamo un elemento che permette di scorrere gli oggetti e da questo elemento chiamiamo \texttt{list\_entry} in modo da poter ottenere l'indirizzo del task control.\\Se p è un puntatore ad un task control block, dobbiamo verificare l'affinità di processore del thread con la \texttt{can\_schedule} e se è effettivamente schedulabile occorre calcolare la sua \textbf{goodness} ed il thread che ha la goodness più alta sarà quello schedulato.\\Nella chiamata all \texttt{goodness} abbiamo come ultimo parametro il puntatore alla \texttt{active\_mm}, quindi guardiamo anche qualcosa di chi sta lasciando la CPU in quanto prev è settato col thread che ha chiamato lo scheduling. Per cui la goodness viene valutata anche in base a chi ha chiamato lo scheduling, calcolato il peso vediamo se questo è maggiore di c, se è vero troviamo un thread meglio dell'ultimo.\\L'informazione aggiuntiva considerata è un puntatore ad una tabella mm, quindi una \texttt{mm\_struct} ed avevamo già visto in prev un puntatore di questo tipo. Il campo punta ad una tabella di mm che permette di fare un'operazione di controllo, in questo caso ricordare l'ultima mm table considerata su questa CPU.\\Ogni thread regolare che gira su una CPU ha un sua mm table, ma se abbiamo un thread kernel level questo non ha una tabella di mm in quanto la mm table serve per la parte user.\\Quindi un kernel level thread ha mm == \texttt{NULL}, quindi possiamo fare questo
+%immagine dell'assegnazione
+il kernel thread x non ha una tabella di mm da assegnare alla CPU, ma questa può ricordare l'ultima tabella che aveva in CPU. Una volta schedulato il thread B, questo potrebbe avere la stessa mm di quello precedente, quindi in questo scheduling ci siamo mossi nello stesso address space quindi l'informazione serve per capire quale è l'ultimo address space su cui la CPU ha lavorato e quindi se un thread lavorerà sullo stesso address space permette di dare goodness maggiore a questo thread per far si che si sfrutti il caching.\\La goodness viene calcolata così:
+\begin{equation}
+goodness(p) = 20 - p \rightarrow nice
+p \rightarrow counter :
+\end{equation}
++ 1 se la page table vive nello stesso adress space user che abbiamo osservato nei context switch, +15 se p è stato runnato l'ultima volta su questa CPU. Col +15, quando siamo in un era, i tempi possono essere spesi in maniera continua perché assegno la CPU al thread A per un quanto, arriva un momento in cui lascia la CPU ma poi la riassegno sempre a lui se ha ancora ticks da spendere dandogli quel bonus, quindi si ha un tipo di workload batched.
+\subsubsection{Gestione delle epoche}
+Quando finisce un epoca, quindi il peso che otteniamo dall'analisi è 0 per ogni thread occorre ricalcolare i tick da attribuire a tutti, non solo per quelli nella run queue ma anche per quelli fuori, quello che accadeva è che quando un'epoca era completa, il nuovo counter veniva calcolato secondo questa regola
+\begin{equation}
+p \rightarrow counter = \frac{p \rightarrow counter}{2} + 6 - \frac{p \rightarrow nice}{4}
+\end{equation}
+C'è poi il seguente snippet
+%snippet C
+È iniziata quindi una nuova epoca, quindi si torna ad analizzare la run queue per trovare a chi assegnare nuovamente la CPU
+\subsubsection{Limitazioni dello scheduler}
+Sono tutte legate alla poca scalabilità dello scheduler. Il primo problema dello shceduler è che analizza dei task anche non runnable, ovvero che ha ticks pari a 0, quindi si perde tempo per analizzare dei thread non schedulabili.\\Il problema è dovuto a questo mix di task runnable / non runnable in ogni epoca nella run queue. Inoltre, abbiamo un problema prestazionale nel fatto che analizziamo la run queue con un algoritmo di complessità O(N) ed inoltre non è eseguibile in concorrenza, altrimenti lo stesso thread verrebbe magari schedulato da due CPU core in contemporanea.\\Ad esempio su 4 CPU core è possibile chiamare in simultanea \texttt{schedule()}, quindi uno dei due prende il lock, analizza la run queue e poi rilascia. IL lock è uno spinlock, spendiamo tempo di lavoro, cicli macchina ed energia (E LA BIMBA QUELLA DELLA SCANDINAVIA NON È PER NULLA CONTENTA E TE MENA PERCHÉ INQUINI, LE RUBI IL FUTURO GNE GNE GNE).\\Per questo motivo, si è passati da perfect sharing a load balancing.
+\subsection{Load balancing}
+Qui c'è constant time scheduling, ci mettiamo tempo costante ad analizzare la run queue per scegliere il thread da schedulare, inoltre abbiamo che la probabilità di andare in conflitto è molto bassa. In sostanza, il tempo di evoluzione del sistema in cui due CPU diverse guardano una run queue è molto ridotto. Abbiamo poi un workload bilanciato su tutte le CPU ed inoltre introduciamo delle priorità molteplici di quelle dello scheduler POSIX.\\Abbiamo che non c'è alcun mix di task runnable e non runnable all'interno della run queue, quindi se un task ha finito il tick counter ma vuole continuare ad eseguire dove va messo? La coda inizialmente è fatta di task con valore di counter diverso da 0, inoltre nel load balancing non si definisce la priorità guardando nel TCB, ma definiamo la sua priorità solo in base a dove lui è collegato.\\Quindi la run queue è una multi-coda, dove i TCB dei thread sono collegati a livelli diversi della coda.\\Ulteriormente, per ridurre la probabilità di andare in conflitto sulla run queue abbiamo che sono una per ogni hyperthread fisico all'interno del sistema e ciascun CPU core analizza con la logica di scheduling la sua run queue.\\Ci possono essere conflitti in cui una determinata run queue sia piena ed un'altra sia vuota, per cui occorre ogni tanto ri-bilanciare il carico per cui le code sono accedute in sezioni critiche dove la probabilità di collidere è bassa.\\Quindi idealmente si conflitta perché occorre spostare un TCB su una run queue, può avvenire perché si sporta un certo TCB oppure si rimette un TCB nella coda.\\Lo spostamento viene fatto da qualche thread, che guarda le strutture e verifica se è necessario aggiornarle, una possibilità è che venga fatto da dei demoni che periodicamente si sveglia e fa load balancing, che deve entrare i CS per non conflittare con le CPU che va a scorrere la coda.\\Il problema può sussistere anche quando risvegliamo un thread e dobbiamo re-inserirlo nella sua run queue, per cui ci può sempre essere un conflitto. Per i livelli di priorità, ci sono 140 livelli
+\begin{itemize}
+\item [100-139] corrispondono alle priorità classiche
+\item [0-99] priorità real time
+\end{itemize}
+Quindi ogni coda ha 140 sotto-code, quando si schedula occorre evitare il mix fra thread con ticks pari a 0 e thread schedulabili: la coda è organizzata come una coda corrente ed una coda futura
+%immagine
+individualmente quindi la coda è schedulata in base alle priorità e c'è una coppia di code per ognuna di queste 140 code, ogni epoca finisce quando la coda corrente è vuota e per cambiare epoca basta switchare i pointer fra le code.\\Quando un thread viene messo nell'epoca futura, possiamo anche dargli il nuovo tick counter che verrà usato nell'epoca successiva. Siamo a tempo costante perché abbiamo una bitmap che dice qual è il primo livello non vuoto da schedulare e noi andiamo lì, il check della bitmap avviene in tempo costante e quindi è indipendente dal carico ed inoltre non faccio controllo della goodness della singola coda perché metto in schedule il primo che trovo.
+\subsubsection{Relazione con le API di wakeup}
+Stiamo eseguendo sulla CPU 0 un thread che ne risveglia un altro, quindi implica dire metterlo nella run queue in una certa CPU:
+\begin{itemize}
+\item se il thread può essere schedulato sulla CPU corrente si mette lì
+\item altrimenti si verificano le informazioni di affinità del thread
+\end{itemize}
+quindi se possiamo definire dove mettere il thread in base all'affinità, avremo una API per poter inserire un thread nella run queue di una data CPU: \texttt{ttwu\_queue()} ed è un concetto importante in sistemi con un certo livello di parallelismo.
+\subsubsection{Carichi e ticks}
+Nel perfect load sharing assegnavamo i tick con una certa equazione, ma c'erano molti meno livello di priorità. Per 140 livelli diventa complicato lavorare secondo quella logica, quindi è stata fatta una ulteriore modifica basata sull'idea che quando devo assegnare il numero di ticks per la prossimo epoca ad uno specifico thread
+\begin{itemize}
+\item l'informazione viene messa nella struct del thread
+\item si scrive il peso del thread, il numero di ticks che può usare
+\item il peso si calcola usando un array di 40 elementi
+\end{itemize}
+I livelli sono 40 perché nello scheduling real time se siamo nella classe 10, è vero che due thread abbiamo esattamente la stessa priorità ovvero c'è ancora il discorso sulla niceness, possiamo ancora discriminare la niceness in modo da assegnare più ticks. I 40 elemento servono per attribuire i ticks a seconda della classe di appartenenza: a parità di niceness, un thread di una classe più alta becca più ticks perché è più privilegiato.
+\subsubsection{Problemi dello scheduler}
+È vero che abbiamo le 40 classi per rappresentare il carico non real time del sistema (other), ma in realtà abbiamo un problema legato al fatto che i livelli di priorità sono identificabili come livelli di priorità dei vari thread, ma nella classe other conta anche il comportamento del thread: quindi, se il thread ha bassa priorità e "si comporta bene" sarebbe utile favorirlo così che il sistema è scarico ha lavoro da fare, quindi i thread possono essere spostati fra le varie fasce di priorità, in base al concetto di priorità dinamica, che è scritta nel TCB e nella coda i TCB vengono collegati in base alla loro priorità dinamica. La cosa interessante è che lo scheduling è sempre O(1), ma cambia il meccanismo per come un thread possano essere spostati. C'è un problema: un thread che chiama la funzione di scheduling può vedersi togliere la CPU per vederla consegnata ad un thread con priorità dinamica maggiore, che però magari ha una priorità base più bassa della mia. È un problema, tra l'altro da un punto di vista della sicurezza perché magari sappiamo che lungo dei thread che vanno in sleep poi prendono la CPU prima di altri. I classici scenari in cui questo accade è
+\begin{itemize}
+\item un thread che risveglia un altro thread, che avrà priorità dinamica più alta di chi lo ha svegliato
+\item qualcuno sveglia un thread (slides)
+\end{itemize}
+\subsubsection{API in Linux}
+Qui abbiamo diversi fattori differenti dal caso perfect sharing. Il counter dei tick non si chiama più counter ma time\_slice, abbiamo diverse API
+\begin{itemize}
+\item \texttt{schedule()}
+\item \texttt{load\_balance()}: il demone sposta i thread, sempre in base all'affinità
+\item \texttt{effective\_prio()}
+\item \texttt{recal\_()}
+\end{itemize}
+\subsubsection{Altri dettagli}
+Lo scheduler precedente ha una funzione di scheduling stateless, in quanto si guardano informazioni precedenti durante l'attività di scheduling e questo è una esemplificazione di ciò che abbiamo in un sistema, dove il concetto di stato c'è: quando chiamo la run queue, devo sapere quale coda guardare. Va considerata quindi la problematica dell'\textbf{explicit stack referesh}: supponiamo dia vere una funzione f, che in un certo punto esegue delle attività che lavorano su certa strutture dati legate alla specifica CPU su cui si esegue. Più avanti, si eseguono delle attività su una CPU di cui non conosciamo l'identità, quindi eseguiamo attività per-CPU ma non sappiamo che CPU è. La \texttt{schedule} è fatta così, non garantisce che la CPU su cui si viene rischedulati sia proprio quella di partenza, quindi le variabili locali presenti nei moduli vanno ri-aggiornate, cosa che avviene nella funzione \texttt{schedule()} per kenrel 2.6 $>$
+%snippet della nuova schedule()
+se cambiamo CPU, abbiamo il refresh delle informazioni dopo un context switch
+%snippet 2 della schedule()
+La run queue moderna è la seguente
+%snippet della run queue
+\subsection{Fair scheduling}
+Vediamo come risolvere il problema della priorità dinamica. Non ci sono più delle code multiple per la zona di priorità normal, si usa una struttura dati che è un red/black tree: se le strutture dati quindi mi dicono che c'è qualcosa da schedulare in other, abbiamo uno scheduler che ha un costo logaritmico per la classe non real time ma possiamo comunque avere thread che non hanno la stessa importanza, quindi 40 livelli di priorità. Inoltre, possiamo ottenere equi-distribuzione della CPU su thread che hanno la stessa nicencess in un livello e questo viene fatto col concetto di \textbf{virtual CPU}: la virtual CPU è il reale tempo di CPU diviso per il peso. Lo schema è il seguente:
+%mmagine
+tutti i thread vengono mantenuti nel rb-tree in base alla VCPU, si prende quello che ce l'ha più bassa e si assegna per un quanto, per poi fare context switch inserendo il thread con la VCPU più bassa. Quindi, conta solo la priorità statica e come tale thread ha eseguito in CPU ma sempre funzione della priorità statica.\\Si lavora con O(log(N)) sul rb-tree ma le informazioni per poter eseguire lo scheduling sono compatte perché ci considera solo la VCPU.
+\subsection{Kernel thread}
+Manca solo la possibilità di lanciare dei demoni di sistema, in quanto per lanciare dei thread applicativi si usa la \texttt{clone()}, come farlo velocemente a livello kernel.\\Cerchiamo di capire come sono fatte le chiamate alle API per lanciare kernel thread: avevamo l'API \texttt{kernel\_thread()}, dove non si tornava più user level, quindi il thread veniva tarato per eseguire una funzione del kernel. Si sfruttava comunque la \texttt{sys\_clone()}, passando dei parametri appositi, la cosa interessante è che l'API nella sua esecuzione è che viene chiamata \texttt{arch\_kernel\_thread()}: c'era un concetto che legava il concetto di thread in esecuzione a quello di stack pointer, abbiamo delle istruzioni machine dependent nella funzione ed in x86 è fatta tale per cui lungo il thread originale si entra nell'API e quindi lì dentro
+\begin{itemize}
+\item si chiama \texttt{sys\_clone}
+\item lo stato di CPU nell'evoluzione del software permette di capire se sono il thread corrente
+\end{itemize}
+La \texttt{arch\_kernel\_thread()} è la seguente
+% """poche""" istruzioni assembly
+il thread che invoca la creazione chiama tale funzione, esegue 
+\begin{itemize}
+\item mov esp esi: salvo lo stack pointer, perché il nuovo thread userà un'altra stack area e quindi in base allo stack pointer saprò quale thread sono
+\item int \$0x80, che chiama clone ovvero chiamando l'accesso al gate per chiamare la syscall.
+\end{itemize}
+Finita la clone, entrambi i thread ripartono dalla stessa istruzione, si controlla se esp è uguale ad esi e se è vero sono il parent quindi esco dalla funzione core. La parte sotto viene eseguita solo dal thread nuovo, la struttura seguente è molto simile a quello che è nella pthread\_create(), l'uso di più flussi di esecuzione era presente in Linux molto prima di offrirli come syscall allo user space.\\Abbiamo poi una movl ed un'altra int 0x80 per chiamare la exit ed uscire una volta che il thread ha finito\\Abbiamo API più moderne, fra cui la \texttt{kthread\_create()}, dove possiamo anche dare un nome al thread creato, inoltre possiamo anche specificare l'affinità del thread come maschera che specifica tutti i processori del sistema.\\Quando creiamo un nuovo thread questo è attivo? No, il thread è in wait e per poterlo mandare ad essere eseguibile va svegliato, inoltre le API internamente quando vanno a gestire le strutture dati del nuovo thread dicono che non è killabile, solo il nuovo thread deve abilitare la possibilità di farsi colpire con delle segnalazioni. Se possiamo mandare segnali a demoni del kernel senza che loro l'abbiano deciso, non ci piace molto.\\Una volta colpito un demone del kernel con una segnalazione l'effetto è solo quello di rimetterlo in run queue, il thread può verificare con le API se è stato colpito.
+\subsection{Esempi running}
+Vediamo un kernel thread: montiamo un modulo che lancia un kernel thread, finché quindi il thread esegue non si può smontare il modulo. C'è un variabile che se guardata dal demone, permette a quest'ultimo di andare in shut down.\\\\Il secondo esempio monta un modulo che embedda un syscall per lanciare demoni di sistema.
+\chapter{Architettura per trap/interrupt}
+\section{Hints architetturali}
+L'organizzazione interna dell'hardware ha un riflesso anche sul software. Cerchiamo di considerare il primo aspetto importante quando lavoriamo su un architettura moderna: questa non è single core, quindi non c'è un solo hyperthread perché su macchine single core avevamo interrupt sincroni o asincroni:
+\begin{itemize}
+\item trap, che portano al passaggio per un gate per raggiungere un handler. Ad esempio, l'accesso ad una pagina non mappata
+\item interrupt dei devices
+\end{itemize}
+Quando capitavano questi eventi, si passava il controllo sull'unico CPU core al gestore dell'interrupt e tutto era gestito correttamente, quindi ogni cosa che veniva cambiata era visibile a tutte le attività che sarebbero arrivate dopo in CPU.\\Ora l'architettura è multi-core, multi-thread e quindi non è più vero che quando viene dato il controllo al gestore degli interrupt questo è in grado di rendere coerente tutto. Quello che accade quindi nel caso della singola CPU è che tutte le modifiche sull'hardware dove il gestore ha eseguito, avremo lo stesso punto di vista per ogni altro thread che vi esegue.\\Un esempio relativo al memory management: abbiamo un'applicazione attiva, un thread chiama la syscall munmap, che quindi cambia la struttura della memoria corrente, quindi si eliminano delle pagine dall'address space delle pagine che devono essere tolte anche dalla page table. Ma la page table ha anch'essa una cache che è il TLB, quindi anche il TLB viene reso compatibile con l'unmapping. Se sullo stesso CPU core si fa girare un altro thread, questo vedrà la stessa situazione del TLB aggiornato.\\In uno scenario multi-core, possiamo avere due thread della stessa applicazione su due core diversi:
+\begin{itemize}
+\item il thread A gira sul core 0, chiama \texttt{munmap}. Qui, può accedere al TLB locale e quindi può farne il flush per invalidare ciò che è relativo alla page table aggiornata
+\item sul core 1 però il thread potrebbe aver portato le informazioni della page table in quella TLB
+\end{itemize}
+in alcuni casi nell'hardware è possibile avere degli oggetti che sono toccabili solo per lo specifico CPU core, come nel caso del TLB. Quindi la trap in questo scenario necessita di avere un meccanismo di propagazione, per cui anche gli altri CPU core vengano notificati della modifica al TLB (ad esempio).\\L'idea è che abbiamo che se il sistema ha uno stato replicato o distribuito nell'architettura hardware, abbiamo bisogno di un meccanismo di propagazione, quindi l'invio di richieste di interrupt. Ma come vengono gestisti questi interrupt a livello di chi lo riceve? È a livello software oppure è possibile avere dei meccanismi di gestione degli interrupt a livello hardware? Quando mandiamo da un CPU-core un interrupt ad un altro CPU-core, se la gestione è deterministica può essere codificata nel micro-codice, altrimenti ci deve essere un oggetto software codificato nel SO.\\Perché è non deterministico il cambiamento dell'address space logico da parte di un thread, e quindi la necessità di reagire in diversi modi nei vari CPU core: il TLB potrebbe essere invalidato o non invalidato, se codificassimo in hardware questa cosa potremmo avere un solo scenario. Ma in questo caso, non è detto che il CPU core si attestato su una page table uguale a quella su cui avviene l'update e quindi il TLB sta cachando informazioni di un altro address space rispetto a quello su cui avviene l'invalidazione.
+\subsection{Inter Processor Interrupt}
+Consideriamo quindi lo scenario non deterministico, in cui la gestione avviene a livello del software del SO: esiste quindi un terzo tipo di evento che sono gli IPI, eventi sia sincroni che asincroni
+\begin{itemize}
+\item sono sincroni per chi spedisce l'IPI, tipicamente va eseguita una specifica istruzione macchina
+\item è asincrono per le CPU coinvolte
+\end{itemize}
+quello che si fa in un SO usando le IPI è implementare dei protocolli per coordinare le attività dei CPU core, che sono tipicamente dei request/reply protocol. Con questo tipo di architettura si può cambiare lo stato di qualsiasi componente dell'hardware, mandando interrupt quando si ritiene necessario.\\Ci sono due livelli di priorità con cui si gestiscono gli IPI
+\begin{itemize}
+\item alto: ad ogni istante di tempo è possibile che esista al più una sola stading request. A livello di organizzazione del SO, quando più di un CPU core vuole spedire un IPI di priorità alta deve acquisire un lock;
+\item basso: possono essere di più e vengono processate sequenzializzate.
+\end{itemize} 
+\subsection{Supporto su x86}
+Su x86 abbiamo un componente che è l'APIC, un oggetto che ha componenti logicamente associati ai vari CPU core (ed ai vari hyperthreads) e componenti centralizzati. Fra questi è interessante il LAPIC, che è il componente locale e questo al suo interno a un timer, il LAPIC timer che abbiamo visto nella gestione dell'avanzamento del tempo.\\Lo scenario è che quindi ogni CPU core\footnote{che equivale a dire hyperthread fisico} ha un componente locale che segnala il passaggio del tempo, quindi un CPU core scrivendo su un particolare registro, può richiedere di inoltrare una richiesta di interrupt ad altri CPU-core. La reale architettura è rappresentata in questo schema
+%immagine dello schema
+tutto avviene usando un bus interno, su cui viaggiano anche le richieste di invio di un interrupt nell'architettura hardware. Avendo un bus unico e condiviso, questo permette di implementare meccanismi di invio di IPI in broadcast. Si possono usare diverse linee di interrupt, che sono ora 255 e quindi si possono inoltrare codici di richieste di interrupt abbastanza disparati all'interno dell'intera architettura interrupt.\\Ogni sorgente di interrupt va identificato con un codice numerico, che è IRQ ma è ambiguo: la CPU in realtà riceve un codice numerico differente dato da INT = F(IRQ). Il motivo è che alcuni codici sono usati secondo quello che il vendor dell'architettura hardware ha deciso per quanto riguarda la loro identificazione: l'architettura permette di gestire solo gli interrupt e non le trap, che sono legate solo a cosa sta succedendo sulla specifica CPU.\\La funzione attualmente prevede che venga aggiunto 32 ad ogni linea di interrupt, in quanto le prime 32 sono associate a delle trap, questo permette quindi di essere capaci di lavorare in termini di sviluppo dell'hardware in quanto possiamo cambiare la funzione in base all'aumento del numero di trap identificate dall'architettura hardware.\\Inoltre, il componente centralizzato dell'architettura APIC può essere configurabile, per farlo lavorare secondo
+\begin{itemize}
+\item fixed/physical operations: le richieste di interrupt che provengono dai dispositivi verso il CPU core vengono inoltrare verso una sola CPU. C'è quindi una sorta di affinità fra la richiesta ed il CPU core che processerà a livello di SO tale interrupt, è interessante ad esempio in architetture di processamento di networking nei data center
+\item Logical/low priority operations: possiamo consegnare gli interrupt a più di una di queste, tipicamente in round robin, in cui possiamo impostare dei gruppi su cui fare l'inoltro delle richieste. È interessante per scenari in cui possiamo avere la volontà esplicita di processare gli interrupt su più CPU core.
+\end{itemize}
+\subsection{Interfaccia Linux per APIC}
+Facendo il cat del file \texttt{/proc/interrupts} abbiamo diversi interrupt, fra cui uno interessante è il function call interrupt, dove a livello di gestione del software viene richiesto di eseguire una funzione ad un certo core da parte di un altro. È importante ad esempio nella gestione della per-CPU memory, quindi ad esempio al montaggio di un modulo kernel che usa una per-CPU variable occorre dire a tutte le altre CPU di aggiornare la loro per-CPU variaible. TLB shotdowns è quello come visto prima\\ È possibile anche configurare l'affinità degli interrupt sui CPU core, fatto a startup del sistema (pseudo file \texttt{/proc/irq/})
+\subsection{IDT di Linux}
+Nella IDT (su x86), questa ha 256 entry ed all'interno di questo oggetto oltre ad esserci l'identificazione del blocco di codice che deve prendere il controllo quando si accetta l'interrupt anche delle informazioni riguardo la protezione. La IDT di Linux deve aver descritto 
+\begin{itemize}
+\item una zona per le trap, da 0-31. Le prime zone vanno riservate per le informazioni legate alla gestione delle trap
+\item una zona intermedia dove si possono inserire le informazioni degli interrupt dei device, dove abbiamo sia device esterni che interni,come il LAPIC timer
+\item zona per la gestione degli IPI, quindi in Linux se ne usano pochi ma necessari.
+\end{itemize}
+All'interno della tabella si inserisce anche almeno una entry per la gestione degli interrupt spuri: tale interrupt non è necessariamente riconosciuto come richiesta di un interrupt ricevuto da una sorgente. Può accadere che il valore di una linea, basso o alto siano due:
+\begin{itemize}
+\item basso identifica non c'è
+\item alto che c'è
+\end{itemize}
+ci sarà una threashold per cui se si è sotto soglia l'interrupt non c'è, ma mentre il circuito lavora è possibile salire da alto/basso in modo non diretto ma fluttuante e questo porta ad avere un interrupt a volte vero ed a volte no e questo è un interrupt spurio. Tale interrupt viene non considerato?\\In x86 è facile identificare la tabella mediante un registro apposito e packed, l'idtr che ha due campi
+\begin{itemize}
+\item taglia della tabella
+\item indirizzo della tabella
+\end{itemize}
+possiamo quindi vedere la struttura della tabella in memoria.
+\subsubsection{x86 protected}
+Nella versione protected di x86, ogni entry non è altro che una coppia di maschere di unsigned long, le maschere di bit devono essere popolate secondo una certa regola perché è il firmware a guardare lì dentro all'arrivo di un interrupt. La descrizione è strutturata secondo questa regola:
+%immagine
+all'interno della maschera possiamo specificare un offset a 32 bit che dice a che indirizzo di memoria è presente il modulo che deve gestire l'interrupt (il selettore non è per forza è mappato a base 0). Abbiamo poi il DPL, ovvero il livello di privilegio per cui si può passare per la entry e quindi se siamo a livello 0 si può passare solo quando si è già kernel mode, mentre a livello 3 si possono far passare anche flussi user mode. Può accadere che se avviene una specifica trap venga portato a 0 il DPL, ma solo perché è avvenuto l'evento a priori. C'è poi un bit nella maschera, 1 o 0 nelle due descrizioni, indica se siamo in trap gate o interrupt gate:
+\begin{itemize}
+\item in un interrupt gate, quando parte il codice per la gestione il processore è settato su non interrompibile
+\item nel trap gate il processore è interrompibile
+\end{itemize}
+questo va deciso dal sotto-sistema di gestione.\\
+Nella IDT identifichiamo anche il segmento di memoria dove è presente l'iterrupt gate, la GDT viene acceduta per identificare il livello di protezione del gate. Molti segmenti sono comunque mappati sullo 0, quindi l'offset diventa comunque un indirizzo lineare, quindi possiamo identificare il displacement semplicemente mediante \&.
+\subsubsection{Long mode}
+Ogni entry ha una taglia pari al doppio, ma una parte non viene usata ed è marcata come riservata dai vendor. Ulteriormente, la parte addizionale serve per ampliare la possibilità di definire l'offset ed inoltre è stato introdotto un capo IST: Interrupt Stakc Table, che permette di dire una serie di cose ulteriori al fimrware che deve attivare il blocco di codice. Una delle cose fondamentali è che nel momento in cui attiviamo il blocco di codice, dobbiamo conoscere la stack area dove il codice deve eseguire.
+%immagine
+È interessante l'accesso all'indirizzo del gate: i gate sono mantenuti su segmenti codice, che hanno mapping di base 0 e quindi l'offset è l'indirizzo lineare. Le entry sono tali per cui l'offset è distribuito in diversi punti, quindi dobbiamo recuperare i punti e comporli in una maschera di bit
+%macro
+se abbiamo quindi un puntatore ad un gate descriptor, possiamo entrare nei campi dell'oggetto.\\L'Interrupt Stack Table permette di dire che quando vogliamo utilizzare una certa entry della tabella per passare il controllo ad un certo elemento nello stack, non è vero che il blocco di codice esegue nello stesso stack. Possiamo quindi dire che diversi inuterrupt possono essere legati ad eseguire in diverse stakc areas, con 3 bit aggiuntivi possiamo specificare le diverse aree e quindi di distribuire i diversi interrupt rispetto alle aree di memoria che questi possono toccare.\\Questo permette che sia possibile che se mentre si esegue un codice di gestione sia generata un'altra trap, quindi questa lavorerà su una stack area pulita e la gestione avviene in maniera corretta. Possiamo specificare dei codici, quindi con 3 bit non si può specificare l'indirizzo della stack area e la specifica è scritta nel TSS, ci sono quindi i puntatori per arrivare nelle stack areas, quindi il codice identifica quali degli elementi considerare.\\È il sotto-sistema di controllo che controlla questa entry ed inoltre salva delle informazioni come lo stack pointer per poter poi riprendere l'esecuzione. Le stack areas possono essere per-CPU e quindi ottimizzare il posizionamento in specifiche zone NUMA.\\Questo non c'è in protected mode, si associa lo stack del livello su cui si va in landing (tipicamente è il livello 0 del thread in esecuzione).
+\subsubsection{API in Linux per la IDT}
+Ci sono API per settare un elemento nella tabella IDT, le 3 API più interessanti sono
+\begin{itemize}
+\item \texttt{set\_trap\_gate}
+\item \texttt{set\_intr\_gate}
+\item \texttt{set\_system\_gate}
+\end{itemize}
+(slides) tutte le informazioni per i bit di controllo sono hard codati nella API, ad esempio sull'interrompibilità o l'accessibilità ai diversi livelli. Questo è per x86 protected mode.
+Su x86 protected ed in versioni di kernel più recenti abbiamo (slides), dove troviamo hard coded che la stack area usata è quella di livello 0.\\Su kernel 4 e 5 l'API è ancora più semplice per cui si fa una scrittura nativa sulla IDT (slides)
+\subsubsection{Entry riservate vs disponibili della IDT}
+L'attività che dobbiamo considerare quando parte uno degli elementi è il seguente:
+\begin{itemize}
+\item troviamo il blocco di codice da eseguire, perché il blocco di sotto-sistema di controllo del processore l'ha identificato
+\item nella stack area, succede qualcosa o non succede a seconda della trap che andiamo a processare:
+\begin{itemize}
+\item trap con error code
+\item trap senza error code
+\end{itemize}
+tale error code viene generato dal sotto-sistema di controllo del processore e registrato nella stack area su cui viene eseguito il gestore.
+\end{itemize}
+L'error code è importante, in quanto fa capire perché la trap è accaduta e può essere importante usarlo nell'handler di gestione per identificare le attività che vanno svolte.\\L'allineamento della stack area quando vengono generati gli error codes è differente dalla stack area che si ha quando gli error code non vengono generati. In molti dgeli interrupt generati a livello software vengono generati degli errori per ri-allineare la stack area, in modo che lo smontaggio sia effettuato con una regola univoca
+\begin{itemize}
+\item generazione dello snapshot di CPU sulla stack area
+\item management dell'error code, per poter allineare la stack area così da smontare con una regola univoca
+\item gestione di uno stack addizionale? Può capitare che avvenga un'altra trap e quindi che vada gestita una nuova stack area
+\item passare il controllo ad un handler di secondo livello, a seconda del fatto che sia seguita la regola del top bottom half
+\end{itemize}
+Ci sono quindi una serie di domande da fare, che se fossero davvero implementate come tali userebbero cicli macchina e quindi in sistemi moderni sono implementati in modo da evitarle per risparmiare cicli macchina, quindi la gestione degli interrupt è articolata.
+\subsection{Management degli handler modulari}
+Esiste un file entry.S che identifica dove sono presenti tutti i gate per accedere al kernel, c'era anche il concetto di additional dispatcher, per cui la prima fase per portare avanti la gestione degli interrupt faceva un'attività minimalissima in un blocco apposito per poi passare il controllo ad un blocco dedicato. Abbiamo che tipicamente c'era un additional dispatcher per fare delle attività comuni per la gestione degli interrupt a valle di un blocco di codice che ad esempio inseriva l'error codice fittizio (se non presente). Occorreva dire al dispatcher unico quale è la zona di codice da eseguire alla fine dell'esecuzione, avendo quindi questa architettura:
+%immagine
+il dispatcher genera quindi lo snapshot di CPU, per poi passare il controllo al gestore reale.\\C'è la necessità di collegare oggetti machine dependent (per fare lo snapshot di CPU) a codice che non lo è (l'handler può essere scritto in C) ed il link può essere fatto con asmlinkage oppure (traplinkage??).\\È possibile quindi che la stack area abbia due configurazioni differenti:
+%immagine
+in assenza dell'error code, abbiamo due allineamenti differenti perché servirebbe codice per gestire le due situazioni diverse e quindi si inserisce l'error code fittizio. Nella stack area, quando parte il blocco di codice, riusciamo anche a trovare l'informazione Return CS, potremmo quindi identificare se la trap è partita mentre eravamo modalità user o kernel a livello software, in base all'informazione di controllo e quindi fare attività differenti in base allo scenario.\\Il gestore di primo livello, in esempi datati:
+%snippets per i gestori datati
+\subsection*{Esempi software}
+Introduzione nella IDT table di un nuovo gestore degli interrupt. Dobbiamo quindi trovare una entry libera della IDT table ed inserire un blocco di codice per gestire l'interruzione. Potremo usare l'istruzione INT.\\Il gestore è scritto in maniera machine dependent:
+\begin{itemize}
+\item si inserisce l'error code fittizio
+\item si crea lo snapshot dei registri general puropose di CPU
+\item si chiama poi una funzione \texttt{my\_handler}
+\end{itemize}
+Lo swapgs serve quando eravamo in modalità user e siamo passati a  kernel mode, ma se stiamo già in kernel mode occorre farsi la domanda per vedere il Return CS, quindi ci spiazziamo di 8 dallo stack pointer e si testa col codice 3 per verificare se eravamo in esecuzione in maniera user.\\Perché si riesce a montare il modulo senza che si blocchi il kernel? L'esito del montaggio del modulo è non deterministico ed è dovuto allo statup del kernel. Se a livello user digito 0xf5, dico al sotto-sistema di controllo che il processore deve puntare una certa area di memoria che deve essere raggiungibile quando la trap viene lanciata, ma se il kernel non fosse mandato in startup con pti=off le pagine non sarebbero visibili allo startup, quindi il processore accederebbe a memoria invisibile se non venisse fatto lo startup così.\\Se il sistema fosse quindi lanciato con pti sarebbe diverso l'aggancio del modulo.
 
 
 
