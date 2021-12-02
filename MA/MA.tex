@@ -1106,10 +1106,86 @@ Queste cercano di sfruttare proprio la presenza delle VM, che devono reagire a d
 stiamo dando un comando, l'istruzione IN nelle architetture moderne non si usa perché i registri dell'hardware moderno sono memory mapped, per arrivare al registro della scheda di rete di usa un registro che dall'hardware è mappato sulla scheda di rete. I processori Intel supportano ancora il "vecchio modo" di fare hardware, quindi ci sono le istruzioni IN/OUT, gli indirizzi di input/output ed ogni hardware ha un range di indirizzi assegnato. VmWare usa queste istruzioni per comunicare con la macchina host, se la VM esiste nei registri general purpose a 32 bit otterremo il tipo di versione della VM e quindi il malware si rende conto della sua presenza, altrimenti la IN non da risultati significativi.
 \subsection{Sommario}
 È impossibile configurare la VM per far si che questa passi ogni controllo, quindi bisogna cercare di scoprirle ed evitarle.\\Sulle sandbox: il processo di analisi dinamica può essere fatto configurando la macchina virtuale senza mettere dentro nulla di sospetto per farla sembrare una macchina "normale" monitorandola dall'esterno e registrando ogni cosa che fa il malware. L'approccio è molto potente perché si potrebbe riuscire a verificare il comportamento del malware, ma alla base c'è un meccanismo di virtualizzazione, quindi funzionano le tecniche viste, inoltre ci sono vari test per vedere se c'è una sandbox, sono in numero limitato ed introducono degli artefatti nella VM che sono riconoscibili dal malware.\\Chi fa ricerca cerca di farsi infettare dal malware, mette nella rete delle macchine abbastanza vulenrabili sperando che qualcosa lo attacchi potendo così analizzare con la sandbox cosa il malware fa, \textbf{\textsf{È SEMPRE UNA CAZZO DI G U E R R A}}.
-
-
-
-
+\chapter{Lezione 21}
+\section{Packer}
+L'eseguibile originale è un file che contiene diverse cose, riassumibili in questa struttura (alcuni di essi)
+\begin{itemize}
+\item headers
+\item sezione di testo
+\item sezione data
+\item sezione rdata (costanti, dati read only)
+\item IAT in Windows, ovvero la Import Address Table: diverse tabelle.
+\end{itemize}
+Cosa accade se applico una trasformazione al file, fatta dal packer: questo programma (il packer) prende il file e ne costruisce un'altra versione che è totalmente differente dall'originale. Per essere in file eseguibile, deve avere comunque la stessa struttura quindi in quanto a contenuto formale, il file è identico a quello originale. Quello che accade è che tipicamente la parte di codice (sezione testo) viene ridotta all'osso, viene sostituito da un piccolo programmino chiamato \textbf{stub} o unpacker stab che serve a ricostruire il programma in memoria e la sezione data diventa molto grande perché riassume tutto quello che erano le altre sezioni del file originale.\\L'effetto finale è comunque di creare lo stesso processo, ma nascondendo tutto quello che era in chiaro nel file originale. Le operazioni dello stub si possono ricondurre a queste 3
+\begin{itemize}
+\item[(1)] spacchettare i dati dal file eseguibile impacchettato. Tipicamente si usa proprio un algoritmo di compressione, che serve per ridurre le dimensioni. Originariamente erano usati per risparmiare spazio sul disco, oggi sono usati per nascondere parte del sorgente, ma non per forza per scopi malevoli, magari anche per scopi commerciali
+\item[(2)] risolvere i collegamenti alle DLL originali. Nel programma originale si occupa il SO, al lancio del programma, che legge le testate e capisce quante sezioni ci sono, quali pagine di memoria vanno allocate, quali parti vanno in quali pagine e quali DLL vanno in memoria e poi risolve i collegamenti. Se abbiamo una CALL ad una DLL, dobbiamo saltare ad un certo indirizoz che può non essere sempre lo stesso, quindi salta ad una voce della IAT dove viene messo l'indirizzo effettivo della API. Il SO non può più fare questo lavoro, perché la IAT è del programma impacchettato che contiene tipicamente molte meno informazioni. Tutto quello che faceva il SO per il programma originale ora lo deve fare lo stub, quindi caricare il codice in memoria e risolvere gli imports. Il lavoro non è banale, perché lo stub deve rifare tutte le operazioni del SO
+\item[(3)]saltare al così detto "Original Entry Point": ad un certo punto, nella sezione text del file esegubile c'era un RVA dell'entry point originale (OEP), ma una volta che lo stub ha ricostruito in memoria il processo come se fosse stato il SO a farlo, deve fare il salto all'entry point originale del programma.
+\end{itemize}
+Questi 3 punti ci sono sempre, sono essenziali e sono quelli contro cui ci si scontra quando si analizza un programma impacchettato.\\Se si usasse solo un packer, le cose sarebbero facili ma il dramma è che ci sono diversi packer e che creano codici impacchettati differenti. Hanno anche strategie per risolvere gli import differenti, così come anche per fare il salto agli entrypoint originali.\\Molti di questi strumenti sono commerciali e quindi non si sa molto di come funziona il processo di impacchettamento e spacchettamento, inoltre molti dei packer commerciali sono estensibili, quindi si possono agganciare dei moduli per fare delle modifiche proprie.
+\subsection{Scelte effettuabili}
+Su come vengono impacchettati i dati c'è poco da dire: si possono usare diversi algoritmi di compressione, a cui l'utente può aggiungere dei moduli di cifratura con delle chiavi private dell'utente stesso. Magari, in un altro modulo c'è la chiave pubblica per de-cifrare e questo impedisce una modifica del file.
+Qui si possono fare diverse scelte, perché è un compito molto difficile
+\begin{itemize}
+\item alcuni packer semplici, decidono di mantenere la IAT originale, questo è facile per lo stub ma è anche un vantaggio per l'analista che ritrova tutte le DLL del programma originale
+\item la IAT originale viene mantenuta, ma limitandola ad una sola API per ogni DLL. Ora. lo stub può calcolare gli spiazzamenti fra una API e l'altra e quindi anche con l'indirizzo di una sola riesce velocemente a ricostruire gli indirizzi di tutte le altre usate nel programma
+\item non tenere nulla della IAT originale, che vuol dire che lo stub deve ricalcolare a mano tutti gli indirizzi delle DLL del programma originale e questo si fa con due API:
+\begin{itemize}
+\item LoadLibrary
+\item GetProcAddress
+\end{itemize}
+ci sarà una struttura di dati in cuui lo stub ricorda che deve sostituire la CALL ad un simbolo della API all'indirizzo effettivo della API nella DLL.
+\end{itemize}
+La terza fase viene chiamata \textbf{"tail jump"}, che può essere una semplice jump ma chi scrive malware può nascondere il flusso di esecuzione per non farla sembrare una jump. Tutti i packer usati dal malware sono infarciti di tutte le misure anti-* per ostacolare ancora di più il processo di reversing.
+\subsection{Packer UPX}
+UPX è un packer open source, possiamo usarlo per impacchettare un programma e vedere cosa esce fuori. Se abbiamo un eseguibile, quali sono i segnali che l'eseguibile è stato impacchettato e non è l'originale
+\begin{itemize}
+\item c'è differenza fra raw size e virtual size nella sezione che contiene i dati;
+\item se il packer toglie la IAT originale, guardando i simboli importati delle DLL saranno pochissimi;
+\item sezione testo più piccola
+\item mancano delle sezioni, perché il programma impacchettato non ha bisogno di tutte le risorse del programma originale. Sono tutte racchiuse nel file compresso che contiene tutto, ci sarà una sezione unica con nome generico;
+\item sezione con nome "upx0", magari collegabile al packer
+\item l'entropia del file è differente.
+\end{itemize}
+Abbiamo un programma originale, proviamo ad impacchettarlo. Il programma viene compresso sul posto, quindi conviene farsi una copia, vediamo come è fatto il programma risultante
+\subsubsection{Analisi statica del file compresso}
+Apriamo con PEStudio, il programma originale conteneva 45 import di DLL. Nel programma impacchettato, troviamo solo 6 API. L'entropia è la quantità di informazioni, si può misurare ad esempio per byte: prendiamo un gruppo di byte (ad esempio 64) e ci calcoliamo l'entropia del singolo byte. Se troviamo 0, abbiamo blocchi che sono riempiti sempre dello stesso valore, mentre entropia vicina ad 8 hanno quasi il massimo dell'informazione (truly random). Il codice macchina ha entropia vicino a 4-5. Facendo lo stesso controllo sul file eseguibile impacchettato, abbiamo due cose diverse: l'entropia che otteniamo è 5-6 di media, ed è molto difficile che un compilatore generi del codice macchina con entropia così alta quindi questa è già una misura che dice che il codice è impacchettato.\\Un altra indicazione che il programma è stato impacchettato è se lo si apre con un disassembler: aprendo il programma impacchettato, già dall'inizio in Ghidra ci sono dei problemi. Il motore che cerca di analizzare l'eseguibile già nota che qualcosa non va. Una volta analizzato, ci sono le varie sezioni, i vari \textt{NT\_HEADER}, saltiamo all'entry point ma la maggior parte del file Ghidra non sa cos'è. Il file dice che la virtual size è di un tot, ma non ha avuto abbastanza dati per sapere come riempire le sezioni e quindi ci sono una sfilza di "??".
+\subsection{Unpacking del programma}
+Ci sono 3 strade possibili:
+\begin{itemize}
+\item riusciamo a spacchettare il programma, ad esempio UPX permette di far tornare il programma ad uno funzionalmente uguale all'originale (ma mai identico).
+\item se anche non abbiamo il packer con funzionalità per spacchettare, ci sono tool che lo fanno: PE Explorer è uno di questi programmi. Il suo unico "difettino" è che ha una licenza di 30 giorni, ha una serie di pulgin per spacchettare i programmi di 3 packer differenti.
+\end{itemize}
+Nessuno che scrive malware "offre il fianco" a queste cose: basta fare una piccola variazione ed i tool automatici non funzionano più. Qui inizia il bello, perché le 3 operazioni vanno comprese da soli e non possono essere comprese in automatico. Ci sono due strategie:
+\begin{itemize}
+\item seguiamo cosa fa lo stub col disassemblatore ma costa
+\item uso un debugger, cercando di mettere di breakpoint per fermarmi sul punto di confine fra l'oeprazione di spacchettamento, l'operazione di risolvere gli import ed il salto all'OEP. Se fermiamo il debugger fra il passo 2 ed il passo 3, dovremmo ritrovarci con l'intero processo in memoria in chiaro e quindi possiamo fare un dump dell'eseguibile basato sul contenuto di memoria attuale del processo. Due problemi:
+\begin{itemize}
+\item per mettere il break point, occorre trovare dove avviene quel salto
+\item quando facciamo il dump bob ricostruiamo le IAT. Quelle non sono in memoria e serve ricostruirle per ricreare un file eseguibile
+\end{itemize}
+\end{itemize}
+Cerchiamo quindi prima di capire dove è il salto all'OEP, mettiamo un breakpoint e facciamo l'unpack dei dati creando un file eseguibile e come ultimo passo cerchiamo di ricostruire la IAT, i passi sono quindi
+\begin{itemize}
+\item (3)
+\item (1)
+\item (2)
+\end{itemize}
+\subsection{Ricerca dell'OEP}
+Ci sono dei tool che riconoscono se ci sono dei packer, fra questi PEiD: fra i suoi plugin per la ricerca dell'OEP, ci sono strategie per cercarlo
+\begin{itemize}
+\item salto fra segmenti o sezioni differenti: vediamo un salto che porta il flusso da una sezione ad un'altra
+\item salto "molto lontano": di solito i salti lontani sono CALL, quindi se lo vediamo lontano è strano e può essere il tail jump
+\end{itemize}
+Ci sono poi strategie dinamiche
+\begin{itemize}
+\item mettiamo un breakpoint dopo ogni ciclo: i cicli sono necessari nello stub, sperando di beccare il momento in cui avviene il salto finale
+\item breakpoint su GetProcAddress, in quanto lo stub fa le operazioni nell'ordine (1), (2), (3)
+\item se riusciamo a trovare un momento in cui lo stub ha già caricatole DLL fondamentali usate dal processo, possiamo provare a mettere dei breakpoint sulle API dal processo originale.
+\item un'altra tecnica prevede l'uso dell'istruzione PUSHAD, che salva tutti i registri sullo stack e quindi l'ultima cosa che verrà fatta sarà riprendere le locazioni salvate. Usiamo "follow in dump" sullo stack pointer, mettiamo un breakpoint hadrware (perché è un accesso) su una dword sullo stack. La speranza è che il pop dallo stack pointer avvenga prima di fare il jump all'OEP
+\end{itemize}
+PEiD usa delle euristiche nei suoi plugin, che non è detto funzionino. OllyDbg ha diversi plugin per lavorare con i programmi compressi come "OllyDump": anche questo ha un algoritmo generico per cercare l'OEP. Anche in questo caso c'è la funzionalità per fare trace into o over. I plugin non funzionano sempre, sono euristiche: un lavoro professionale lo si fa se si hanno le competenze, in modo che si possa sopperire al malfunzionamento degli strumenti.\\ \textbf{\textsf{Nulla sostituisce la competenza}}
+Per poter trovare l'OEP, si può tentare col disassemblatore: cerchiamo tutti i jump nelle istruzioni (instruction mnemonics). Non saranno molti, se ne troviamo uno lontano vale la pena approfondirlo: trovato l'indirizzo dove si salta, possiamo tornare al debugger. Un'altra indicazione della compressione del programma è che quando lo carichiamo in OllyDbg, ci sono delle indicazioni al caricamento che avvertono che il programma è impacchettato (funziona in base ad una threshold).\\Entriamo in quella che dovrebbe essere la prima istruzione dell'OEP, possiamo verificarlo seguendo le istruzioni e verificando che è l'inizializzazione esatta del codice.
 
 
 
