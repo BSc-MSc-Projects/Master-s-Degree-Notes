@@ -2324,16 +2324,98 @@ il dispatcher genera quindi lo snapshot di CPU, per poi passare il controllo al 
 %immagine
 in assenza dell'error code, abbiamo due allineamenti differenti perché servirebbe codice per gestire le due situazioni diverse e quindi si inserisce l'error code fittizio. Nella stack area, quando parte il blocco di codice, riusciamo anche a trovare l'informazione Return CS, potremmo quindi identificare se la trap è partita mentre eravamo modalità user o kernel a livello software, in base all'informazione di controllo e quindi fare attività differenti in base allo scenario.\\Il gestore di primo livello, in esempi datati:
 %snippets per i gestori datati
-\subsection*{Esempi software}
-Introduzione nella IDT table di un nuovo gestore degli interrupt. Dobbiamo quindi trovare una entry libera della IDT table ed inserire un blocco di codice per gestire l'interruzione. Potremo usare l'istruzione INT.\\Il gestore è scritto in maniera machine dependent:
+In diverse implementazioni di Linux, il passaggio al dispatcher e poi all'handler attuale avveniva mediante dei salti, ma è possibile in configurazioni dell'x86 occorra farsi delle domande, tra cui ad esempio quale sia la stack area da vedere. Un'altra attività da fare è dovuta al fatto che questo tipo di passaggio fa si che si passi modo kernel e quindi occorre cambiare la page table per rispettare la page table isolation, quindi avevamo uno schema complesso del blocco di codice. Per evitare quindi un numero eccessivo di jump e sfruttare la località, visto che le istruzioni sono poche, si è deciso di unificare il blocco di codice compatto. Avremo quindi scenari in cui l'handler chiama direttamente l'handler senza passare per il dispatcher che in base alla trap fa delle cose senza farsi delle domande. Lo spashot dello stato della CPU che ritroviamo sulla stack area è un oggetto del tipo (figura sopra) che è una struttura dati differente in base alla modalità di x86, nel caso di 64 bit abbiamo registri in più che occupano più spazio nella stack area, il gestore che prende il controllo quali parametri prende: tipicamente al massimo 2
 \begin{itemize}
+\item puntatore allo snapshot creato nello stack, quindi ad una struttura dati di quel tipo.
+\item magari anche l'error code, perché l'handler dovrebbe lavorare sullo snapshot di CPU ma conoscendo anche il perché è stato attivato. L'error code viene passato dall'handler di primo livello e tale codice è nella stack area (è sempre presente, in un caso è sintetico e scritto sempre dal firmware).
+\end{itemize}
+\subsection{Gestore del page fault in architettura Linux}
+Il gestore è il seguente, che prende due parametri come detto
+\begin{itemize}
+\item uno è il \texttt{pt\_regs}
+\item l'altro è il codice di errore
+\end{itemize}
+%esempio
+Il tipo d fault viene specificato dai bit meno significativi. Questo oggetto rappresenta comunque un top half di gestione di una trap o interrupt, quindi si faranno delle attività per fari si che avvenga qualcosa di deferred dopo. Ma non è sempre così, gestori delle trap che portano ad eseguire in modo kernel quando originariamente eravamo user, non ha senso usare TBH programming perché stiamo interrompendo attività user e non kernel per cui questi gestori vengono eseguiti in maniera asincrona.\\Se invece arriva ad esempio un interrupt da timer, si esegue un top half e poi lascia il lesto del lavoro deferred.
+\subsection*{Esempi software}
+Introduzione nella IDT table di un nuovo gestore degli interrupt. Dobbiamo quindi trovare una entry libera della IDT table ed inserire un blocco di codice per gestire l'interruzione. Una volta trovata l'entry, si aggiorna il contenuto dell'entry per inserire un blocco di codice che viene lanciato quando si verifica quel tipo di istruzione. Il blocco di codice è quindi non presente nelle pagine kernel quando stiamo eseguendo user mode, viene allocato in maniera dinamica.\\Il gestore iniziale è scritto in maniera machine dependent:
+\begin{itemize}
+\item si verifica, spiazzandosi di 8 dallo SP se siamo modo kernel o user
 \item si inserisce l'error code fittizio
 \item si crea lo snapshot dei registri general puropose di CPU
 \item si chiama poi una funzione \texttt{my\_handler}
 \end{itemize}
-Lo swapgs serve quando eravamo in modalità user e siamo passati a  kernel mode, ma se stiamo già in kernel mode occorre farsi la domanda per vedere il Return CS, quindi ci spiazziamo di 8 dallo stack pointer e si testa col codice 3 per verificare se eravamo in esecuzione in maniera user.\\Perché si riesce a montare il modulo senza che si blocchi il kernel? L'esito del montaggio del modulo è non deterministico ed è dovuto allo statup del kernel. Se a livello user digito 0xf5, dico al sotto-sistema di controllo che il processore deve puntare una certa area di memoria che deve essere raggiungibile quando la trap viene lanciata, ma se il kernel non fosse mandato in startup con pti=off le pagine non sarebbero visibili allo startup, quindi il processore accederebbe a memoria invisibile se non venisse fatto lo startup così.\\Se il sistema fosse quindi lanciato con pti sarebbe diverso l'aggancio del modulo.
-
-
+Lo swapgs serve quando eravamo in modalità user e siamo passati a  kernel mode, ma se stiamo già in kernel mode occorre farsi la domanda per vedere il Return CS, quindi ci spiazziamo di 8 dallo stack pointer e si testa col codice 3 per verificare se eravamo in esecuzione in maniera user.\\Per ottenere la entry della tabella libera, abbiamo un codice simile alla ricerca della entry nella page table, il vettore si comincia ad analizzare ad ff, che è 255 in quanto il numero totale degli offset è 256. Ci mettiamo sull'ultima entry perché sappiamo che le prime sono già usate, per prelevare uno degli elementi liberi, ovvero che punta al gestore di default, si fa un ciclo sul trap vector, si prende un search index che procede all'indietro e si cerca un elemento uguale al default handler. Per fare una \texttt{memcmp} fra due entry, occorre il puntatore alla tabella IDT per poter, la funzione può darci un match e quindi che ci sono due entry uguali e quindi che il trap vector corrente è buono. Su versioni più vecchie del kernel, c'è già una bitmask che dice quali sono le entry libere e quindi il controllo è ridondante, in versioni inferiore alla 4.18 quindi si fa un cross check per testare se l'oggetto è giusto; se non abbiamo la conferma c'è un falso positivo. Una volta trovato l'indice, chiamiamo la setup della entry, salviamo la tabella per rimetterla a posto nel momento in cui si smonta il modulo.\\Perché si riesce a montare il modulo senza che si blocchi il kernel? L'esito del montaggio del modulo è non deterministico ed è dovuto allo statup del kernel. Se a livello user digito 0xf5, dico al sotto-sistema di controllo che il processore deve puntare una certa area di memoria che deve essere raggiungibile quando la trap viene lanciata, ma se il kernel non fosse mandato in startup con pti=off le pagine non sarebbero visibili allo startup, quindi il processore accederebbe a memoria invisibile se non venisse fatto lo startup così.\\Se il sistema fosse quindi lanciato con pti sarebbe diverso l'aggancio del modulo.
+\subsection{Installazione di una trap con page table isolation}
+Per installare la trap, dobbiamo sfruttare un handler già esistente:
+\begin{itemize}
+\item abbiamo la IDT ed una entry che porta su un blocco di codice di primo livello alla fine della cui arriverò sull'handler.
+\item nel caso della patch pti per la sicurezza, la parte della IDT è visibile perché sennò il codice non potrebbe essere attivato dal sotto-sistema di controllo, al massimo ciò che non è visibile è l'handler finale
+\end{itemize} 
+Quindi come installiamo un oggetto su memoria non visibile? Occorre prendere un oggetto già presente, la CALL va poi ridirezionata verso un gestore presente all'interno del mio modulo kernel.\\Occorre quindi fare binary patching, per cui se so da quale entry voglio entrare devo
+\begin{itemize}
+\item reperire l'indirizzo di memoria
+\item identificare la CALL che porta sul gestore effettivo della trap, cambiare quella
+\end{itemize}
+quando analizziamo le CALL, possiamo vedere se il target su cui arriviamo è noto, quindi devo conoscere il modulo dell'indirizzo di memoria e quando troviamo quella CALL sappiamo che è quella da riscrivere. Per reperire l'indirizzo possiamo ad esempio usare kprobing, per capire dove è poisizionato il gestore effettivo della trap, quindi poi ridirezioniamo la CALL verso il nostro gestore.
+\subsubsection*{Esempio software}
+Abbiamo un handler che dobbiamo cercare di installare, possiamo fare diverse cose cui ottenere l'indirizzo di una funzione tramite kprobing. La entry 255 è usata per gli interrupt spuri per molte versioni del kernel, in un for analizziamo se troviamo nel codice il byte "0xE8", ovvero una CALL in x86. Trovata una call, dobbiamo capire dove sta puntando la CALL, dobbiamo prendere i byte +1, +2, +3 e +4 per vederlo (in quanto il primo byte rappresenta la CALL). Nella CALL l'offset è relativo alla posizione della CALL, ma occorre anche conoscere l'indirizzo della CALL a cui va sommato l'offset e quindi l'indirizzo risultante viene comparato con quello che è stato trovato facendo kprobing. Se è quella giusta, abbiamo un match found e cambiamo il codice
+\begin{itemize}
+\item determiniamo il nuovo operando della CALL, che deve essere associato al fatto che occorre colpire l'handler con un salto relativo, quindi occorre calcolare la differenza da inserire nell'offset della CALL
+\item l'informazione associata all'oggetto va riscritto nel binario, sostituendo i byte della CALL
+\item si va in C\&S per rendere più safe il fatto che sta venendo riscritto il codice in quanto è possibile che la linea di codice venga letta in maniera non atomica da altri flussi.
+\end{itemize}
+Vediamo un altro esempio\\\\Nel caso di una trap o un interrupt, questo ci permette, usando dei meccanismi di accesso al kernel già presenti, di generare uno snapshot di CPU. Sappiamo che un thread è un percorso di esecuzione tale per cui quando questo deve riprendere il controllo vanno rimessi i dati all'interno dei registri della CPU etc... Abbiamo quindi un thread, lo facciamo processare in time sharing ad attività: il thread esegue diverse attività in diverse fasi, quindi ogni fase è come se fosse un altro thread lanciato sull'attività del main thread. Decidiamo quindi di cambiare lo snapshot di CPU. Questo tipo di cose si chiamavano User Level Thread, per cui ad un certo punto si chiamava una libreria che dava il controllo ad altri thread. Implementiamo un oggetto simile a livello di SO. Usiamo ancora la entry per la gestione degli interrupt spurious, in modo che sta volta si cambi lo snapshot di CPU in modo da fare attività diverse.\\Inseriamo quindi due system call:
+\begin{itemize}
+\item una permette di creare dei nuovi thread, in quanto alla creazione di un thread occorre stabilire qual è il contesto iniziale del thread. Data una head, possiamo arrivare su una coda di contesti che vorremmo rimettere in esercizio lungo un thread di SO. Viene chiamata una trap, si passa il controllo al kernel ed il kernel stabilisce quale dei contesti va rimesso in esecuzione, prende i registri contenuti nel contesto e li rimette in CPU
+\item la seconda syscall resetta lo scheduler, per eliminare quindi gli elementi dalla coda.
+\end{itemize}
+Nel momento in cui avviene la trap, la lista non è altro che la run queue da analizzare per capire quale thread mandare running. Possiamo resettare lo scheduler solo se nessun thread sta usando lo scheduler. I parametri della syscall che permette di creare i thread sono quale è il parametro ma anche quale zona della stack area devono usare per evitare interferenze fra i thread. Verifichiamo nella syscall se il thread è utilizzabile e prendiamo quindi la memoria per i dati che ci servono. C'è poi il gestore del contesto, che sceglie sempre il thread che ha girato per meno ticks ed una volta selezionato si copiano le informazioni nella stack area che andrà restorata sul processore.\\Abbiamo, nel codice user, delle aree di memoria che saranno gli stack per i nostri thread. In base al numero di contesti, si fa il setup del thread e poi si chiama la \texttt{schedule()}, dove oltre a fare push e pop di rax si chiama un interrupt con la int 0xff.\\A chi può essere utile l'informazione che viene scritta nel registro di informazione prima di chiamare la trap? In particolare
+\begin{itemize}
+\item si salva un registro, rax
+\item si scrive 0
+\end{itemize}
+il gestore a livello kernel può guardare quel valore e quindi possiamo identificare al gestore quale attività fare. Una possibilità è quella di inserire un'altra macro per eliminare uno dei contesti del thread per eliminare uno dei thread.\\Nel context switch ahndler inoltre, si esegue un operazione O(n), senza andare a chiamare altri servizi bloccanti. Possiamo permetterci la O(n) perché stiamo usando la trap mentre stavamo eseguendo livello user e non abbiamo interrotto livello kernel. Ma se questa organizzazione del software venisse modificata per poter essere colpito da un interrupt, occorreva stare più attenti al caso in cui il thread potesse essere marcato per eseguire subito etc... in base allo scenario in cui si esegue il software.
+\section{Ancora su IPI}
+Quando un processore viene colpito da un IPI abbiamo due possibilità
+\begin{itemize}
+\item l'esecuzione dell'IPI va eseguita in maniera immediata perché un altro processore lo sta aspettando (il flusso di esecuzione è bloccato). Abbiamo immediate handling in alcuni casi per l'esecuzione di funzioni cross-cpu.
+\item altro caso è che non si aspetti il completamento del lavoro, ad esempio se si va in panic intanto molla la cpu che segnala e non aspetta gli altri
+\item un altro caso è avvisare gli altri di resettare il tlb
+\item ancora, di rischedulare cosa fa la cpu in quanto può essere un thread in coda da un'altra cpu
+\end{itemize}
+Gli esempi più interessanti in Linux prevede che ci siano diversi lettori
+\begin{itemize}
+\item \texttt{CALL\_FUNCTION\_VECTOR}, abbiamo diverse API per fare questo in Linux
+\begin{itemize}
+\item \texttt{smp\_call\_function()}
+\item \texttt{call\_function\_interrupt()}
+\end{itemize}
+\item \texttt{RESCHEDULE\_VECTOR}: si chiama l'interrupt quando è necessario che una cpu effettui un reschedule perché abbiamo inserito un thread nella coda di quella cpu e va schedulato
+\item \texttt{INVALIDATE\_TLB\_VECTOR}
+\end{itemize}
+L'API attuale della IPI è la seguente
+\begin{itemize}
+\item \texttt{send\_IPI\_all()}: viene mandata a tutti, quindi compreso la cpu sorgente
+\item \texttt{send\_IPI\_allbutself()}
+\item \texttt{send\_IPI\_self()}
+\end{itemize}
+\subsection{Sequenzializzazione della gestione degli IPI}
+C'è la necessità di sequenzializzare perché magari mentre uso un IPI dico ad una cpu di fare qualcosa ma nel mentre aspetto e quindi serve la necessità di dire che qualcuno passa prima, altrimenti l'altro potrebbe dire a me di fare qualcosa ed aspettarmi.\\Serve quindi questo meccanismo, a livello modellistico è necessario quando gestendo gli IPI occorre gestire una struttura condivisa, l'informazione scritta nella struttura deve avere validità finché il protocollo non è finito. Usiamo diverse locazioni di memoria per scrivere informazioni che non possono essere usati dagli altri, è quello che accade in \texttt{smp\_call\_function()}, l'informazione che la cpu colpita deve conoscere per eseguire è stata scritta in shared memory.\\ Lo schema è il seguente:
+%immagine dello schema
+supponiamo di avere 2 cpu, il core 0 ha deciso di chiamare una API del kernel per far si che una funzione sia chiamata da un altra cpu, deve quindi usare i registri LAPIC per far si che la notifica arrivi. Prima di questo, il gestore dell'interrupt si scrive in un'area di memoria condivisa le informazioni per il gestore dell'interrupt. L'area di memoria è del core0, finché non siamo sicuri che le attività di gestione dell'IPI siano completate, per evitare che altri vi scrivano; si usa quindi un lock per prendere l'IPI.
+\subsection{Altri aspetti}
+%lisato della smp
+passiamo fra i parametri anche un comando, il wait che è utile per dire se io che sto eseguendo la funzione devo anche aspettare chi avviso o no. C'è poi un warning on che dice che se si entra nel kernel in maniera non interrompibile, se il lock è già stato preso qualcuno mi manda una richiesta di interrompibilità e non la sento.\\ C'è poi l'IPI di reschedule, dove diciamo ad una cpu di rischedulare un thread ad altra priorirà che ho appena risvegliato e messo sulla sua run queue. Quando avvero, il gestore dell'interrupt deve solo marcare il thread come preemptabile e quando passa in safe place chiama la schedule. La correttezza è data da queste istruzioni:
+%istruzioni 
+abbiamo un set di API che permette di gestire la preemption, lavoriamo sul contatore atomico che permette di lavorare sulle richieste di preemption (??).\\Altri aspetti di performance riguardano il fatto che la smp esegue con gli interrupt permessi ma se il kernel è ben strutturato, la funzione non viene ritardata, ma deve comunque essere non-preemptible. In versioni più recenti del kernel la struttura è anche esemplificata per quando si chiama la smp call si ci mette prima non-preemptible e poi preemptible così che passando per un safe palce non si rilascia la cpu.\\Attenzione a come si usano queste API, ci sono dei costi legati alle sezioni critiche ed anche alle attese ed è da considerare in maniera corretta quando si fa l'analisi del codice del kernel per magari progettarne nuovi pezzi.
+\subsection*{Esempio di utilizzo della \texttt{smp\_call\_function}}
+Montiamo un modulo, all'atto del montaggio il thread chiama una funzione sugli altri cpu core per
+\begin{itemize}
+\item inizializzare variabili per-cpu
+\item mettiamo le altre cpu affinché si risveglino nel momento in cui il thread ha deciso
+\end{itemize}
+può essere interessante quando occorre fare patching del kernel: finché le altre cpu sono in spinning, possiamo aggiornare delle strutture dati del kernel.Si usano due variabili allineate ai 64 per la sincronizzazione. Ogni cpu core diverso dal master è bloccato dalla barriera, questo vuol dire che lui può comunque processare dei top half perché è interrompibile, quindi dobbiamo stare attenti a cosa andiamo a patchare nella funzione. La apply patch è tale per cui possiamo sprotegge la memoria, modificare qualcosa ma stando, attenti che quello che si modifica non sia correntemente in utilizzo da parte di una delle cpu (questo causerebbe problemi per le cpu), per poi riproteggere la memoria.
 
 \newpage
 \section*{Homework: RCU list}

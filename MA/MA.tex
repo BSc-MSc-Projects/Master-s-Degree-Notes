@@ -986,7 +986,6 @@ La vulnerabilità era così famosa che le versioni di OllyDbg in esercizio oggi 
 \item etc...
 \end{itemize} 
 Lo standard si aspetta che le dimensioni su file ed in memoria siano grossomodo coincidenti, ma in realtà quando il SO deve caricare l'eseguibile legge una quantità di dati dal disco pari al valore minimo fra al row size e la virtual size.\\Versioni precedenti di OllyDgb scartavano completamente la virtual size e prendevano direttamente la row size, la differenza fra ciò che fa OllyDbg e ciò che fa il SO è la strada per inserire qualcosa che rompa il debugger, in questo caso si può provare a "giocare" con la dimensione dei row size:  in PE Bear, possiamo modificare tale valore ma il programma stesso sa che viene letto il minimo ma se OllyDbg non lo sa carica troppi dati in memoria e fa crashare il programma.
-\subsection{}
 OllyDbg v2 risolve questa vulnerabilità, quindi le vulnerabilità sono specifiche anche per le versioni e non solo per il solo programma. Esiste una API di sistema che è la \texttt{OutputDebugString}, che serve per mandare una stringa al debugger, che ha un formato printf-like e quindi possono seguirvi degli argomenti da visualizzare. Che succede se passiamo come stringa formato una sequenza di "\%s", l'effetto è di dire a OllyDbg di aspettarsi di leggere i successivi N valori sullo stack come indirizzi di valori da stampare, quindi si arriverà ad un certo punto a qualcosa che non è un indirizzo di memoria a cui si può accedere e quindi manderà in seg fault il programma, che si chiuderà.\\Nella versione 10 dell'API si utilizzano le eccezioni, quindi si può usare anche per cercare di capire se un programma è debuggato o no perché ci sarà un gestore esplicito se c'è un debugger attivo oppure partirà un handler di default.
 \section{Meccanismi anti-disassembling}
 Nessuno mette in piedi meccanismi anti-debugging senza usare anche meccanismi contro disassembler. Sono più complessi, perché non si possono sfruttare delle condizioni a run time e ci sono metodi estremamente sofisticati per fare questo, che vedremo nelle prossime puntate. Vediamo dei metodi semplici ma comunque efficaci. Occorre innanzitutto capire come funzionano i disassembler:
@@ -1028,7 +1027,85 @@ La CALL ad un indirizzo impossibile è un'altra variante, che è data dai codici
 Il disassemblatore vede il salto come condizionato e considera E8 che è il codice della CALL, quindi falsa completamente. Non esiste quindi modo di disassemblare correttamente, perché i due byte EB 05 appartengono a due istruzioni macchina differenti, che per il disassemblatore non può accadere.\\Per risolvere, si fa il clear code fin quando si trova il byte E8, per poi tornare a disassemblare.
 \subsection{Offuscare il flusso di esecuzione}
 Uno dei modi è usare i puntatori, in particolare i puntatori a funzione. Questo perché tipicamente il puntatore a funzione è qualcosa che un disassemblatore non sa seguire, alcuni disassembler "intelligenti" come Ghidra riescono a seguire un assegnazione statica, ma ha dei limiti legati alla complessità di cosa può fare del codice a run time. Ghidra trova dei riferimenti a delle label, ma gli indirizzi vengono caricate ni due variabili sullo stack e fa delle operazioni su delle variabili ad esempio leggere il valore e poi fare un shift aritmetico verso destra di un certo numero di posizioni e poi scrivere il valore per poi metterlo nel registro e fare la CALL. A questo punto lui si è perso, quindi l'obiettivo di far si che il disassemblatore non sappia dove sta andando è riuscito. Il dsassembler si è perso perché il codice usa i puntatori e fa delle operazioni che noi sappiamo che dovrebbero essere trasparenti, ma il disassemblatore non lo sa dire.\\Anche in questo caso è solo la fantasia ad essere l'arma: PROVATECI ANCHE VOI, GIOCATE CON I PUNTATORI E CREATE IL VOSTRO PROGRAMMINO CHE ROMPE IL DISASSEMBLATORE, VEDIAMO COSA DICE IL CAPO.
-
+\chapter{Lezione 20}
+\section{Altre tecniche anti-disassemblaggio}
+Tutte le misure cercano di "falsare" quella che è la visione che il disassemblatore offre del flusso di esecuzione, questo perché i disassemblatori che usiamo sono basati su un riconoscimento interattivo del flusso, quindi riusciamo ad evitare ad esempio che il disassemblatore arrivi ad analizzare delle funzioni critiche o delle API che espongono delle DLL.\\Un'altra tecnica usata è l'\textbf{abuso del valore di ritorno della funzione}: abbiamo delle istruzioni macchina dove c'è una CALL ad un certo indirizzo, che però è l'istruzione successiva alla CALL. Questo però ha avuto un effetto:
+\begin{itemize}
+\item CALL l0
+l0:
+\end{itemize}
+l0 è piazzato sulla cima dello stack. Facendo ora un'istruzione come ADD [ESP], 5 si aggiunge 5 allo stack. Si punta quindi ad l0 + 5, c'è spazio per un byte sopra che contiene una RETN. La sequenza di istruzioni porta quindi il processore in maniera complicata a continuare l'esecuzione, è come se fosse una grande NOP, dal punto di vista del disassemblatore è cambiato tutto, perché sto modificando il flusso di esecuzione ed il disassemblatore pensa che la funzione finisca dove incontra una return. Ghidra non riesce a riconoscere il fatto che ci siano delle altre CALL, quindi si può fare il clear del codice che non si riesce ad interpretare e si può fare una patch dell'assembler, dicendo di fare un salto direttamente sull'istruzione corretta, in seguito si deve "convincere" Ghidra che va reinterpretata la funzione
+\begin{itemize}
+\item evidenziando tutti i byte;
+\item function $\rightarrow$ re-create function.
+\end{itemize}
+L'ultima tecnica che vediamo è una misura basata sempre sull'alterazione del flusso di esecuzione, lo scopo è sempre quello di far perdere al disassemblatore la funzione di dove la funzione passa il controllo. Si cerca di ingannare Ghidra come il return della funzione, ma in realtà non è mai eseguito, la tecnica è basata sulla gestione delle eccezioni strutturate, la misura è anche anti-disassemblaggio.\\Abbiamo le seguenti istruzioni
+\begin{itemize}
+\item mettiamo in EAX un valore
+\item sommiamo a 20 un altro valore 
+\item Ghidra capisce che è stato messo sullo stack un indirizzo, riesce a correlare le costanti.
+\item si rimette sulla cima dello stack l'indirizzo del segmento, offset 0
+\end{itemize}
+In FS:[0] c'è il puntatore al primo elemento di una catena di handler delle eccezioni (SEH) e quindi il programma fa prima la push di un certo indirizzo, poi ha messo sullo stack il valore, quindi punta al primo handler della catena. Si prende quindi il valore di ESP e si scrive in FS:[0], FS:[0] punta quindi al nuovo elemento generato ed inserito nella catena. A questo punto si azzera l'accumulatore e di divide per 0, questo genera un'eccezione e quindi dipende da come è stato scritto il gestore delle eccezioni: ma il gestore non ritornerà mai, quindi la ret non verrà mai eseguita. Dopo di che, fa ripuntare esp al contenuto del primo elemento (primi 4 byte), si fa puntare EAX poi all'handler aggiuntivo del SO e si dereferenzia due volte, facendo quindi puntare al secondo elemento della struttura. Scriviamo quindi EAX in FS:[0], quindi alla fine si rimuove l'handler aggiunto dal programma e si rigenera la catena delle eccezioni originali, si aggiunge poi 8 ad ESP e quindi si toglie dallo stack i due puntatori che non servono più.\\Da un punto di vista del SO, questo è convinto che stiamo ancora eseguendo un gestore delle eccezioni, ma all'atto pratico il programma funziona. Per ricostruire il flusso si fa clear di tutto ciò che non serve e si mette un jump dove si vuole andare. (NB: I decompilatori usano un motore differente rispetto a quello del disassemblatore ma non aiuta vederlo).\\\\C'è un'altra tecnica che serve per confondere il disassemblatore ma non è così efficace: Ghidra, quando analizza una funzione, cerca di tenere traccia di come usa lo stack, deve tenere traccia di parametri, variabili locali etc... e quindi anche dei vari offset che la funzione crea man mano che avanza nell'esecuzione. Ci sono tecniche che cercano di far perdere il controllo di ciò che è sullo stack, funzionano in quanto la funzione ha un certo prologo ed inizia allocando dello spazio sullo stack.\\ Potremmo mettere un allocazione di spazio aggiuntiva:
+\begin{itemize}
+\item SUB ESP, 8
+\item SUB ESP, 4
+\item CMP ESP, 0x1000
+\item JL l0
+\item ADD ESP, 4
+\item jump l1
+\end{itemize}
+se si salta, quindi lo stack pointer è maggiore di 0x1000
+\begin{itemize}
+\item l0: ADD, ESP, 0x104
+\item l1: ...
+\end{itemize}
+il disassemblatore non ha modo di sapere se ESP è quello originale, dato solo dalla prima istruzione di SUB, oppure se ci sono anche le due ADD che variano lo SP. L'effetto pratico è che aggiungendo valore allo SP si prendono valori di altre funzioni, quindi valori di funzioni chiamanti, è ovvio che non può funzionare ma questo il disassemblatore non lo può sapere e quindi può ingannare la traduzione delle variabili locali. Funziona però perché empiricamente lo stack non sta mai nella prima pagina di memoria dei processi, ma più avanti e quindi il controllo a run time viene sempre perso e lo stack rimane invariato. Se invece il disassemblatore decide di prendere la strada sbagliata, gli salta la logica della ricostruzione delle variabili locali. Questo tipo di tecniche sono più efficienti su questo tipo di trucchi, ma comunque si possono incontrare nel lavoro quotidiano (CHISSÀ, MAGARI IN UN HOMEWORK? MAGARI DUE? BHOO).
+\section{Tecniche anti-VM}
+Il malware cerca di non attivarsi o di nascondersi anche nel caso in cui rilevi la presenza di VM, adottando una serie di misure per cercare di capire se viene eseguito sulla macchina host o su una VM. Questo tipo di tecniche era molto usato in passato in quanto una volta le VM erano poco diffuse, ma ora l'uso delle VM si sta diffondendo anche fra "utenti normali".\\Lo scopo del malware è attaccare una certa vittima, magari un utente normale e quindi se il malware nota che c'è una VM l'utente può essere nel caso peggiore un analista bastardo che cerca di analizzarlo.\\Il malware oggi può anche avere interesse nell'infettare la VM, quindi cerca sempre di capire se è in VM ma per cercare di uscirne ed infettare il sistema fisico.\\Ci sono tante tecniche differenti, è impossibile fare un'analisi esaustiva quindi ne vediamo alcune.
+\subsection{Tecnica 1: CPUID}
+Il malware può non riuscire a capire che è in una VM in base al virtualizzatore in cui gira, ad esempio se VmWare o VirtualBox etc... Di fatto, l'ambiente emulato dovrebbe essere il più simile possibile all'ambiente fisico ma non è così in pratica.\\C'è un istruzione x86 chiamata CPUID che restituisce informazioni legate all'hardware, si passa come argomento il valore 0 all'accumulatore che fornisce la marca del vendor del processore. Otteniamo quindi una stringa distribuita su più registri che può essere
+\begin{itemize}
+\item GenuineIntel: i processori intel fisici quando eseguono CPUID restituiscono questa stringa
+\item AuthenticAMD
+\end{itemize}
+un processo di una VM non è un processore fisico, quindi può scegliere di far restituire una stringa differente a CPUID e VirtualBox restituisce GenuineIntel, mentre VMWare di defualt non lo fa ed il malware può capire che è in esecuzione su la VM.\\CPUID può però riconoscere in vari modi la differenza fra la VM e la macchian fisica.\\UN altro modo consiste nel passare 1 a CPUID: il valore 1 restituisce un centinaio di flag di configurazione che danno una serie di informazioni su cosa il processore supporta e cosa no. Il registro ECX li usa tutti meno che il 31esimo, che è lasciato non utilizzato ed è sempre 0, chi costruisce le VM l'ha sfruttato per segnalare che si è dentro una macchina virtuale. Si controlla quindi il 31esimo bit e se è pari ad 1 si esce, in quanto si è in una VM.\\CPUID con parametro 0x40000000, che è una nuova estensione dei processori più recenti che è fatta apposta per i processori virtualizzati: permette di ottenere il vendor della VM, quindi si può ottenere come risultato
+\begin{itemize}
+\item "VBoxVBoxVBox"
+\item "WmWareWmWare"
+\item "MicrosoftHV"
+\end{itemize}
+\subsection{Tecnica 2: MAC address}
+I MAC address sono un'altra fonte di possibili configurazioni specifiche per le macchine virtuali, il MAC non è assegnato a caso alle schede di rete,si usano un insieme di byte fissi, all'interno del quale tiene traccia delle schede vendute evitando di riciclare gli indirizzi MAC.\\Quando in una VM si configura l'adattatore di rete, questo è un dispositivo virtuale ma deve avere un MAC address, che sono specifici del provider di VM, ad esempio 
+\begin{itemize}
+\item 08:00:27 è di VirtualBox
+\item 00:03:ff per Microsoft
+\item VmWare ne ha vari, come 00:1c:14
+\end{itemize}
+sono in numero finito, quindi il malware può eseguire un comando da shell oppure usare le API di \texttt{winsock} per capire se sta eseguendo in una VM.
+\subsection{Tecnica 3: interrogare il registry} 
+Ogni VM sta emualndo parecchio dell'hardware, può lasciare delle tracce nel registro di sistema di questo fatto. VirtualBox potrebbe in HKLM, in hardware, device map, Scasi, ..., un identificatore che è VBOX. Il malware sa quali chiave aprire e se trova "VBOX" ha capito dove sta girando. Ce ne sono svariate, ad esempio per quanto riguarda l'hardware video etc...\\È possibile configurare VirtualBox in modo che le stringhe siano codificate, però costa tempo e fatica, alle volte è più semplice cercare di analizzare il malware che se cerca la chiave ci viene in mente che cerca di capire se sta eseguendo nella VM o no.
+\subsection{Tecnica 4: estensioni e servizi}
+VirtualBox ha delle estensioni, che ad esempio permette di avere una cartella condivisa con l'host, quindi il malware può cercare di trovare se esistono queste estensioni, ad esempio se esistono dei task legati a queste estensioni. Proviamo quindi a cercare delle stringhe legate all macchina virtuale specifica, possiamo trovare processi come "VBoxTray.exe", stesso vale per tutte le altre VM che caricano estensioni nel SO host. Possiamo anche cercare dei servizi, ovvero qualche cosa che parte all'avvio della VM: cerchiamo sempre i servizi attivi mediante una stringa che richiama quello che serve.\\Si possono anche cercare dei file, perché se i servizi esistono, dentro i drivers di Windows ci saranno dei driver per la VM specifica e quindi possiamo trovare una serie di file specifici delle istruzioni di VirtualBox
+\subsection{Tecnica 5: istruzioni vulnerabili}
+La VM esegue alcune delle istruzioni in user mode in maniera nativa, in quanto è possibile eseguire il codice sul processore fisico. Le istruzioni privilegiate vanno eseguite in maniera emulata ma ci sono una serie istruzioni, fra cui CPUID, che servono al SO ma possono essere eseguite in user mode. Queste istruzioni creano un problema, perché pure essendo eseguibili in user mode vanno comunque emulate, servono al SO perché impostano dei registri particolari del SO, ad esempio SIDT (Store Interrupt Descriptor Table) ed è l'indirizzo di una tabella di descrittori di gestori della tabella, permette di risalire all'indirizzo in cui è tale tabella quindi il processo utente non può modificarla ma vederne l'indirizzo.\\Una istruzioni simili
+\begin{itemize}
+\item SGDT
+\item SLDT
+\end{itemize}
+nei SO sono usate di rado, ma non vuol dire che la VM si possa permette di lasciare identiche alla macchina fisica, capendo quindi quello che è il risultato il malware può capire se è in esecuzione nella VM o nella macchina fisica.\\C'era una tecnica nota come "RedPill": si usava la SIDT per capire se si era in esecuzione nella macchina fisica, ma funzionava solo per CPU con un singolo core.\\C'è poi la tecnica "NoPill", basata su SGDT o SLDT che funziona e può essere usata sui sistemi multi-core, per sfuggirne è necessario disabilitare l'accelerazione hardware per la VM.\\Se anche il malware non riesce a capire usando queste istruzioni, ha ancora la SMSW che immagazzina una serie di flag in un'area di memoria. La Intel documenta solo una serie di questi flag e quindi il malware può verificare quelli non documentati per vedere se sono differenti da quelli che si leggono su una macchina fisica.
+\subsection{Tecnica 6: istruzioni I/O per l'hardware}
+Queste cercano di sfruttare proprio la presenza delle VM, che devono reagire a determinate istruzioni che ricevono:
+\begin{itemize}
+\item MOV EAX, "VMXh"
+\item MOV EBX, addr
+\item MOV ECX, 0Ah
+\item MOV DX, "VX"
+\item IN EAX, DX
+\end{itemize}
+stiamo dando un comando, l'istruzione IN nelle architetture moderne non si usa perché i registri dell'hardware moderno sono memory mapped, per arrivare al registro della scheda di rete di usa un registro che dall'hardware è mappato sulla scheda di rete. I processori Intel supportano ancora il "vecchio modo" di fare hardware, quindi ci sono le istruzioni IN/OUT, gli indirizzi di input/output ed ogni hardware ha un range di indirizzi assegnato. VmWare usa queste istruzioni per comunicare con la macchina host, se la VM esiste nei registri general purpose a 32 bit otterremo il tipo di versione della VM e quindi il malware si rende conto della sua presenza, altrimenti la IN non da risultati significativi.
+\subsection{Sommario}
+È impossibile configurare la VM per far si che questa passi ogni controllo, quindi bisogna cercare di scoprirle ed evitarle.\\Sulle sandbox: il processo di analisi dinamica può essere fatto configurando la macchina virtuale senza mettere dentro nulla di sospetto per farla sembrare una macchina "normale" monitorandola dall'esterno e registrando ogni cosa che fa il malware. L'approccio è molto potente perché si potrebbe riuscire a verificare il comportamento del malware, ma alla base c'è un meccanismo di virtualizzazione, quindi funzionano le tecniche viste, inoltre ci sono vari test per vedere se c'è una sandbox, sono in numero limitato ed introducono degli artefatti nella VM che sono riconoscibili dal malware.\\Chi fa ricerca cerca di farsi infettare dal malware, mette nella rete delle macchine abbastanza vulenrabili sperando che qualcosa lo attacchi potendo così analizzare con la sandbox cosa il malware fa, \textbf{\textsf{È SEMPRE UNA CAZZO DI G U E R R A}}.
 
 
 

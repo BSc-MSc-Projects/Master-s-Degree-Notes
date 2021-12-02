@@ -958,6 +958,91 @@ RPKI è una autorità di certificazione locale offerta da tutti i RIR, la catena
 \item delegated: si delega la firma
 \end{itemize}
 Una volta che un ISP o una società (qualunque AS) riceve un certificato dalla RIR, è in grado di firmare le sue ROAs, può generare un EE-certificate ed usare la chiave privata per firmare. Una funzione ROA, ovvero l'ultimo oggetto della catena si possono avere più prefissi e se viene specificata una max length tutti i prefissi che hanno lunghezza entro il max possono essere pubblicati. (slides)\\\\Come fanno i router ad ottenere questi certificati, perché le ROAs non sono trasportate dai messaggi di annuncio BGP: i router ottengono le ROAs ed una volta ricevuti gli annunci BGP fanno un controllo incrociato. Le ROAs sono salvate nei RIRs o negli ISPs, un rotuer non vi accede direttamente, c'è una cache di ROAs negli ISPs, c'è un entità centrale dell'AS che prende le ROAs dalle repository che server RPKI validatori (uno per ogni AS), che oltre a prendere le ROAs le verificano e le salvano nelle cache. Infine, i router prendono col protocollo RTR le ROAs dalle cache.\\Quando arriva un annuncio da un peer, il router controlla se il prefisso è in uno delle ROAs, non è il router che controlla la validità delle ROA in quanto il router le scarica già validate, si controlla anche se l'AS è quello giusto nella ROA.
+\chapter{VXLAN ed EVPN}
+\section{Data center networks}
+Le reti dei datacenter sono leggermente differenti rispetto a quelle degli ISP. Le reti dei datacenter hanno una topologia di questo tipo:
+%immagine della topologia
+ci sono diversi server che devono comunicare fra di loro e non con la rete esterna, ci sono diversi tiers
+\begin{itemize}
+\item edge: prima rete attaccata ad un gruppo di server, sono degli switch di accesso anche detti top of racks, devono fare da accesso per il resto della rete di overlay
+\item aggregation switches, anche detti end of rack. Raggruppano un certo numero di ToR
+\item infine, i core switches. Devono essere più complessi e costosi, perché devono aggregare e processare tutto il traffico che viene forwardato sulla rete. Nella aggregazione, occorre moltiplicare la bandwidth di ogni server che deve passare per lo switch, inoltre questi device hanno anche la connessione verso l'Internet
+\end{itemize}
+La limitazione di questa architettura è la over-subscription, ovvero la bada aggregata nel core può essere problematica per i cores, possono trovarsi a processare anche 1 Tbps di traffico ed inoltre non c'è tolleranza ai guasti fra i collegamenti dei core switches o sul core switch stesso. GLi obiettivi chiave delle reti dei data center sono
+\begin{itemize}
+\item scalabilità: i server possono aumentare e serve avere una rete che supporta questo aumento, senza incidere sull'architettura esistente
+\item ridondanza, principalmente per la tolleranza ai guasti. Non ci può essere un single point of failure
+\item latenza, dipende dal numero di hops che c'è nel data center
+\item capacità della rete, in base all'applicazione 
+\item tenants isolation, che riguarda più che altro le applicazioni Cloud. La sicurezza e l'isolamento deve essere supportata anche da un punto di vista della rete.
+\end{itemize}
+\subsection{Clos topology - 2 tier}
+Oggi la topologia usata è la rete con topologia Clos, più comune in due tier (nota anche come leaf-spine). Si può avere anche un caso 3-tier, anche detta fat-tree.\\Un caso di two-tier è il seguente:
+%immagine
+È utile in quanto se serve avere più banda, basta aggiungere una spine in più e collegarla alle foglie, se servono più server basta aggiungere una foglia e connetterla alla spina. Per la fault tollerance
+\begin{itemize}
+\item se una spina fallisce, siccome la connessione delle foglie è verso tutte le spine c'è comunque raggiungibilità (un fault può essere anche un update software, che può durare per molto, ad esempio 5 min). Ci sono anche protocolli che riconoscono i fallimenti e redirigono il traffico verso le altre spine
+\item se fallisce una foglia, avendo una sola foglia non si può più raggiungere il mondo esterno.
+\end{itemize}
+Ci sono quindi protocolli per la fault tollerance, per le foglie:
+\begin{itemize}
+\item LAG: tecnica di multiplexing inversa. Qui, configuriamo più link per avere virtualmente un link, il protocollo gestisce il fallimento fra i link che vengono configurati. La ridondanza viene fatta per la fault tollerance.
+\item MLAG: ridondanza a livello di switch, compriamo due foglie e configuriamo un numero di link verso le due foglie (i due link hanno p2p link) e viene fatto per avere ridondanza anche a livello di switch.
+\end{itemize}
+Se il processamento è sempre lo stesso, la latenza dipende dal numero di hops che si hanno nella rete. La latenza deve essere fissata, almeno per quanto riguarda il numero di hop, quindi non solo latenza bassa ma anche fissa in quanto ci aspettiamo un certo valore. Il numero di hops fra un end-host ed un altro è chiamato diametro di rete. Per la larghezza di banda, c'è il bi-section bandwidth: questa è la banda minima quando metà dei nodi della rete sta mandando simultaneamente alla massima capacità del link dati verso gli altri nodi.\\L'oversubscription ratio è il ratio fra sul caso peggiore per il disection bandwidth (slides).\\Normalmente, le reti con una topologia tier-2 prevede due foglie che mantengono solo la connessione verso Internet
+\subsection{Clos topology - 3 tier}
+La fat-tree è sviluppata su 3 tier, possiamo vederla come se venga esploso una foglia in un gruppo di 4 foglie, chiamate pots. Abbiamo la seguente struttura
+%immagine
+\section{VXLAN}
+Nella topologia a 2-tier vogliamo, siccome ci sono link ridondati, load balancing. Se abbiamo m spine, ci sono m spine differenti per ogni end-node, quindi se abbiamo 5 foglie ci sono 5 path differenti fra cui scegliere. Non possiamo avere load balancing nelle reti L2 per via del protocollo spanning tree, quindi non possiamo avere una rete L2 fra foglie e spine. Un'altra limitazione importante è che per la virtualizzazione le VLANs sono molto limitate, non solo per via di IPv4 vs IPv6 ma proprio perché ci sono massimo 4000 identificatori di rete fra cui scegliere.\\Quindi, per la virtualizzazione delle reti si sceglie il forwarding L3, creiamo dei tunnel L3 in cui possiamo redirigere il traffico delle VM. La multi-tenancy è l'abilità del cloud provider di isolare i diversi client anche se condividono la stessa infrastruttura, un altro requisito che si ha nella multi-tenancy è che si possono riusare i MAC address, quindi i frame L2 devono essere incapsulati in un tunnel L3.\\Il protocollo di incapsulamento più usato è VXLAN (Virtual eXtensible Local Area Network), si può vedere come una estensione di VLAN, in quanto estende il numero di identificatori fino a 24 bit. VXLAN può funzionare anche in reti non-IP, in quanto è indipendente dalla rete L3 sottostante (mentre con VPN-MPLS serve essere basati su IP).\\Opera a livello 3, avremo un incapsulamento IP/UDP ed ogni router sa come fare load balancing di un pacchetto IP/UDP. Un'altra frature è che solo i nodi edge possano supportare l'incapsulamento, il tunnel è solo fra loro. Questo è un esempio di pacchetto:\\
+OUTER L2 HEADER $||$ OUTER IP (sldies ...)\\In una leaf spine, abbiamo inizializzazione e terminazione del tunnel chiamate VTEPS, a cui spetta il compito di incapsulare ed istanziare i pacchetti. L'indirizzo sorgente che abbiamo nel IP header più esterno è quello del nodo foglia che inizializza il tunnel, la destinazione è quella del VTEP di dove è il server che viene contattato. La porta sorgente può essere scelta dal VTEP, mentre la porta destinazione è fissata, abbiamo poi gli header VXLAN che hanno alcuni header fra cui il \texttt{vni} ovvero l'identificatore della VXLAN.\\Stiamo incapsulando un frame L2 in una rete di overlay L3, ma anche VXLAN può essere usata per VPN di livello 3, come abbiamo visto per MPLS. L'L2VNI è associato ad un dominio di broadcast, quindi virtualmente connesso ad uno switch e che ha una certa VLAN. Possiamo avere un tenant con diverse sotto-reti, lo use case può essere di comunicare fra le diverse subnet, quindi non si usa lo stesso dominio broadcast ma si crea una VPN identificata come L3VNI: abbiamo il frame L2 nel pacchetto VXLAN, ma il forwarding è a livello 3, si manda un pacchetto da un dominio broadcast verso un altro. (possiamo vedere L3VNI come il route distinguisher).
+\subsection{Load balancing: ECMP}
+La soluzione più usata è ECMP, è una tecnica semplice per cui normalmente si prendono le 5-tuple
+\begin{itemize}
+\item ip src/dest
+\item port src/dest
+\item protocollo
+\end{itemize}
+si fa l'hash delle tuple, si taglia il digest in base al numero totale delle interfacce e basandosi sul valore che si ha nei bucket hash si ceglie un next hop. Si aggiunge la complessità dell'hash perché se si facesse un round robin con ciascun pacchetto, si manda un burst in ciascun percorso ma se c'è congestione in uno dei link è possibile che il receiver riceva i pacchetti in ordine inverso, che può essere un problema perché ricevere traffico TCP in ordine inverso è un problema di performance importante nei data center. Se c'è un flusso pesante, bandwidth angry, con ECMP viene sempre routato per lo stesso path e quindi non è facilmente redirigibile in un altro path.\\Per essere compatibile con tutti in nodi nella rete, non possiamo aspettarci che ogni nodo della rete verifichi nel VLAN header: ECMP viene calcolato sull'header esterno per essere compatibile con tutti i nodi della rete. Ma se la porta sorgente e destinazione sono sempre le stesse, applicando ECMP si sceglie sempre la stessa rotta, quindi si cambia la porta sorgente UDP, non si può fare con round robin e quindi si sceglie in modo da avere delle informazioni riguardo il pacchetto all'interno dell'incapsulamento VXLAN:
+\begin{itemize}
+\item si fa un hash della 5-pla del frame L2 originale
+\item in base a questo, si seleziona la porta sorgente UDP
+\end{itemize}
+in base al pacchetto sorgente, si riesce ad ottenere load balancing con ECMP.
+\subsection{VXLAN VTEPs}
+Per quello che abbiamo visto, i VTEPs sono switch foglie. Gli switch foglie hanno sempre il supporto hardware per VXLAN, se si vuole farlo anche negli end host occorre avere la capacità hardware nella NIC, le operazioni di incapsulamento e de-capsulamento sono pesanti nel kernel e quindi ci sono tecnologie come Open Virutal Switch per il processamento in VXLAN.
+\subsection{Utilizzi di VXLAN}
+Perché usare VXLAN invece di MPLS: la risposta più breve è che MPLS non è stato progettato per questo scopo, in quanto l'obiettivo era quello di fare switching basandosi sul nuovo header MPLS e non col longest prefix matching, ed inoltre MPLS permette alle reti di diversi customers di essere routate nella rete Internet (??).\\Non si può inoltre supportare frame L2 in una overlay di livello 3 con MPLS, quindi avere due dominii broadcast nello stesso tenant. (LAB: tenants VMs, il progetto è già scritto. È un favore che faccio al me del futuro che almeno c'avrà la topologia fatta. Visto che st'homework 3 ti sta piegando in 3).
+\section{EVPN}
+EVPN è il control plane per VXLAN, introdotto in quanto non era stato definito un control plane. Le richieste ARP ed in generale tutto il MAC flooding viene replicato nella rete di overlay, nel caso del laboratorio abbiamo un tunnel per tenant ma se fossero di più ogni volta che viene fatta una richiesta ARP questa passa per tutti i tunnel L3 e quindi farebbe flooding anche a livello 3.\\EVPN risolve i problemi delle VXLAN statiche, usa il meccanismo di MPLS-BGP, c'è una nuova famiglia di indirizzi BGP che vengono pubblicati e l'idea è che ogni terminazione esporterà alla rete BGP che ha un certo numero di tenants e quindi la scoperta è automatica e si possono importare gli annunci per le VPN che i VTEPs hanno dietro e questo riduce il traffico del flooding. Le EVPN più importanti sono
+\begin{itemize}
+\item type 1:
+\item type 2: usata per advertising di indirizzi MAC/IP. La rotta di tipo 2 è quindi una traduzione per installare entry ARP dentro una VTEP 
+\item type 3: messaggi per Ethernet multicast, usati per scoprire le altre VTEP
+\item type 4: si può fare advertising di una rete dietro la VTEP, non solo gli host
+\item type 5
+\end{itemize}
+\subsection{EVPN type 2}
+Sono scambiati fra i VTEPs per fare advertising di indirizzi IP e MAC. Vogliamo sincronizzare, ricevendo ed inviando gli annunci fra VTEPS, le tabelle MAC ed associazioni fra IP e MAC (quindi le tabelle ARP) della VNI livello 2. Ogni volta che la VTEP impara un indirizzo, ovvero riceve un pacchetto verso un altro host, si manda l'update EVPN. In questo modo il traffico L2 non viene mandato in flooding, prima le richieste ARP ed il MAC learning erano in flooding quando non si conosceva l'indirizzo. In questo caso, le rotte sono pre-installate nel bridge nella specifica VLAN. Nel pacchetto c'è il route distinguisher, ma non ha lo stesso valore che c'è nelle VPN MPLS, che era usato per identificare una VPN, in questo caso dipende dall'implementazione.\\Ci sono diversi scenari nel caso del livello 2
+\begin{itemize}
+\item host ARP advertisement, può avere due casi d'uso
+\begin{itemize}
+\item ARP broadcast suppression, evitiamo di forwardare la richiesta ARP. Quando una richiesta broadcast viene ricevuta dal VTEP, il VTEP connesso a quel dominio risponde come un proxy
+\item VM migration: quando avviene la migrazione fra VTEP diversi, l'istanza EVPN si rende conto del cambiamento del MAC e triggera una richiesta ARP per capire se è ancora nella sua rete e quando fallisce ritira le rotte in quanto ora vengono annunciate dal nuovo VTEP che hosta la VM.
+\end{itemize}
+\end{itemize}
+\subsection{EVPN tipo 3}
+(slides)\\Il formato è leggermente diverso
+\begin{itemize}
+\item Flags
+\item Tunnel type
+\item altro sulle slides
+\end{itemize}
+\subsubsection{Lab VXLAN EBGP}
+Il lab ha la stessa topologia di prima, quindi basta cambiare gli script. Occorre rimuovere i tunnel statici e cambiarli con le implementazioni EBGP. Per istanziare BGP, si può usare sia IBGP che EBGP, dipende dalle necessità. Sta tutta sulle slides la configurazione.
+\\Nota in più: per avere un indirizzo IP per la VTEP, va configurato in cumulus per usarlo come default gateway per fargli routare il traffico. (ancora slides). 
+
+
 
 
 
