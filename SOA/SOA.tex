@@ -2416,6 +2416,121 @@ Montiamo un modulo, all'atto del montaggio il thread chiama una funzione sugli a
 \item mettiamo le altre cpu affinché si risveglino nel momento in cui il thread ha deciso
 \end{itemize}
 può essere interessante quando occorre fare patching del kernel: finché le altre cpu sono in spinning, possiamo aggiornare delle strutture dati del kernel.Si usano due variabili allineate ai 64 per la sincronizzazione. Ogni cpu core diverso dal master è bloccato dalla barriera, questo vuol dire che lui può comunque processare dei top half perché è interrompibile, quindi dobbiamo stare attenti a cosa andiamo a patchare nella funzione. La apply patch è tale per cui possiamo sprotegge la memoria, modificare qualcosa ma stando, attenti che quello che si modifica non sia correntemente in utilizzo da parte di una delle cpu (questo causerebbe problemi per le cpu), per poi riproteggere la memoria.
+\chapter{Virtual File System}
+\section{Concetti basici sul VFS}
+Anche in questo caso, c'è una vastità di cose da dire, partiamo dal capirne i concetti basici. Un VFS è un sotto-insieme del software del SO che permette di eseguire operazioni di I/O, dove le operazioni basiche sono
+\begin{itemize}
+\item acquisizioni dati da un oggetto di I/O
+\item scrittura di dati su un oggetto di I/O
+\end{itemize}
+quindi uno dei concetti fondamentali è l'oggetto di I/O: questo può essere tante cose, ad esempio un file ma non è l'unica possibilità. La cosa interessante è che se supponiamo che l'oggetto sia un file, per eseguire le operazioni su file dobbiamo girare delle istruzioni macchina e quelle istruzioni non possono che toccare informazioni che sono nella memoria di lavoro. Il che vuol dire che questo oggetto deve essere rappresentato in RAM, quindi ci deve essere una struttura dati in RAM, ma il concetto di file in maniera più ampia  è tale per cui al power off del sistema abbiamo il file su qualche dispositivo di memoria di massa: quindi, il lavoro è tale per cui dobbiamo considerare il tipo di rappresentazione da considerare per l'oggetto di I/O su cui si lavora, quindi anche il file system su cui si lavora. Abbiamo tipicamente più rappresentazioni:
+\begin{itemize}
+\item in RAM: una rappresentazione piena o parziale del file system. Piena nel senso che il file system può essere mantenuta tutta rappresentata in RAM
+\item on device: i dati possono essere originariamente presenti su memoria di massa e poi caricati in RAM. Qui abbiamo rappresentazione della struttura e del contenuto di un file system, magari non aggiornata. Se consideriamo che l'hard drive è ad un'altra parte rispetto alla RAM può darsi che alcune informazioni non siano ancora stati portati in memoria di massa. Può essere che si abbia un file system non persistente, perché magari vive solo in RAM.
+\end{itemize}
+Un'altra cosa importante è discriminare l'accesso e la manipolazione di questi oggetti:
+\begin{itemize}
+\item livello FS independent: invochiamo l'operazione di I/O ad un livello l0 indipendente dal file system
+\item livello FS dependent: può darsi che il layer l0 si appoggi su un layer l1 che dipende daò file system
+\end{itemize}
+quindi una stessa operazione può essere implementata in maniera diversa, possiamo avere diversi layer fatti in maniera diversa e quindi avere un disaccoppiamento nel come le cose sono fatte dal come vengono invocate. Chi si accorge di dover lavorare in un modo o in un altro: il layer se ne accorge in maniera automatica: per lavorare su un oggetto di I/O, occorre avere aperto una sessione di I/O, lavoriamo in I/O usando un codice di un canale ed è questo che identifica la sezione che ci porta verso lo specifico oggetto di I/O.\\Vediamo le varie connessioni:
+\begin{itemize}
+\item ogni oggetto di I/O è rappresentato in RAM mediante una specifica struttura dati;
+\item ogni oggetto mantiene un reference alle istanze di moduli per le sue operazioni: ogni oggetto referenzia una tabella di function pointer differenti da quella di ogni altro oggetto di I/O per funzioni differenti. Un oggetto referenzia quindi una tabella di function pointer che permette di identificare dove sono posizionate le operazioni per quello specifico oggetto. Quindi, quando tocchiamo lo specifico oggetto, questo è collegato ad una tabella di function pointers e si invoca per l'operazione chiamata uno di quei function pointers;
+\item ogni function pointer implementa un \textbf{driver} nel sistema, che avrà una sua interfaccia per essere chiamato.
+\end{itemize}
+Il software di primo livello è FS-independent e tutto ciò che è a valle dei function pointer implementa una logica FS-dependent.\\In un VFS i devices possono essere visti come dei file, torniamo al concetto di diversità fra gli oggetti di I/O che possiamo avere. In un kernel POSIX, alcuni device sono
+\begin{itemize}
+\item pipe
+\item FIFO
+\item sockets
+\end{itemize} 
+possiamo chiamare read/write su socket, che sono le stesse che chiamiamo sui file ma i drivers saranno differenti a seconda dell'oggetto di I/O.\\Quando chiamiamo un'operazione su un oggetto, il blocco di codice può essere implementato per interagire con l'hardware: è tipico quando dobbiamo caricare i dati in memoria dall'hard drive, per portarli nella rappresentazione in-memory dell'oggetto.\\Abbiamo il seguente schema per come è strutturato un VFS 
+%immagine
+gli oggetti possono essere disparati, possiamo quindi scrivere i nostri driver per pilotare operazioni su questi oggetti. Il driver può fare solo operazioni in memory, ma anche toccare dei dispositivi fisici. La cosa importante è struttura il tutto in maniera compatibile con il layer di primo livello.
+\subsection{Gestione dei file}
+Quali sono i moduli software necessari per lavorare su un file in un file system? Abbiamo bisogno di 4 cose fondamentali
+\begin{itemize}
+\item una funzione per leggere dei metadati del file, per capire se l'oggetto è presente sull'hard drive. Ma anche questi sono sull'hard drive, quindi servono altri metadati: ad esempio l'inode avrà dei metadati che dicono se l'inode esiste. C'è un superblock, che è l'oggetto che va letto per primo per capire quanti e quali inode sono presenti nel file system. Se non partiamo dalla lettura del superblock non possiamo operare sul file system
+\item Detto questo, servono operazioni per poter leggere blocchi dall'hard drive e portarli in memoria
+\item una funzione per flushare i blocchi aggiornati sul'hard drive visto che è file system vero e proprio
+\item un set di moduli software per lavorare effettivamente sul file quando il file è in memoria. La scrittura di un dato correntemente in buffer cache su fanno su altri moduli.
+\end{itemize}
+Questa lista permette di introdurre due categorie di driver, quindi serve un driver per un tipo di file system ed uno per un altro. Abbiamo quindi che le prime 3 operazioni sono collegate al concetto di \textbf{block device driver}: questo è l'insieme dei moduli software che ci permette di interagire con un dispositivo a blocchi, quindi dove possiamo caricare/scaricare blocchi di informazioni. Il 4° punto introduce invece il concetto di  reale operazione sul file, che è in memoria e viene toccato con i \textbf{char device driver}.\\All'interno di tutta la struttura del VFS il punto nodale da considerare è quello che ci permette di determinare quale sia l'actual driver da usare a seconda della system call chiamato dal software di livello operativo.
+\section{Tipi di file system in Linux}
+Dobbiamo poter leggere superblocchi di diversi file system, quindi occorrono funzioni diverse in base al tipo di file system su cui lavorare. Linux mette a disposizione funzioni di lettura di super blocco differenti, quando se ne invoca una specifica per il file system, la funzione considera un block device driver che permette alla funzione di acquisire il super blocco presente nel dispositivo. Se il super blocco matcha rispetto a ciò che la funzione si aspetta, il file system è pilotabile da Linux, altrimenti no. È come dire che chiamiamo la lettura di un super-blocco di un file system di tipo A, se non matcha con ciò che ho sull'hard drive tento con un super-blocco di tipo B e così via. Ciò è cosa accade quando si fa il boot del file system, il thread init cerca di montare il root file system applicativo, che è su un dispositivo indicato al boot del kernel.\\La funzione, oltre che usare il driver per acquisire dati dal dispositivo ha anche il compito di rappresentare il super-blocco associato al dispositivo in memoria in modo da poter interagire con i file. In alcuni casi, in Linux, le funzioni per la gestione dello specifico file system sono montate nel kernel come moduli e quindi è possibile che si amplino il numero di file system gestibili.
+\subsection{Magic number}
+Il magic number è un concetto generale che permette di identificare la forma delle informazioni: anche per i file applicativi si usa, se ad esempio abbiamo un file F che deve contenere delle informazioni con una certa struttura, la sequenza di byte inizia con una certa regola che è il magic number. Questo è presente anche nel file system; il file system è su un hard drive, rappresenta quindi una sequenza di blocchi e quindi considerando l'hard drive l'inseme di blocchi in maniera ordinata rappresenta una sequenza ordinata per cui possiamo avere un magic number all'inizio e che viene quindi controllato dalla funzione che controlla il super-blocco. Possiamo anche fare l'operazione col comando \texttt{file}: possiamo estrarre il magic number di un dispositivo, tutti i device nel VFS sono visti come file e quindi la sequenza di informazioni presenti nel blocco sono identificati in un file che tipicamente sono nella directory \texttt{/dev}; il comando legge quindi il magic number e facendo matching in un file restituisce la struttura del file system presente nel device.
+\subsection{RAM file system}
+È un file system senza rappresentazione su un dispositivo di memoria di massa, quindi è una collezione di oggetti che è solo in RAM e quindi i driver interagiscono solo con la memoria. Se il FS deve poter esistere, in memoria devo comunque avere dei meta-dati basici in memoria e quindi serve comunque una funzione di lettura del super-blocco del file system, quindi internamente la funzione non fa altro che istanziare il file system in RAM leggendo il super-blocco, in particolare alla versione iniziale del file system, che ha solo la root a cui agganciare diversi elementi su cui lavorare.\\Su Linux, ne abbiamo alcuni
+\begin{itemize}
+\item \texttt{/proc}
+\item \texttt{/sys}
+\item \texttt{/rootfs}: quando va in RAM, aggancia tutte le cose per avere la visione gerarchica
+\end{itemize}
+Il rootfs è lo strumento con cui in Linux possiamo creare una directory radice e poi magari delle sotto-directory a cui agganciamo altri file system presenti su dispositivi di memoria di massa. In un sistema POSIX, quindi su Linux, il file system è unico e può essere una collezione di altri file system nel senso che questi vengono agganciati in specifici punti. Parlando di montaggio di file system, possiamo inserire un oggetto che non sia un file di un file system dove lo agganciamo ma se per quell'oggetto riusciamo a specificare un driver con interfaccia uguale a quella per i file, quando vengono chiamate operazioni di I/O il driver di primo livello chiamerà i moduli corretti. Un oggetto di questo tipo è il \textbf{nodo} ed ha dei driver appositi associati.\\L'istanziazione dell'ancora (rootfs) è effettuata allo startup e si passa per il modulo \texttt{vfs\_caches\_init} dentro cui chiamiamo \texttt{mnt\_init}, dentro cui abbiamo
+\begin{itemize}
+\item \texttt{init\_rootfs()}: il file system è gestibile perché da qualche parte abbiamo identificato la funzione di lettura del suo super-blocco. Qui diciamo a Linux dove la funzione di lettura del superblocco è presente, che verrà poi letta più avanti. 
+\item \texttt{init\_mount\_tree()}
+\end{itemize}
+Possiamo anche configurare Linux evitando di usare la mnt\_init, perché mandato in startup le funzioni del kernel sono già codificate.
+\subsection{Strutture dati del file system}
+Abbiamo una struttura che mantiene la descrizione di un file system, che è in una lista. Ci sono diversi campi
+%copia della struttura
+abbiamo il nome del file system, il puntatore a funzione read\_super identifica la funzione per la lettura del super-blocco. Nella lista ci sono tutti i FS gestibili.\\In versioni più recenti la struttura è stata riorganizzata così:
+%altra struttura
+la funzione per identificare il super-blocco si chiama mount, passiamo un const char* che rappresenta il dispositivo dove montare il FS.\\Per gestire la lista, è necessario una API per inserire elementi in lista per cui abbiamo\\ \texttt{register\_file\_system(...)}\\ per quanto riguarda rootfs, la tabella corrispondente è già in memoria anche se non ancora in lista, allo startup si chiama la funzione passando il pointer a tale variabile quindi da quel momento in poi si può usare il root file system.\\Quindi, la \texttt{init\_rootfs} ha la seguente struttura
+%codice dalle slides
+la variabile è già presente nell'immagine del kernel, nelle ultime release di Linux la cosa più importante è sempre registrare l'elemento nella tabella che permette di avere l'uso del file system disponibile.
+%kernel 4.xx
+L'informazione della lista viene esposta dal file system all'interno di uno pseudo-file che è \textbf{/proc/filesystems}: alcuni FS sono marcati come "nodev", quelli non marcati sono quelli che quando montati hanno la loro immagine sul dispositivo e quindi veri e propri mentre gli altri sono volatili.
+\subsection{Creazione e montaggio dell'istanza di Rootfs}
+Le strutture dati per rappresentare in RAM il tutto sono 4, in Linux
+\begin{itemize}
+\item \texttt{vfsmount}: chi è il parent del file system. Questo perché quando lavoriamo su un FS è perché lo abbiamo montato su uno specifico punto
+\item \texttt{super\_block}: mantiene informazioni basiche sul FS, quindi è adeguata per lo specifico FS
+\item \texttt{inode}: metadati basici associati ad un oggetto di I/O su un file system POSIX, abbiamo ad esempio i permessi di accesso. In un inode non abbiamo il nome di un oggetto di I/O, in quanto questo può avere più di un nome (gli hardlinks) ma l'inode è unico e questo è sconveniente quando dobbiamo scegliere il percorso a partire dalla radice.
+\item \texttt{dentry}: dice qual è il nome dell'oggetto di I/O, quindi quale abbiamo usato per arrivare a lavorare sull'oggetto
+\end{itemize}
+I primi due elementi sono mantenute in RAM associate ad un file system in maniera univoca, quindi una coppia per ogni FS su cui effettivamente eseguiamo le operazioni.\\Le altre due sono una coppia per ogni oggetto di I/O di un dato file system su cui stiamo lavorando, quindi nel momento in cui cominciamo a lavorare un oggetto di I/O carichiamo la coppia di struct.
+\subsection{Dettagli sulle strutture dati}
+Questi sono alcuni dettagli delle strutture dati
+%listato della vsfmount
+Abbiamo ad esempio un puntatore ad una stessa tabella, che è il parent ovvero il FS a cui abbiamo agganciato questo stesso FS. C'è poi un puntatore ad una tabella super-blocco, così come anche alle altre due informazioni. C'è poi la lista di tutti gli elementi di cui il FS è parent, in quanto può essere possibile che siano stati montati altri FS sotto quello corrente.\\In versioni più recenti è stata compattata
+%versione recente
+Puntiamo alla dentry dell'elemento radice del file system, abbiamo eliminato tutti i collegamenti perché tali collegamenti sono stati implementati in una struttura dati più flessibile per gestire il concetto di namespace in quanto nel momento in cui si lavora sui file system abbiamo la possibilità di organizzare la vista degli oggetti di I/O con i namespaces, uno dei più interessanti è /mnt in Linux: è uno spazio di nomi dove possiamo confinare le operazioni di montaggio diverse dagli altri. Per sapere cosa è visibile a seconda del namespace le strutture devono essere più articolate.\\ C'è poi \texttt{\_\_randomize\_layout}: permette di aumentare i livello di sicurezza del VFS in quanto permette di dire che la struttura dati è quella, ma la tabella che mantiene i 3 campi non mantiene solo quei 3 ed ordinati come mostrato, ma con randomize possiamo far si che la tabella effettiva in maniera randomica siano state introdotte delle zone blank e le informazioni siano state collocate in zone non-blank che non corrisponde all'ordine visto. Il codice macchina generato si spiazza correttamente sull'informazione da considerare. Importante perché: se l'attacco colpisce strutture del file system per cui si arriva ad una tabella per identificare le funzioni che implementano un driver ma è stato applicato un randomize layout, risulta difficile scendere nel campo giusto per chiamare l'operazione che mi serve nell'attacco. Tale randomizzazione la conosce solo il kernel (c'è la proprio nel codice binario generato del kernel, quindi ha già lì scritto l'offset per la tabella randomizzata), quindi software esterno non la conosce e quindi questo permette di avere un livello di sicurezza più alto in modo da creare una diversità fra kernel operativi diversi.\\Il plugin necessario per la randomizzazione è \texttt{randstruct} ed è usabile 
+\begin{itemize}
+\item o on demand con randomize come visto prima
+\item ogni struttura i cui campi sono solo function pointer, quindi dei driver di fatto, per default sono compilati col randomize
+\end{itemize}
+si può disabilitare con \texttt{\_\_no\_randomize\_layout()}, si paga un tradeoff di storage (la tabella è più grande) quindi si può essere meno locali in cache.\\Vediamo poi il super-blocco
+%struct del superblocco
+puntiamo una dentry che è il Rootfs, su cui possiamo navigare\\Abbiamo poi la dentry
+%struttura dentry
+Infine, l'inode è strutturato così:
+%inode
+questa viene usata da tutti i FS. Chiaramente identifichiamo il super-blocco dell'inode, abbiamo poi un puntatore alle inode\_operations, ma siamo un un inode perché è un oggetto di I/O e quindi possiamo lavorare su meta dati e dati, per lavorare sui dati abbiamo le file\_operations, quindi abbiamo function pointers per diversi driver.
+\subsubsection{Schema di overall}
+Abbiamo la seguente visione di un FS montato
+%schemino di overall
+sulla dentry, potremmo aver montato un altro FS e quindi potremmo avere dei child che sono un un'altra istanza di FS e quindi un collegamento di altre dertny.
+\subsection{Inizializzazione del Rootsfs}
+La funzione init\_mount\_tree() inizializza l'albero di montaggio che 
+\begin{itemize}
+\item alloca le 4 strutture dati per rootfs, quindi abbiamo l'ancora per agganciare le altre cose
+\item linkiamo la struttura dati
+\item (slides)
+\end{itemize}
+Ogni thread ha dei metadati che ci permettono di dire che è collegato ad uno specifico punto dell'organizzazione gerarchica, che rappresenta la sua radice per cui si può lavorare da lì in basso, per collegare la pwd alla root directory del thread di init ci sono due API del kernel.\\Quindi questo accade quando si inizializza l'albero di montaggio in Linux (con cambiamenti minori in kernel 4 e 5)
+%snippet
+
+
+
+
+
+
+
+
 
 \newpage
 \section*{Homework: RCU list}
