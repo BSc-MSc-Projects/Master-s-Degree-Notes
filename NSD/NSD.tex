@@ -1862,6 +1862,95 @@ inted è stato quindi esteso in xinetd, dove ci sono diversi tipi di ACL:
 è possibile specificare qualcosa come: è possibile ricevere una connessione da questo range di indirizzi o che duri questo tempo massimo.\\Tutti i log generati sono centralizzati e può essere usato per prevenire DOS ad esempio limitando il numero massimo di istanze per servizio o il numero massimo di istanze totali di server.
 \subsubsection{TCP deamon}
 È un demone arrivato dopo initd e che viene chiamato a sua volta da initd, per supportare regole di AC aggiuntive. È possibile specificare per ogni applicazione la lista di client che si sono connessi all'applicazione, ad esempio si può dire che è possibile accedere ad ogni servizio se connessi localmente: (slides)\\tcpd ha una capability che permette di controllare se un attacker sta cercando di bypassare tcpd con DNS tampering, come mostrato in (slides), quindi tcpd fa un forward name to IP ed anche un reverse IP to name, che viene fatto con diverse zone DNS quindi con dei record DNS diversi e frega l'attaccante che può fare tampering con solo una zona DNS.\\L'unico requirement dell'applicazione che lancia tcpd è di poter leggere dati da stdin e rimandarli su stdout, ci centralizza il controllo e si verifica chi può usare un certo servizio senza replicare il demone di sistema.
+\section{Antivirus}
+Concetti legati ai software anit-visrus, in particolare alcune delle metodologie usate dai tool. Un antivirus è un pezzo di software che gira in background ed il suo obiettivo è quello di catturare la presenza di software malevolo che può essere
+\begin{itemize}
+\item salvato sul disco
+\item running
+\item proveniente dalla rete, quindi c'è il check sui pacchetti
+\item euristiche per capire se un attacco arriva da un device remoto
+\end{itemize}
+non è software bullet proof, quindi se un malware passa, l'antivirus cerca di rimuoverlo.\\L'idea è quella di essere un software di prevenzione ma ci possono essere ad esempio 0-days che saltano nella macchina. Gli anti-virus combattono vari problemi, il meccanismo di detection è basato su delle tecniche per riconoscere il malware ma anche quest'ultimo mette in atto delle pratiche per non farsi riconoscere dalla detection del malware: solitamente, il developer del malware usa delle syscall non documentate per la costruzione del software, ad esempio per SO Windows e spesso ci sono delle syscall rimosse da una versione all'altra oppure c'è il supporto ma non sono documentate. Il kernel è comunque un binario e quindi si può disassemblare e capire quali syscall non documentate possono essere sfruttate. Un altro problema è legato alla superficie di attacco, che per sistemi moderni è molto grande:
+\begin{itemize}
+\item si può fare targeting delle applicazioni di sistema
+\item servizi di sistema, se c'è un bug può essere sfruttato dai virus. Es: bug dei 90', un bug sfruttava il servizio che permetteva alle stampanti di condividerle sulla rete.
+\item OS: grandi target dei virus
+\item email: gli utenti faranno azioni sciocche e renderanno la vita dell'infezione del virus semplice
+\item network: come DDoS
+\end{itemize}
+un antivirus doverebbe monitorare tutta la superficie di attacco del sistema, quindi sono resource-intensive. Un problema addizionale è che il numero di software malevolo che viene sviluppato è molto ampio, quindi gli anitvirus ricevono 100-1000 samples di applicazioni amlevole per day da dover analizzare. Quindi ci sono reverse engineers che studiano a mano il software malevolo in quanto l'antivirus consuma troppe risorse sulla macchina, quindi i security engineers  ricevono i samples, li analizzano e se decidono che è malware installano a mano nell'antivirus un controllo automatico per quel malware.\\Prima, i malware erano scritti per mostrare che si poteva fare qualcosa di fico ma non era legato a fare danni veri sulla macchina, mentre oggi si fa per motivi di soldi: fai un sacco di cose zozze come randosmware o appropriazione di account di banca per fare riciclaggio (stamo su narcos in pratica), ci stanno poi di mezzo organizzazioni, governi etc...\\Inoltre, ultimo problema è che l'antivirus è software e quindi può avere dei bug, per questo l'antivirus deve essere robusto agli attacchi. Tipicamente sono scritti in linguaggi compilati, come C e C++ per essere veloci e consumare poche risorse.\\All'inizio, gli anti-virus erano solo dei software per fare pattern matching, oggi la situazione è cambiata e quindi nessun antivirus offre CLI per fare ispezione manuale e sono basati su GUI per essere semplici e cercano di fare la maggior parte delle azioni in background. Quindi in qualche modo l'antivirus installato prende il controllo della macchina in quanto deve verificare diverse cose in backgorund, installano inoltre in automatico dei firewall. Anche i browser hanno dei meccanismi interessanti per proteggersi ma comunque se compromesso il browser può causare problemi e quindi anche in questo caso gli antivirus inseriscono dei controlli nel browser.\\ Visto l'ammontare di samples che vengono ricevuti, ci sono diversi updates ogni giorno e quindi l'organizzazione interna dovrebbe essere il più modulare possibile e non è più possibile fare solo pattern matching:
+\begin{itemize}
+\item il malware può cercare di evadere tale pattern
+\item tenere in memoria tutti i pattern è costoso
+\end{itemize}
+gli antivirus usano quindi delle euristiche, ma vengono usate anche su malware non ancora scoperto dall'azienda stessa. Come euristica di base usano la conoscenza del passato per determinare l'outcome futuro. Le euristiche possono dare falsi positivi ma anche falsi negativi.
+\subsection{Componenti degli anti-virus}
+Il componente principale è il kernel dell'antivirus, è un processo che parte allo startup della macchina, diviene residente in memoria e governa le azioni degli altri componenti. Implementa dei meccanismi di self-protection, ad esempio intercetta segnali come SIGKILL per evitare di crashare. Se questo componente viene compromesso, c'è poco che si può fare e quindi è quello che viene analizzato e revertito per essere attaccato.\\C'è uno scanner, che controlla un file per determinare se è malevolo o no. È residente, quindi parla col SO per vedere se ci sono file che vengono scaricati o creati sul disco: c'è sempre una fase in cui il virus viene scritto sul disco quindi se l'antivirus può detectarlo riesce ad intervenire per tempo.\\Ogni SO moderno ha dei bus che sono sistemi pub-sub (publish subscriber) per notificare ai software quando cambia un file, inoltre gli antivirus rimpiazzano le applicazioni di sistema: ricevono tutte le richieste ai servizi di sistema e se le richieste sono legit le passano ai servizi di sistema reali.\\Ci sono filter drivers per il file system: spesso, un antivirus installa un qualche tipo di driver per il file system in modo da scoprire subito dei problemi sul file system prima che il file venga scritto, stessa cosa può valere per la rete, ad esempio con eBPF che controlla i pacchetti prima della consegna.\\Ci sono poi dei signature DB, gli antivirus moderni hanno dei DB che contengono dei binari che vengono caricati nell'address space del kernel e fanno dei controlli sul presunto file malevolo. Alcuni binari cercano fingerprint nel file in modo da dire al kernel che sono fiduciosi del fatto che il file è un virus, applicazioni più semplici usano dei checksum basati su hash ma cambiando anche un solo bit il controllo salta.\\\\Spesso i virus vengono scaricati in formati packed per fregare l'antivirus, quindi deve esserci un qualche componente di unpacking per poter riconoscere questo tipo di packing.\\È possibile mettere codice malevolo in diversi formati di file, quindi gli antivirus devono essere in grado di riconoscere diversi formati dei file ed interpretarne il contenuto, fra i più comuni
+\begin{itemize}
+\item PE
+\item ELF
+\item PNG
+\item JPG
+\item DOCX: l'organizzazione interna è basata sugli OEL object (??). Non c'è documentazione del formato, quindi tutta la nozione viene dall'effort di libreoffice, staroffice etc... ma la conoscenza è comunque incompleta
+\item PDF: lo standard è di più di 2000 pagine, quindi ci possono essere delle sezioni non chiuse che non sono renderizzate e che contengono codice e quindi l'antivirus dovrebbe essere in grado di capire che il programma di interpretazione del PDF ha sbagliato.
+\end{itemize}
+tutti i controlli fatti sul file dipendono dall'ammontare di informazione che l'azienda di antivirus ha e sul totale del numero di controlli che il software fa: può capitare che alcuni antivirus identificano un file come malware ed altri no.\\I filtri per i pacchetti possono essere ad esempio implementati con eBPF etc...\\Meccanismi di auto-protezione: oggi ci sono randomizzazione degli indirizzi etc... mentre prima non era così e quindi il kernel dell'antivirus doveva fare dei controlli automatici su se stesso e spendevano diversi cicli di clock per capire se qualcuno cercava di manipolare il kernel.\\Ci sono poi gli emulatori: l'idea è che se gli antivirus ricevono un binario e in base ad una euristica decidono che può essere malware ma non possono decidere con sicurezza che lo sia tirano su un ambiente containerizzato per verificare il comportamento del malware e per verificare un certo pattern nel comportamento. Anche questo porta al consumo di risorse
+\subsubsection{Unpackers}
+L'immagine seguente è un idea di alto livello di come il malware può evitare di essere analizzato:
+%immagine del PE
+un binario è organizzato in sezioni: dati, testo etc... ed ogni sezione da informazioni al SO per capire come far girare il programma e quindi leggerà le sezioni ad esempio per capire i permessi da dare alle aree di memoria.\\C'è quindi un header, in cui viene descritto quali sezioni ci sono, una cosa interessante è che ci possono essere sezioni sul disco che hanno un ammontare di spazio più piccolo di quello effettivo.\\Alcuni virus hanno istruzioni per far si che girino in VM e per questo è utile che ci sia un ambiente emulato per l'antivirus ma ci sono comunque meccanismi per provare a scoprire se l'emulatore è buggato e sfuggire all'ambiente controllato.\\Una volta che lo stub prende il controllo, spacchetta l'eseguibile varo e lo carica in memoria per poi implementare i meccanismi del SO (vedi appunti MA sui packer /unpacker) per far girare il nuovo PE. L'obiettivo è sempre quello di evitare che l'antivirus possa fare controlli basati su checksum, ci sono inoltre diverse indicazioni che il binario è stato impacchettato per il software antivirus:
+\begin{itemize}
+\item l'IAT è piccola
+\item nomi delle sezioni non standard
+\item sezioni con una taglia raw piccola ma una taglia virtuale grande
+\item poche stringhe distinguibili
+\item sezioni con privilegi RWX: questo è dovuto al fatto che il binario verrà spacchettato ed il codice eseguito
+\item istruzioni di jmp o call a registri o indirizzi di memoria strani, poiché diversi packer convenzionali salvano l'indirizzo di dove spacchettare in un registro. (long jump in MA's appuntis)
+\end{itemize}
+\subsubsection{Signatures}
+Tipicamente sono pattern, sequenze bi byte che cercano di fare matching di sequenze di byte usando ad esempio hashing crittografico. Il problema è che si cambia anche un solo bit siamo fregati, quindi gli antivirus moderni implementano dei plugins appositi per fare checking di un file. Ci sono diversi plugin da lanciare per capire se un file specifico rispetta un pattern, tipicamente le regole sono scritte dai reverse engieneers.\\L'idea è quindi quella che i virus che l'antivirus comune riconosce sono magari auto-generati e che usano sempre le stesse tecniche e sono quindi più giocattoli.
+\subsection{Tecniche di evasione}
+Abbiamo il disassembly di un certo virus:
+%immagine
+aggiungiamo del codice che non fa nulla, non solo NOP che sono facili da capire, ma proprio delle istruzioni che non fanno nulla. Per le NOP è facile skipparle nel calcolo della signature, ma le istruzioni che sembrano cambiare qualcosa ma in realtà non cambiano nulla fregano diversi degli antivirus gratis.\\Un'altra tecnica è rendere il codice \textbf{\textsf{SPAGHETTI CODE}}: si aggiungono jump avanti ed indietro nel codice così che la signature venga resa inefficace in quanto cambiano le istruzioni. La tecnica di cambiamento più semplice è che il virus sappia quali siano i suoi blocchi fondamentali e quindi cambi alcune delle parti per rendere le firme non efficaci.
+\subsubsection{Virus polimorfi/metamorfi}
+Il codice polimorfo è qualcosa che cambia se stesso ogni volta che viene lanciato. Ogni virus genera una nuova variante di se stesso ogni volta che viene generato, in particolare l'implementazione più semplice è quella di cambiare ogni volta lo stub quando si infetta qualcuno: un virus polimorfo ha diverse versioni di packer/unpacker logic, centinaia, in modo di fare repack di se stessi ogni volta che infettano qualche target scegliendo un algoritmo diverso ogni volta. Spesso vengono quindi detti virus oligomorfi.\\Abbiamo poi i virus metamorfi, che generano varianti di se stesso che fanno le stesse cose ma con istruzioni differenti: implementano nella loro logica delle teniche usate dai compilatori:
+\begin{itemize}
+\item si decompilano
+\item c'è una versione intermedia, cambiano del codice per far si che la logica sia la stessa
+\end{itemize}
+il problema è che il codice generato dopo un certo numero di iterazioni aumenta di molto la sua taglia. Quindi, dopo un certo numero di iterazioni, si applicano delle tecniche di shrinking, ad esempio convertendo due istruzioni in una sola. L'interpretazione intermedia si passa ad un assembler che restituisce il binario finale ed inoltre è possibile avere che tale binario sia eseguibile su diverse architetture.
+\subsubsection{Firme comportamentali}
+Le behavioral signatures sfruttano il fatto che ci possono essere diverse versioni dello stesso programma, ma alla fine lo scopo dell'algoritmo attuale sarà sempre lo stesso. Quindi una behavioral signatures guarda cosa il virus fa e non come è fatto, quindi gioca un ruolo fondamentale l'emulazione: possiamo misurare 
+\begin{itemize}
+\item quali istruzioni vengono eseguite nell'ambiente
+\item quali syscall chiama
+\end{itemize}
+si può poi creare un istogramma per raccogliere i dati e mantenere i bin dell'istogramma nel DB al posto della firma. Si può complementare questa tecnica con un sistema di scoring
+\subsubsection{Engine di euristiche}
+Gli engine per le euristiche sono dovuti al fatto che i samples ricevuti sono troppi e non riescono ad essere analizzati velocemente, quindi implementano dei classificatori e tecniche di ML per capire se un file è malevolo o no.\\La prima versione era basata su le sequenze di API chiamate come una feature del malware. Un'altra feature usata è l'opcode delle istruzione, quindi si guarda alle sequenze o sotto-sequenze di opcodes. È possibile però avere un ammontare grande di sequenze, ad esempio architetture CISC come Intel usano un grande ammontare di NOP che quindi non serve salvare, si possono anche costruire dei pattern per riconoscere NOP più complesse come quelle nell'immagine sopra per fare filtering sulle feature del dataset (TIÈ, COME SE VEDE CHE CONOSCO IL ML).\\Un'altra tecnica è quella di usare un call function graph, spesso generato dai compilatori per ottimizzare lì dove la funzione viene eseguita spesso, come mostrato in
+%figura sotto
+nell'analisi del malware gli antivirus li usano costruendoli guardando solo specifiche istruzioni
+\begin{itemize}
+\item jmp
+\item jcc
+\item call
+\item ret
+\end{itemize}
+poi si cerca di ridurre i nodi del grafo, quindi ogni nodo che è una sola istruzione o solo un jmp rimuove il nodo in modo da linearizzare il flusso del grafo. Si cerca quindi di produrre un grafo in cui si possano identificare solo le istruzioni più importanti di jump. È usato come signature per riconoscere il malware, viene costruito a run time e matchato con quelli presenti nel database.\\L'altra cosa usata sempre nel contesto del ML è l'n-gram ed è fondamentalmente una sequenza di n oggetti da un dato oggetto di testo o discorso, ad esempio abbiamo questo (slides della mucca)\\Le coppie diventano in grado di riconoscere ad esempio coppie di istruzioni che realizzano NOP. I classificatori più usati sono
+(slides)
+boosted decision tree sono quelli con risultati migliori per l'analisi del malware quando si usano gli n-grams. Anche in questo caso vanno generati gli n-gram a run time girando in un ambiente simulato.\\Abbiamo poi i byteplots, che trasformano binari in immagini: le immagini sono non-senso e ci sono tecniche di deep learning in cui si usano reti neurali che sono molto efficienti nel parsare e classificare immagini in 2D. Quindi si possono classificare i binari con le reti neurali e la cosa ottima è che possono mettere il loro focus sul dettaglio della parte affetta dal malware e non su tutto il binario. Questo richiede comunque tempo e consuma risorse.
+
+
+
+
+
+
+
+
+
+
+
 
 
 

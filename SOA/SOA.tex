@@ -2519,12 +2519,102 @@ La funzione init\_mount\_tree() inizializza l'albero di montaggio che
 \begin{itemize}
 \item alloca le 4 strutture dati per rootfs, quindi abbiamo l'ancora per agganciare le altre cose
 \item linkiamo la struttura dati
-\item (slides)
+\item facciamo il setup della "/" per la root del FS
+\item linkiamo l'idle process al rootfs, questo avviene settando la pwd del thread
 \end{itemize}
 Ogni thread ha dei metadati che ci permettono di dire che è collegato ad uno specifico punto dell'organizzazione gerarchica, che rappresenta la sua radice per cui si può lavorare da lì in basso, per collegare la pwd alla root directory del thread di init ci sono due API del kernel.\\Quindi questo accade quando si inizializza l'albero di montaggio in Linux (con cambiamenti minori in kernel 4 e 5)
 %snippet
-
-
+\subsection{Concetto di namespace}
+Il concetto di namespace, quando lavoriamo su file system, si lega al concetto di montaggio in quanto abbiamo il mount namespace in Linux: questo è un namespace in cui identifichiamo i punti di montaggio e do che cosa. Possiamo quindi vedere tali punti solo se siamo nello specifico namespace, dove vederemo dei punti di montaggio diversi, questo è ampiamente sfruttato per la costruzione dei container.\\Abbiamo quindi che si ragiona in particolare su SO Linux/POSIX secondo la regola che i punti di montaggio sono relativi al namespace, ed è possibile lavorare all'interno del namesapce in modo che tutti i thread al di fuori non vedano l'informazione. Il concetto di punto di montaggio diventa una astrazione collegata all'interno del kernel al namespace per cui vale. Anche l'eliminazione di un mount point è locale al namespace, quindi caratterizza qualcosa relativa alle informazioni di quel namespace. Per usare il mount namespace possiamo, all'atto della creazione di un thread, passare dei flag alla \texttt{clone}, fra cui ad esempio \texttt{CLONE\_NS} in modo che la vista dell'archivio sia diversa in termini sopratutto di cosa sarà visibile dal thread e da tutti quelli derivati. Abbiamo anche l'\texttt{unshare} per creare un nuovo namespace non condiviso con gli altri.
+\subsubsection{Esempio software}
+Esempio di uso dei namespaces. L'esempio usa solo un Makefile, in quanto si può manipolare il namespace anche solo con comandi di shell: il set di comandi è però più articolato:
+\begin{itemize}
+\item dato il FS, vogliamo identificare un nuovo punto del FS dove montare il namespace
+\item creiamo un FS nuovo, che in realtà è legato ad un dispositivo. Ma un dispositivo è comunque un file perché di fatto è una sequenza di byte.
+\item Ampliamo la relazione in quanto creiamo un dispositivo non fisico su cui montiamo il FS: \texttt{dd} permette di duplicare il contenuto di dischi, che può essere fisico o logico. Copiamo \texttt{/dev/zero} su un altro device, quindi inizialmente abbiamo una sequenza di zeri che è vista come blocchi di zeri.
+\item si installa quindi un file system ext4 con \texttt{mkfs.ext4}, quindi si inizializza un dispositivo a blocchi con i metadati per la gestione corretta del dispositivo come se fosse formattato con regola ext4
+\item c'è poi il comando \texttt{mount}, che permette di montare il dispositivo per leggere/scrivere il FS ext4.
+\item se montiamo tutto e non ci sono errori, abbiamo una directory temp che contiene un file system, dentro cui possiamo creare un nuovo file dentro cui possiamo scrivere qualcosa
+\item infine, il comando \texttt{unmount} permette di rimuovere tutto il FS
+\item c'è poi \texttt{ushare}, che permette di lanciare il comando di shall analogo per creare un nuovo namespace per i mountpoint, per lanciare successivamente una shell. Per lanciare il comando occorrerà essere root
+\end{itemize}
+Creiamo un altro terminale, che vive nel namespace del terminale originale, quindi creiamo il nuovo namespace con \texttt{unshare} in modo da ottenere dei mount point differente da quello del secondo terminale.\\ATTENZIONE: i container sono utili, ma il kernel è condiviso e quindi se siamo root del container possiamo montare moduli del kernel.
+\subsection{Driver per la gestione del SO}
+Alla fine, abbiamo questo set di driver per gestire il SO:
+\begin{itemize}
+\item funzioni di gestione del superblocco
+\item funzioni di gestione degli inode
+\item funzioni di gestione delle dentry
+\item operazioni per i char device driver
+\end{itemize}
+tutte le operazioni sono comunque correlate fra di loro e tali funzioni sono indipendenti dal tipo di file system che pilotiamo: l'interfaccia dell'operazione è la stessa ma cambia la funzione chiamata.
+\subsection{VFS e TCBs (2.4 style)}
+Abbiamo fra le cose più interessanti la \texttt{fs\_struct}, collegata al TCB per cui se ci muoviamo nel TCB di un thread abbiamo questa tabella:
+%snippet
+abbiamo due pointers interessanti, per cui identifichiamo root e pwd all'interno dell'archivio ed inoltre anche quali sono i vfsmount dove sono presenti tali root e pwd.\\Su versioni più recenti abbiamo la seguente cosa:
+%snippet
+c'è una struttura dati e quindi se ne usano due istanze, una per root ed una per pwd. Andando avanti abbiamo randomize layout
+%snippet
+\subsection{File descriptor table}
+La tabella sopra indica la relazione fra il thread e tutto l'archivio, ma in realtà il  thread attivo potrebbe avere alcuni degli oggetti di I/O su cui sta lavorando, ad esempio i file che sta toccando. Per relazionare il thread con più punti dell'archivio che sono quelli su cui l'applicazione sta lavorando c'è  la file descriptor table, sempre collegata al TCB: è tale per cui c'è un elemento diverso per ogni elemento di I/O che stiamo utilizzando. La cosa interessante è che le entry nella tabella ci portano su una tabella intermedia che porta poi sull'elemento di I/O, la tabella intermedia rappresenta una sessione di I/O. Nella tabella di sessione, ci ricordiamo ad esempio in che punto dell'oggetto di I/O stiamo lavorando ed inoltre ci permette quando chiamiamo syscall per fare delle operazioni ci permette di identificare l'inode mediante indice (il canale di I/O) per identificare così anche i loro driver.\\Abbiamo la seguente struttura:
+%snippet della FDT
+ciascun elemento punta ad una struct file, abbiamo anche dei metadati:
+\begin{itemize}
+\item nextfd: punto dove cercare il prossimo elemento libero da utilizzare. Sono aggiornati quando ad esempio di esegue una \texttt{open}, per cui il nextfd diventa il successivo, mentre torna al precedente quando si fa \texttt{close}
+\item l'array (ultimo campo) può non essere l'unico per fare queste operazioni, in quanto in base all'applicazione si potrebbe usare un numero di oggetti di I/O ampio o basso e quindi siamo flessibili per evitare che ci siano sempre tanti elementi di I/O. Si usa quindi un pointer ad una tabella più ampia (4° campo)
+\item con gli ultimi due pointer si identificano delle bitmap:
+\begin{itemize}
+\item close\_on\_exec: quali canali vanno chiusi quando si chiama la exec
+\item open\_fds: quali sono gli oggetti aperti
+\end{itemize}
+\end{itemize}
+Manca analizzare la struttura dei dati di sessione: questo oggetto è una struct file, fatta in questo modo:
+%snippet
+identifichiamo la dentry a cui l'oggetto di I/O appartiene e quindi qual è l'oggetto di I/O effettivo.\\C'è il solito contatore che identifica quanti sono i pointers in cui abbiamo sharing della sessione di I/O.\\Possiamo poi identificare il puntatore per il driver che identifica il reale driver per l'oggetto di I/O.\\Il campo f\_pos identifica la posizione in cui andremo a lavorare, è scritta esternamente al driver che punta a dei moduli eseguibili che usano quell'informazione e quindi il driver delle reali operazioni prenderà il puntatore alla tabella per accedere all'offset ed eventualmente modificarlo. Salendo di versioni c'è sempre la radnomizzazione (E QUANDO TE SBAGLI).
+\subsection{API del VFS per Linux}
+Le API sono layerate, ovvero su diversi livelli di API che rappresentano anche tipologie di API differenti
+\begin{itemize}
+\item Data structure ...: set di API da chiamare per fare operazioni sulle strutture dati prendendo dei pointer alle strutture dati
+\item path-based VFS layer, a cui passiamo un path come parametro principale. Occorre ad esempio quando dobbiamo esplorare il FS per chiederci se il file esiste, in quanto magari la dentry e l'inode del file non sono nemmeno in memoria. Preso l'elemento, abbiamo le strutture dati associate e quindi possiamo chiamare le API per lavorarci sopra
+\end{itemize}
+Tutte le API sono per modo kernel, ma lavorando su VFS le operazioni sono fatte perché si chiama una syscall e quindi abbiamo syscall layer
+\begin{itemize}
+\item Qui, si usa l'ID del canale per identificare il driver da utilizzare
+\item syscall che permettono di arrivare a delle API che usano magari il path name
+\end{itemize}
+Queste sono alcune delle API principali usabili del kernel Linux:
+(slides)
+Questo ci permette di dire che quando scriviamo del codice livello kernel non usiamo tutte le API e quindi il retrieve degli indirizzi delle funzioni è embeddato nel modulo kernel che scriviamo.\\ \texttt{filp\_open()} è molto interessante, viene ad esempio chiamata \texttt{open()}. Abbiamo poi tutte le altre API che sono sulle slides.\\Abbiamo poi vfs read e write a cui passiamo la struttura file, quindi possiamo lavorare sulla sessione di I/O direttamente senza passare per il canale.
+\section{Major e minor numbers}
+Sono codici per identificare oggetti, fin ora abbiamo visto un oggetto di natura fondamentale che è il driver. Il major number è una modalità per cui identifichiamo driver uno rispetto ad un altro: abbiamo un driver D a cui identifichiamo un numero M, tale codice numerico viene usato per identificare una entry di una tabella, dentro cui ci sono le informazioni che ci portano nella struttura dati per identificare il pointer verso il driver. Il driver può essere di natura differenziata, che ad esempio implementa diverse operazioni oppure essere il set di interfacce per fare operazioni su oggetti a blocchi e per distinguere queste due nature fondamentali abbiamo due tabelle diverse:
+\begin{itemize}
+\item per char device driver
+\item per block device driver 
+\end{itemize}
+tutto questo è fondamentale perché per lavorare sugli oggetti del FS dobbiamo poter lavorare anche sui device driver che gestiscono (slides)\\Alla creazione del file, occorre stabilire il driver per fare operazioni su quel file, questo implica che se abbiamo un FS dentro cui creiamo un nuovo file, questo ha le stesse caratteristiche di tutti gli altri oggetti di I/O del FS. Quindi, se creiamo un elemento in una directory, questa è rappresentata in memoria usando dentry ed inode, quindi il driver si può riusare quando si crea un child in quanto due oggetti dello stesso identico FS usano lo stesso driver. Non c'è, necessità di passare per la tabella, l'oggetto è identificato perché c'è un parent in memoria che mi dice dove è il driver, inoltre non è l'unico scenario possibile: se creiamo un file, questo potrebbe non essere un elemento di quel FS ma un nodo di natura diversa. Quindi, il driver D dovrebbe essere diverso, in questo caso è importante conoscere la tabella e sapere quel è il numero per identificare il driver per l'oggetto, che è il major number.\\Quando lavoriamo su inode, il driver che usiamo per identificare che stiamo lavorando su un determinato file e non su un altro userà dei metadati dell'inode specifico del file. Quindi l'isolation è gestita e garantita correttamente, ma questo potrebbe non essere il caso per un oggetto di I/O che non è un file regolare, dobbiamo poter gestire tali elementi che sono identificabili con il minor number: questo permette di dire al driver di fare una cosa piuttosto che un'altra, in quanto il driver può verificare questo minor number per identificare l'oggetto effettivo su cui lavoriamo.
+\subsection{Nodi del VFS e device numbers}
+Un nodo I/O può essere cose differenti
+\begin{itemize}
+\item directory o file
+\item char o block device: questo oggetto è tale per cui le operazioni che facciamo su questo oggetto sono codificate in un driver e questo ha un certo minor number
+\item pipe
+\end{itemize}
+Per creare un nodo possiamo usare la syscall \texttt{sys\_mknod()}, a cui specifichiamo MAJOR e MINOR number, questa è la syscall effettiva:
+%syscall
+possiamo usare anche una macro che compone una maschera di bit dati major e minor number per attribuire i valori all'elemento che consideriamo. L'uso dei numeri è tale per cui se chiamiamo un operazione su un driver, questo passa alla directory entry, ed in base al minor number fare operazioni ad esempio su certi dati. Potremmo avere questo: un archivio, un device driver con un certo majro number. Inseriamo due nodi, associati a quel major ma con due minor diversi, x ed y. Il software del driver è lo stesso, ma potremmo fare operazioni differenti, magari in un array con l'informazione che x = 0 ed y = 1.\\Questa è la tabella per implementare i block device in Linux, con API:
+%snippet
+e questo l'equivalente per char device driver e le API:
+%snippet char device driver
+il char device driver implementa tutte le operazioni per lavorare sui file.\\In particolare la tabella dei char devices è stata riorganizzata nel kernel in modo che fosse una hash table con conflitti in modo che fosse più scalabile per sistemi grossi ed inoltre in un elemento della tabella abbiamo un puntatore ad una struttura char device, che non è solo il driver:
+%immagine del char device
+ha delle informazioni dove quando installiamo un driver nella tabella, possiamo con una API registrare quali sono i minor numbers realmente pilotabili con questo driver: se il minor number non è listato, viene evitato che ci siano ulteriori attività di controllo nel driver in quanto ci sarà subito un errore in accesso (si confrontano major e minor, vedi slides).
+\subsubsection{Esempi eseguibili (PARLA ITALIANO)}
+Il primo esempio è un baseline char device, per cui abbiamo sicuramente l'implementazione della dev\_open, della dev\_write e della dev\_release. Sarà software di livello superiore ad invocare queste operazioni in base alla syscall chiamata. Usiamo un mutex perché possiamo gestirlo durante l'operazione di apertura del file, in modo da avere un device driver ad istanza singola.\\Per poter usare il driver, devo creare un nuovo nodo nel file system che abbia il major number che è quello dato e che abbiamo un minor nubmer compreso fra 0 e 255 altrimenti all'apertura del nodo avrei un errore:
+\begin{itemize}
+\item creiamo il nodo con mknod, che mettiamo in /dev/ con nome example
+\item specifichiamo c per dire che è un char device, passiamo 241 (è dell'esempio) e 0 come major e minor. Il driver vero per questo oggetto quando si va in I/O sull'elemento chiama il driver codificato nel modulo.
+\end{itemize}
+Le operazioni chiamate quando ad esempio si fa un \texttt{echo "qualcosa" > /dev/example} avremo in dmesg le print chiamate, vengono fatte n write perché la echo cerca di scrivere n byte e se ne vede ritornare uno alla volta come risultato della scrittura.\\Potevamo fare qualunque cosa con questo driver, davvero sbizzarritevi provateci anche voi e fate il vostro stupendo driver.\\\\Il secondo esempio: 
 
 
 
