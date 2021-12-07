@@ -1149,7 +1149,7 @@ UPX è un packer open source, possiamo usarlo per impacchettare un programma e v
 \end{itemize}
 Abbiamo un programma originale, proviamo ad impacchettarlo. Il programma viene compresso sul posto, quindi conviene farsi una copia, vediamo come è fatto il programma risultante
 \subsubsection{Analisi statica del file compresso}
-Apriamo con PEStudio, il programma originale conteneva 45 import di DLL. Nel programma impacchettato, troviamo solo 6 API. L'entropia è la quantità di informazioni, si può misurare ad esempio per byte: prendiamo un gruppo di byte (ad esempio 64) e ci calcoliamo l'entropia del singolo byte. Se troviamo 0, abbiamo blocchi che sono riempiti sempre dello stesso valore, mentre entropia vicina ad 8 hanno quasi il massimo dell'informazione (truly random). Il codice macchina ha entropia vicino a 4-5. Facendo lo stesso controllo sul file eseguibile impacchettato, abbiamo due cose diverse: l'entropia che otteniamo è 5-6 di media, ed è molto difficile che un compilatore generi del codice macchina con entropia così alta quindi questa è già una misura che dice che il codice è impacchettato.\\Un altra indicazione che il programma è stato impacchettato è se lo si apre con un disassembler: aprendo il programma impacchettato, già dall'inizio in Ghidra ci sono dei problemi. Il motore che cerca di analizzare l'eseguibile già nota che qualcosa non va. Una volta analizzato, ci sono le varie sezioni, i vari \textt{NT\_HEADER}, saltiamo all'entry point ma la maggior parte del file Ghidra non sa cos'è. Il file dice che la virtual size è di un tot, ma non ha avuto abbastanza dati per sapere come riempire le sezioni e quindi ci sono una sfilza di "??".
+Apriamo con PEStudio, il programma originale conteneva 45 import di DLL. Nel programma impacchettato, troviamo solo 6 API. L'entropia è la quantità di informazioni, si può misurare ad esempio per byte: prendiamo un gruppo di byte (ad esempio 64) e ci calcoliamo l'entropia del singolo byte. Se troviamo 0, abbiamo blocchi che sono riempiti sempre dello stesso valore, mentre entropia vicina ad 8 hanno quasi il massimo dell'informazione (truly random). Il codice macchina ha entropia vicino a 4-5. Facendo lo stesso controllo sul file eseguibile impacchettato, abbiamo due cose diverse: l'entropia che otteniamo è 5-6 di media, ed è molto difficile che un compilatore generi del codice macchina con entropia così alta quindi questa è già una misura che dice che il codice è impacchettato.\\Un altra indicazione che il programma è stato impacchettato è se lo si apre con un disassembler: aprendo il programma impacchettato, già dall'inizio in Ghidra ci sono dei problemi. Il motore che cerca di analizzare l'eseguibile già nota che qualcosa non va. Una volta analizzato, ci sono le varie sezioni, i vari \texttt{NT\_HEADER}, saltiamo all'entry point ma la maggior parte del file Ghidra non sa cos'è. Il file dice che la virtual size è di un tot, ma non ha avuto abbastanza dati per sapere come riempire le sezioni e quindi ci sono una sfilza di "??".
 \subsection{Unpacking del programma}
 Ci sono 3 strade possibili:
 \begin{itemize}
@@ -1186,6 +1186,89 @@ Ci sono poi strategie dinamiche
 \end{itemize}
 PEiD usa delle euristiche nei suoi plugin, che non è detto funzionino. OllyDbg ha diversi plugin per lavorare con i programmi compressi come "OllyDump": anche questo ha un algoritmo generico per cercare l'OEP. Anche in questo caso c'è la funzionalità per fare trace into o over. I plugin non funzionano sempre, sono euristiche: un lavoro professionale lo si fa se si hanno le competenze, in modo che si possa sopperire al malfunzionamento degli strumenti.\\ \textbf{\textsf{Nulla sostituisce la competenza}}
 Per poter trovare l'OEP, si può tentare col disassemblatore: cerchiamo tutti i jump nelle istruzioni (instruction mnemonics). Non saranno molti, se ne troviamo uno lontano vale la pena approfondirlo: trovato l'indirizzo dove si salta, possiamo tornare al debugger. Un'altra indicazione della compressione del programma è che quando lo carichiamo in OllyDbg, ci sono delle indicazioni al caricamento che avvertono che il programma è impacchettato (funziona in base ad una threshold).\\Entriamo in quella che dovrebbe essere la prima istruzione dell'OEP, possiamo verificarlo seguendo le istruzioni e verificando che è l'inizializzazione esatta del codice.
+\chapter{Lezione 22}
+\section{Analisi di programmi impacchettati}
+Il primo passo fondamentale è identificare l'OEP, ovvero l'inizio del programma originale dove bisogna saltare per dare il controllo al programma originale. Le strategie per localizzare l'OEP sono state viste nella scorsa lezione, quindi ora il secondo passaggio è eseguire mediante un debugger lo stub (programma che decodifica) fino a raggiungere l'OEP dove si mette un breakpoint e ci si ferma.\\Ora, occorre fare il dump della memoria del processo, che ora conterrà anche il programma originale: così, ricreiamo un file che dovrebbe contenere tutto ciò che aveva il programma originale.\\Ora, il programma non è realmente eseguibile, perché deve sistemare la IAT e quindi il 4 passo richiede che tale IAT venga ricostruita. IL 4° passo è problematico ma non è  proprio indispensabile, cioè ottenere un programma eseguibile identico all'originale può essere utile ma non è indispensabile, questo perché i primi 3 passi richiedono pazienza ma si fanno, il 4° passo può essere anche impossibile perché dipende dalle protezioni usate.
+\subsection{Analisi del programma impacchettato con UPX}
+Abbiamo un programma che è impacchettato, se aperto funziona normalmente ed avevamo già trovato l'OEP che è a 4014c0 trovato sia analizzando in Ghidra i salti che utilizzando OllyDbg mettendo un breakpoint sullo stack. OllyDbg lascia il punto iniziale alla prima istruzione dell'entrypoint:
+\begin{itemize}
+\item la prima istruzione è PUSHAD, che salva tutto i registri sullo stack. Ci aspettiamo che tutti questi registri vengano ripristinati prima di saltare all'OEP
+\item si esegue quindi f8 per modificare lo stack pointer, si fa "follow in dump" su esp e si mette un breakpoint hardware sul primo byte
+\item si arriva fino alla POPAD, in quanto questa è quella che corrisponde alla PUSHAD. Dopo questa istruzione c'è un piccolo ciclo, lo facciamo tutto (f4)
+\item seguiamo il salto e si arriva ad una funzione che ha tutta l'aria di essere l'inizio di un programma
+\end{itemize}
+A questo punto, si usa il plugin di OllyDbg "Olly dump" $\rightarrow$ dump: ci sono dei settaggi che si possono mettere, alcuni di questi sono default e vanno bene, quello che si può cercare di capire è se l'entrypoint deciso dal plugin è valido o no; qui è inteso come offset.\\C'è l'opzione "Rebuild Import", che si propone di ricostruire la IAT ma non è estremamente potente nel farlo, qualche volta funziona ma spesso no.\\Proviamo a ricostruire gli import con tutti e tre i metodi euristici, per vedere cosa otteniamo:
+\begin{itemize}
+\item primo metodo: vedere i salti alle DLL
+\item secondo metodo: cercare i nomi delle DLL e delle API oppure il numero d'ordine
+\item terzo metodo: non costruire la IAT.
+\end{itemize}
+Il programma senza IAT non parte, in quanto non è possibile trovare il collegamento dinamico alle DLL. Anche Olly1 (primo metodo) non parte, il 3° crasha proprio e buonanotte (che cazzo glie frega al plugin di OllyDbg).\\Proviamo quindi a ricostruire la IAT del programma, ci sono degli strumenti più potenti per farlo, lo strumento più usato è \textbf{ImpREC}
+\section{ImpREC}
+È fatto apposta per ricostruire la IAT, infatti la sigla sta per ImportREConstructor, il defender di Windows lo odia proprio a pelle, in quanto lo vede come un tool che inverte i programmi presenti sull'hard disk. È quindi cruciale disabilitare il defender quando lo si usa, come funziona
+\begin{enumerate}
+\item si lancia con diritti di amministratore
+\item il primo passo è lanciare il programma impacchettato, in modo che rimanga in memoria. Non possiamo usare il processo controllato dal debugger, quindi conviene lanciarlo normalmente. Questo è un problema in quanto
+\begin{enumerate}
+\item il processo che va eseguito è potenzialmente un malware
+\item il processo deve rimanere attivo
+\end{enumerate}
+È quindi difficile usare l'approccio di questo programma in altri contesti, ad esempio se il malware apre un altro processo per poi chiudersi non c'è tempo possibile per l'analisi. A bocce ferme si può modificare lo stub, non il programma compresso e quindi non si riesce ad aggirare il problema, ad esempio aggiungendo un ciclo senza fine.
+\item selezioniamo il processo in ImpREC
+\item ImpREC analizza il processo ed è pronto ad andare avanti. Ora, serve inserire l'informazione sull'OEP, che è cruciale (va messo in termini di offest).
+\item si lancia "IAT Autosearch" e se l'OEP è sbagliato fallisce la risoluzione della IAT, se è invece corretto appare un message box che dice che poi trovare la IAT ad un certo indirizzo, altrimenti di estendere l'euristica ad un certo range
+\item si dice quindi di fare "Get Imports" e controlla la validità di cosa ha trovato.
+\item I problemi si hanno quando ci sono funzioni invalide o sospette, dove possiamo fare "Show Invalid" o "Show Suspect"
+\item ora, occorre fare una patch al programma creato dal dump, quindi si effettua il fix del dump
+\end{enumerate}
+Il file originale non viene modificato, ma viene creato un file con lo stesso nome ma seguito da "\_". Questo è un caso dove le cose vanno bene, ma ci possono essere vari casi dove non è così.
+\subsection{Esempio funzionante: lab18-01}
+Proviamo ad analizzare lab18-01, usando una metodologia sistematica, cercando di trovare informazioni:
+\begin{enumerate}
+\item PEiD, che ci vede un packer UPX
+\item proviamo a scompattare con UPX: viene restituito un messaggio di errore, il file è modificato o hacked o protetto quindi lo scompattamento automatico non riesce. Questo perché UPX permette di modificare il meccanismo di scompattamento
+\item Pe Explorer, che ha dei plugin per unpacking automatico. Il programma ottenuto è identico all'originale
+\item possiamo usare PE studio per vedere le testate del file, ci da informazioni sul fatto che abbiamo 3 sezioni
+\begin{itemize}
+\item text
+\item data
+\item upx2
+\end{itemize}
+possiamo poi vedere le DLL importate che sono molto poche: tipicamente un packer usa \texttt{LoadLibrary} e \texttt{GetProcess} per ricostruire la IAT. Abbiamo poi la API \texttt{UrlDownloadedCacheFile} che è tipicamente utilizzata dal malware, in quanto permette di scaricare un file bypassando i controlli del browser.
+\end{enumerate}
+Dobbiamo quindi scompattare il programma in maniera automatica
+\begin{enumerate}
+\item possiamo provare con i plugins di OllyDbg che cerca l'OEP. non sembra funzionare, perché non sembra dare risultati significativi in quanto ci mette un po' a dare la risposta. Nulla, va fatto a mano
+\item Proviamo a vedere se in Ghidra riusciamo a vedere quelli che sono i far jump che possono darci un'indicazione sull'OEP. Cerchiamo tutti i jump e vediamo quali sono quelli lontani: ce n'è uno che salta da 409f43 40154f. Il libro dice che spesso il tail jump è seguito da byte che non hanno significato, ma come euristica è un po' fragile secondo il prof \textbf{E LUI È LA LEGGE}.
+\item segniamo quello che è il far jump, saltando in Ghidra a 40154f non troviamo nulla, anche questo è un indicazione che potrebbe essere il tail jump perché è lo stub che riempie quella sezione
+\item proviamo una tecnica usata, ovvero di mettere il breakpoint sullo stack visto che usa UPX che mette PUSHAD. Troviamo quindi l'inizio del programma.
+\end{enumerate}
+Ora, dobbiamo fare il dump della memoria, partendo dal plugin di OllyDbg ovviamente verificando che l'OEP sia corretto. In questo caso, i due dump fatti con i metodi che ricostruiscono la IAT partono e non vanno in crash. Apriamo in Ghidra le due versioni patchate e troviamo, dopo l'analisi, una serie di API che fanno pensare che l'analisi abbia funzionato e quindi da qui parte il processo di analisi.
+\subsection{Esempio: lab18-02}
+Ripetiamo gli stessi passi preliminari di prima con tutti i tool:
+\begin{enumerate}
+\item PEiD dice che è impacchettato con un packer diverso da UPX
+\item PE studio dice che importa una sola libreria, perché lo stub userà una propria IAT e non quella originale, usa solo il duodeno delle API per ricostruire la IAT
+\end{enumerate}
+Proviamo a seguire qualche strategia
+\begin{enumerate}
+\item proviamo con PE Explorer, otteniamo un programma più grande. Lo apriamo, ad esempio con PE Studio ma ciò che otteniamo è che non ci sono DLL, le sezioni non ci stanno oppure non c'hanno in nomi. \textbf{\textsc{RICORDIAMO CHE PE EXPLORER È UN PROGRAMMA COMMERCIALE, CHE COSTA SOLDI E TI RICORDA OGNI CAZZO DI GIORNO CHE LA TUA LICENZA STA PER SCADERE, BELLO EH? BELLO SPENDE I SOLDI EH TACCI VOSTRA MERDE LURIDE INFAMI}}
+\item proviamo ad aprire con Ghidra e cercare i jump: ci sono tre salti sospetti, il primo ci porta in un punto che fa una CALL alla funzione che sta sulla cima dello stack e quindi non sembra proprio il salto all'OEP quindi sembra che sia una tecnica per ingannare il disassemblatore.\\Il 3° salto porta sempre in un punto che non sembra l'OEP e quindi anche questa tecnica non ha funzionato
+\item usiamo il plugin di OllyDbg: ci dice che l'entrypoint è al di fuori del codice come specificato nella testata PE e che quindi è auto-estraente o auto-modificante, quindi è un warning del fatto che c'è qualcosa di strano col codice del programma.\\Usiamo i plugin di ricerca dell'OEP, questo ci porta dentro ad una DLL di kernel32 che sembra quindi un falso positivo, infatti continuando di arriva in un punto dove non si vede codice. L'altro plugin che ritorna nello stesso punto dove siamo approdati nel caso precedente, solo che prima abbiamo usato trace intro e quindi siamo passati per la DLL. In realtà sembra che il plugin abbia trovato l'OEP: in Ghidra non troviamo nulla, quindi per vedere l'assembler si fa su OllyDbg (dx) "analysis" $\rightarrow$ "analyze code". Otteniamo quello che sembra un entrypoint e possiamo quindi assumere che 401090 sia l'entrypoint e passare al dump
+\end{enumerate}
+Facciamo il dump con le 3 meravigliose tecniche viste prima: usando la 1° tecnica, il file ottenuto si chiude. Potrebbe essere normale, lo apriamo con PE Studio ma vediamo diversi import "strani". Il meccanismo ha in realtà funzionato, il plugin ha ricostruito la IAT mostrando le uniche API usate perché in realtà il programma, se lanciato, chiama il browser di sistema su una certa URL e quindi in effetti il programma funziona tramite ereditarietà di oggetti hole(???). Probabilmente OllyDbg non ha ricostruito la IAT ma non proviamo ad usare ImpREC perché il programma appena lanciato muore dopo aver lanciato il browser, quindi ci possiamo limitare a fare analisi statica del programma.\\Abbiamo trovato quindi alla fine in jmp all'entrypoint, prima avevamo fatto al ricerca su Ghidra dei jump e no l'avevamo visto. Cercando quel jump in Ghidra, avremmo visto un'area di memoria che non contiene quel codice, in quanto il programma si auto-modifica tramite lo stub e quindi in Ghdira non si vede il jump finale.
+\subsection{Esempio: lab18-03}
+Di nuovo stessi passi di prima con PEiD, che però da un'indicazione: 401577, quindi è possibile che funzioni l'unpack per provare a ricostruire gli import con ImpREC. Otteniamo una versione unpacked del programma, PEiD fa analisi dinamica, quindi qualunque cosa il malware fa è stata fatta. Proviamo a vedere cosa ci dice PE studio sul packed: usa due librerie e determinate API. La libreria wsa32 è usata per le comunicazioni di rete, le sezioni fanno capire che è sicuramente un programma impacchettato.\\Vediamo con PE Explorer: sempre uguale all'originale (\textbf{\textsf{RIPETO: TOOL A PAGAMENTO, DI TUTTI QUESTI È L'UNICO CHE SI PAGA ED È SEMPRE QUELLO CHE NON FUNZIONA MAI (ovviamente è goliardico)}}.\\Di nuovo aprendo con OllyDbg otteniamo un entrypoint fuori dal codice, con la nota che il codice si auto-modifica, come prima. Proviamo ad usare gli stessi plugin:
+\begin{itemize}
+\item il primo plugin trova come OEP una enter, che è analogo alla leave ed i compilatori non lo usano mai. Quando la troviamo, è codice assembler scritto a mano. Non può essere l'entrypoint originale, in quanto la 3° istruzione legge EBP + 8, quindi qualcosa dallo stack ma l'entrypoint non può aspettarsi qualcosa sullo stack. Inoltre, facendo f7, il codice si auto-modifica e quindi OllyDbg potrebbe portare a quello che pensava prima (??)
+\item il secondo plugin va a finire in un altro modulo.
+\end{itemize}
+Proviamo con Ghidra, vedendo i jump: c'è un solo jump anche piccolo. Si prova quindi mettendo un breakpoint sullo stack: la prima istruzione che usa lo stack sembra essere la PUSHAD, quindi eseguiamo il programma fino alla prima istruzione di PUSH. f9 si ferma subito dopo la POPFD, poi fa PUSH e RET, dove la RET avviene all'indirizzo salvato, ovvero si salta a 401577 che era quello trovato da PEiD. Seguendolo, arriviamo dove facendo ctrl + A (la cosa di prima) c'è qualcosa che sembra proprio un entrypoint. Per verificarlo, basta controllare se ci sono funzioni che sembra classico eseguire in un prologo: \texttt{GetVersion}, \texttt{GetCommmandLineA} etc...\\Si fa sempre il dump e si arriva ad avere l'eseguibile in chiaro.\\\\Curiosità: andando nel punto 407550, il primo salto fatto, non si trova nulla perché il codice si auto-modifica. (Inoltre, nell' "esercizio 5" c'è un trick per capire dove arriva. Si seguono i breakpoint per vedere le DLL caricate e risolte, quando risolve l'ultima e va sparata rifacciamo tutto e lì cominciamo a guardare il codice perché troveremo il salto all'OEP manualmente).
+
+
+
+
+
 
 
 
