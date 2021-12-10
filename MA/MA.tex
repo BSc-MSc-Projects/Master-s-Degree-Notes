@@ -1264,11 +1264,98 @@ Di nuovo stessi passi di prima con PEiD, che però da un'indicazione: 401577, qu
 \item il secondo plugin va a finire in un altro modulo.
 \end{itemize}
 Proviamo con Ghidra, vedendo i jump: c'è un solo jump anche piccolo. Si prova quindi mettendo un breakpoint sullo stack: la prima istruzione che usa lo stack sembra essere la PUSHAD, quindi eseguiamo il programma fino alla prima istruzione di PUSH. f9 si ferma subito dopo la POPFD, poi fa PUSH e RET, dove la RET avviene all'indirizzo salvato, ovvero si salta a 401577 che era quello trovato da PEiD. Seguendolo, arriviamo dove facendo ctrl + A (la cosa di prima) c'è qualcosa che sembra proprio un entrypoint. Per verificarlo, basta controllare se ci sono funzioni che sembra classico eseguire in un prologo: \texttt{GetVersion}, \texttt{GetCommmandLineA} etc...\\Si fa sempre il dump e si arriva ad avere l'eseguibile in chiaro.\\\\Curiosità: andando nel punto 407550, il primo salto fatto, non si trova nulla perché il codice si auto-modifica. (Inoltre, nell' "esercizio 5" c'è un trick per capire dove arriva. Si seguono i breakpoint per vedere le DLL caricate e risolte, quando risolve l'ultima e va sparata rifacciamo tutto e lì cominciamo a guardare il codice perché troveremo il salto all'OEP manualmente).
-
-
-
-
-
+\chapter{Lezione 23}
+\section{Aspetti generali sui malware}
+Il discorso su cosa può fare il malware non è concluso, può fare molto di più oltre ad offuscare il codice col packer. Questo non è lo stato dell'arte della tecnologia di cosa può fare chi scrive il malware. Vale comunque la pena di dire qual è la finalità del lavoro dell'analisi del malware
+\begin{itemize}
+\item cosa ha infettato il malware
+\item quale vulnerabilità del SO ha sfruttato
+\item perché è sfuggito all'IDS del sistema\
+\item etc..
+\end{itemize}
+Serve quindi capire in generale cosa è il malware, in che forme si può presentare e cosa può fare. Vediamo degli aspetti più generali riguardanti i malware.
+Cercando su Internet la classificazione del malware si trovano articoli superficiali che per il giudizio del GOAT fanno un "fritto misto", quindi sempre secondo il GOAT occorre parlare più in generale di classificazioni del malware e ci ne potrebbero essere diverse, ne vediamo almeno 3
+\begin{enumerate}
+\item classificazioni basate su cosa fa il malware. Quali sono gli scopi che si prefigge, perché è stato scritto
+\item classificazioni basate su qual è il meccanismo di attacco del malware. Come è riuscito ad infettare un sistema od una rete
+\item classificazioni basate sui meccanismi interni usati dal malware. Cosa fa, ad esempio di installa sostituendo un eseguibile di sistema molto utilizzato, oppure è un rootkit
+\end{enumerate}
+\textbf{Per malware, intendiamo qualunque software eseguito contro o all'insaputa del proprietario della macchina dove viene eseguito.}
+\subsection{Classificazione basata sul comportamento}
+Vediamo le categorie legate a cosa fa il malware: è vero che lo stesso esempio di malware è classificabile in modi differenti nelle 3 categorie, ma in realtà lo stesso programma potrebbe ricadere su più voci della categoria stessa. Abbiamo
+\begin{itemize}
+\item \textbf{Adware}: software che ha come scopo quello di mostrare pubblicità sul computer. Ricade sotto malware se l'utente non ha richiesto l'installazione del software. È un malware non troppo pericoloso, ma è pur sempre malware, ad esempio potrebbe anche sovvertire la richiesta ad un motore di ricerca, oppure i risultati e mettere dei risultati voluti dal malware in cima o escludere risultati che l'utente non deve vedere. Le ragioni di scrittura sono puramente economiche.\\Un'altra cosa più insidiosa può essere che l'Adware collezioni informazioni relative agli interessi commerciali dell'utente
+\item \textbf{Malvertising}: sfumatura dell'Adware più "cattiva", supponiamo di aprire una pagina web con un box contente pubblicità. L'idea è che se l'utente è interessato può clickare sul banner in modo che chi scrive il sito riceva una percentuale di guadagno. Il Malvertising dirotta il click, mandandolo ad un'altra azienda che riceverà la segnalazione che l'utente è interessato all'utente. Ci sono siti che concentrano una larga quantità di traffico, che quindi ricevono moltissimi click sugli ads, quindi da forte guadagno a chi scrive il Malvertising
+\item \textbf{Spyware}: tutti quei programmi che servono spiare il comportamento della vittima. Quando l'Adware raccoglie le ricerche sui prodotti delle vittime si può considerare come uno Spyware, quindi c'è un confine sottile fra i due malware. Potremmo definire lo Spyware anche come \textbf{Information stealer}, alcuni dei software sono scritti anche da aziende che non scrivono malware, ad esempio i tribunali potrebbero autorizzare l'utilizzo di uno Spyware nel computer di un indiziato. Il principale utilizzo di questo tipo di programmi sono i così detti \textbf{Keylogger}, che registrano ogni tasto digitato dall'utente finché non preme "invio". \\\\Siccome installare un Keylogger potrebbe non essere facile, il malware si limita al tentativo di esfiltrare l'hash delle password contenute nel comupter: all'avvio, Win chiede una password che non è in chiaro, la password viene hashata e quindi l'algoritmo poi prende la password immessa dall'utente e ne confronta l'hash con quello salvato. Per chi scrive malware può essere interessante avere l'hash della password, si possono tentare dictonary-like attacks usando dizionari, o bruteforcing per crackare un certo numero di password deboli.\\Esistono anche delle password di rete e ci sono modi per entrare nelle macchine della rete anche solo con gli hash delle password, quindi diventa ancora più sensato esfiltrare solo l'hash.\\Dalle statistiche del 2019, i 5 più famosi Spyware sono
+\begin{enumerate}
+\item Lockibot 40\%
+\item Formbook 25\%
+\item Azorult 21\%
+\item Predator the thief 7\%
+\item Vidar 7\%
+\end{enumerate}
+Alla fine quindi, la maggior parte degli attacchi sono fatti sempre dagli stessi codici. Il mercato del malware non è così frammentato per cui ci sono 1000 codici diversi, qualcuno accentra la maggior parte del mercato e poi c'è una coda piuttosto lunga
+\item \textbf{Backdoor}: categoria estremamente importante, sotto cui ricadono diversi tipi di malware. Le backdoor possono essere anche molto semplici, si può ottenere col comando \texttt{nc} per prendere una bella shell. Un altro modo è usare dei programmi più "nascosti", ad esempio facendola direttamente con un programma Windows: si crea una struttura di due thread FIFO, leggono dalla FIFO e mandano su stdin di command.exe, un altro che prende da stdout e si fa una reverse shell.\\Su questi meccanismi ne sono stati costruiti sopra di più complessi:
+\begin{itemize}
+\item \textbf{Bot}, o meglio \textbf{BotNet}: sono una rete di macchine compromesse, per cui un server di controllo da dei comandi alle altre, ad esempio di aprire una certa risorsa del web in modo da realizzare un \textbf{DDoS}. Uno degli scopi principali è di realizzare questi attacchi distribuiti, il Bot quindi si installa su una macchina per farla rispondere ai comandi di una macchina remota.
+\item \textbf{RemoteAccessTrojan}: acronimo RAT, l'idea è sempre quella di un malware che si installi su una macchina per essere controllato da un server remoto. Qui però le vittime sono tutte server e c'è un client che si connette ai server per fargli fare ciò che vuole sulla macchina. È simile al bot ma cambia la filosofia, in quanto il numero di macchine infettate è basso mentre chi diffonde un bot vuole creare una BotNet molto ampia. Il RAT è specifico, ad esempio per attaccare una specifica azienda. È quindi molto più flessibile nelle operazioni che possono essere fatte sulla macchina e su come indirizzare il controllo sulle varie macchine. Nel 2019, i primi 5 RAT erano
+\begin{enumerate}
+\item Nanocore 43\%
+\item NJRAT 16\%
+\item Bladabindi 16\%
+\item Remcos 15\%
+\item Adwind 10\%
+\end{enumerate}
+Le classifiche sono basate sul numero totale di download del codice, quando si usa in pratica viene comunque modificato.
+\end{itemize}
+\item \textbf{Ransomware}: va per la maggiore, tanto che non serve che il GOAT spenda parole. Il malware non fa altro che cifrare con un algoritmo di cifratura multiplo, o quanto meno con un protocollo a chiave pubblica, le informazioni critiche del PC. Lammerda che ti ha cifrato il disco ti chiede  una certa somma di denaro non tracciabile (cripto) per fornirti la chiave privata che decifri il disco.\\Oggi, questa è una delle tipologie più diffuse e che arreca più danni alle aziende: sarebbe facile proteggersi dal ransomeware, con un backup dei dati in sistemi fisicamente separati, ma per le aziende sembra difficilissimo farlo. Le aziende che fanno backup giornalieri e che li fanno in modo che siano fisicamente separati sono pochissime, periodicamente sono attaccate grandi aziende, perché sono quelle che hanno dati sensibili e possono pagare, non possiamo ergerci a professori che fanno i precisini in quanto anche Tor Vergogna è stata attaccata da ransomware, che a quanto si è capito doveva attaccare dei laboratori di ricerca che conteneva informazioni sul covid ma si è propagato su diversi PC di amministrazione e ci sono voluti mesi (se non anni) per recuperare. Nse sa perché sembra facile difendersi in teoria, ma così complesso in pratica, statistiche del 2019 (poco signifcative)
+\begin{enumerate}
+\item SHADE 19\%
+\item GRANDCRAD 28\%
+\item Wannacry 13\%
+\item SODINOKIBI 11\%
+\item DHARMA 9\%
+\end{enumerate}
+Anche qui, sopratutto per i ransomware, vengono modificati il minimo e non devono nascondersi, in quanto lo scopo è solo cifrare i dati e \textbf{\textsf{FARE CACIARA: "OH SONO QUI, NON PUOI USARE IL PC"}}
+\item \textbf{CPU cycles stealer}: rubano cicli di CPU per fare mining di crypto valute, usati magari all'interno di BotNet. Questo fa poco danno, ma è un malware perché gira comunque all'insaputa del proprietario del PC ed inoltre consuma corrente e quindi soldi della povera vittima in quanto CPU moderne a pieno regime, assorbono tantissima corrente e non è un caso che gli alimentatori dei PC stiano fra i 500 ed i 1000 W
+\item \textbf{Loaders}: programma che installano un malware. Sono molto piccoli, potrebbero essere contenuti ad esempio in una macro del file Word
+\end{itemize}
+\subsection{Classificazione basata sui vettori d'attacco}
+Qui ci possiamo sbizzarrire: 
+\begin{itemize}
+\item Una volta andava di moda parlare di \textbf{virus}, ovvero computer virus. I virus sono programmi malevoli che possono riprodurre se stessi, il virus non vive di per se e si appoggia ad un altro programma in quanto parte di codice di un programma legittimo che fa qualcosa al di fuori dalla volontà dell'utente.\\ Ci sono anche file non eseguibili, ma che hanno formati per cui si può sfruttare il programma che li apre oppure hanno delle macro sfruttabili (come Word), abbiamo poi virus che infettano i settori di boot dell'hard disk, o anche esempi di virus che infettano il BIOS ovvero il firmware della macchina. 
+\item \textbf{Worms}: programmi eseguibili da loro, hanno in comune con i virus il fatto che anche loro possono replicarsi. I meccanismi sono sempre gli stessi, quindi il Worm non tenta di infettare altri eseguibili nel sistema ma di infettare piuttosto altri sistemi in rete e quindi ad esempio ci possono essere
+\begin{itemize}
+\item Worm che usano le e-mail
+\item Worm che si scaricano visitando un sito web
+\item Worm che si prendono usando sistemi di messaggistica istantanea
+\item Worm che funzionano col p2p
+\end{itemize}
+\item \textbf{Trojan}: è molto simile ad un Worm, ma quest'ultimo cerca comunque di nascondersi in quanto fa delle cose di nascosto. Un trojan no, viene installato e non si nasconde in quanto viene spacciato come un programma utile o legittimo. Scarichiamo l'aggiornamento di Windows, fra i file c'è un Trojan. Top 5 nel 2019
+\begin{enumerate}
+\item Emotet 72\%
+\item Agentsla 20\%
+\item Hawkeye 6\%
+\item Amadey $< 1\%$
+\item Betbot $< 1\%$
+\end{enumerate}
+Di solito, i Trojan sono dei Loader
+\item \textbf{Phishing}: pratiche di ingegneria sociale per cui l'utente viene indotto a fare qualcosa che non vorrebbe. Ad esempio che con 100€ diventi il re della Nigeria, ma può anche essere fatto per diffondere il malware. Per funzionare, chi fa phishing deve conoscere diverse informazioni, ma se ci riesce l'attacco ha molte probabilità di riuscire, ad esempio ottenendo le credenziali di accesso al sistema oppure di scaricare un malware
+\item \textbf{Spear phishing}: attacco di igengeria sociale fatto su specifici individui. Mentre il phishing è fatto a macchia d'olio, qui si assumono informazioni su una specifica vittima e si attacca quella specifica vittima.
+\item \textbf{Scareware}: software che "induce paura", si creano dei messaggi che inducano ansia o apprensione nell'utente. Ad esempio visitando un sito appare un messaggio che informa di un'infezione del PC e suggerisce di scaricare un programma per controllare il disco.\\Oppure vai su un bel sitazzo porno che ti dice che i colleghi vedono il tuo IP e ti suggeriscono di installare una VPN.
+\end{itemize}
+Oggi virus e worm sono molto meno diffusi di trojan scaricati tramite phishing, in quanto ci sono antivirus sparsi ovunque. Di fatto, il phishing è ancora un attacco di massa, in quanto si becca l'utente più vulnerabile.
+\subsubsection{Classificazione basata sui meccanismi interni del malware}
+Qui ci sarebbe da parlarne tanto, perché ci sono tantissimi meccanismi interni che possono essere usati in simultanea. Questa categorizzazione lascia un po' il tempo che trova, ma è utile parlarne. Una prima grande differenza nel malware sta in come questo realizza i meccanismi di persistenza e di offuscamento all'utente. Generalmente il malware ha due scopi:
+\begin{enumerate}
+\item persistere
+\item rimanere nascosto, se deve persistere
+\end{enumerate}
+Ad esempio se bisogna installare un Keylogger, devono valere questi due punti. Questo è importante perché bisogna sapere cosa fa il malware, come ha infettato il sistema ma anche quale meccanismo usa per rimanere quando si guarda il codice. C'è una prima grande differenza interna
+\begin{itemize}
+\item malware basato su rootkit: codice che viene installato a livello del SO. Quindi, un rootkit sfrutta i meccanismi di base del SO per rimanere nascosto e persistente, la maggior parte lavora kernel-space. Ci sono anche rootkit che lavorano user-space ma sono pochi in quanto non hanno gli stessi vantaggi dei rootkit kernel-space. Il vantaggio più grande del rootkit kernel-space è che è praticamente impossibile rilevarlo usando i meccanismi user-space in quanto il rootkit nasconde se stesso a livello di SO: tutto quello che l'applicazione vede, sono servizi offerti dal SO e quindi il rootkit può compromettere tutti i servizi visti dall'utente. Occorre quindi far partire un altro SO per fare analisi statica oppure usare dei meccanismi di integrità del SO, ma che servono più a prevenire l'installazione del rootkit.\\È un mondo a se stante
+\item malware App-based: infetta un singolo file, oppure infetta una singola DLL
+\end{itemize}
 
 
 

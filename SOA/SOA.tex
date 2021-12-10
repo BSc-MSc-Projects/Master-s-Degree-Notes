@@ -3,6 +3,7 @@
 \usepackage{geometry}
 \usepackage{graphicx}
 \usepackage{listings}
+\usepackage[dvipsnames]{xcolor}
 
 \geometry{
 	a4paper, 
@@ -10,6 +11,28 @@
 	left = 1.5cm,
 	right = 1.5cm,
 	bottom=2cm
+}
+
+% Grazie Simone, grazie mille
+\lstset{
+	language=C, 
+	%frame=shadowbox,
+	%rulesepcolor=\color{gray!50},
+	basicstyle=\ttfamily\small,
+	keywordstyle=\color{purple}\bfseries\small,
+	stringstyle=\color{ForestGreen}\small,
+	commentstyle=\color{blue}\small,
+	numbers=left,
+	numberstyle=\small\color{black},
+	numbersep=5pt,
+	tabsize=2,
+	showtabs=false,
+	showspaces=false,
+	showstringspaces=false,
+	%escapechar=|,
+	%captionpos=b,
+	breaklines=true,
+	keepspaces=true
 }
 
 \title{Sistemi Operativi Avanzati}
@@ -649,7 +672,7 @@ void barrier(void){
 	__sync_fetch_and_add(&era_counter,1)
 }
 \end{lstlisting}
-Se occorre controllare un certo numero di threads, si scrivono due variabili control\_counter ed era\_counter, perché è possibile che il thread esca dallo schema prima degli altri, quindi se rientra si porta all'era successiva ma qualcuno può ancora usare l'era precedente. Il thread che vuole scrivere sulla memoria cerca di portare control\_counter a 0, dopo esserci riuscito ( e solo uno ci riuscirà alla volta) cambia anche l'era\_counter per impedire anche allo stesso thread di rientrare finché anche gli altri non sono rientrati. In control\_counter viene aggiunta una unità, in modo che tutti gli altri thread aspettino che tutti passino.\\\\ 
+Se occorre controllare un certo numero di threads, si scrivono due variabili control\_counter ed era\_counter, perché è possibile che il thread esca dallo schema prima degli altri, quindi se rientra si porta all'era successiva ma qualcuno può ancora usare l'era precedente. Il thread che vuole scrivere sulla memoria cerca di portare control\_counter a 0, dopo esserci riuscito ( e solo uno ci riuscirà alla volta) cambia anche l'era\_counter per impedire anche allo stesso thread di rientrare finché anche gli altri non sono rientrati. In control\_counter viene aggiunta una unità, in modo che tutti gli altri thread aspettino che tutti passino.\\\\
 Un altro esempio è la \textbf{trylock basata su ASM}:\\
 \begin{lstlisting}
 int try_lock(void * uadr){
@@ -705,8 +728,10 @@ Gli approcci ci portano a capire che quando vogliamo un algoritmo concorrente e 
 \item gli outlinks della struttura dati che vengono rimosse logicamente, ad esempio come una remove di un nodo dalla lista collegata, non prevede al reale rimozione dei buffer ma vengono mantenuti attivi fino al \textbf{grace period}, ovvero periodo dopo il quale sono sicuro che chi sta attraversando la lista non lo fa pi attraverso il link che sto eliminando. Quindi ora l'aera di memoria può essere resa all'allocatore senza problemi
 \end{itemize}
 Il grace period su un SO reale viene implementato in maniera semplice, e questo si può fare anche a livello user e quindi RCU è uno schema che si può usare sia a livello kernel che a livello user per avere strutture dati scalabili in termini di accessi.\\ Abbiamo quindi il concetto di \textbf{standing readers}, che possono continuare ad usare aree di memoria rimosse, fino a che non avranno terminato l'esecuzione. Di seguito, viene mostrata la classica timeline di RCU
-%immagine della timeline
-i reader sono pienamente concorrenti al writer, quindi può accadere che la fine dell'esecuzione di alcuni dei reader va considerata dal writer prima della riconsegna dell'area di memoria, può anche capitare che un reader cominci a leggere dentro il grace period, quindi già con lo snapshot della struttura dati aggiornata e quindi il grace period può essere esteso se necessario.\\Vediamo come implementare lo schema, quindi come capire quando i reader iniziano e finiscono le operazioni rispetto a quando sta operando il writer: i concetti di base sono i seguenti\\
+\begin{figure}[!h]
+\includegraphics[scale=0.3]{immagini/rcu_timeline}
+\end{figure}
+i readers sono pienamente concorrenti al writer, quindi può accadere che la fine dell'esecuzione di alcuni dei readers va considerata dal writer prima della riconsegna dell'area di memoria, può anche capitare che un reader cominci a leggere dentro il grace period, quindi già con lo snapshot della struttura dati aggiornata e quindi il grace period può essere esteso se necessario.\\Vediamo come implementare lo schema, quindi come capire quando i reader iniziano e finiscono le operazioni rispetto a quando sta operando il writer: i concetti di base sono i seguenti\\
 Il reader
 \begin{itemize}
 \item deve segnalare che c'è
@@ -723,23 +748,33 @@ Il writer
 \end{itemize}
 Vediamo ora come effettivamente vengono implementate le cose
 \subsection{Kernel level RCU}
-A livello kernel, è possibile per un execution flow disabilitare la preemption e riabilitarla: il CPU core non può essere ceduto ad un altro execution flow finché non è deciso, eseguire e poi tornare preemptable. Quindi, se nella fase non-preemptable si esegue una RCU, abbiamo un buon modo per poter leggere la struttura: disabilitando, si segnala di leggere, abilitando si dice di aver finito; in questo modo nessun altro può avere il CPU core\\ il writer prende il lock, aggiorna la struttura dati ed alla fine deve chiedersi se c'è ancora qualche reader da linearizzare prima che il buffer venga de-allocato. Dopo aver finito quindi gira su tutte le CPU, ovvero chiamando servizi kernel per eseguire sulle diverse CPU e sarà possibile ottenere le CPU solo quando queste verranno rilasciate dai reader. Il problema è che questo avviene quando il numero di CPU core non è così elevato da permettere questo aggiornamento. La linea di codice per girare su tutte le CPU è la seguente: \textsf{for\_each\_online\_cpu(cpu) run\_on(cpu);}\\ Vediamo come fare senza abilitare/disabilitare le preemption
+A livello kernel, è possibile per un execution flow disabilitare la preemption e riabilitarla: il CPU core non può essere ceduto ad un altro execution flow finché non è deciso, eseguire e poi tornare preemptable. Quindi, se nella fase non-preemptable si esegue una RCU, abbiamo un buon modo per poter leggere la struttura: disabilitando, si segnala di leggere, abilitando si dice di aver finito ed in questo modo nessun altro può avere il CPU core\\ il writer prende il lock, aggiorna la struttura dati ed alla fine deve chiedersi se c'è ancora qualche reader da linearizzare prima che il buffer venga de-allocato. Dopo aver finito quindi gira su tutte le CPU, ovvero chiamando servizi kernel per eseguire sulle diverse CPU e sarà possibile ottenere le CPU solo quando queste verranno rilasciate dai reader. Il problema è che questo avviene quando il numero di CPU core non è così elevato da permettere questo aggiornamento. La linea di codice per girare su tutte le CPU è la seguente: \textsf{for\_each\_online\_cpu(cpu) run\_on(cpu);}\\ Vediamo come fare senza abilitare/disabilitare le preemption
 \subsection{Preemptable RCU}
 Le RCU devono essere preemptable, quindi il thread può perdere la CPU, usiamo un concetto classico e relativo all'epoca: se appartengono all'epoca vecchia della struttura, occorre aspettare che l'epoca finisce; se invece sono tutti nella nuova epoca il writer non deve attendere.\\ Andiamo a ragionare sull'atomicità di cosa si può fare , in particolare è possibile aggiornare un contatore in maniera atomica, che sarà un \textbf{presence counter}, ovvero che indica la presenza nell'epoca. Quando il writer aggiorna la struttura dati, deve farla transitare nella nuova epoca e si ottiene con la ridirezione dei reader su un altro counter: un puntatore sa quanti reader stanno leggendo la struttura, si aggiorna la struttura e poi si aggiorna il puntatore al contatore successivo. C'è il rischio di dover aspettare un reader che sta già osservando la nuova shape, ma che ancora non rilascia il contatore vecchio, questa può essere la timeline della situazione:
-%immagine della timeline
+\begin{figure}[!h]
+\includegraphics[scale=0.5]{immagini/preempt_rcu.png}
+\end{figure}
 Se uno dei thread crasha, può non essere in grado di decrementare il contatore, vuol dire che i buffer non possono essere lasciati all'allocatore ma non ci sono blocchi, la struttura può comunque essere rilasciata, è possibile comunque introdurre dei TO per sincronizzare il tutto.
 \section{Aspetti ulteriori di parallelismo}
-Abbiamo parlato più volte di parallelismo, abbiamo anche altri aspetti di parallelismo sul processore che è il concetto di 1\textbf{vettorizzazione}: possiamo eseguire delle istruzioni secondo la forma del processamento SIMD (Single Instruction Multiple Data); ci sono anche altri paradigmi come MIMD, che è a disposizione sui multi-processori o multi-core.\\ SIMD è basata sul concetto dei \textbf{registri vettoriali}, quindi registri che contengono diversi slot a 32/64 bit, quindi l'istruzione in maniera automatica sta già usando la vettorizzazione. SIDM è presente nei processori moderni, anche ad esempio nella GPU che è tipicamente SIMD, che specializza questo concetto. \\ Un altro aspetto interessante è la MISD (Multiple Instruction Single Data): due istruzioni sono su un flusso, che è un thread, due istruzioni scrivono su un registro in parallelo ed è possibile farlo in parallelo perché su architetture speculative si scrive su un renamed register.\\ Abbiamo infine SISD, che è il triviale (slides)
+Abbiamo parlato più volte di parallelismo, abbiamo anche altri aspetti di parallelismo sul processore che è il concetto di \textbf{vettorizzazione}: possiamo eseguire delle istruzioni secondo la forma del processamento SIMD (Single Instruction Multiple Data); ci sono anche altri paradigmi come MIMD, che è a disposizione sui multi-processori o multi-core.\\ SIMD è basata sul concetto dei \textbf{registri vettoriali}, quindi registri che contengono diversi slot a 32/64 bit, quindi l'istruzione in maniera automatica sta già usando la vettorizzazione. SIDM è presente nei processori moderni, anche ad esempio nella GPU che è tipicamente SIMD, che specializza questo concetto. \\ Un altro aspetto interessante è la MISD (Multiple Instruction Single Data): due istruzioni sono su un flusso, che è un thread, due istruzioni scrivono su un registro in parallelo ed è possibile farlo in parallelo perché su architetture speculative si scrive su un renamed register.\\ Abbiamo infine SISD, che è il triviale (slides)
 \subsection{Vettorizzazione su x86}
 I processori sono fatti in modo che per le istruzioni SIMD, nell'architettura l'esecuzione si basa su l'uso di hardware "apposito", es. sommatori vettoriali per fare delle sommatorie che hanno più dati in input e forniscono più output. Lo schema astratto è il seguente:
-%immagine
+\begin{figure}[!h]
+\includegraphics[scale=0.5]{immagini/exec_vettorizzata.png}
+\end{figure}
 Su x86 il supporto per l'esecuzione vettorizzata è \textbf{SSE} (\textbf{SSE-2} in 64 bit): abbiamo 8 registri vettoriali a 128 bit, dove possiamo mettere un vettore di informazioni. In SSE possiamo quindi inserire diverse combinazioni di valori
-%immagine
+\begin{figure}[!h]
+\includegraphics[scale=0.5]{immagini/sse_data.png}
+\end{figure}
 con l'estensione AVX i registri sono raddoppiati in numero e possono essere usati per due lane differenti
-%immagine
+\begin{figure}[!h]
+\includegraphics[scale=0.5]{immagini/sse_lanes.png}
+\end{figure}
 \subsection{Allineamento della memoria}
 Alcune delle operazioni che portano dati nei registri lo fanno in maniera corretta solo se l'indirizzo è allineato a certi vincoli, possono esserci vincoli di allineamento ad 8 o 16 byte e questo è importante perché se viene chiamato un intrinsic di gcc che usa una di queste istruzioni può essere necessario avere allineamento di memoria. Abbiamo visto che è possibile in C avere aree di memoria già allineate (vedi istruzioni sopra).\\ Ci sono diversi instrinsics gcc da chiamare per poter usare i registri vettorizzati:
-%immagine degli instrinsics
+\begin{figure}[!h]
+\includegraphics[scale=0.5]{immagini/sse_gcc_intrinsics.png}
+\end{figure}
 
 \chapter{Kernel programming basics}
 \section{Addressing}
@@ -747,46 +782,55 @@ Alcune delle operazioni che portano dati nei registri lo fanno in maniera corret
 Vediamo le modalità con cui si fa addressing di dati ed istruzioni. Una delle modalità più interessanti che ci sono è il linear addressing, in cui le informazioni usabili dal processore sono viste come una sequenza lineare, quando esprimiamo un indirizzo l'unica cosa da specificare è un offset, ovvero il punto dove collocarsi con l'operazione di lettura/scrittura. L'indirizzamento è di memoria, magari anche di memoria fisica, oppure di memoria logica, per cui distingueremo indirizzamento fisico e logico.\\ Quello che realmente accade in architetture moderne e che si usano anche altri concetti, tra cui la segmentazione
 \subsection{Segmentazione}
 Abbiamo un address space in cui il processore può leggere/scrivere. Potremmo identificare delle zone differenti, che sono magari indirizzabili non solo tramite offset, ma esprimendo un segment\_id + offset, quindi l'offset è interno allo specifico segmento. In un sistema moderno si combinano i due approcci: si dice che si vuole accedere ad un segmento specifico, ma poi l'accesso al singolo segmento viene tradotto come offset in una zona lineare: quindi possiamo avere questo tipo di collocazione:
-%immagine
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/la_seg.png}
+\end{figure}
 l'accesso a B va tradotto nel calcolo assoluto dell'offset all'interno dell'address space lineare. Il punto nodale è che quando esprimiamo un indirizzo per toccare delle informazioni, questo passa per la nozione della base del segmento a cui si vuole accedere, perché l'indirizzo sarà dato dalla base + l'offset a cui si vuole accedere. Ricordiamo che la memoria può essere sia fisica che logica, quindi abbiamo o non abbiamo il passaggio in più, legato al concetto di memoria virtuale
 \subsection{Memoria virtuale}
-(slides per immagini ed altro)
-Se siamo in memoria logica, vogliamo prendere un indirizzo lineare ed accedere alla zona di memoria, ma non sappiamo se è in memoria e dove è in memoria fisica. Quindi il passaggio in più è presente o meno a seconda dell'hardware e del software che si utilizza.\\ In ogni caso, quello che il processore deve fare è: indirizzo segmentato $\rightarrow$ indirizzo lineare $\rightarrow$ indirizzo nella pagina $\rightarrow$ indirizzo fisico. Abbiamo supporto per eseguire la traduzione e la traslazione degli indirizzi in maniera efficiente, e questo vuol dire anche capire se l'accesso ni memoria che si sta cerando di risolvere è plausibile in quel momento o no, in termini dei privilegi che il processore ha in quel momento. Esempio in x86:
+Se siamo in memoria logica, vogliamo prendere un indirizzo lineare ed accedere alla zona di memoria, ma non sappiamo se è in memoria e dove è in memoria fisica. Quindi il passaggio in più è presente o meno a seconda dell'hardware e del software che si utilizza, come riassunto di seguito:
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/vm.png}
+\end{figure}
+In ogni caso, quello che il processore deve fare è: indirizzo segmentato $\rightarrow$ indirizzo lineare $\rightarrow$ indirizzo nella pagina $\rightarrow$ indirizzo fisico. Abbiamo il supporto per eseguire la traduzione e la traslazione degli indirizzi in maniera efficiente, e questo vuol dire anche capire se l'accesso in memoria che si sta cerando di risolvere è plausibile in quel momento o no, in termini dei privilegi che il processore ha in quel momento. Esempio in x86:
 \textsf{mov (\%rax), \%rbx}, \textsf{push \%rbx}, qui stiamo usando 3 segmenti differenti, non li usa chi ha scritto il programma, bensì il processore in maniera autonoma si rende conto che le operazioni stanno toccando diverse zone di memoria: i due segmenti sono dati dagli indirizzi di \%rax, dal fatto che si fa la push di \%rbx, il terzo è dato da dove sono le istruzioni. Il processore sta eseguendo il fetch delle istruzioni, che è un accesso in memoria e quindi passa tramite le regole dette sopra.
 \subsection{Processori di sistema e segmentazione}
 I processori di sistema sono quelli per cui pensiamo di eseguire codice di SO, qui il supporto per eseguire la traslazione e validarli è dato da un'insieme di informazioni tipicamente mantenuti in un insieme di registri o tabelle di memoria, il che vuol dire che oltre alla page table servono anche altre informazioni per accedere alla memoria che sono interni ad altri componenti e sono:
 \begin{itemize}
 \item registri di CPU
-\item Tabelle in memoria, puntate direttamente dai registri
+\item tabelle in memoria, puntate direttamente dai registri
 \end{itemize}
 Sui processori moderni ci si muove sia con la segmentazione che con gli indirizzi lineari, quindi si esprime un indirizzo segmentato che viene traslato in lineare etc... come sopra, quindi tutti i passaggi hanno bisogno delle informazioni che vengono inserite in registri e tabelle: tipicamente lavoriamo con la page table, per cui se abbiamo un indirizzo lineare, possiamo paginarlo ed associarli un indirizzo fisico. Per avere una traslazione di indirizzo segmentato a lineare possiamo avere la seguente traduzione in hadware:
-%immagine slides.
-\\ Consideriamo qualcosa in più,s il concetto del segment selector
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/seg_pag.png}
+\end{figure}
+\\ Consideriamo qualcosa in più, il concetto del segment selector
 \subsubsection{Segment selector}
-Quando si usa un indirizzo segmentato, viene specificato il registro del segemtn selector, quindi non il nome del registro bensì il nome del registro. Il registro contiene le informazioni sul segmento che si vuole prendere, quindi abbiamo il seguente schema:
-%schema
-se abbiamo una istruzione macchina per accedere ad uno specifico segmento in memoria, per poi in futuro accedere ad un altro, è possibile usare sempre la stessa istruzione e basta specificare il registro di segmentazione corretto. Il caso classico è se il codice viene eseguito su un thread piuttosto che un altro, il codice macchina è identico, che però tocca segmenti differenti usando questo tipo di meccanismo.
+Quando si usa un indirizzo segmentato, viene specificato il registro del segment selector, quindi non il nome del registro bensì il nome del segment selector. Il registro contiene le informazioni sul segmento che si vuole prendere, quindi abbiamo il seguente schema:
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/seg_sel.png}
+\end{figure}
+se abbiamo una istruzione macchina per accedere ad uno specifico segmento in memoria, per poi in futuro accedere ad un altro, è possibile usare sempre la stessa istruzione e basta specificare il registro di segmentazione corretto. Il caso classico è se il codice viene eseguito su un thread piuttosto che un altro: il codice macchina è identico, che però tocca segmenti differenti usando questo tipo di meccanismo.
 \section{Accesso in memoria su x86}
-Abbiamo il real mode x86, un po' datato, il real mode ed il long mode (variante più recente). Vediamo l'x86 real mode 
+Abbiamo il real mode x86, un po' datato, protected mode ed il long mode (variante più recente). Vediamo l'x86 real mode 
 \begin{itemize}
 \item segment register a 16 bit, ce ne sono 4
-\item registri a 16 bit generali per gli offset. Possiamo specificare in una istruzione dove specifichiamo di accedere alla memoria dove punta quel registro, che può essere un puntatore
+\item registri a 16 bit generali per gli offset. Possiamo specificare in una istruzione dove richiediamo di accedere alla memoria dove punta quel registro, che può essere un puntatore
 \end{itemize}
-L'indirizzo fisico a cui accediamo è calcolato come: \textsc{Segment}*16+\textsc{Offset}. Possiamo accedere a circa 1 MB di memoria, la cosa interessante è che nei registri non si mantenevano informazioni riguardo alla protezione, quindi la macchina non era adeguata per implementare software di sistema, perché non c'è la nozione di protezione, quindi nemmeno software relativo alla VM. Tutto ciò che esegue può usare questo schema.
+L'indirizzo fisico a cui accediamo è calcolato come: \texttt{Segment}*16+\texttt{Offset}. Possiamo accedere a circa 1 MB di memoria, la cosa interessante è che nei registri non si mantenevano informazioni riguardo alla protezione, quindi la macchina non era adeguata per implementare software di sistema, perché non c'è la nozione di protezione, quindi nemmeno software relativo alla VM. Tutto ciò che esegue può usare questo schema.
 \subsection{x86 protected mode}
 Abbiamo le seguenti caratteristiche:
 \begin{itemize}
-\item registri a 16 bit per tenere i segment ID, usiamo solo 13 bit per specificare gli ID, con gli altri specifichiamo delle caratteristiche relative ai privilegi: un certo segmento può essere toccabile solo se si lavora ad un certo livello
+\item registri a 16 bit per tenere i segment ID, usiamo solo 13 bit per specificare gli ID, con gli altri specifichiamo delle caratteristiche relative ai privilegi: un certo segmento può essere toccabile solo se si lavora ad un certo livello di privilegi
 \item registri general purpose a 32 bit, usati come pointer e che puntano nel segmento 
 \end{itemize}
-quando vogliamo toccare un certo segmento, ci chiediamo quale è la base nell'indirizzamento collocato e quale è il suo offset: l'ID del segmento nel registro segmentato è un indice della tabella, che contiene la base del segmento e quindi avremo che gli indirizzi che otteniamo sono lineari: \textsc{address} = \textsc{TABLE[segment].base + offset}. Possiamo quindi identificare l'offset assoluto nella memoria per poter leggere e scrivere, essendo i registri di offset a 32 bit, possiamo indicizzare 4GB. I 3 bit non usati possono essere impiegati per la protezione, quindi l'istruzione permette di toccare determinate zone di memoria in base alle determinate configurazioni
-\subsection{x65 protected mode}
+quando vogliamo toccare un certo segmento, ci chiediamo quale è la base nell'indirizzamento collocato e quale è il suo offset: l'ID del segmento nel registro segmentato è un indice della tabella, che contiene la base del segmento e quindi avremo che gli indirizzi che otteniamo sono lineari: \texttt{address} = \texttt{TABLE[segment].base + offset}. Possiamo quindi identificare l'offset assoluto nella memoria per poter leggere e scrivere, essendo i registri degli offset a 32 bit, possiamo indicizzare 4GB. I 3 bit non usati possono essere impiegati per la protezione, quindi l'istruzione permette di toccare determinate zone di memoria in base alle determinate configurazioni
+\subsection{Long mode x64\_64}
 È una estensione del precedente
 \begin{itemize}
 \item segment registers a 16 bit, di cui ne usiamo sempre 13
-\item registri general purpose a 64 bit per usare gli offset per accedere in memoria. Se usiamo lo stesso meccanismo di prima, è tutto a 64 bit e quindi avere $2^{64}$ come offset bello spazio lineare. Ma non è così, abbiamo solo 48 bit disponibili: preso un registro come \textsf{rax}, mettiamo una bitmask che esprime un offset per accedere alla memoria, possiamo scrivere i 64 bit come vogliamo, ma quando passiamo questo all'interfaccia per l'accesso alla memoria, vengono scartati i bit in più e se ne usano solo 48 (gli altri sono settati a valori di defualt)
+\item registri general purpose a 64 bit per usare gli offset per accedere in memoria. Se usiamo lo stesso meccanismo di prima, è tutto a 64 bit e quindi possiamo avere $2^{64}$ come offset nello spazio lineare. Ma non è così, abbiamo solo 48 bit disponibili: preso un registro come \texttt{rax}, mettiamo una bitmask che esprime un offset per accedere alla memoria, possiamo scrivere i 64 bit come vogliamo, ma quando passiamo questo all'interfaccia per l'accesso alla memoria, vengono scartati i bit più significativi e se ne usano solo 48 (gli altri sono settati a valori di default).
 \end{itemize}
-Qui possiamo indicizzare 256 TB di memoria, quindi di indirizzi di memoria.
+Qui possiamo indicizzare 256 TB di memoria lineare.
 \subsection{Tabella di segmentazione}
 In x86, quando abbiamo un segment selector, abbiamo un ID e le tabelle considerate possono essere 2 per ogni flusso di esecuzione
 \begin{itemize}
@@ -794,7 +838,9 @@ In x86, quando abbiamo un segment selector, abbiamo un ID e le tabelle considera
 \item LDT
 \end{itemize}
 possiamo specificare se l'indice è riferita all'una o l'altra tabella, mediante l'utilizzo di un apposito bit di controllo che specifica quale tabella considerare. In sistemi moderni, si considera solo la GDT, che ad ogni istante di tempo dice, dato un thread in esercizio sulla CPU, esattamente ogni segmento toccabile dai selettori dei registri usati dal thread. La GDT indicava qualcosa di globale, nel senso che venivano indicate anche informazioni riguardo la base del segmento accessibile a livello kernel, ma questa informazione valeva per tutti i thread. La struttura della GDT è la seguente
-%immagine GDT
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/gdt_table.png}
+\end{figure}
 in una entry, oltre alla base del segmento, ci sono anche flags addizionali per gestire correttamente il segmento. Sappiamo come accedere al segmento, i flags specificano cosa si può fare con quel segmento.
 \subsection{Segmentazione e paginazione}
 Nella GDT ci sono informazioni per la gestione del segmento, ma da un indirizzo lineare si passa ad uno fisico e c'è la tabella delle pagine che ha anche essa dei bit di protezione, sappiamo se il frame che tocchiamo è di livello kernel o user. Quindi perché c'è questo overload nel meccanismo di protezione, inoltre perché è presente anche la segmentazione nonostante la paginazione gestisce la memoria. La paginazione è un modo per gestire la memoria a grana molto fine, mentre la segmentazione è a grana molto più grande: potremmo avere un address space lineare fatto da un unico segmento $s_0$, quindi la protezione per il segmento è per l'intero address space, diverso da quelle che potrei avere per le singole pagine nella page table.\\ Inoltre, l'architettura per cui abbiamo la segmentazione per accedere alla memoria è stata estesa perché con la segmentazione data una istruzione macchina correntemente in esecuzione sulla CPU, è possibile che il thread ad un certo istante di tempo tocca lo spazio lineare da una certa parte, mentre l'istruzione per un altro thread tocca l'address space lineare da un'altra parte. I thread possono girare su diverse CPU se abbiamo TLP, quindi eseguire delle istruzioni macchina identiche ma toccando diverse zone di memoria, quindi possiamo gestire la memoria segmentata in maniera più modulare di come faremmo con la paginazione, quindi è la base del multi-threading e del multi-coring:
@@ -804,37 +850,48 @@ Nella GDT ci sono informazioni per la gestione del segmento, ma da un indirizzo 
 \end{itemize}
 Nella segmentazione, la grana di protezione è più grossa in quanto con pochi bit si può andare a definire cosa fare anche su un intera area di memoria, ma è utile sopratutto quando si lavora con TLP, quindi in maniera concorrente, inoltre la segmentazione è stata portata avanti quando la paginazione era già supportata dai sistemi.\\ Scendiamo nel dettaglio della protezione della segmentazione
 \subsection{Protezione nella segmentazione}
-Possiamo associare a ciascun segmento un certo livello di protezione, o livello di protezione. Ragioniamo sulle variazioni di flusso di esecuzione, ma gli stessi concetti valgono anche per l'accesso ai dati, ogni routine che ha un livello di protezione h in uno schema di protezione basato su segmentazione può invocare qualunque altra routine, che può essere anche in un altro segmento, di livello h. Quindi, i salti possono essere intra-segment ma anche cross-segment, ma occorre che il livello di protezione della sorgente e del target siano allo stesso livello di protezione. Possiamo anche muoverci con valori differenti di protezione, dobbiamo sicuramente avere un salto cross-segment, perché se fossimo nello stesso segmento si avrebbe lo stesso livello, è sempre possibile saltare al livello h+i, se questo è il livello target, si passa ad una routine meno privilegiata.
+Possiamo associare a ciascun segmento un certo livello di protezione. Ragioniamo sulle variazioni di flusso di esecuzione, ma gli stessi concetti valgono anche per l'accesso ai dati, ogni routine che ha un livello di protezione \texttt{h} in uno schema di protezione basato su segmentazione può invocare qualunque altra routine, che può essere anche in un altro segmento, di livello \texttt{h}. Quindi, i salti possono essere intra-segment ma anche cross-segment, ma occorre che il livello di protezione della sorgente e del target siano allo stesso livello di protezione. Possiamo anche muoverci con valori differenti di protezione, dobbiamo sicuramente avere un salto cross-segment, perché se fossimo nello stesso segmento si avrebbe lo stesso livello, è sempre possibile saltare al livello \texttt{h+i}, se questo è il livello target, si passa ad una routine meno privilegiata.
 \subsubsection{Protection GATEs} 
-Abbiamo che ogni segmento ad un livello di protezione h è  associato con un insieme di access points, detti \textbf{GATEs}, ognuno identificato con una coppia $<$seg.id,offset$>$ ed ogni GATE ha associati un livello massimo max = h+j da cui è possibile saltare.\\ Quindi il passaggio a livello superiore si può fare solo se la prima istruzione macchina della routine è un così detto GATE di accesso. Passare per il GATE vuol dire che non si possono usare le stesse istruzioni macchina che si eseguivano per saltare nello stesso segmento, i GATE sono porte di accesso che permettono di "entrare e diventare più privilegiato", ma non è ammesso a qualunque thread, bensì ad un massimo livello di privilegio ammissibile per passare nel GATE.\\ Quindi, se il livello di S è h, ed il max(GATE(S)) = h+i, allora il segmento S ha un GATE che permette l'accesso ai moduli che hanno un livello di protezione da h+i in su. Il modello basato su segmentazione implementa un \textbf{ring model}:
-%immagine del primo ring
+Abbiamo che ogni segmento ad un livello di protezione \texttt{h} è  associato con un insieme di access points, detti \textbf{GATEs}, ognuno identificato con una coppia $<$\texttt{seg.id},\texttt{offset}$>$ ed ogni GATE ha associati un livello massimo \texttt{max = h+j} da cui è possibile saltare.\\ Quindi il passaggio a livello superiore si può fare solo se la prima istruzione macchina della routine è un così detto \textbf{GATE di accesso}.\\Passare per il GATE vuol dire che non si possono usare le stesse istruzioni macchina che si eseguivano per saltare nello stesso segmento, i GATE sono porte di accesso che permettono di "entrare e diventare più privilegiato", ma non è ammesso a qualunque thread, bensì ad un massimo livello di privilegio ammissibile per passare nel GATE.\\ Quindi, se il livello di un certo segmento \texttt{S} è pari ad \texttt{h}, ed il \texttt{max(GATE(S)) = h+i}, allora il segmento \texttt{S} ha un GATE che permette l'accesso ai moduli che hanno un livello di protezione da \texttt{h+i} in su.\\Il modello basato su segmentazione implementa un \textbf{ring model}:
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/ring_model.png}
+\end{figure}
 eventualmente si salta da 0 in avanti in dei target che hanno dei livelli di protezione peggiori o pari a chi salta, mentre per fare il contrario dipende dal GATE. Abbiamo quindi un address space lineare, fatto da zone che sono dei segmenti e possiamo avere segmenti livello user o kernel:
-%immagine dei segment
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/routine_priv.png}
+\end{figure}
 abbiamo 3 routine, una user e due kernel, le due istruzioni kernel sono GATE:
 \begin{itemize}
-\item nel GATE kernel routine A si permette il passaggio solo intra-segment;
-\item il GATE kernel routine B ha un max pari a 3, quindi ad esempio provenendo dal GATE del livello S2 si può saltare nel segmento a livello di privilegio B, ed a quel punto chiamare il GATE di A
+\item nel GATE \texttt{kernel routine A} si permette il passaggio solo intra-segment;
+\item il GATE \texttt{kernel routine B} ha un max pari a 3, quindi ad esempio provenendo dal GATE del livello S2 si può saltare nel segmento a livello di privilegio B, ed a quel punto chiamare il GATE di A
 \end{itemize}
 Possiamo perciò comporre in un address space non solo il meccanismo della paginazione, che ci dice che i segmenti sono kernel, ma la segmentazione offre supporto in più per avere questo passaggio che permette di usare davvero quello che è presente nel segmento kernel.\\ Quindi gli obiettivi della segmentazione sono offrire delle protezioni ulteriori rispetto a quelli della paginazione, inoltre permette di cominciare a fare qualcosa in un livello di protezione maggiore: in uno SO abbiamo un interrupt, magari mentre eseguiamo software di livello user ad un certo istante t, per processare le attività associate all'interrupt che sono magari cablate in attività lato kernel, occorre passare a privilegi lato kernel; quindi, per ogni interrupt deve essere definito un GATE, altrimenti non è possibile gestire l'interrupt.\\ 
 (((Quando viene chiamata una syscall abbiamo un oggetto machine-dependent del tutto generale chiamato dispatcher, in grado in funzione del fatto che è stata chiamata una syscall e quindi una trap, di leggere il valore eventualmente scritto in un registro e capire dove redirigere il flusso di esecuzione nel codice kernel.)))\\Abbiamo quindi interrupt e GATEs, con cui permettiamo a software di livello user di eseguire attività necessarie.
 \subsection{Ring model in x86}
 Lo schema ad anello dell'x86 è fatto nel seguente modo:
-%immagine del ring
-servono quindi, per discriminare il livello di protezione 4 bit in quanto abbiamo 4 livelli diversi di protezione. A livello 0, all'interno di una architettura segmentata abbiamo tutte le informazioni del kernel: possiamo fare qualsiasi cosa, ovvero toccare qualsiasi altra informazione anche a livello user.\\ Tipicamente le applicazioni user girano a livello 3, i due livelli intermedi inizialmente non erano nemmeno usati, man mano sono stati usati per implementare servizi di sistema, ad esempio per la schedulazione delle VM.\\ Quando facciamo qualsiasi accesso in memoria, si va a specificare il segment seletor register ed eventualmente un displacement, in modo che riprogrammando il registro per attività in tempi differenti, andremo in diverse aree di memoria. Vediamo quanti e quali selettori di segmenti ci sono
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/ring_x86.png}
+\end{figure}
+servono quindi, per discriminare il livello di protezione, 4 bit in quanto abbiamo 4 livelli diversi di protezione.\\A livello 0, all'interno di una architettura segmentata abbiamo tutte le informazioni del kernel: possiamo fare qualsiasi cosa, ovvero toccare qualsiasi altra informazione anche a livello user.\\ Tipicamente le applicazioni user girano a livello 3, i due livelli intermedi inizialmente non erano nemmeno usati, man mano sono stati usati per implementare servizi di sistema, ad esempio per la schedulazione delle VM.\\ Quando facciamo qualsiasi accesso in memoria, si va a specificare il segment seletor register ed eventualmente un displacement, in modo che riprogrammando il registro per attività in tempi differenti, andremo in diverse aree di memoria. Vediamo quanti e quali selettori di segmenti ci sono
 \subsubsection{Registri di segmento}
 Il registro di segmento ha informazioni sia sul nome del segmento, sia informazioni sulla protezione del segmento (16: 13 $|$ 3).\\ Su x86 l'utilizzo comune prevede solo la GDT, ma c'è comunque un bit che dice dove andare a prendere il segmento, abbiamo poi altre informazioni di protezione. I selettori di segmento sono 6, i primi 4 erano quelli originali e gli altri due sono stati aggiunti, quindi la segmentazione è andata avanti a prescindere dalla paginazione
 \begin{itemize}
 \item CS: si stabilisce in un address space quale è la zona dove è presente il codice di cui fare i fetch. Discriminiamo cosa è usabile dal punto di vista di esecuzione del processore, il registro viene ad esempio usato proprio dal processore quando deve andare all'istruzione successiva
 \item SS: in che zona dell'address space è posizionata la zona di stack. Viene usato quando si fanno push e pop
 \item DS ed ES: segmenti dati, usabili per accedere ai dati delimitandone la posizione nel segmento specifico
-\item FS e GS: aggiunti dopo
+\item FS e GS: aggiunti dopo nell'80386
 \end{itemize}
-Quando lavoriamo su CS, i 2 bit RPL sono anche detti CPL ovveo il Current Priviledge Level, quindi quale è la capability del processo in esecuzione.\\ Analizziamo uno snippet visto in precedenza, possiamo capire quali sono i registri di segmento usati:
-%snippet
+Quando lavoriamo su CS, i 2 bit RPL sono anche detti CPL ovvero il Current Privilege Level, quindi quale è la capability del processo in esecuzione.\\ Analizziamo uno snippet visto in precedenza, possiamo capire quali sono i registri di segmento usati:
+\begin{lstlisting}
+mov (%rax), %rbx
+push %rbx
+\end{lstlisting}
 Abbiamo un offset all'interno del code segment, perché usiamo il PC per fetchare le istruzioni che è un offset, la base è dato dal CS. Il DS è un offset per accedere alla memoria, il pointer di default dice dove acquisire il dato. La push utilizza l'offset per capire dove andare in memoria, quindi usa il registro SS. ES viene usato al posto di DS quando si eseguono delle istruzioni particolari, ad esempio quelle string-targeted come \textsf{stos} e \textsf{movs}
 \subsection{GDT di x86}
 La tabella fondamentale che contiene le informazioni sul fatto che dato che qualcuno sta facendo una istruzione che deve fare qualcosa, dice quel qualcosa dove è in memoria. Questa è una entry della tabella:
-%immagine
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/gdt_entry.png}
+\end{figure}
 ciascuna entry da informazioni sul segmento associato a quell'indice. La tabella è fondamentale, perché il registro può essere cambiato e quindi anche l'informazione per il segmento di indice i va salvato, altrimenti non saprei come recuperarne le informazioni.\\ La tabella ha 8 byte usabili per un processore ad 32 bit, manteniamo
 \begin{itemize}
 \item base 0:15
@@ -849,51 +906,81 @@ tutte le altre informazioni sono di controllo
 Il privilege level viene caricato in un registro di processore quando vogliamo usare un segmento nel programma.
 \subsubsection{Accesso alla GDT}
 Se vogliamo accedere ad un segmento e caricare le informazioni su quel segmento, come fa il processore a sapere dove è in memoria quel segmento: c'è un registro apposito che è il \textbf{gdtr}, puntatore che porta all'interno della memoria per sapere dove è posizionata la GDT. È un puntatore, quindi un offset ma rispetto a quale memoria? Stiamo cerando di identificare nella memoria alcune informazioni basiche per gestire la memoria segmentata, quindi è in memoria lineare. L'organizzazione è la seguente:
-%immagine dell'organizzazione
+
 È interessante che gdtr si può leggere anche a livello di privilegio 3, magari non si riesce ad accedere a quel punto della memoria, perché magari è in un segmento non accessibile a livello 3.\\ Quando leggiamo il registro, in realtà abbiamo una informazione packed
 \begin{itemize}
 \item l'indirizzo del registro
 \item il numero di entry che la tabella ha correntemente
 \end{itemize}
-mettiamo le informazioni in una struttura packed, usando la API \textsf{store\_gdt}, che è codice asm volatile che non fa altro che prendere sgdt e mette il valore nel puntatore. La chiamiamo due volte, passando due parametri differenti, in un caso un array di byte.
-%snippet di codice
-dalla comparare il valore dei puntatori: è possibile, anche se con scarsa probabilità, che abbiano diversi valori, ma la si può aumentare chiamando un servizio bloccante come la sleep\\ Se l'applicazione venisse schedulata e poi reschedulata su un'altra CPU, avremmo trovato dei valori di GDT differenti\\\\ A 64 bit abbiamo che la taglia delle entry è il doppio,  manteniamo alcune informazioni 
-%immagine della entry a 64 bit
+mettiamo le informazioni in una struttura packed, usando la API \texttt{store\_gdt}, che è codice asm volatile che non fa altro che prendere sgdt e mette il valore nel puntatore. La chiamiamo due volte, passando due parametri differenti, in un caso un array di byte.
+\begin{lstlisting}
+#define store_gdt(ptr) asm volatile("sgdt %0":"=m"(*ptr))
+\end{lstlisting}
+è possibile, anche se con scarsa probabilità, che abbiano diversi valori, ma la si può aumentare chiamando un servizio bloccante come la sleep.\\Se l'applicazione venisse schedulata e poi reschedulata su un'altra CPU, avremmo trovato dei valori di GDT differenti\\\\ A 64 bit abbiamo che la taglia delle entry è il doppio,  manteniamo alcune informazioni 
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/64bit_gdtr_entry.png}
+\end{figure}
 Supponiamo di voler usare un selettore di segmento, avendo anche l'indice, sarebbe importante sapere l'offset del segmento perché altrimenti non potremmo fare tutti gli altri passaggi. Sappiamo che è nella GDT, accediamo con un selettore di segmento, accediamo ad un offset, viene  mostrato in seguito uno schema
-%schema della somma e dell'accesso
-Su x86, quando abbiamo un segment selector, invece di andare sempre in memoria l'informazione viene cachata in una zona apposita quando abbiamo già il selettore, l'aggiornamento di un selettore prevede che si vada in tabella, si prenda il selettore e si metta l'informazione in una cache interna al processore\\\\
-\textbf{esempio software, va risentito da una rec con video sennò è impossibile capire penso}\\
-Quello che capiamo è che andando a toccare i diversi segmenti, questi possono essere mappati sullo stesso segmento.
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/accesso_gdt.png}
+\end{figure}
+Su x86, quando abbiamo un segment selector, invece di andare sempre in memoria l'informazione viene cachata in una zona apposita quando abbiamo già il selettore, l'aggiornamento di un selettore prevede che si vada in tabella, si prenda il selettore e si metta l'informazione in una cache interna al processore:
+\begin{lstlisting}
+#include <stdio.h>
+
+#define load(prt, var) asm volatile("mov %%ds:(%0), %%rax":"=a"  (var):"a" (ptr))
+#define store(val, ptr) asm volatile(" mov %0, %%ds:(%1)" ::"a" (val);
+"b" (ptr):)
+
+int main(int argc, char **argv){
+	unsigned long x = 16;
+	unsigned long y;
+	
+	load(&x, y);
+	printf("variable y has value %u\n", y);
+	
+	store(y+1, &x);
+	printf("variable x has value %u\n", x);
+}
+
+\end{lstlisting}
+Quello che capiamo è che andando a toccare i diversi dati, questi possono essere mappati sullo stesso segmento.
 \subsection{Code e data segment per Linux}
 Vediamo come Linux configura la GDT usata da uno dei processori per capire dove sono posizionati i segmenti: ci sono 4 entry nella GDT usate da Linux
-%immagine della tabellina
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/tabella_gdt.png}
+\end{figure}
 \begin{itemize}
 \item user code: la entry tiene traccia di qual è la posizione del segmento dove ci sono istruzioni utente, la base è 0
-\item user data: la posizione ha sempre base 0, quindi se usiamo un offset usando questo segmento o quello precedente arriviamo nella stessa area di memoria
+\item user data: la posizione ha sempre base 0, quindi se usiamo un offset specificando questo segmento o quello precedente arriviamo nella stessa area di memoria
 \item kernel code: le informazioni che costituiscono la parte eseguibile del kernel è sempre a partire da base 0
 \item kernel data: base 0 anche per lui
 \end{itemize}
-Se ragioniamo su cosa realmente accade, è che presi questi 4 segmenti di base, all'interno dell'address space questi sono sovrapposti, partono tutti dalla stessa base 0. Se abbiamo un offset per identificare un dato o una istruzione, in realtà questo è un offset assoluto, si identifica in maniera univoca una posizione nell'address space. La segmentazione resta fondamentale quando vanno gestiti i GATE, altrimenti non potremmo stabilire se, indipendentemente da come il processore raggiunge le cose nell'address space.\\ La scelta di usare al minimo la segmentazione nello sviluppo del kernel Linux: abbiamo un insieme di moduli che rappresentano il kernel Linux, la scelta di mappare a 0 tutti i 4 segmenti nativi è che, se supponiamo che i concetti di segmentazione sono spari ovunque nel kernel, quindi prendere il kernel e ridisegnarlo per portarlo su una macchina dove la segmentazione non c'è vuol dire riscrivere un kernel diverso. Altra cosa è se la segmentazione viene configurata in modo che l'offset è assoluto, viene ridotto l'impatto della segmentazione alle poche parti segmentation dependent, in modo da far si che è semplice portare il kernel per eseguirlo su macchine che usano la segmentazione. Ma se bisogna riscrivere il TLS in una architettura dove la segmentazione non c'è, va riscritto poco codice perché quello già esistente è molto portabile.
+Se ragioniamo su cosa realmente accade, è che presi questi 4 segmenti di base, all'interno dell'address space questi sono sovrapposti, partono tutti dalla stessa base 0. Se abbiamo un offset per identificare un dato o una istruzione, in realtà questo è un offset assoluto, si identifica in maniera univoca una posizione nell'address space. La segmentazione resta fondamentale quando vanno gestiti i GATE, altrimenti non potremmo stabilire se, indipendentemente da come il processore raggiunge le cose nell'address space, è possibile prendere o meno il GATE.\\La scelta di usare al minimo la segmentazione nello sviluppo del kernel Linux: abbiamo un insieme di moduli che rappresentano il kernel Linux, la scelta di mappare a 0 tutti i 4 segmenti nativi è che, se supponiamo che i concetti di segmentazione sono sparsi ovunque nel kernel, quindi prendere il kernel e ridisegnarlo per portarlo su una macchina dove la segmentazione non c'è vuol dire riscrivere un kernel diverso. Altra cosa è se la segmentazione viene configurata in modo che l'offset è assoluto, viene ridotto l'impatto della segmentazione alle poche parti segmentation dependent, in modo da far si che è semplice portare il kernel per eseguirlo su macchine che usano la segmentazione. Ma se bisogna riscrivere il TLS in una architettura dove la segmentazione non c'è, va riscritto poco codice perché quello già esistente è molto portabile.
 \subsubsection{Versione a 64 bit, long mode}
-Nel long mode, ovvero x86\_64, i vendor hanno fatto sì che per tenere traccia del segment ID, per alcuni selettori di segmento la base è per default settata a 0, quindi l'offset è assoluto.\\ Per 4 dei selettori vale questo, per gli altri 2 vale ancora che la base associata al segmento va presa dalla tabella. Quindi per alcuni selettori si può accedere direttamente senza passare per la tabella, ma non per tutti altrimenti si perde la capacità di poter costruire software sfruttando la segmentazione, comunque questa scelta permette di accedere rapidamente ai segmenti discriminando solo aspetti di protezione, ma anche poter usare dei segment selector che vanno in due zone diverse nello stesso flusso di esecuzione.
+Nel long mode, ovvero x86\_64, i vendor hanno fatto sì che per tenere traccia del segment ID, per alcuni selettori di segmento la base è per default settata a 0, quindi l'offset è assoluto.\\Per 4 dei selettori vale questo, per gli altri 2 vale ancora che la base associata al segmento va presa dalla tabella. Quindi per alcuni selettori si può accedere direttamente senza passare per la tabella, ma non per tutti altrimenti si perde la capacità di poter costruire software sfruttando la segmentazione, comunque questa scelta permette di accedere rapidamente ai segmenti discriminando solo aspetti di protezione, ma anche poter usare dei segment selector che vanno in due zone diverse nello stesso flusso di esecuzione.
 \subsection{Gestione dei selettori in x86}
-Se i segmenti non servono più a discriminare dove lavoriamo, perché sono tutti mappati a 0, il code segmenti rimane importante perché c'è il CPL: se è targato con CLP = 00, stiamo lavorando in qualche segmento di codice a livello kernel, se è 11 stiamo lavorando in qualche segmento ma non è vero che tutti è permesso. Questo ci mette già di fronte all'idea che una stessa istruzione macchina dell'ISA vine eseguita in diversi casi di valori di CPL possiamo avere diversi risultati, quindi il CPL al di là di dove sono posizionate le cose in memori permette di distinguere diverse modalità operative.\\ È possibile aggiornare CS? No, l'unico modo il cambiamento del CPL (se siamo su x86\_64 conta solo questo) avviene solo quando abbiamo dei control flow particolari. Una delle cause per generare queste conseguenze è il passaggio per un GATE, l'istruzione che fa passare nel GATE aggiorna il CPL, ovviamente quando CPL=0 p tutto lecito.\\ Tutti gli altri selettori di segmento possono essere aggiornati se il segment descriptor a cui sono associati ha DPL $\geq$ CPL corrente
+Se i segmenti non servono più a discriminare dove lavoriamo, perché sono tutti mappati a 0, il code segment rimane importante perché c'è il CPL: se è targato con CLP = 00, stiamo lavorando in qualche segmento di codice a livello kernel, se è 11 stiamo lavorando in qualche segmento user dove non è vero che tutto è permesso.\\Questo ci mette già di fronte all'idea che una stessa istruzione macchina dell'ISA viene eseguita in diversi casi di valori di CPL e che possiamo avere diversi risultati, quindi il CPL al di là di dove sono posizionate le cose in memoria permette di distinguere diverse modalità operative.\\ È possibile aggiornare CS? No, l'unico modo per cui avviene il cambiamento del CPL (se siamo su x86\_64 conta solo questo) è solo quando abbiamo dei control flow particolari. Una delle cause per generare queste conseguenze è il passaggio per un GATE, l'istruzione che fa passare nel GATE aggiorna il CPL, ovviamente quando CPL=0 ed è tutto lecito.\\ Tutti gli altri selettori di segmento possono essere aggiornati se il segment descriptor a cui sono associati ha DPL $\geq$ CPL corrente
 \subsection{GDT estesa in Linux}
 La GDT classica di Linux è la seguente:
-%immagine
-alcune entry indicano dove in una address space lineare vengono posizionati i dati kernel/user, ma gli offset che ci dicono dove sono posizionati i segmenti portano sempre a 0, quindi l'offset è assoluto. La segmentazione gioca un ruolo solo nei termini della protezione, vediamo inoltre che tra i segmenti interessanti c'è il \textbf{TSS}: è un segmento posizionato nell'address space a base diversa da 0 e se consideriamo un address space lineare abbiamo che data l'esistenza sulla macchina della CPU x, c'è una zona associata alla specifica CPU x, stesso vale per le altre CPU. I TSS sono queste zone "riservate", quindi esiste un segmento nell'address space lineare posizionato ad una base differente per ogni CPU (o hyperthread fisico).\\ Nel TSS ci sono informazioni basiche per tenere traccia, mentre su una certa CPU che esegue uno specifico thread, le cose relative al ring model, quindi come l'oggetto si muove nel ring model.
-\subsection{TSS}
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/linux_gdt.png}
+\end{figure}
+alcune entry indicano dove in un address space lineare vengono posizionati i dati kernel/user, ma gli offset che ci dicono dove sono posizionati i segmenti portano sempre a 0, quindi l'offset è assoluto. La segmentazione gioca un ruolo solo nei termini della protezione, vediamo inoltre che tra i segmenti interessanti c'è il \textbf{TSS}: è un segmento posizionato nell'address space a base diversa da 0 e se consideriamo un address space lineare abbiamo che data l'esistenza sulla macchina della CPU x, c'è una zona associata alla specifica CPU x, stesso vale per le altre CPU. I TSS sono queste zone "riservate", quindi esiste un segmento nell'address space lineare posizionato ad una base differente per ogni CPU (o hyperthread fisico).\\ Nel TSS ci sono informazioni basiche per tenere traccia, mentre su una certa CPU che esegue uno specifico thread, le cose relative al ring model, quindi come l'oggetto si muove nel ring model.
+\subsection{TSS (Task State Segment)}
 Il TSS era tale per cui l'oggetto era una collezione di informazioni, raggruppati in un array ed ogni array aveva un'associazione con lo specifico CPU core. Questo array aveva una certa taglia, un certo valore dei bit di protezione, è quindi un informazione accessibile a livello kernel, TSS da lo stato del task in esercizio sulla CPU. Internamente, su x86 ad esempio, abbiamo la seguente struttura:
-%immagine della struttura
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/linux_gdt.png}
+\end{figure}
 salendo nelle informazioni, troviamo locazioni di memoria che tengono traccia dei registri del processore. Potremmo installare nella zona uno snapshot del processore, ma anche informazioni di segmentazione che il processore sta usando, quindi tutta la fotografia del processore.\\ Inizialmente, era stato pensato per implementare il context switch a livello hardware, quindi con apposite istruzioni macchina.\\ Le zone ESP sono Extended Stack Pointer, quindi registriamo 3 stack pointers differenti, ma il processore ha un solo ESP: i 3 diversi stack poninter servono per avere nella specifica zona quali sono le capability del thread in ring model, così che sappiamo che se cambia il livello di privilegio, magari dobbiamo usare una stack area differente. La struttura viene usata anche dal firmware, il ring model = utilizzo eventualmente i GATE, quindi istruzioni macchina per cui il processore potrebbe dover cambiare priorità. Tutta la parte sopra è inutile, perché l'oggetto non è usato per implementare context switch hardware, su Linux è basato su software e quindi la zona sotto è stata espansa per ospitare stack pointer a 64 bit e poter avere nell'area una rappresentazione corretta delle informazioni che rappresentano il ring model. Quando arriva un interrupt, ed il thread che esegue deve cominciare ad eseguire una routine del kernel, va cambiato livello di priorità ed in particolare una stack area differente per poter far lavorare l'handler.
 \subsubsection{Come arrivare al TSS}
-Per arrivare al TSS si può usare la GDT, ma il processore vorrebbe cercare di eseguire un numero di accessi in memoria ridotto per poter usare un oggetto così importante. Quindi, in x86 abbiamo un registro di processore, il TSS register che può essere usato con l'istruzione \textsf{LTR}, con cui possiamo fare questa operazione:
+Per arrivare al TSS si può usare la GDT, ma il processore vorrebbe cercare di eseguire un numero di accessi in memoria ridotto per poter usare un oggetto così importante. Quindi, in x86 abbiamo un registro di processore, il TSS register che può essere usato con l'istruzione \texttt{LTR}, con cui possiamo fare questa operazione:
 \begin{itemize}
-\item carichiamo un elemento della GDT con un certo elemento;
+\item carichiamo un elemento della GDT con un certo ID;
 \item quando viene caricata l'informazione, viene anche eseguito altro dal processore, ovvero l'analisi del contenuto dell'informazione per determinare la base di dove in memoria è la GDT;
 \item la base viene caricata nel TSS register, quindi l'informazione è packed
 \end{itemize}
-quindi il processore può controllare in maniera efficace il thread, se va cambiato stack ha la base del segmento.
+il processore può controllare in maniera efficace il thread, se va cambiato stack ha la base del segmento.
 \subsection{Replicazione della GDT}
 Nella tabella c'è una entry dove c'è il TSS, ma se abbiamo più CPU come teniamo traccia di più di un segmento con una sola entry per TSS? I due processori hanno due TSS diversi, dove identifichiamo la base per i due TSS? Quando lavoriamo con la segmentazione su un architettura di SO moderno, seguiamo uno schema con GDT replicata, abbiamo differenti GDT per i diversi processori in esecuzione. Possiamo avere 2 diversi processori $CPU_0$ e $CPU_1$ che hanno due GDT diverse, e se queste sono popolate differentemente, i due CPU core stanno usando degli indirizzi logici differenti sullo spazio degli indirizzi lineare.\\ I motivi di esistenza della GDT replicata sono
 \begin{itemize}
@@ -902,18 +989,23 @@ Nella tabella c'è una entry dove c'è il TSS, ma se abbiamo più CPU come tenia
 \item performance: le tabelle vengono messe su nodi NUMA, se sono vicini alle CPU core non interferiscono fra loro
 \end{itemize}
 replicando si evita anche di scrivere cose all'interno del software, in modo da poter girare lo stesso in maniera agnostica rispetto al CPU core dove gira.\\ Uno schema può essere il seguente:
-%immagine
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/gdtr_schema1.png}
+\end{figure}
 le tabelle possono essere identiche, quindi le due CPU vedono gli stessi indirizzi e quindi vanno negli stessi punti di memoria oppure avere alcuni punti differenti, questo mappa su cosa fa il software: supponiamo di usare il selettore di segmento GS, se abbiamo caricato una entry piuttosto che un'altra, usando GS sulle diverse CPU core si va in punti differenti della memoria perché cambiano le basi.
-%immagine con la memoria diversa
-questo è stato ampiamente sfruttato nei SO, perché è classico che ci siano informazioni importanti per la specifica CPU ad uno specifico intervallo di tempo. Devono stare in memoria ed il problema è ritrovarla la memoria: se non ci fosse questo meccanismo, dovrebbe essere la CPU stessa a chiedersi chi è lei, per andare nell'array che contiene le gdtr per toccare la zona designata e questo sarebbe devastante per le architetture moderne, CPUID squasha la pipeline quindi costa. Il meccanismo permette di implementare la \textbf{per CPU memory}, la CPU arriva in automatico alla zona di memoria associata alla specifica CPU. Nei kernel dei SO è esteso ampiamente, vengono messe delle informazioni base riguardo ciò che deve accadere per una specifica CPU. È interessante per fare cose come la \textbf{statistics update}:
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/gdtr_schema2.png}
+\end{figure}
+questo è stato ampiamente sfruttato nei SO, perché è classico che ci siano informazioni importanti per la specifica CPU ad uno specifico intervallo di tempo. Devono stare in memoria ed il problema è ritrovarla la memoria: se non ci fosse questo meccanismo, dovrebbe essere la CPU stessa a chiedersi chi è lei, per andare nell'array che contiene le gdtr per toccare la zona designata e questo sarebbe devastante per le architetture moderne, CPUID squasha la pipeline quindi costa. Il meccanismo permette di implementare la \textbf{per CPU memory}, la CPU arriva in automatico alla zona di memoria associata alla specifica CPU.\\Nei kernel dei SO è esteso ampiamente, vengono messe delle informazioni base riguardo ciò che deve accadere per una specifica CPU. È interessante per fare cose come la \textbf{statistics update}:
 \begin{itemize}
 \item se le statistiche sulla CPU sono globali, servono istruzioni atomiche;
 \item per-CPU memory: aggiorno le informazioni nella specifica zona
 \end{itemize}
 \subsubsection{Gestione della per-CPU memory in Linux}
-Allo startup, viene identificata per ogni CPU attiva una specifica zona di memoria. Lì, vanno inserite tutte le variabili di interesse, l'oggetto di memoria viene identificato tramite lo specifico selettore di segmento, che è GS. Quando viene scritto codice del kernel, possiamo sfruttare la per-CPU memory con delle macro apposite, con la \textsf{DEFINE\_PER\_CPU(tipo variabile, nome variabile)}, per accedere alla variabile o si usa un'altra macro, ad esempio per ottenere x in un altro registro oppure usare una API che prende il puntatore alla variabile e calcola, dalla variabile, la sua posizione in memoria, vi somma la base e restituisce l'offset assoluto ed è possibile andare in memoria anche tramite gs. Tutto questo è trasparente ed è data dal fatto che abbiamo per-CPU memory e replicazione della GDT.
+Allo startup, viene identificata per ogni CPU attiva una specifica zona di memoria. Lì, vanno inserite tutte le variabili di interesse, l'oggetto di memoria viene identificato tramite lo specifico selettore di segmento, che è GS. Quando viene scritto codice del kernel, possiamo sfruttare la per-CPU memory con delle macro apposite, con la \texttt{DEFINE\_PER\_CPU(tipo variabile, nome variabile)}, per accedere alla variabile o si usa un'altra macro, ad esempio per ottenere x in un altro registro oppure usare una API che prende il puntatore alla variabile e calcola, dalla variabile, la sua posizione in memoria, vi somma la base e restituisce l'offset assoluto ed è possibile andare in memoria anche tramite gs. Tutto questo è trasparente ed è data dal fatto che abbiamo per-CPU memory e replicazione della GDT, viene eseguito con la seguente istruzione:\\
+\texttt{mov ax, gs:[x]}.
 \subsection{Thread Local Storage}
-Equivalente alla per-CPU memory, per ottenerlo usiamo la segmentazione: c'è una zona della tabella in cui si possono usare delle entry per gestire il TLS. Le entry identificano dei segmenti, quindi delle posizioni in memoria, a livello kernel quando decidiamo di schedulare un thread in CPU, possiamo cambiare il contenuto della tabella postando nelle entry informazioni che vogliamo, in modo che la visione del thread siano "personalizzate" per il sinoglo thread.\\ Usando FS, possiamo caricare una delle entry quando decidiamo di schedulare il thread, identifichiamo in FS la base in memoria del TLS. Il TLS di gcc permette di usare una sola di queste zone, allo startup del thread chiede di usare una di quelle zone e di metterle in FS, avendone 3 possiamo fare cose "più spinte", vediamo come.\\ La syscall è \textsf{arch\_prctl}, che ha diverse nomenclature: si passa il controllo al kernel internamente, cosa fare viene specificato nel \textit{code}, passano il parametro.\\ Nella prima signature della funzione, si passa il codice ed un \textbf{unsigned long}, quindi possiamo identificare un offset dell'address space lineare, quindi indichiamo probabilmente una base in cui va caricato un segmento. Vogliamo quindi che per un segmento specifico, la base per quel segmento vogliamo usare quella base. A livello kernel, viene messo in una delle entry TLS e viene riflesso il valore aggiornato nel registro di segmentazione, quindi quel thread userà una specifica area. L'area di memoria deve essere stata allocata, quindi ad esempio con una nmap, per poi fare il setup livello kernel.\\ Possiamo fare anche una query, otteniamo la base del segmento quando il thread corrente va in CPU.
+Equivalente alla per-CPU memory, per ottenerlo usiamo la segmentazione: c'è una zona della tabella in cui si possono usare delle entry per gestire il TLS. Le entry identificano dei segmenti, quindi delle posizioni in memoria, a livello kernel quando decidiamo di schedulare un thread in CPU, possiamo cambiare il contenuto della tabella postando nelle entry informazioni che vogliamo, in modo che la visione del thread siano "personalizzate" per il sinoglo thread.\\ Usando FS, possiamo caricare una delle entry quando decidiamo di schedulare il thread, identifichiamo in FS la base in memoria del TLS. Il TLS di gcc permette di usare una sola di queste zone, allo startup il thread chiede di usare una di quelle zone e di metterla in FS, avendone 3 possiamo fare cose "più spinte", vediamo come.\\ La syscall è \texttt{arch\_prctl}, che ha diverse nomenclature: si passa il controllo al kernel internamente, cosa fare viene specificato nel \texttt{code}, passano il parametro.\\ Nella prima signature della funzione, si passa il codice ed un \texttt{unsigned long}, quindi possiamo identificare un offset dell'address space lineare, quindi indichiamo probabilmente una base in cui va caricato un segmento. Vogliamo quindi che per un segmento specifico utilizzare una specifica base.\\A livello kernel, viene messo in una delle entry TLS e viene riflesso il valore aggiornato nel registro di segmentazione, quindi quel thread userà una specifica area. L'area di memoria deve essere stata allocata, quindi ad esempio con una \texttt{mmap}, per poi fare il setup livello kernel.\\ Possiamo fare anche una query, otteniamo la base del segmento quando il thread corrente va in CPU.
 \section{Internals di x86}
 \subsection{Registri di controllo x86}
 Ci sono 3 o 4 registri di controllo di x86, targati con CR*
@@ -923,14 +1015,14 @@ Ci sono 3 o 4 registri di controllo di x86, targati con CR*
 \item CR2 mantiene l'indirizzo lineare quando abbiamo un fault;
 \item CR3 è il page table pointer, quindi il posizionamento in memoria fisica della page table corrente;
 \end{itemize}
-Lo 0esimo bit di CR0 ci dice se stiamo lavorando in protected mode oppure no, se siamo in protected mode dobbiamo anche distinguere se siamo a 32 o 64 bit e questo è scritto in un registro differente. Quando il kernel parte, configura correttamente i bit per far fare le operazioni corrette al processore, ad esempio se viene usata o meno la paginazione etc..
+Lo 0-esimo bit di CR0 ci dice se stiamo lavorando in protected mode oppure no, se siamo in protected mode dobbiamo anche distinguere se siamo a 32 o 64 bit e questo è scritto in un registro differente. Quando il kernel parte, configura correttamente i bit per far fare le operazioni corrette al processore, ad esempio se viene usata o meno la paginazione etc..
 \subsection{Trap ed Interrupt}
 Vediamo come vengono gestiti questi oggetti ed i concetti di GATE:
 \begin{itemize}
 \item gli interrupt sono asincroni, generati da altri componenti hardware che mandano segnalazioni al processore
-\item le trap sono eventi sincroni generate dal software, anche dette eccezioni. Esecuzioni multiple del programma con gli stessi dati non dano per froza le stesse eccezioni
+\item le trap sono eventi sincroni generate dal software, anche dette eccezioni. Esecuzioni multiple del programma con gli stessi dati non danno per forza le stesse eccezioni.
 \end{itemize}
-Nei SO la storia ci dice che le trap sono state usate per molti anni come modo di accesso al kernel: in una libreria c'era codice machine dependent che per chiamare una syscall sparava una trap.\\ I GATE sono zone di un segmento dove c'è una istruzione, passando per quale di ottiene un passaggio del livello di privilegio, ma adesso vediamo il supporto per avere questo passaggio. I GATE sono descritti, in x86, nella tabella TIP, che permette di avere la descrizione di un GATE: in base alle entry, abbiamo un mapping di quante porte ci sono, la stessa porta del GATE può essere descritta in diversi punti della tabella, perché possiamo associare feature multiple nella descrizione alla porta stessa, in modo che si possano fare diverse cose in base alla diversa porta.\\ Il contenuto della tabella viene usato per capire per determinare se il thread può passare per il GATE o no, quindi serve mantenere il MAX del livello di privilegio, il check viene fatto dal processore che verifica il CPL corrente del flusso di esecuzione.
+Nei SO la storia ci dice che le trap sono state usate per molti anni come modo di accesso al kernel: in una libreria c'era codice machine dependent che per chiamare una syscall sparava una trap.\\ I GATE sono zone di un segmento dove c'è una istruzione, passando per quale di ottiene un passaggio del livello di privilegio, ma adesso vediamo il supporto per avere questo passaggio. I GATE sono descritti, in x86, nella tabella TIP, che permette di avere la descrizione di un GATE: in base alle entry, abbiamo un mapping di quante porte ci sono, la stessa porta del GATE può essere descritta in diversi punti della tabella, perché possiamo associare feature multiple nella descrizione alla porta stessa, in modo che si possano fare diverse cose in base alla diversa porta.\\ Il contenuto della tabella viene usato per determinare se il thread può passare per il GATE o no, quindi serve mantenere il MAX del livello di privilegio, il check viene fatto dal processore che verifica il CPL corrente del flusso di esecuzione.
 \subsection{Dettagli generali sulla gestione di GATE e segmenti}
 Su x86, possiamo generare delle variazioni di flusso di esecuzione di 3 tipi
 \begin{itemize}
@@ -2607,19 +2699,78 @@ e questo l'equivalente per char device driver e le API:
 %snippet char device driver
 il char device driver implementa tutte le operazioni per lavorare sui file.\\In particolare la tabella dei char devices è stata riorganizzata nel kernel in modo che fosse una hash table con conflitti in modo che fosse più scalabile per sistemi grossi ed inoltre in un elemento della tabella abbiamo un puntatore ad una struttura char device, che non è solo il driver:
 %immagine del char device
-ha delle informazioni dove quando installiamo un driver nella tabella, possiamo con una API registrare quali sono i minor numbers realmente pilotabili con questo driver: se il minor number non è listato, viene evitato che ci siano ulteriori attività di controllo nel driver in quanto ci sarà subito un errore in accesso (si confrontano major e minor, vedi slides).
+ha delle informazioni dove quando installiamo un driver nella tabella, possiamo con una API registrare quali sono i minor numbers realmente pilotabili con questo driver: se il minor number non è listato, viene evitato che ci siano ulteriori attività di controllo nel driver in quanto ci sarà subito un errore in accesso (si confrontano major e minor, vedi slides).\\Abbiamo quindi stabilito la possibilità in Linux di avere una tabella, con taglia scalabile, a cui possiamo agganciare un driver che è fatto da una serie di operazioni per fare operazioni di I/O. Associamo in realtà al driver un indice, che è il suo major number, possiamo creare un nodo N agganciandolo al driver dicendo che ha un certo major number.\\Quando andiamo in I/O su N, a livello di strutture dati viene tirata su una sessione che permette di arrivare sull'inode del nodo N, le funzioni chiamate internamente possono reperire major e minor number del nodo. Col minor number possiamo far si che il driver al suo interno faccia operazioni diverse a seconda del nodo che sta pilotando.
 \subsubsection{Esempi eseguibili (PARLA ITALIANO)}
 Il primo esempio è un baseline char device, per cui abbiamo sicuramente l'implementazione della dev\_open, della dev\_write e della dev\_release. Sarà software di livello superiore ad invocare queste operazioni in base alla syscall chiamata. Usiamo un mutex perché possiamo gestirlo durante l'operazione di apertura del file, in modo da avere un device driver ad istanza singola.\\Per poter usare il driver, devo creare un nuovo nodo nel file system che abbia il major number che è quello dato e che abbiamo un minor nubmer compreso fra 0 e 255 altrimenti all'apertura del nodo avrei un errore:
 \begin{itemize}
 \item creiamo il nodo con mknod, che mettiamo in /dev/ con nome example
 \item specifichiamo c per dire che è un char device, passiamo 241 (è dell'esempio) e 0 come major e minor. Il driver vero per questo oggetto quando si va in I/O sull'elemento chiama il driver codificato nel modulo.
 \end{itemize}
-Le operazioni chiamate quando ad esempio si fa un \texttt{echo "qualcosa" > /dev/example} avremo in dmesg le print chiamate, vengono fatte n write perché la echo cerca di scrivere n byte e se ne vede ritornare uno alla volta come risultato della scrittura.\\Potevamo fare qualunque cosa con questo driver, davvero sbizzarritevi provateci anche voi e fate il vostro stupendo driver.\\\\Il secondo esempio: 
-
-
-
-
-
+Le operazioni chiamate quando ad esempio si fa un \texttt{echo "qualcosa" $>$ /dev/example} avremo in dmesg le print chiamate, vengono fatte n write perché la echo cerca di scrivere n byte e se ne vede ritornare uno alla volta come risultato della scrittura.\\Potevamo fare qualunque cosa con questo driver, davvero sbizzarritevi provateci anche voi e fate il vostro stupendo driver.
+\subsection{Boot di Linux}
+Fare il boot di Linux prevede anche di fare il boot del VFS, una delle operazioni è quella di unlockare il kernel e dire che il thread che sta eseguendo il boot diventa rischedulabile, in versioni 2.4 abbiamo questa situazione:
+%snippet della versione 2.4
+Creiamo quindi anche il thread init. In versioni successive andiamo in \texttt{numa\_defualt\_policy}, come mostrato di seguito
+%snippet 3.x e più 
+vediamo alcune delle funzioni sfruttate da init:\\
+%snippet mount_root 
+stiamo montando il FS root applicativo, al cui interno vengono fatte due cose interessanti:
+\begin{itemize}
+	\item \texttt{create\_dev}, creiamo il percorso che ci porta al nodo root, che è un device che ci permette di arrivare su un driver. Possiamo specificare per quel nodo il major number, sarà un device a blocchi
+	\item \texttt{mount\_block\_root}
+\end{itemize}
+Vediamo cosa fa \texttt{create\_dev}:
+%snippet
+viene creato un nodo, indicando il major number da usare e quindi il driver da usare per leggere i blocchi. Sono due funzioni che permettono di capire come avverrà il montaggio di un FS applicativo.\\Nel kernel thread che esegue init abbiamo più o meno questo tipo di attività:
+%snippet
+si cercano di fare diverse \texttt{exec}, che eseguono soltanto se le precedenti falliscono. Nel \texttt{do\_basic\_setup} si espandono le capability del kernel, si fa montando dei moduli che sono nel RAM disk. Avendo espanso le capabilities del kernel si chiama \texttt{prepare\_namespace}, preparando lo spazio dei nomi nel rootfs per montare il file system. Cambieremo quindi la forma del rootfs per montarvi in qualche punto il rootfs applicativo, si farà poi \texttt{exec} del programma specificato, tipicamente sarà l'applicazione init del rootfs appena montato.\\Questo è in base a come sono compilati i kernel tradizionali, ma dipende da cosa si fa col kernel Linux.\\In \texttt{prepare\_namespace} avviene quanto segue:
+%snippet prepare namespace
+creiamo la directory \texttt{/dev}, poi \texttt{/root} e chiamiamo \texttt{mount\_root}, dopo avere la struttura per poter creare un altro nodo in dev che è il root node che permette di arrivare su un driver e poi eseguiamo il montaggio.\\La storia è questa:
+%immagine della storia
+Cerchiamo poi di montare il FS root applicativo con \texttt{mount\_block\_root}:
+%snippet
+non sappiamo che tipo di FS contenga il dispositivo che è stato indicato di montare. Per cercare comunque di montare quel dispositivo, cosa occorre cercare di fare: vedere i FS che si è in grado di gestire e provarli tutti finché non se ne trova uno che è soddisfacente, in termini di cosa ci si aspetta per il super blocco del dispositivo. Si scorre quindi la lista dei FS gestibili dal kernel e si popola un array che indica i FS gestibili (in formato di stringa).\\In seguito, c'è un ciclo for in cui si cerca di montare un FS per ognuna delle stringhe dell'array. Si esegue infatti \texttt{sys\_mount} esattamente nella directory root.\\Il dispositivo dove prendere il roots FS applicativo è indicato per la command line, ma non si sa qual è, il ciclo può essere tale per cui si esce se il risultato del montaggio è 0, per cui si va a lavorare sulla directory root. Se invece il for termina, il blocco di codice ci dice che il device di root che è stato indicato di aprire non può essere aperto e ci si porta al panic. Non finisce qui, in quanto dopo aver montato il FS di root applicativo, si lancia \texttt{init} che può decidere di montare altri FS, si indica dove vanno montati altri eventuali FS nel file \texttt{/etc/fstab}: ad esempio init monta \texttt{proc}.\\Col comando \texttt{df -T} possiamo vedere i file system montati, con i punti di montaggio: una cosa interessante è btrfs (better file system), che viene montato in più punti dello stesso dispositivo in quanto è utile per montare dei volumi.\\A questo punto, spostiamo il punto di montaggio sullo "/", questo serve perché nel momento in cui montiamo abbiamo bisogno di tutti gli oggetti raggiungibili dalla radice.\\Abbiamo poi la syscall \texttt{mount}, che permette di specificare diversi flag:
+\begin{itemize}
+	\item possibilità di montare il file system in modlaità read only, per motivi ad esempio di sicurezza
+	\item etc...
+\end{itemize}
+Bind mount: è un montaggio basato sul concetto di collegamento, a livello delle strutture in RAM per correlare le informazioni in una struttura gerarchica. Permette di collegare uno specifico FS a più punti del FS, quindi possiamo rendere il FS visibile in diversi punti dell'archivio con caratteristiche diverse. Abbiamo poi un puntatore di dati per la syscall, che ad esempio per quanto riguarda il bind mount permette di indicare che l'ID numerico che identifica il proprietario di un file va traslato su un altro. C'è quindi la possibilità di avere più utenti che vedono lo stesso FS.\\\\
+Abbiamo il seguente schema:
+\begin{enumerate}
+	\item il device da montare è usato per accedere al driver
+	\item (slides)
+\end{enumerate}
+in Linux, la syscall \texttt{mount} si appoggia internamente su \texttt{do\_kernel\_mount}, avendo quindi il seguente schema:
+%immagine dello schema
+i due nodi console e root ci portano su due driver.\\\\Se abbiamo una directory che contiene alcune cose, in memoria possiamo rappresentarla in maniera tale per cui quando vi si fanno le operazioni non si scende sugli elementi della directory, ma si va da qualche altra parte. Si può fare perché nella struttura dentry c'è un campo \texttt{d\_mounted} che dice che il contenuto della directory è una don't care, l'approccio permette di costruire le bind di cui si parlava prima: abbiamo un'archotettura gerarchica, dove ogni punto ridirezione da qualche parte.
+\subsection{Moduli kernel fondamentali}
+La syscall \texttt{open} è semplice:
+\begin{itemize}
+	\item si prende un file descriptor libero
+	\item si prende la dentry usando \texttt{filp\_open()}
+	\item si linkano le due cose insieme
+\end{itemize}
+con \texttt{filp\_open()} mandiamo la sessione in setup:
+(slides)\\\\Vedendo \texttt{read} o \texttt{write}:
+\begin{itemize}
+	\item prendiamo come parametro il codice di un canale di I/O, da cui possiamo risalire a qual è la sessione e quindi a qual è l'inode e la dentry su cui stiamo lavorando. 
+	\item risaliamo quindi anche alla file operation
+	\item si chiama il function pointer.
+\end{itemize}
+Con questa visione del VFS prevede che, quando si chiamano operazioni di I/O, la chiamata che effettuiamo è tale per cui viene mappata la chiamata sul driver corretto, le operazioni intermedie sono tali per cui si cerca la posizione in memoria del driver.
+\subsection*{Esempi software}
+Vediamo alcuni esempi di scrittura/lettura di dati, per ora il collegamento dei dati non è automatico all'inode ma c'è questa possibilità
+\subsubsection*{Bind mounts Makefile}
+Abbiamo due comandi, di montaggio e smontaggio tramite comando di shell \texttt{mount}. Identifichiamo solo il parametro \texttt{--bind}, ma si poteva richiedere anche di passare parametri più complessi.
+\subsubsection*{Broadcast device}
+Permette di andare sulla tabella dei driver per installarne uno nuovo, D. Questo è un driver per un dispositivo a caratteri, collegando un nodo X a D possiamo andare a lavorare contemporaneamente su N dispositivi, in particolare su un sotto-insieme di terminali da gestire. Dobbiamo capire come nella funzione f del driver possiamo chiamare la funzione di un driver per scrivere su altri terminali. Dobbiamo quindi creare una sessione di I/O verso un certo terminale, in modo che chiamando l'operazione di scrittura su quel terminale, si va su tutti.\\\\Abbiamo una lista di puntatori a caratteri, in quanto quando si lancia una shell su Linux viene creato un nodo, a cui viene agganciato un driver per pilotare il terminale: questo è tale per cui quando vengono ricevuti i dati ed il focus è su quel terminale, questi vengono rediretti su quel terminale. Il driver è unico, il che implica dire che se abbiamo due sessioni e chiamiamo operazioni di I/O andiamo in concorrenza, in questo caso non c'è problema perché vengono gestiti dati locali (ad esempio sullo stack). Nel campo owner si scrive una macro, che è il puntatore che caratterizza il modulo e con cui indichiamo che c'è anche lui, così che quando qualcuno chiama delle informazioni di I/O sappiamo su quale modulo andare ed in questo modo si può sbloccare / bloccare il modulo in memoria quando viene chiamata la syscall. In questo modo il codice non può essere smontato finché si è in blocco.\\Abbiamo quindi la funzione per la scrittura, in cui per ognuno dei target si scrive usando la funzione del kernel \texttt{vfs\_write}. Dopo il montaggio del modulo, possiamo andare a creare il nodo con mknod (vedi esempio sopra).
+\subsubsection*{Driver concurrency}
+In questo esempio installiamo un driver per pilotare una sorta di pseudo-file, ovvero una sequenza di caratteri mantenuti in memoria volatile. Possiamo gestire lo pseudo-file in un array di elementi, a seconda del minor number lavoriamo su uno degli pseudo-file, questa volta servono dei meccanismi di sincronizzazione interni:
+\begin{itemize}
+	\item creiamo un nodo X con un certo minor number
+	\item creiamo un altro nodo Y, che ci porta sullo stesso minor number
+\end{itemize}
+Quindi, le due sessioni simultanee portano sullo stesso file e quindi occorre sincronizzare le due sessioni.\\Possiamo comunque avere concorrenza sullo stesso lavoro se la sessione è acceduta da più thread\\\\Ci sono una serie di operazioni, abbiamo poi delle define che ci dicono che alla compilazione l'oggetto può essere per singola sessione, in modo che se l'oggetto è già aperto in una sessione verrà restituito un errore; oppure il driver è single instance, ovvero una volta aperto il driver per un oggetto questo è aperto in modo esclusivo. Questo accadeva per la scheda audio: quando si chiamava la \texttt{open} per eseguire delle operazioni non era possibile chiamarne altre.\\Se il driver può quindi lavorare in istanza singola si cerca di prendere un lock.\\Se viene chiamata una write oppure una read è perché esiste una sessione valida: qui non serve richiedere il blocco della sezione dati, serve solo usare il mutex per sincronizzare le operazioni. C'è una funzione di \texttt{ioctl}, per cui possiamo fare un'operazione diversa in base al device (??). Abbiamo registrato il driver per gestire devices fino a 8 minor numbers, quindi successivi riporteranno errore. Rispetto ad un file "classico" manca solo che questi dati andrebbero presi da hard drive o riportati su hard drive.
 
 
 \newpage
@@ -2658,7 +2809,8 @@ Bisogna implementare un servizio bloccante, che è possibile chiamare finché un
 \item quante e quali wait queue usare
 \end{itemize}
 Si potrebbe usare un'unica wait queue, con condizioni di risveglio differenti ma quando risvegliamo un solo thread occorre comunque risvegliare tutta la wait queue, perché tutti i thread devono verificare la propria condizione e quindi ci sono dei cicli di CPU sprecati.\\La wait queue dovrebbe essere quindi privata per quel thread, così che quando qualcuno risveglia quel thread risvegli solo quello. Nelle strutture collegate in lista, occorrerà ospitare anche la variabile che identifica la condizione di risveglio, il cambio della variabile è il trigger per il risveglio del thread e andrà fatto da chi chiama il servizio di risveglio.\\È importante perché questo ci permette di dire che nella struttura che colleghiamo in lista serve non solo lo spazio per la condizione ma anche il puntatore al TCB di quel thread.\\La posizione degli oggetti presenti sulla lista, la memoria viene presa o tramite da un allocatore in modo kernel oppure lo alloca il thread i che ha chiamato l'operazione e l'allocazione può avvenire nella stack area, quindi magari le variabili sono allocate in diverse stack areas dei vari thread. È importante che questi oggetti siano presenti nella lista finché la stack area non viene invalidata e questo è vero perché al risveglio si rimuove l'elemento prima di lasciare lo stack. Ha senso lavorare sullo stack in quanto si occupano pochi byte per salvare la tabella delle informazioni del singolo thread. Inoltre, la sleep dovrebbe essere efficiente e occorrerebbe fare un aggancio degli elementi in lista in tempo costante, così come anche lo sgancio dalla lista o anche la navigazione della coda che prevede il cambio di una condizione. Ma il tempo costante è l'analisi teorica degli algoritmi, l'analisi reale riguarda il numero di istruzioni da eseguire.\\Come facciamo a fare questa cosa usando anche un numero di cicli macchina basso quando si lavora su questi oggetti: bisogna poter essere in grado di lavorare in una rimozione dell'elemento, che magari non è il primo, in tempo costante e questo può avvenire perché ci si sta risvegliando. Il servizio che risveglia è sempre il primo della coda, ma se ci sono tanti risvegli concorrenti, questi thread concorrenti vogliono andare a rimuovere l'elemento in maniera concorrente.\\Un altro caso è l'arrivo di un segnale per essere rimessi su una run queue, quindi il thread deve rimuovere il suo blocco dalla lista. La lista deve essere doppiamente collegata ma se la lista è vuota in termini dei thread non presenti in sleep, ma se la lista non ha elementi dobbiamo includere i check nel software per verificare questa cosa e nei SO non si fa MAI, si scrive software per eseguire l'unico scenario possibile per noi, quindi la lista deve sempre essere non vuota: abbiamo gli elementi reali della lista, introduciamo due elementi virtuali, uno in cima ed uno in coda alla lista e le operazioni reali si fanno sugli elementi reali se ci sono.\\L'informazione \texttt{already\_hit} è interessante nel seguente scenario: abbiamo un thread già in sleep, l'operazione di risveglio che viene chiamata sul thread non deve rimuovere l'elemento, ma può accadere che il thread non abbia ancora rimosso il suo nodo di lista ma mettendo il campo ad 1 indichiamo che il thread è già stato svegliato.\\La coda è acceduta in maniera concorrente, quindi le operazioni vengono in questo caso sincronizzate con uno \texttt{spinlock\_t}\\Le chiamate a \texttt{preempt\_enable() / disable} serve per incrementare / decrementare il contatore che indica la possibilità di chiamare lo shceduler se il thread è o meno preemptabile, questo è utile per non rilasciare la CPU quando si passa per un safe place, ma in questo caso non è necessario perché prendendo uno spinlock si entra in sezione critica quindi non si può abbandonare la CPU per la preemption senza aver rilasciato il lock.\\Quando torniamo dalla sleep siamo stati rimessi in run queue e possono esserci due casi diversi: quando si esce dall'API si controlla la condizione di risveglio e se questa non è valida, siamo stati colpiti da un segnale.\\Nel risveglio si prende il controllo ed in un ciclo while si scandisce la coda perché ogni elemento può essere già stato marcato in quanto risvegliato, quindi si cerca il primo non marcato per poter trovare il thread da risvegliare.\\Tutti i servizi bloccanti di Linux sono implementati in delle wait queue per dormire, in modo da essere risvegliati in base ad una certa condizione.
-
+\section*{Homework: Process Controller}
+Un driver che scrive in aree di memoria di un certo processo. 
 
 
 

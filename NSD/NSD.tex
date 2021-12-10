@@ -1040,8 +1040,12 @@ Sono scambiati fra i VTEPs per fare advertising di indirizzi IP e MAC. Vogliamo 
 \end{itemize}
 \subsubsection{Lab VXLAN EBGP}
 Il lab ha la stessa topologia di prima, quindi basta cambiare gli script. Occorre rimuovere i tunnel statici e cambiarli con le implementazioni EBGP. Per istanziare BGP, si può usare sia IBGP che EBGP, dipende dalle necessità. Sta tutta sulle slides la configurazione.
-\\Nota in più: per avere un indirizzo IP per la VTEP, va configurato in cumulus per usarlo come default gateway per fargli routare il traffico. (ancora slides). 
-
+\\Nota in più: per avere un indirizzo IP per la VTEP, va configurato in cumulus per usarlo come default gateway per fargli routare il traffico. (ancora slides).\\Vediamo cosa accade nel caso della migrazione di una VM: passiamo le VM da lubuntu1 a lubuntu3, per emulare la migrazione è cancellare i link e riconnetterli in maniera swappata (lubuntu1 si connette alla leaf3 e viceversa). In automatico, EVPN scambia le informazioni delle VM migrate e quindi che i MAC sono cambiati e ci sono degli annunci scambiati nella rete.\\\\Secondo laboratorio: stessa topologia, usando L3 VNI. Vogliamo emulare un singolo tentant, quindi uniamo i due precedenti in un unico:
+\begin{itemize}
+\item vogliamo cambiare gli indirizzi
+\item dobbiamo creare una nuova rete per la VM B in quanto vogliamo avere il routing fra le due reti dello stesso tenant. Aggiungiamo quindi un'altra interfaccia VXLAN, che implementa VNI: manda i pacchetti a livello 3, quindi è simile ad una VPN MPLS BGP.
+\end{itemize}
+Ci sono gli stessi indirizzi di default nei diversi VTEP, serve per semplificare lo scenario ma è quello che si fa per implementare i VNI. Siamo in domini boradcast differenti, quindi dobbiamo fare la connessione a livello 3 e non più a livello 2. Quindi creiamo con comando vrf una tabella di routing. Abbiamo quindi creato un tunnel fra due diverse subnets, in questo senso è a livello 3 poiché è necessario che i pacchetti passino per un router affinché vengano instradati.
 
 
 
