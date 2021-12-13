@@ -1028,193 +1028,310 @@ Su x86, possiamo generare delle variazioni di flusso di esecuzione di 3 tipi
 \begin{itemize}
 \item salto intra-segmento: un jump  in cui si specifica solo il displacement, la base può essere del tutto arbitraria
 \item cross-segment: possiamo saltare su un altro segmento, è un long jump a cui diciamo l'offset ma anche in che segmento è collocato, quindi gli diamo il segmento da raggiungere e l'offset. Bisogna ovviamente vedere se l'offset è nei limiti possibili per quel segmento, ma anche vedere se il livello di protezione del segmento è pari o superiore al CPL corrente (stessa cosa va fatta sopra)
-\item cross-segment via GATEs: generiamo un interrupt via software, per eseguire ciò che tipicamente genera un interrupt ovvero una variazione del flusso di esecuzione. Indichiamo un displacement, che è quale porta della tabella utilizzare, il privilegio massimo della porta viene comparato con quello corrente
+\item cross-segment via GATEs: generiamo un interrupt via software (trap), per eseguire ciò che tipicamente genera un interrupt ovvero una variazione del flusso di esecuzione. Indichiamo un displacement, corrispondente a quale porta della tabella utilizzare, il privilegio massimo della porta viene comparato con quello corrente
 \end{itemize}
 questa è una overview della situazione:
-%immagine della situazione
-se si può scendere, questo è mantenuto nella interrupt table.
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/jumps_overview.png}
+\end{figure}
+la possibilità di scendere di livello è mantenuto nella interrupt table.
 \subsubsection{Dettagli sui GATE}
-Nella IDT, ogni elemento ha (slides), abbiamo anche un registro che ha un puntatore alla idtr, quindi per cambiare la IDT 
+Nella IDT, ogni elemento mantiene
+\begin{itemize}
+	\item l'ID del segmento target ed il displacement del segmento
+	\item il massimo livello a partire dal quale viene garantito l'accesso al GATE
+\end{itemize}
+abbiamo anche un registro che ha un puntatore alla IDT, che è l'\texttt{idtr}, struttura packed che mantiene l'indirizzo lineare della IDT e la sua taglia. Per cambiare IDT:
 \begin{itemize}
 \item o si cambiano le entry della tabella
 \item o si filla una tabella nuova e si cambia il pointer
 \end{itemize}
-il pointer viene anche usato nel caso in cui arrivi un interrupt\\\\ Se l'informazione di protezione permette di saltare, il segment ID nella IDT è stato per accedere alla GDT, perché se anche il salto è ammesso, dobbiamo verificare se siamo nei bounadry del segmento target da raggiungere: può accadere che in alcuni attacchi si tentino di modificare delle infromazoni di controllo che portano ad avere dei GATE non più compatibili con la descrizione del segmento. (slides)
+il pointer viene anche usato nel caso in cui arrivi un interrupt.\\\\ Se l'informazione di protezione permette di saltare, il segment ID nella IDT è usato per accedere alla GDT, perché se anche il salto è ammesso, dobbiamo verificare se siamo nei bounadry del segmento target da raggiungere: può accadere che in alcuni attacchi si tentino di modificare delle informazioni di controllo che portano ad avere dei GATE non più compatibili con la descrizione del segmento.
 \subsection{Dettagli in Linux}
-Quante porte abbiamo, quindi quante trap, per accedere da CR0 a CR3: una sola, scritta a spiazzamento 0x80: qui c'è il GATE da usare per entrare a lavorare in modo kernel a partire da livello user. Dobbiamo quindi chiamare una istruzione \textsf{INT 0x80} (su Windows è 0x2E), dando il controllo al blocco di codice per fare il passaggio, se questo  è ammissibile passiamo ad eseguire in un altro segmento, quindi il processore ha cambiato stato. Cambiano anche le possibilità delle CPU di fare le cose, non è questa però l'unica porta ammissibile per processare gli interrupt. C'è un unico modo handler quando entriamo in modo kernel: qualsiasi servizio da eseguire, passiamo il controllo all'handler, quindi dobbiamo essere in grado di capire quale servizio è stato chiamato, se fork, exec, exit, close etc... Il GATE non identifica quale servizio è stato chiamato, vanno viste altre informazioni e questo è il \textbf{dispatching} delle syscall. Il blocco è quindi un dispatcher, ed è critico per la sicurezza, può fare o non fare delle cose in funzione delle informazioni che vengono rese visibili: se rendiamo visibile uno snapshot di CPU intero e magari aveva bisogno di solo alcuni registri, ha ricevuto troppi dati. Le strutture dati usate per fare dispatching sono
+Quante porte abbiamo, quindi quante trap, per accedere da CR0 a CR3: una sola, scritta a spiazzamento 0x80: qui c'è il GATE da usare per entrare a lavorare in modo kernel a partire da livello user. Dobbiamo quindi chiamare l'istruzione \texttt{INT 0x80} (su Windows è \texttt{INT 0x2E}), dando il controllo al blocco di codice per fare il passaggio, se questo  è ammissibile passiamo ad eseguire in un altro segmento, quindi il processore ha cambiato stato. Cambiano anche le possibilità delle CPU di fare le cose, non è questa però l'unica porta ammissibile per processare gli interrupt. C'è un unico handler quando entriamo in modo kernel: qualsiasi sia il servizio da eseguire, passiamo il controllo all'handler, quindi dobbiamo essere in grado di capire quale servizio è stato chiamato, se \texttt{fork, exec, exit, close} etc...\\Il GATE non identifica quale servizio è stato chiamato, vanno viste altre informazioni e questo è il \textbf{dispatching} delle syscall. Il blocco è quindi un dispatcher, ed è critico per la sicurezza, può fare o non fare delle cose in funzione delle informazioni che vengono rese visibili: se rendiamo visibile uno snapshot di CPU intero e magari aveva bisogno di solo alcuni registri, ha ricevuto troppi dati. Le strutture dati usate per fare dispatching sono
 \begin{itemize}
-\item system call table: tabella del kernel in cui si registrano i puntatori a funzioni del kernel differenti, identifichiamo in memoria posizioni di codice differenti e quindi blocchi di codice differenti;
+\item la \textbf{system call table}: tabella del kernel in cui si registrano i puntatori a funzioni del kernel differenti, identifichiamo in memoria posizioni di codice differenti e quindi blocchi di codice differenti;
 \item per accedere correttamente alla tabella, occorre aver scritto un indice in CPU, in un registro. È un primo parametro che viene passato al kernel, questo avviene con la chiamata a sub routine, ovvero CALL ad un codice che è ad un indirizzo differente
 \item l'oggetto che prende il controllo nel kernel e può chiamare anche altre cose, alla fine può cambiare lo stato dei registri della CPU, quando il controllo ritorna all'istruzione successiva alla 0x80, occorre capire ad esempio il valore di ritorno della syscall
 \end{itemize}
 Questo è lo schema basilare, ci sono una serie di dettagli di performance, scalabilità:
-%immagine dello schema
-quando viene chiamata una syscall, il modulo chiamato fa delle attività machine-dependent per ridare il controllo allo user space, per analizzare i registri e fornire i risultati, eventualmente si tocca anche errno. Se però scriviamo il codice in Assembly, possiamo anche skippare il passaggio e parlare direttamente col kernel per evitare di dover tornare allo user space etc...\\\\ Quando prendiamo IDT e vi descriviamo un GATE, specifichiamo anche se il processore deve rimanere preemeptible o no passando per il GATE. Quindi, se diciamo che il processore non deve essere preemptible vuol dire che quel blocco di codice è atomico, ma essere atomici non basta su un'architettura multi-core, servono sempre CAS etc per toccare cose condivise: l'atomicità su una macchina parallela è molto più complesso del caso single core. L'architettura di base è stata molto complicata per questioni di sicurezza, ma l'organizzazione è sempre la stessa, con la sys call table e con il dispatcher che farà cose più o meno complesse. Per includere codice del kernel:
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/syscall_dispatching_base.png}
+\end{figure}
+quando viene chiamata una syscall, il modulo chiamato fa delle attività machine-dependent prima di ridare il controllo allo user space, per analizzare i registri e fornire i risultati, eventualmente si tocca anche errno. Se però scriviamo il codice in Assembly, possiamo anche skippare il passaggio e parlare direttamente col kernel per evitare di dover tornare allo user space etc...\\\\ Quando prendiamo IDT e vi descriviamo un GATE, specifichiamo anche se il processore deve rimanere preemeptible o no passando per il GATE. Quindi, se diciamo che il processore non deve essere preemptible vuol dire che quel blocco di codice è atomico, ma essere atomici non basta su un'architettura multi-core, servono sempre CAS etc per toccare cose condivise: l'atomicità su una macchina parallela è molto più complesso del caso single core. L'architettura di base è stata molto complicata per questioni di sicurezza, ma l'organizzazione è sempre la stessa, con la sys call table e con il dispatcher che farà cose più o meno complesse. Per includere codice del kernel:
 \begin{itemize}
 \item dobbiamo mettere le mani sulla system call table
 \item dobbiamo scrivere la nostra syscall
-\item per il dispatcher, questo non è detto che vada modificato in quanto dipende dalle feature della system call stessa. Il formato della system call potrebbe essere compatibile con quanto il dispatcher fa già, potremmo avere la CPU, un registro R usato per portare informazioni quando si scende livello kernel che servono alla syscall oppure che serve al disptacher, nel secondo caso è il numero associato alla system call che deve partire. Se quindi il numero della system call non è trovato, occorre un nuovo disptacher per gestirlo
+\item per il dispatcher, questo non è detto che vada modificato in quanto dipende dalle feature della system call stessa. Il formato della system call potrebbe essere compatibile con quanto il dispatcher fa già, potremmo avere la CPU, un registro R usato per portare informazioni quando si scende livello kernel che servono alla syscall oppure che servono al disptacher, nel secondo caso è il numero associato alla system call che deve partire. Se quindi il numero della system call non è trovato, occorre un nuovo disptacher per gestirlo
 \end{itemize}
 \section{Versioni del kernel Linux}
-Il kernel 2.4 è già modificabile ed espandibile, il 2.6 è ancora più scalabile e prestazionale. Poi abbiamo il kernel 3.x che ha struttura superiore e maggiore sicurezza, il kernel 4.x e 5.x ha ancora più sicurezza. Partiamo con la storia delle system call kernel Linux
+Il kernel 2.4 è già modificabile ed espandibile, il 2.6 è ancora più scalabile e prestazionale. Poi abbiamo il kernel 3.x che ha struttura superiore e maggiore sicurezza, il kernel 4.x e 5.x ha ancora più sicurezza. Partiamo con la storia delle system call nel kernel Linux
 \subsection{System call indexing}
-Il meccanismo delle sys call che usa un solo GATE di accesso, prevede che questo conosca anche un indice da cui reperisca un indirizzo, l'indice dipende dalla versione kernel ma indipendentemente dall'indice abbiamo una funzione associata.\\ Inizialmente, l'indice portava ad un entry che portava sempre alla stessa funzione. La re-indicizzazione è stata fatta dopo i processori x86 a 64 bit, tipicamente denominata \textsf{unist\_64.h}, ma anche la versione a 32 bit è presente, quindi abbiamo 2 system call table diverse. Gli indici delle syscall sono esposti nei due header file
+Il meccanismo delle sys call che usa un solo GATE di accesso prevede che questo conosca anche un indice da cui reperire un indirizzo, l'indice dipende dalla versione kernel ma indipendentemente dall'indice abbiamo una funzione associata.\\ Inizialmente, l'indice portava ad un entry che portava sempre alla stessa funzione. La re-indicizzazione è stata fatta dopo i processori x86 a 64 bit, tipicamente denominata \texttt{unist\_64.h}, ma è presente anche la versione a 32 bit, quindi abbiamo 2 system call table diverse. Gli indici delle syscall sono esposti nei due header file
 \begin{itemize}
-\item \textsc{/usr/include/asm}
-\item \textsc{/usr/include/x86\_64-linux-gnu/asm}
+\item \texttt{/usr/include/asm}
+\item \texttt{/usr/include/x86\_64-linux-gnu/asm}
 \end{itemize}
-non basta però un solo dispatcher per raggiungere le due tabelle, ne serve uno per ognuna delle tabelle. I due dispatcher sono molto diversi, perché uno è un GATE, un altro è stato introdotto nel SO quando delle facilities nell'hardware, come la possibilità di passare kernel mode senza passare per i GATE. La stringa generata nell'header per generare il servizio ha un prefisso NR, ovvero number, che può essere usata per scrivere altre parti di software per colloquiare col software. L'indicizzazione cambia fra gli header file a 32 e 64 bit, anche se la struttura è similare.
+non basta però un solo dispatcher per raggiungere le due tabelle, ne serve uno per ognuna delle tabelle. I due dispatcher sono molto diversi, perché uno è un GATE, un altro è stato introdotto nel SO quando sono state introdotte delle facilities nell'hardware, come la possibilità di passare kernel mode senza passare per i GATE. La stringa generata nell'header per generare il servizio ha un prefisso NR, ovvero number, che può essere usata per scrivere altre parti di software per colloquiare col software di sistema. L'indicizzazione cambia fra gli header file a 32 e 64 bit, anche se la struttura è similare.
 \subsection{Acceso a syscall livello user}
 Vediamo cosa si fa a livello user per arrivare nel kernel. Questo viene fatto in una funzione, magari anche di libreria: il modulo di livello user che usa la libreria dovrà usare dei registri di processore per parlare col kernel, ma anche con il dispatcher, al ritorno dal controllo dobbiamo ancora essere in modo di poter riprendere il valore di ritorno per poter capire come è andata la chiamata, quindi anche qui serve l'accesso ai registri di CPU per vedere lo snapshot lasciato; quindi tutto questo obbliga che la scrittura di queste librerie sia machine dependent.
 \subsubsection{Formato delle syscall}
-Negli header file ci sono dei modelli, da cui possiamo tirare fuori delle funzioni di libreria di livello user per poter parlare correttamente col kernel. Potremmo anche non usare il modello è scrivere la funzione a mano, se conosciamo come funziona il kernel ed il dispatcher. Negli header file ci sono delle direttive per implementare il modello che permettono di costruire le funzioni usando C/ASM, abbiamo tanti modelli quante architetture sono supportate nel sistema.\\
-\textbf{esempio}\\ il modello è la define syscall0, a cui passiamo il tipo del valore di ritorno ed il nome della funzione di ritorno. Stiamo dicendo che la syscall non prende parametri, ma occorre fornire in maniera automatica almeno l'indice che serve al dispatcher. Il blocco ASM è machine dependent, abbiamo \textsf{int 0x80} per passare il controllo al kernel, ma non basta perché dobbiamo mettere a posto i registri di CPU, quindi ad esempio rendendo noto al dispatcher l'indice della funzione da eseguire. Abbiamo che il valore dell'indice associato al nome della funzione deve finire di eax e poi si chiama la trap. Cos'è il valore di eax quando ritorna il kernel: è il valore di ritorno, ottengo un codice che non può essere ritornato direttamente, perché non è compliant con errno, dove lo user si aspetta delle informazioni a grana fine.\\ Questo viene fatto nell'altra macro, che è una serie di istruzioni C per analizzare il valore e capire se c'è stato un errore, si verifica nella do-while(0) il valore di res, e se questo vale più di -125 viene settato errno col valore positivo corretto, la funzione per semplicità ritorna -1.\\ Il do/while(0) si può definire una operazione multi-statement, mettendo anche la macro in un if statement
-%codici delle syscall
-Vediamo ora la syscall1, abbiamo un parametro per il kernel: passiamo sempre il tipo del valore di ritorno, il nome e tipo del parametro e nome e tipo della funzione.
-%codice 
-La funzione generata usando questo modello permette solo di usare il dispatcher tradizionale, l'argomento 1 viene scritto in ebx.\\ Le cose si possono complicare anche ulteriormente, con una syscall che prende 6 parametri, ma il kernel deve avere 7 parametri perché uno è il codice numerico. 
-%codice grosso
-La cosa interessante è che di registri general purpose ce ne erano meno di 6, quindi occorre giocare con ebp facendo un mini-prologo: dobbiamo preservare e poi ripristinare i valori di ebp, usiamo poi ebp per caricare il valore di eax, possiamo poi sovrascrivere eax. Su x86, eax è il registro che serve per indicizzare i servizi lato kernel, ci carichiamo sempre il numero associato alla system call.
+Negli header file ci sono dei modelli, da cui possiamo tirare fuori delle funzioni di libreria di livello user per poter parlare correttamente col kernel. Potremmo anche non usare il modello e scrivere la funzione a mano, se conosciamo come funziona il kernel ed il dispatcher. Negli header file ci sono delle direttive per implementare il modello che permettono di costruire le funzioni usando C/ASM, abbiamo tanti modelli quante architetture sono supportate nel sistema.\\
+\textbf{esempio}\\ il modello è la \texttt{\#define \_syscall0}, a cui passiamo il tipo del valore di ritorno ed il nome della funzione di ritorno
+\begin{lstlisting}
+#define _syscall0(type,name)
+type name(void)
+{
+	long __res;
+	__asm__ volatile ("int $0x80"
+		: "=a" (__res)
+		: "0" (__NR__##name));
+	__syscall_return(type, __res);
+}
+\end{lstlisting}
+stiamo dicendo che la syscall non prende parametri, ma occorre fornire in maniera automatica almeno l'indice che serve al dispatcher. Il blocco ASM è machine dependent, abbiamo la \texttt{int 0x80} per passare il controllo al kernel, ma non basta perché dobbiamo mettere a posto i registri di CPU, quindi ad esempio rendendo noto al dispatcher l'indice della funzione da eseguire. Abbiamo che il valore dell'indice associato al nome della funzione deve finire di eax e poi si chiama la trap. Cos'è il valore di eax quando ritorna il kernel: è il valore di ritorno, ottengo un codice che non può essere ritornato direttamente, perché non è compliant con errno, dove lo user si aspetta delle informazioni a grana fine.\\ Questo viene fatto nell'altra macro, che è una serie di istruzioni C per analizzare il valore e capire se c'è stato un errore, si verifica nella do-while(0) il valore di res, e se questo vale più di -125 viene settato errno col valore positivo corretto, la funzione per semplicità ritorna -1.\\ Il do/while(0) si può definire una operazione multi-statement, mettendo anche la macro in un if statement
+\begin{lstlisting}
+#define __syscall_return(type, res)
+do {
+	if ((unsigned long)(res) >= (unsigned long)(-125)) {
+		errno = -(res);
+		res = -1;
+	}
+	return (type) (res);
+} while(0)
+\end{lstlisting}
+Vediamo ora la syscall1, abbiamo un parametro per il kernel: passiamo sempre il tipo del valore di ritorno, il nome e tipo del parametro e nome e tipo della funzione:
+\begin{lstlisting}
+#define _syscall1(type,name, type1, agr1)
+type name(type1, arg1)
+{
+	long __res;
+	__asm__ volatile ("int $0x80"
+		: "=a" (__res)
+		: "0" (__NR__##name), "b" ((long)(arg1)));
+	__syscall_return(type, __res);
+}
+\end{lstlisting}
+La funzione generata usando questo modello permette solo di usare il dispatcher tradizionale, l'argomento 1 viene scritto in ebx.\\ Le cose si possono complicare anche ulteriormente, con una syscall che prende 6 parametri, ma il kernel deve avere 7 parametri perché uno è il codice numerico.\\La cosa interessante è che di registri general purpose ce ne erano meno di 6, quindi occorre giocare con ebp facendo un mini-prologo: dobbiamo preservare e poi ripristinare i valori di ebp, usiamo poi ebp per caricare il valore di eax, possiamo poi sovrascrivere eax. Su x86, eax è il registro che serve per indicizzare i servizi lato kernel, ci carichiamo sempre il numero associato alla system call.
 \subsection{UNISTD\_32 ed UNISTD\_64}
-C'è una sorta di formato per cui quando il software applicativo interagisce col software di sistema, deve generare uno snapshot sui registri di sistema per far si che ci siano le informazioni necessarie al kernel.\\ La convenzione secondo cui quando parte il software del kernel deve vedere tutta una serie di altre informazioni, tra cui ad esempio cs. Tutte queste altre infromazioni il codice applicativo non le tocca, ma la calling convention prevede che siano rese disponibili al software del kernel, in particolare queste cose non vanno viste solo sui registri, ma anche sulla stack area. Quindi, le info vanno messe sulla stack area secondo questo ordine
-%immagine
-Qui abbiamo dove vanno gli argomenti da passare, inoltre in rcx abbiamo l'indirizzo di ritorno per la syscall, quindi va reso noto lì quando parte il software del kernel. È strano che il valore di ritorno venga passato in un registro general purpose. La particolarità è legata al fatto che si entra kernel mode non solo con i GATE, serve che il kernel sappia in maniera minimale dove andare a guardare per tornare in modalità user.\\ Quindi, se passiamo il controllo al kernel, rcx sarà inutilizzabile se scriviamo software di C non di sistema.
-%immagine
+C'è una sorta di formato per cui quando il software applicativo interagisce col software di sistema, deve generare uno snapshot sui registri di sistema per far si che ci siano le informazioni necessarie al kernel.\\ La convenzione è tale per cui quando parte il software del kernel deve vedere tutta una serie di altre informazioni, tra cui ad esempio cs. Tutte queste altre informazioni il codice applicativo non le tocca, ma la calling convention prevede che siano rese disponibili al software del kernel, in particolare queste cose non vanno viste solo sui registri, ma anche sulla stack area. Quindi, le info vanno messe sulla stack area secondo questo ordine
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/unistd_call_conv.png}
+\end{figure}
+Qui abbiamo dove vanno gli argomenti da passare, inoltre in rcx abbiamo l'indirizzo di ritorno per la syscall, quindi va reso noto lì quando parte il software del kernel. È strano che il valore di ritorno venga passato in un registro general purpose. La particolarità è legata al fatto che si entra kernel mode non solo con i GATE, serve che il kernel sappia in maniera minimale dove andare a guardare per tornare in modalità user.\\ Quindi, se passiamo il controllo al kernel, rcx sarà inutilizzabile se scriviamo software di C non di sistema:
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/conv_unistd64.png}
+\end{figure}
 \subsection{Passaggio di parametri al kernel}
-Quando chiamiamo il kernel, scriviamo cose nei registri, quando il kernel parte si trova delle cose nei registri. Chi raccorda lo snapshot della CPU e la stack area ai parametri: una volta che il dispacther ha preso il controllo, crea in una stack area uno snapshot di CPU, facendo così il software che parte prende dal \textbf{system level stack}. Quando gira il thread A, tramite il TSS sappiamo quale zona di memoria il thread può usare, il dispatcher chiama la syscall come un subroutine (tramite la CALL), la syscall attuale fara il retrieve dei parametri con la ABI appropriata. Il dispathcer salva sulla stack area determinate cose, le altre sono salvate dal processore dopo essere passato per il GATE: quindi, il processore scrive lo snapshot completo accedendo alla TSS, avremo quindi questa finestra con informazioni general purpose + informazioni di controllo
-%immagine
-il processore deve salvare i valori dello stack pointer, deve salvarli lui perché quando si esegue la chiamata viene caricato il nuovo stack pointer. Abbiamo questa struttura \textit{pt\_regs}, che mantiene nell'esatto ordine mostrato le informazioni, quindi in base ad un pinter possiamo spostarci nella stack area conoscendo tutte queste informazioni. Se siamo in UNISTD\_64, abbiamo più registri di processore a 64 bit, la regola dice che quando parte i software della syscall lo snapshor della CPU deve contenere le seguenti cose:
-%immagine 64
+Quando chiamiamo il kernel, scriviamo informazioni nei registri, che quando il kernel parte andrà a recuperare.\\Chi raccorda lo snapshot della CPU e la stack area ai parametri: una volta che il dispacther ha preso il controllo, crea in una stack area uno snapshot di CPU, facendo così il software che parte prende dal \textbf{system level stack} tale snapshot. Quando gira il thread A, tramite il TSS sappiamo quale zona di memoria il thread può usare, il dispatcher chiama la syscall come un subroutine (tramite la CALL), la syscall attuale farà il retrieve dei parametri con la ABI appropriata. Il dispatcher salva sulla stack area determinate cose, le altre sono salvate dal processore dopo essere passato per il GATE: quindi, il processore scrive lo snapshot completo accedendo al TSS, avremo quindi questa finestra con informazioni general purpose + informazioni di controllo
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/pt_regs_32.png}
+\end{figure}
+il processore deve salvare i valori dello stack pointer, deve salvarli lui perché quando si esegue la chiamata viene caricato il nuovo stack pointer. Abbiamo questa struttura \texttt{pt\_regs}, che mantiene nell'esatto ordine mostrato le informazioni, quindi in base ad un pinter possiamo spostarci nella stack area conoscendo tutte queste informazioni. Se siamo in UNISTD\_64, abbiamo più registri di processore a 64 bit, la regola dice che quando parte i software della syscall lo snapshor della CPU deve contenere le seguenti cose:
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/pt_regs_64.png}
+\end{figure}
 lo snapshot ci dice che le informazioni sono firmware managed, ovvero è il software ad aver scritto le informazioni nella stack area. L'area viene usata quando si restituisce il controllo a livello user, l'informazione deve essere sulla stack area ma non è stata messa dal processore. Siamo scesi a livello kernel con un nuovo standard ed un nuovo dispacther, quindi un nuovo modo per transitare livello kernel che prevede che non vada scritto nulla in memoria. Nel nuovo dispatcher non si usano GATE, per cui quando si scende a livello kernel i registri non vengono scritti dal processore, se serve che vada scritta lo fa il software (dipende da come è organizzato il SO), ma se si torna livello user, si vuole che le informazioni siano trovate in quell'ordine per ripristinare il controllo user mode.\\ Il software del kernel può avere modificato le informazioni dello snapshot, in genere non le cambia, ma quando si torna a livello user lo stato dipende dallo snapshot cambiato dal kernel.
 \section{Introduzione delle syscall nel kernel}
 Per inserire delle nuove system call occorrono
 \begin{itemize}
-\item i moduli user level che ci permettono di creare il corretto snapshot di CPU per passare il controllo al kernel, l'esempio è syscall0, dove internamente andiamo a lavorare in maniera machine dependent
-%listato del codice
-possiamo anche usare syscall 1, che prende un parametro di un certo tipo. Per entrambe conosciamo l'espansione della macro (vedi sopra), quindi a livello utente è semplice scrivere una nuova syscall.\\
+\item i moduli user level che ci permettono di creare il corretto snapshot di CPU per passare il controllo al kernel, l'esempio è \texttt{syscall0}, dove internamente andiamo a lavorare in maniera machine dependent.\\Possiamo anche usare \texttt{syscall1}, che prende un parametro di un certo tipo. Per entrambe conosciamo l'espansione della macro, quindi a livello utente è semplice scrivere una nuova syscall.\\
 \textbf{esempio di software / sys-call-macro.c}
-stiamo passando il controllo al kernel dicendo che va cercato il codice numerico numero 2, che nella tabella corrisponde alla fork(), quindi stiamo sovrascrivendo il modo in cui si fa fork. Facendo \textsf{ps}, vediamo esattamente 2 processi a.out
+stiamo passando il controllo al kernel dicendo che va cercato il codice numerico numero 2, che nella tabella corrisponde alla fork(), quindi stiamo sovrascrivendo il modo in cui si fa fork. Facendo \texttt{ps}, vediamo esattamente 2 processi a.out a seguito della CALL.
 \end{itemize}
-Fin ora, abbiamo visto che la trap chiamata è sempre int 0x80, la trap prevede che il processore faccia diverse cose, tra cui andare sulla IDT e fare delle cose, quindi accessi in memoria.\\ Inoltre, dobbiamo andare nella GDT a capire dove vive il GATE nel segmento, inoltre c'è un ulteriore accesso alla GDT perché vengono scaricate nella stack area delle informazioni: vengono scaricate nello stack di livello 0 che correntemente è in CPU, per sapere dove è lo stack occorre usare il TSS e quindi altri accessi in memoria.\\ Quindi per entrare in modo kernel usando il concetto di GATE di accesso associato ad una trap abbiamo un sacco di cicli di clock da spendere e questo penalizza molto le applicazioni che sono system call dependent.\\ Se la IDT è collocata in una architettura complessa in uno specifico nodo NUMA, vuol dire che è vicina ad alcuni processori e lontana da altri, quindi possono essere richiesti diversi cicli di clock per accedervi e ci sono delle syscall \textbf{time critical}, ovvero è critico nel senso di quanto tempo ci mette il processore per servire la sys call. Una di queste era \textbf{gettimeofday()}, dove si accedeva al registro per accedere al registro che indica quanto tempo è passato, la misura può essere distorta a seconda del fatto che la misura venga eseguita da un processore vicino al nodo NUMA che mantiene la IDT. Viene sfasata la misura del tempo misurato nel caso in cui proviamo a fare questo tipo di attività, per cui i progettisti del processore hanno deciso di cambiare il modo in cui si passa da modo user a modo kernel in modo da non essere dipendenti da tale latenza, è stato introdotto quindi il \textbf{fast system call path}: l'idea è questa
+Fin ora, abbiamo visto che la trap chiamata è sempre \texttt{int 0x80}, la trap prevede che il processore faccia diverse cose, tra cui andare sulla IDT e fare delle cose, quindi accessi in memoria.\\ Inoltre, dobbiamo andare nella GDT a capire dove vive il GATE nel segmento ed infine c'è un ulteriore accesso alla GDT perché vengono scaricate nella stack area delle informazioni: vengono scaricate nello stack di livello 0 che correntemente è in CPU, per sapere dove è lo stack che occorre usare, per cui si consulta il il TSS e qyesto risulta in ulteriori accessi alla memoria.\\ Quindi per entrare in modo kernel usando il concetto di GATE di accesso associato ad una trap abbiamo un sacco di cicli di clock da spendere e questo penalizza molto le applicazioni che sono system call dependent.\\ Se la IDT è collocata in una architettura complessa in uno specifico nodo NUMA, vuol dire che è vicina ad alcuni processori e lontana da altri, quindi possono essere richiesti diversi cicli di clock per accedervi e ci sono delle syscall \textbf{time critical}, ovvero è critico nel senso di quanto tempo ci mette il processore per servire la sys call. Una di queste era \textbf{gettimeofday()}, dove si accedeva ad un registro di CPU per verificare il tempo trascorso, la misura può essere distorta a seconda del fatto che questa venga eseguita da un processore vicino al nodo NUMA che mantiene la IDT. Viene sfasata la misura del tempo misurato nel caso in cui proviamo a fare questo tipo di attività, per cui i progettisti del processore hanno deciso di cambiare il modo in cui si passa da modo user a modo kernel in modo da non essere dipendenti da tale latenza, è stato introdotto quindi il \textbf{fast system call path}: l'idea è questa
 \begin{itemize}
 \item ho una CPU, posso cercare di mantenere nei registri di CPU le informazioni minimali che servono per passare da user a kernel
 \item ci sono i registri msr (Model Specific Register) in modo che il controllo di alcune istruzioni importanti sia basato sul contenuto di questi registri
 \end{itemize}
-quando abbiamo una syscall, occorre stare attenti a cosa si fa dal punto di vista della segmentazione: il segmento codice è kernel, quindi ah livello di privilegio differenti e viene fatta la seguente cosa
+quando abbiamo una syscall, occorre stare attenti a cosa si fa dal punto di vista della segmentazione: il segmento codice è kernel, quindi ha livelli di privilegio differenti e viene fatta la seguente cosa
 \begin{itemize}
-\item CS viene caricato con un apposito registro MSR, dove viene pre-configurata l'informazione di cosa finisce in CS quando si entra kernel mode
-\item se vogliamo eseguire il dipsatcher, dobbiamo sapere dove è posizionato in memoria lineare, anche questo è mantenuto in un altro registro msr
+\item CS viene caricato col contenuto di un apposito registro MSR, dove viene pre-configurata l'informazione di cosa finisce in CS quando si entra kernel mode
+\item se vogliamo eseguire il dispatcher, dobbiamo sapere dove è posizionato in memoria lineare, anche questo è mantenuto in un altro registro msr
 \item anche per quanto riguarda la collocazione del segmento dati piuttosto che istruzioni
 \end{itemize}
-Quindi noi prendiamo queste informazioni e le flushamo nei registri del processore, che avviene quando chiamiamo una specifica istruzione 
+Quindi noi prendiamo queste informazioni e le flushamo nei registri del processore, questo avviene quando chiamiamo una specifica istruzione 
 \begin{itemize}
 \item SYSENTER per x86
 \item SYSCALL per x86\_64
 \end{itemize}
-Il processore, quando vengono chiamate queste istruzioni, va a fare il flush delle informazioni nei registri. Interessante è che l'ESP viene settato ad un certo valore nel caso di 32 bit mentre non succede nulla nel caso a 64 bit: quindi a 64 bit non cambia la stack area, in particolare non la cambiamo usando facilities hardware. Quindi quando accediamo al kernel è evidente che le informazioni sotto sono gestite a livello firmware, questo implica anche dire che si può bypassare qualsiasi tipo di informazioni scritte nel TSS.\\ C'è anche l'istruzione duale con la SYSEXIT
+Il processore, quando vengono chiamate queste istruzioni, va a fare il flush delle informazioni nei registri. Interessante è che l'ESP viene settato ad un certo valore nel caso di 32 bit mentre non succede nulla nel caso a 64 bit: quindi a 64 bit non cambia la stack area, in particolare non la cambiamo usando facilities hardware. Quindi quando accediamo al kernel è evidente che le informazioni sotto sono gestite a livello firmware, questo implica anche dire che si può bypassare qualsiasi tipo di informazione scritta nel TSS.\\ C'è anche l'istruzione duale con la SYSEXIT
 \begin{itemize}
 \item dobbiamo cambiare la regola di segmentazione del processore, di nuovo si flushano degli msr sui registri che controllano la segmentazione, nel caso 32 bit
 \item caso 64: non si tocca la stack area, se viene fatto il cambio a livello software sarà stato il software stesso a cambiare lo stack che viene visto a livello user
 \end{itemize}
-Per uscire a livello user, a 64 bit dobbiamo usare un registro apposito per mettere l'indirizzo di memoria da carica nell'IP quando di torna user mode.
-\paragraph{Setup degli MSR in Linux}tipicamente i registri msr hanno una codifica apposita, nel sorgente del kernel Linux vengono definiti dei valori associati ai registri visti prima e in un pezzo del kernel abbiamo una API nel file \textbf{sysenter.c}, le istruzioni macchina per leggere e scrivere i registri sono rdmsr e wrmsr, usate nell'API.
-\subsection{Costrutto syscall}
-La prima funzione di libreria, introdotta in glibc, che sa che il processore offre il fast syscall path, quindi per passare il controllo al kernel non usa i meccanismi visti prima. Ha un numero di parametri variabile, possiamo passargli come primo parametro il numero del servizio del SO da chiamare, va a chiamare il dispatcher senza chiamare tutti quei servizi per la gestione della segmentazione; gettimeofday è stato il primo meccanismo ad usare la syscall per accedere in memoria.\\ 
-\textbf{esempio} decidiamo di aggiungere a livello user due nuove syscall a livello user nella prima syscall abbiamo un wrapper, nel secondo caso passiamo un parametro della syscall.
-\subsection{System call table}
-Struttura dati basica con cui vengono indicizzati i servizi presenti nel kernel, vediamo come è evoluta per Linux: la syscall table è difficilmente restringibile, ovvero se ha taglia N non è facile passarla a N+1, N+2 etc... Fa parte delle strutture dati core del kernel, quando il kernel viene compilato, si indica dove verrà definito l'indirizzo a livello logico, quindi qual'è l'indirizzo fisico in RAM e questo è importante perché vengono scritti alcuni registri per dire dove in RAM sono delle informazioni. Quindi allargare la tabella implica andare a dire che vanno shiftate le cose che vengono dopo, ma le informazioni vanno cambiate nel setup del kernel. Quindi inizialmente la tabella veniva sovra dimensionata, in modo da poter usare una zona non sfruttata della tabella per potervi inserire nuovi servizi. Questo rendeva il kernel molto modificabile, ma non esiste più, la tabella è tagliata in termini di quantità di entry in base al numero di entry che il kernel supporta.\\ Lo scenario è così per motivi di sicurezza: su kernel di SO, le zone inutilizzate possono essere usate in caso di attacchi, ad esempio per scrivervi informazioni da usare in un attacco, inoltre è importante che se si lavora su versioni del kernel con una taglia fissa, capire come introdurre nuovi servizi. Quando alcuni servizi sono stati indicizzati su delle specifiche entry, in realtà non sono stati realmente implementati, quindi la entry è libera ed usabile per scopi didattici (i nostri).\\ Non ci sono quindi zone libere nella syscall table, rimangono così perché non posso andare a cambiare la specifica del kernel.\\ Cosa c'è scritto nelle entry di servizi che non sono realmente indicizzati: troveremo dei riferimenti ad indirizzi di memoria non implementati, chiamati \textsf{"sys\_ni\_syscall"}, quindi abbiamo il "frontend" a livello kernel per una funzione del kernel, che semplicemente ritorna un codice di errore.\\ Cominciamo a capire dove è definita la syscall table nel software del kernel, per capire come modificarla
+Per uscire a livello user, a 64 bit dobbiamo usare un registro apposito per mettere caricare l'indirizzo di memoria nell'IP a cui ritornare quando si passa user mode.
+\paragraph{Setup degli MSR in Linux}tipicamente i registri msr hanno una codifica apposita, nel sorgente del kernel Linux vengono definiti dei valori associati ai registri visti prima e in un pezzo del kernel abbiamo una API nel file \texttt{sysenter.c}, le istruzioni macchina per leggere e scrivere i registri sono rdmsr e wrmsr, usate nell'API.
+\subsection{Costrutto \texttt{syscall()}}
+La prima funzione di libreria, introdotta in glibc, che sa che il processore offre il fast syscall path, quindi per passare il controllo al kernel non usa i meccanismi visti prima. Ha un numero di parametri variabile, possiamo passargli come primo parametro il numero del servizio del SO da chiamare, va a chiamare il dispatcher senza chiamare tutti quei servizi per la gestione della segmentazione; \texttt{gettimeofday} è stato il primo meccanismo ad usare la \texttt{syscall} per accedere in memoria.\\ 
+\textbf{esempio} decidiamo di aggiungere a livello user due nuove syscall: a livello user nella prima syscall abbiamo un wrapper, nel secondo caso passiamo un parametro della syscall.
+\section{System call table}
+Struttura dati basica con cui vengono indicizzati i servizi presenti nel kernel, vediamo come è evoluta per Linux: la syscall table è difficilmente restringibile, ovvero se ha taglia N non è facile passarla a N+1, N+2 etc... Fa parte delle strutture dati core del kernel, quando il kernel viene compilato, si indica dove verrà definito l'indirizzo a livello logico, quindi qual è l'indirizzo fisico in RAM e questo è importante perché vengono scritti alcuni registri per dire dove in RAM sono delle informazioni. Quindi allargare la tabella implica andare a dire che vanno shiftate le cose che vengono dopo, ma le informazioni vanno cambiate nel setup del kernel. Quindi inizialmente la tabella veniva sovra dimensionata, in modo da poter usare una zona non sfruttata della tabella per potervi inserire nuovi servizi. Questo rendeva il kernel molto modificabile, ma non esiste più, la tabella è tagliata in termini di quantità di entry in base al numero di entry che il kernel supporta.\\ Lo scenario è così per motivi di sicurezza: su kernel di SO, le zone inutilizzate possono essere usate in caso di attacchi, ad esempio per scrivervi informazioni da usare in un attacco, inoltre è importante che se si lavora su versioni del kernel con una taglia fissa, capire come introdurre nuovi servizi. Quando alcuni servizi sono stati indicizzati su delle specifiche entry, in realtà non sono stati realmente implementati, quindi la entry è libera ed usabile per scopi didattici (i nostri).\\ Non ci sono quindi zone libere nella syscall table, rimangono così perché non posso andare a cambiare la specifica del kernel.\\ Cosa c'è scritto nelle entry di servizi che non sono realmente indicizzati: troveremo dei riferimenti ad indirizzi di memoria non implementati, chiamati \texttt{"sys\_ni\_syscall"}, quindi abbiamo il "frontend" a livello kernel per una funzione del kernel, che semplicemente ritorna un codice di errore.\\ Cominciamo a capire dove è definita la syscall table nel software del kernel, per capire come modificarla
 \begin{itemize}
-\item nel kernel 2.4, indicizzazione UNISTD\_32, la tabella è definita in ix86/entry.S
+\item nel kernel 2.4, indicizzazione UNISTD\_32, la tabella è definita in i386/entry.S
 \item kernel 2.6 abbiamo syscall\_table32.S
 \item 4.15, syscall\_64.c
 \end{itemize}
-quindi salendo di versioni, aumenta il livello di astrazione della entry table, passando da assembly a C.\\
+quindi salendo di versioni, aumenta il livello di astrazione della system call table, passando da Assembly a C.\\
 \textbf{esempio: struttura della table in 2.4}\\
-%codice 
+\begin{lstlisting}
+ENTRY(sys_call_table)
+	.long SYMBOL_NAME(sys_ni_syscall)
+	
+	.long SYMBOL_NAME(sys_exit)
+	.long SYMBOL_NAME(sys_fork)
+	.long SYMBOL_NAME(sys_read)
+	.long SYMBOL_NAME(sys_write)
+	.long SYMBOL_NAME(sys_open)
+	.long SYMBOL_NAME(sys_close)
+	
+	....
+	
+	.long SYMBOL_NAME(sys_sendfile64)
+	.long SYMBOL_NAME(sys_ni_syscall)
+	
+	.rept NR_syscalls-(.-sys_call_table)/4
+		.long SYMBOL_NAME(sys_ni_syscall)
+	.endr
+	
+\end{lstlisting}
 le funzioni che vediamo tipicamente sono dispatchate dal dipstacher. Le syscall aggiunte da me vengono inserite in punti specifici della tabella, all'interno delle funzioni si può usare qualunque oggetto del software kernel (magari non statico) e quindi poter chiamare qualsiasi servizio del kernel.\\
 \textbf{esempio in UNISTD\_64}\\
-%codice
-il numero di syscall è NR +1, il +1 è fondamentale per la sicurezza. Qui, non possiamo aggiungere servizi. Si può sfruttare una delle entry che punta a sys\_ni\_syscall.\\\\ Quando parte il dispatcher, chiama uno di quei moduli che troverà i suoi parametri nella stack area, ma come facciamo a generare codice, compilando il quale i registri non sono parametri ma sono nello stack? Con delle direttive di compilazione apposite, in modo che la syscall vada a prendere i parametri spiazzandosi in base allo stack pointer: \textbf{asmlinkage}, direttiva da anteporre al nome della funzione
+\begin{lstlisting}
+asmlinkage const sys_call_ptr_t sys_call_table[__NR_syscall_max+1] = {
+	[0 ... __NR_syscall_max] = &sys_ni_syscall,
+	#include <asm/syscalls_64.h>
+}
+\end{lstlisting}
+il numero di syscall è NR +1, il +1 è fondamentale per la sicurezza. Qui, non possiamo aggiungere servizi. Si può sfruttare una delle entry che punta a \texttt{sys\_ni\_syscall}.\\\\ Quando parte il dispatcher, chiama uno di quei moduli che troverà i suoi parametri nella stack area, ma come facciamo a generare codice, compilando il quale i registri non sono parametri ma sono nello stack? Con delle direttive di compilazione apposite, in modo che la syscall vada a prendere i parametri spiazzandosi in base allo stack pointer: \texttt{asmlinkage}, direttiva da anteporre al nome della funzione
 \section{Il vero dispatcher}
 Vediamo i dettagli di come è fatto internamente il dispatcher: analizziamo il dispatcher per le syscall UNISTD\_32
-%codice del dispatcher
+\begin{lstlisting}
+ENTRY(system_call)
+	pushl %eax			# save orig_eax
+	SAVE_ALL
+	GET_CURRENT(%ebx)
+	testb $0x02, tsk_ptrace(%ebx)
+	jne tracesys
+	cmpl $(NR_syscall), %eax
+	jae badsys
+	call *SYMBOL_NAME(sys_call_table)(,%eax,4)
+	movl %eax, EAX(%esp)						# save the return value
+ENTRY(ret_from_sys_call)
+	cli
+	cmpl $0,need_resched(%ebx)
+	jne reschedule
+	cmpl $0,sigpending(%ebx)
+	jne signal_return
+	
+restore_all:
+	RESTORE_ALL
+\end{lstlisting}
 il dispatcher deve usare eax per indicizzare, poi salva tutti i registri controllabili. Si verifica cosa c'è in eax facendo comapre col numero di syscall massime indicizzate, se l'indice è troppo grande va chiamato un blocco di codice che gestisca la situazione. Altrimenti si chiama la funzione usando eax moltiplicato per 4 (perché ci si spiazza di 4 byte). Questo comportamento ha un problema di sicurezza: si accede al kernel usando questo dispatcher, il salto è condizionato e quindi è possibile che il predittore sbagli predizione. Passare un indice che non indicizza nulla nella tabella vuol dire che faccio il retrieve di un pointer che sta fuori dalla tabella, il predittore del salto decide di far eseguire speculativamente il blocco di codice sotto e quindi beccare una entry in memoria che va a prendere un function pointer di un blocco di kernel che va a generare side effects sulla cache.\\ Vediamo ora il dispatcher UNISTD\_64, quindi per syscall e fast system call path
-%codice
+\begin{lstlisting}
+ENTRY(system_call)
+	swapgs
+	movq %rsp,PDAREF(pda_oldrsp)
+	movq PDAREF(pda_kernelstack), %rsp
+	sti
+	SAVE_ARGS 8,1
+	movq %rax, ORIG_RAX-ARGOFFSET(%rsp)
+	movq %rcx, RIP-ARGOFFSET(%rsp)
+	GET_CURRENT(%rcx)
+	testl $PT_TRACESYS,tsk_ptrace(%rcx)
+	cmpq $__NR_syscall_max,%rax
+	ja badsys
+	movq %r10, %rcx
+	call *sys_call_table(,%rax,8) #XXX:
+	movq %rax,RAX-ARGOFFSET(%rsp)
+	.globl ret_from_sys_call
+ret_from_sys_call:
+sysret_with_reschedule:
+	GET_CURRENT(%rcx)
+	cli
+	cmpq $0,tsk_need_resched(%rcx)
+	jne sysret_reschedule
+	cmpl $0,tsk_sigpending(%rcx)
+	jne sysret_signal
+sysret_restore_args:
+	.......
+\end{lstlisting}
 facciamo cose similari, c'è sempre il problema relativo alla predizione. Qui ci sono alcune cose differenti: abbiamo come prima istruzione swapgs, il kernel usa in maniera massiva GS per implementare la per-CPU memory: se entriamo in modo kernel con questo dispatcher, siamo ancora sulla stakc area user, quindi a livello software si fanno delle attività per cambiare la stack area, da qualche parte il software deve andare a recuperare dove sta il thread corrente in memoria, mantenute nella per-CPU memory.\\
 \paragraph{swapgs} permette di fare lo scambio dei valori che caratterizzano il flusso di esecuzione user o kernel. Se usiamo GS lato user per fare TLS, mentre lato kernel si usa per la per-CPU memory, ed i due segmenti sono diversi, avere tale operazione è utile. È interessante che l'implementazione effettiva della swapgs usa dei registri msr, quindi è un'operazione veloce; prevede che ci sia un settaggio corretto dei registri msr
 \subsection{Kernel 4}
-Qui, il dispatcher delle syscall fa una call ad un traget univoco: lo scenario è quindi quello per cui il dispatcher passa il controllo ad un blocco di codice sempre uguale, sarà lui a capire quale funzione del kernel andrà in esecuzione. È stato fatto per affrontare aspetti di sicurezza, in particolare il controllo sull'indice passato, che viene controllato dall'oggetto intermedio ed essendo in C è machine independent. Dentro il codice c'è un check: viene passato il valore del numero di syscall passato dall'utente ed anche il puntatore a pt\_regs che è lo snapshot creato per quel servizio nello stack. Si applica una maschera al valore, in modo da eliminare i bit più significativi e renderlo compreso nei boundary delle syscall, ed eventualmente viene usato per per indicizzare la tabella.\\ Dal kernel 4.17, ancora per motivi di sicurezza, la chiamata non è classica ad un modulo che prende n parametri, ma si chiama l'API con un solo parametro: quando l'oggetto intermedio identifica nella tabella il pointer della funzione da chiamare, il blocco di codice implementa un ulteriore oggetto intermedio che eventualmente chiama il servizio target. Se chiamassimo direttamente il servizio, il codice andrebbe direttamente sullo snpashot presente nella stack area e leggere qualunque informazione nella stack area, quindi quel servizio potrebbe osservare tutto lo snapshot di CPU. Quando invece prende il controllo l'oggetto intermedio, può introdurre dei cambiamenti sulla stack area, in modo da introdurre una zona che allontani il boundary dello stack dai parametri.\\ Questo ha permesso di introdurre ulteriori define: \textsf{SYSCALL\_DEFINE0}, \textsf{SYSCALL\_DEFINE1} etc... quindi di generare in automatico i due oggetti intermedi. Questo permette di far gestire la sicurezza automaticamente dall'oggetto generato quando andiamo ad introdurre nuovi servizi, in modo da poter fare anche attività ulteriori che riguardano la sicurezza.\\
-\textbf{esempio}\\
-%codice della sycall_define
-le syscall vere a partire dal kernel 4.17 hanno in realtà il nome \_\_x86\_sys\_name, dove name è il nome della syscall. i nomi delle syscall intermedie cambiano in base alle versioni del kernel.
-\\ Nel dispatcher è stata aggiunta un'ulteriore facilty: la page table isolation, tramite la \textsf{SWITCH\_TO\_KERNEL\_CR3}. Abbiamo anche spwapgs come prima istruzione gestita dal dispatcher: swapgs è importante perché permette di implementare la per-cpu memory ,che è fondamentale perché permette al kernel di recuperare le informazioni di controllo per la CPU ed anche per implementare cose come il TLS, ma swapgs comporta anche problematiche di sicurezza. Tali problematiche fanno si che è permesso di rubare delle informazioni a livello kernel, i processori sono targati se vulnerabili
-\subsection{Attacco spwags}
-L'attacco sfrutta un miss della branch prediction, inoltre sfruttiamo le considerazioni ulteriori sulla swapgs
+Qui, il dispatcher delle syscall fa una call ad un traget univoco: lo scenario è quindi quello per cui il dispatcher passa il controllo ad un blocco di codice sempre uguale, sarà lui a capire quale funzione del kernel andrà in esecuzione. È stato fatto per affrontare aspetti di sicurezza, in particolare il controllo sull'indice passato, che viene controllato dall'oggetto intermedio ed essendo in C è machine independent. Dentro il codice c'è un check: viene passato il valore del numero di syscall passato dall'utente ed anche il puntatore a \texttt{pt\_regs} che è lo snapshot creato per quel servizio nello stack. Si applica una maschera al valore, in modo da eliminare i bit più significativi e renderlo compreso nei boundary delle syscall, ed eventualmente viene usato per indicizzare la tabella.\\ Dal kernel 4.17, ancora per motivi di sicurezza, la chiamata non è classica ad un modulo che prende n parametri, ma si chiama l'API con un solo parametro: quando l'oggetto intermedio identifica nella tabella il pointer della funzione da chiamare, il blocco di codice implementa un ulteriore oggetto intermedio che eventualmente chiama il servizio target. Se chiamassimo direttamente il servizio, il codice andrebbe direttamente sullo snpashot presente nella stack area e leggere qualunque informazione nella stack area, quindi quel servizio potrebbe osservare tutto lo snapshot di CPU. Quando invece prende il controllo l'oggetto intermedio, può introdurre dei cambiamenti sulla stack area, in modo da introdurre una zona che allontani il boundary dello stack dai parametri.\\ Questo ha permesso di introdurre ulteriori define: \texttt{SYSCALL\_DEFINE0}, \texttt{SYSCALL\_DEFINE1} etc... quindi di generare in automatico i due oggetti intermedi. Questo permette di far gestire la sicurezza automaticamente dall'oggetto generato quando andiamo ad introdurre nuovi servizi, in modo da poter fare anche attività ulteriori che riguardano la sicurezza.\\Le syscall vere a partire dal kernel 4.17 hanno in realtà il nome \texttt{\_\_x86\_sys\_name}, dove name è il nome della syscall. I nomi delle syscall intermedie cambiano in base alle versioni del kernel.\\Nel dispatcher è stata aggiunta un'ulteriore facilty: la page table isolation, tramite la \texttt{SWITCH\_TO\_KERNEL\_CR3} ed abbiamo anche \texttt{spwapgs} come prima istruzione gestita dal dispatcher: \texttt{swapgs} è importante perché permette di implementare la per-cpu memory ,che è fondamentale perché permette al kernel di recuperare le informazioni di controllo per la CPU ed anche per implementare cose come il TLS, ma \texttt{swapgs} comporta anche problematiche di sicurezza. Tali problematiche fanno si che è permesso di rubare delle informazioni a livello kernel, i processori sono targati se vulnerabili
+\subsection{Attacco \texttt{spwags}}
+L'attacco sfrutta un miss della branch prediction, inoltre sfruttiamo le considerazioni ulteriori sulla \texttt{swapgs}
 \begin{itemize}
-\item all'interno di una CPU abbiamo i registri msr, due di questi ovvero IA32\_GS\_BASE e IA32\_KERNEL\_GS\_BASE sono usati per mantenere la base e le informazioni di controllo per la modalità kernel e user, e queste informazioni vengono usate per flusharle sul registro gs. In realtà vengono sempre flushate quelle contenute nel primo registro
-\item swapgs scambia i valori contenuti nei due registri, l'informazione scambiata viene flushata per far si che l'informazione sia usabile. Lo swap è un'operazione interna
+\item all'interno di una CPU abbiamo i registri msr, due di questi ovvero \texttt{IA32\_GS\_BASE} e \texttt{IA32\_KERNEL\_GS\_BASE} sono usati per mantenere la base e le informazioni di controllo per la modalità kernel e user, e queste informazioni vengono usate per flusharle sul registro gs. In realtà vengono sempre flushate quelle contenute nel primo registro
+\item \texttt{swapgs} scambia i valori contenuti nei due registri, l'informazione scambiata viene flushata per far si che l'informazione sia usabile. Lo swap è un'operazione interna
 \end{itemize}
 Può accadere la seguente cosa
 \begin{itemize}
 \item siamo a livello kernel
-\item usiamo la swpags per far si che le informazioni siano messe nel 1° registro in modo da poter tornare in user mode
-\item ma il registro è usabile in user mode, quindi con un'apposita istruzione possiamo accedere e sovrascrivere il valore di IA32\_GS\_BASE, perché il registro è usabile a livello user
+\item usiamo la \texttt{swpags} per far si che le informazioni siano messe nel 1° registro in modo da poter tornare in user mode
+\item ma il registro è usabile in user mode, quindi con un'apposita istruzione possiamo accedere e sovrascrivere il valore di \texttt{IA32\_GS\_BASE}, perché il registro è usabile a livello user
 \end{itemize}
 Supponiamo di vedere un address space con 2 zone
 \begin{itemize}
 \item GS livello kernel, che avrà una base
 \item GS livello user, con una sua base
 \end{itemize}
-supponiamo che il codice utente definisca in maniera arbitraria la base del GS livello user, quando facciamo una swap gs troviamo nel registro IA32\_KERNEL\_GS\_BASE troviamo un'informazione livello user, quindi una volta fatto il flush possiamo portare il registro gs in un punto arbitrario dello user space. Quindi, se abbiamo miss branch prediction e abbiamo una mov che usa gs, questa va a lavorare in termini di side effect sull'area di memoria specificata dallo user. Quindi possiamo di nuovo osservare i side effect sull'accesso in cache per capire, in base alle latenze, quali erano i valori coinvolti in determinate operazioni.\\ Per affrontare il problema, ci sono due approcci
+supponiamo che il codice utente definisca in maniera arbitraria la base del GS livello user, quando facciamo una \texttt{swapgs} troviamo nel registro \texttt{IA32\_KERNEL\_GS\_BASE} un'informazione livello user, quindi una volta fatto il flush possiamo portare il registro gs in un punto arbitrario dello user space. Quindi, se abbiamo miss branch prediction e abbiamo una mov che usa gs, questa va a lavorare in termini di side effect sull'area di memoria specificata dallo user. Quindi possiamo di nuovo osservare i side effect sull'accesso in cache per capire, in base alle latenze, quali erano i valori coinvolti in determinate operazioni.\\ Per affrontare il problema, ci sono due approcci
 \subsubsection{Contromisure}
-Primo modo: ogni volta che si entra in modo kernel, prima di eseguire qualsiasi importante attività, si sostituisce il valore IA32\_GS\_BASE. Quindi, finché il kernel non esce dalla modalità, impedisce l'accesso a IA32\_GS\_BASE. La soluzione richiede varie patch del kernel, è stata usata ma non solo questo.\\\\
-Secondo modo: nelle architetture recenti è stato introdotto un bit aggiuntivo detto \textbf{SMAP}. Il bit di SMAP dice che mentre il processore sta eseguendo determinate attività, non può accedere a zone dell'address space marcate a livello user. Il limite è che in kernel mode, tipicamente alcune operazioni che vanno a toccare la zona user dell'address space vengono fatte, come la \textbf{read}. Quindi, se abbiamo queste operazioni, il meccanismo va integrato con qualche altro tipo di attività.
+Primo modo: ogni volta che si entra in modo kernel, prima di eseguire qualsiasi importante attività, si sostituisce il valore \texttt{IA32\_GS\_BASE}. Quindi, finché il kernel non esce dalla modalità, impedisce l'accesso a \texttt{IA32\_GS\_BASE}. La soluzione richiede varie patch del kernel, è stata usata ma non solo questo.\\\\
+Secondo modo: nelle architetture recenti è stato introdotto un bit aggiuntivo detto \texttt{SMAP}. Il bit di \texttt{SMAP} dice che mentre il processore sta eseguendo determinate attività, non può accedere a zone dell'address space marcate a livello user. Il limite è che in kernel mode, tipicamente alcune operazioni che vanno a toccare la zona user dell'address space vengono fatte, come la \texttt{read}. Quindi, se abbiamo queste operazioni, il meccanismo va integrato con qualche altro tipo di attività.
 \subsection{VDSO}
-Il VDSO è un oggetto virtuale condiviso fra il kernel e la parte applicativa: la zona di address space che identifica questo oggetto è shared, quindi il software user la può usare ma non la ha chiesto lo user di inserire le pagine usabili in memoria, lo ha fatto in automatico il kernel. \\ Questo è stato il primo meccanismo per implementare il fast call alle syscall, in quanto si possono mettere diverse routine macchina nella zona di memoria, per cui queste possono sfruttare delle istruzioni macchina per scendere in modo kernel. Inizialmente, questo tipo di oggetti era usato per delle syscall time critical, abbiamo una API intesa come funzione di libreria che ha dei meccanismi per chiamare delle altre syscall.\\ Ci sono state delle evoluzioni del VDSO, l'address space accessibile da parte dello user è fatto in questo modo
-%spazio di indirizzamento lato user
-possiamo osservare il VDSO, tramite il file /proc/sys/maps.\\ Il vantaggio di usare il fast syscall path è che si risparmia sui cicli di clock in maniera massiva, ci sono studi che dimostrano che entrando ed uscendo solo da kernel mode si risparmia il 75\% del numero dei cicli, questo tipo di soluzione come abbiamo detto era usata per istruzioni come \textsf{gettimeofday}, per evitare la varianza nella lettura del registro.
+Il VDSO è un oggetto virtuale condiviso fra il kernel e la parte applicativa: la zona di address space che identifica questo oggetto è shared, quindi il software user la può usare ma è stato richiesto dallo user di inserire le pagine usabili in memoria, lo ha fatto in automatico il kernel.\\ Questo è stato il primo meccanismo per implementare il fast call alle syscall, in quanto si possono mettere diverse routine macchina nella zona di memoria, per cui queste possono sfruttare delle istruzioni macchina per scendere in modo kernel. Inizialmente, questo tipo di oggetti era usato per delle syscall time critical, abbiamo una API intesa come funzione di libreria che ha dei meccanismi per chiamare delle altre syscall.\\ Ci sono state delle evoluzioni del VDSO, l'address space accessibile da parte dello user è fatto in questo modo
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/vdso_user_space.png}
+\end{figure}
+possiamo osservare il VDSO, tramite il file \texttt{/proc/sys/maps}.\\ Il vantaggio di usare il fast syscall path è che si risparmia sui cicli di clock in maniera massiva, ci sono studi che dimostrano che entrando ed uscendo solo da kernel mode si risparmia il 75\% del numero dei cicli, questo tipo di soluzione come abbiamo detto era usata per istruzioni come \textsf{gettimeofday}, per evitare la varianza nella lettura del registro.
 \subsection{Situazione attuale su Linux}
 Ad ora, su Linux è possibile sfruttare
 \begin{itemize}
-\item Slow path
-\item Fast
+\item Slow path, basato su \texttt{int 0x80}. Accede a IDT e GDT ed il dispatcher di sistema accede alla sys call table \texttt{i386/INISTD\_32}
+\item Fast path, basato sull'istruzione \texttt{syscall}. Il dispatcher di livello kernel accede alla system call table \texttt{x86-64/UNISTD\_64}
 \end{itemize}
-SLIDES.
-Il blocco di codice interno al kernel che deve prendere il controllo deve essere lanciato dai due dispatcher, ed è lo stesso indipendente dall'indicizzazione. Se si passa per lo slow syscall path c'è un ulteriore organizzazione gerarchica che dice che si passa per un oggetto intermedio D', che poi al massimo va a chiamare la routine del kernel.\\ Tipicamente, il nome dell'oggetto intermedio ha lo stesso nome della syscall da chiamare ma con un prefisso, la sua esistenza è dovuto al fatto che quando si lavora su versioni recenti di kernel Linux, queste sono tagliate per architetture a 64 bit, lavorare con uno schema del genere vuol dire che stiamo offrendo una sorta di retro-compatibilità. Il software applicativo ha usato probabilmente soltanto risorse a 32 bit, che va traslata a 64 bit per renderlo disponibile alla versione compilata del kernel che è appunto a 64 bit.
+Il blocco di codice interno al kernel che deve prendere il controllo deve essere lanciato dai due dispatcher, ed è lo stesso indipendentemente dall'indicizzazione. Se si passa per lo slow syscall path c'è un ulteriore organizzazione gerarchica che dice che si passa per un oggetto intermedio D', che poi al massimo va a chiamare la routine del kernel.\\ Tipicamente, il nome dell'oggetto intermedio ha lo stesso nome della syscall da chiamare ma con un prefisso, la sua esistenza è dovuto al fatto che quando si lavora su versioni recenti di kernel Linux, queste sono tagliate per architetture a 64 bit, lavorare con uno schema del genere vuol dire che stiamo offrendo una sorta di retro-compatibilità. Il software applicativo ha usato probabilmente soltanto risorse a 32 bit, che va traslata a 64 bit per renderlo disponibile alla versione compilata del kernel che è appunto a 64 bit.
 \section{Organizzazione del kernel Linux}
 Tipicamente, la maggior parte del kernel è distribuito nelle seguenti directory
 \begin{itemize}
-\item kernel
-\item mm
-\item ipc
+\item \texttt{kernel}
+\item \texttt{mm}
+\item \texttt{ipc}
+\item \texttt{fs}
+\item \texttt{net}
 \end{itemize}
-(slides)
 \subsection{Kernel compiling}
-Quando si scarica un kernel Linux, viene dato un Makefile, tipicamente strutturato in actions, e ciascuna action può essere specificata con la sintassi: \textsf{action-name: [dependency name]*\{new-line\} \{tab\} action-body}\\
-Inoltre (slides)\\ Per Linux, i comandi e le actions permettono di fare diverse operazioni
+Quando si scarica un kernel Linux, viene dato un \texttt{Makefile}, tipicamente strutturato in actions, e ciascuna action può essere specificata con la sintassi: \texttt{action-name: [dependency name]*\{new-line\} \{tab\} action-body}\\
+Inoltre è possibile definire variabili usando la sintassi: \texttt{variable-name = value} ed ogni variabile può essere acceduta con la sintassi \texttt{\$(variabile-name)}\\ Per Linux, i comandi e le actions permettono di fare diverse operazioni
 \begin{itemize}
-\item \textbf{make config}: creare un file di configurazione, in cui si specifica quando viene eseguita la reale compilazione del kernel cosa andrà messo dentro e cosa fuori. Lanciando \textbf{make} si targetta il default e quindi questo comportamento
-\item \textbf{make modules}: quando compiliamo un kernel, le parti da compilare possono essere 3: kernel, modules, init-rd, sono 3 parti di software costruibili, per la seconda si può usare questo comando
-\item \textbf{make modules\_install}: occorre essere
-\item \textbf{make install} installa il kernel in una directory del file system, che deve avere privilegi di root in scrittura
-\item \textbf{mkinitrd}: costruisce la 3 parte, ovvero un run disk iniziale del kernel
+\item \texttt{make config}: creare un file di configurazione, in cui si specifica quando viene eseguita la reale compilazione del kernel cosa andrà messo dentro e cosa fuori
+\item lanciando \texttt{make} si targetta il default e quindi questo comportamento
+\item \texttt{make modules}: quando compiliamo un kernel, le parti da compilare possono essere 3: kernel, modules, init-rd, sono 3 parti di software costruibili, per la seconda si può usare questo comando
+\item \texttt{make modules\_install}: occorre essere root per lanciarlo
+\item \texttt{make install} installa il kernel in una directory del file system, che deve avere privilegi di root in scrittura
+\item \texttt{mkinitrd -o initrd.img-$<$vers$>$ $<$vers$>$}: costruisce la 3° parte, ovvero un run disk iniziale del kernel
+\item \texttt{update-grub} oppure \texttt{grub-mkconfig -o /boot/grub/grub.cfg}, sempre come root
 \end{itemize}
-È organizzato così in modo da essere compatto, in modo che le due zone al di fuori della parte kernel siano sfruttabili in maniera dinamica quando serve. Chiamiamo poi update-grub oppure grub-mkconfig o grub2-mkconfig -o /boot/grub/grub.cfg in modo che al bootlaod si possa caricare quale è l'istanza di kernel da lanciare in esercizio sulla macchina.\\ Il mkconfig è interattivo, per chiedere come configurare la compilazione kernel, alcuni sotto-sistemi se inclusi hanno bisogno di essere settati con i parametri corretti.\\ È possibile che la config sia di tipo particolare
+È organizzato così in modo da essere compatto, in modo che le due zone al di fuori della parte kernel siano sfruttabili in maniera dinamica quando serve. Chiamiamo poi \texttt{update-grub} oppure \texttt{grub-mkconfig} o \texttt{grub2-mkconfig -o /boot/grub/grub.cfg} in modo che al bootlaod si possa caricare quale è l'istanza di kernel da lanciare in esercizio sulla macchina.\\ Il \texttt{mkconfig} è interattivo, per chiedere come configurare la compilazione kernel, alcuni sotto-sistemi se inclusi hanno bisogno di essere settati con i parametri corretti.\\ È possibile che la config sia di tipo particolare
 \begin{itemize}
-\item allyesconfig: includiamo nella compilazione tutto ciò che è nel sorgente. Tipicamente non compila bene, perché alcune cose possono andare in conflitto, perché magari sono pensate per scenari diversi
-\item allnoconfig: la compilazione deve avvenire solo col core estremo del kernel. Il problema è che nel kernel tipicamente non si includono una serie di facility come montare un fs e permettere l'accesso dei dati al fs.
+\item \texttt{allyesconfig}: includiamo nella compilazione tutto ciò che è nel sorgente. Tipicamente non compila bene, perché alcune cose possono andare in conflitto, in quanto magari sono pensate per scenari diversi
+\item \texttt{allnoconfig}: la compilazione deve avvenire solo col core estremo del kernel. Il problema è che nel kernel tipicamente non si includono una serie di facility come montare un fs e permettere l'accesso dei dati al fs.
 \end{itemize}
 Si può altrimenti rispondere a tutte le domande del bootloader, oppure cercare file di boot.
-\paragraph{Initrd} in initrd viene salvato una sorta di filesystem, che permette di mantenere dei file che rappresentano i moduli che il kernel dovrà caricare. Allo startup del kernel, monta initrd, prende le informazioni per montare i moduli durante il boot, a differenza di quelli contenuti in modules che vengono montati a valle del boot.\\ Ci sono informazioni che riguardano ad esempio dei driver per interagire con l'hardware\\\\
+\subsubsection{Initrd} 
+Initrd è un RAM disk, in cui viene salvato una sorta di filesystem, che permette di mantenere dei file che rappresentano i moduli che il kernel dovrà caricare. Allo startup del kernel, questo monta temporaneamente initrd per poter lanciare dei programmi, prende le informazioni per montare i moduli durante il boot, a differenza di quelli contenuti in modules che vengono montati a valle del boot.\\ Ci sono informazioni che riguardano ad esempio dei driver per interagire con l'hardware
 \subsection{System-map}
-La System-map è la anatomia del kernel, ovvero una tabella che ci dice per il dato kernel in tutti i punti dell'address space accessibili in modo kernel cosa è collocato. In ogni riga c'è la descrizione di una entry del kernel, ad esempio dove si trova la syscall table. Possiamo trovare informazioni su dove sono posizionate nell'address space le funzioni del kernel, quindi quelle compilate alla compilazione del kernel, si può fare un'analisi sia anche delle strutture dati, che saranno marcate se sono globali, o read only, o write etc... L'informazione su dove è in memoria la struttura è fondamentale quando si modifica il kernel, altrimenti non si sarebbe in grado di poter aggiungere servizi al kernel.\\ La sysmap è usata
+La System-map è la anatomia del kernel, ovvero una tabella che ci dice per il dato kernel in tutti i punti dell'address space accessibili in modo kernel cosa è collocato. In ogni riga c'è la descrizione di una entry del kernel, ad esempio dove si trova la syscall table. Possiamo trovare informazioni su dove sono posizionate nell'address space le funzioni del kernel, quindi quelle compilate alla compilazione del kernel, si può fare un'analisi anche delle strutture dati, che saranno marcate se sono globali, o read only, o write etc... L'informazione su dove è in memoria la struttura è fondamentale quando si modifica il kernel, altrimenti non si sarebbe in grado di poter aggiungere servizi al kernel.\\ La sysmap è usata
 \begin{itemize}
 \item per motivi di debug
 \item run time hacking del kernel
 \end{itemize}
-le informazioni sono tipicamente anche nello pseudofile /proc/kallsyms, ma appunto queste informazioni non sono relative alla compilazione del kernel ma solo su moduli che sono stati agganciati quando il kernel è stato bootato o era a steady-state.\\ Inoltre, muovendosi di versioni in versioni del kernel, la registrazione della tabella è stata marcata diversamente: passato a read-only per motivi di sicurezza, in modo da non permettere di cambiare le entry a run time.\\ La system map risulta dalla compilazione del core del kernel, ma non serve al kernel per completare le sue operazioni. Il kernel non usa l'informazione, spesso in release di Linux per motivi di sicurezza viene rimosso e quindi scoprire per un kernel dove sono posizionate determinate strutture è complesso. Può anche accadere che la visione data dal kernel non è più corretta, nello scenario ad esempio in cui si usa la randomizzazione degli indirizzi del kernel, che spesso è inclusa a compile time del kernel.\\ Negli esempi di codice, quando viene installata la syscall, modificando la entry della syscall table, nell'architettura abbiamo che l'oggetto montato è asmlinkage e dovrebbe prendere i parametri dalla stack area, dove c'è pt\_regs.
+le informazioni sono tipicamente anche nello pseudofile \texttt{/proc/kallsyms}, ma appunto queste informazioni non sono relative alla compilazione del kernel ma solo su moduli che sono stati agganciati quando il kernel è stato bootato o era a steady-state.\\ Inoltre, muovendosi fra le versioni del kernel, la registrazione della tabella è stata marcata diversamente: passato a read-only per motivi di sicurezza, in modo da non permettere di cambiare le entry a run time.\\ La system map risulta dalla compilazione del core del kernel, ma non serve al kernel per completare le sue operazioni. Il kernel non usa l'informazione, spesso in release di Linux per motivi di sicurezza viene rimosso e quindi scoprire per un kernel dove sono posizionate determinate strutture è complesso. Può anche accadere che la visione data dal kernel non è più corretta, nello scenario ad esempio in cui si usa la randomizzazione degli indirizzi del kernel, che spesso è inclusa a compile time del kernel.\\ Negli esempi di codice, quando viene installata la syscall, modificando la entry della syscall table, nell'architettura abbiamo che l'oggetto montato è asmlinkage e dovrebbe prendere i parametri dalla stack area, dove c'è \texttt{pt\_regs}.
 \subsection{Altri esempi}
-Sfruttiamo lo standard delle syscall UNISTD\_64, che definisce quali sono le syscall che indicizziamo e quali sarebbero dovute essere quelle indicizzate con certi indici ma che però non sono presenti nella syscall table. Quindi per un certo indice i era previsto aggiungere un certo servizio nel sistema POSIX, ma che nel kernel non mappa su alcun servizio e quindi tutti i buchi in cui ci sono i puntatori per arrivare alla \textbf{ni\_syscall} sono presenti nella tabella, l'unico modo per cambiare la syscall table è cambiare la compliance lo standard nella compilazione ma se lo montiamo su una release di Linux non è possibile. \\ Quindi basta andare in memoria, ad un certo indirizzo e provare a verificare a partire da quello se stiamo puntando una tabella strutturata secondo lo standard: possiamo ipotizzare che una certa entry i, di cui non conosciamo la posizione perché magari c'è randomizzazione, si punta ad una struttura per cui possiamo verificare se le entry puntino ad una stessa zona di memoria. Potremo però trovare dei puntatori a NULL, quindi nulla che rappresenti la ni\_syscall, quindi devo anche verificare che gli oggetti siano diversi da valori che non mi interessano.\\ Altra cosa interessante è capire come fare la ricerca quando c'è la randomizzazione:s
+Sfruttiamo lo standard delle syscall UNISTD\_64, che definisce quali sono le syscall che indicizziamo e quali sarebbero dovute essere quelle indicizzate con certi indici ma che però non sono presenti nella syscall table. Quindi per un certo indice i era previsto aggiungere un certo servizio nel sistema POSIX, ma che nel kernel non mappa su alcun servizio e quindi tutti i buchi in cui ci sono i puntatori per arrivare alla \textbf{ni\_syscall} sono presenti nella tabella, l'unico modo per cambiare la syscall table è cambiare la compliance dello standard nella compilazione ma se lo montiamo su una release di Linux non è possibile. \\ Quindi basta andare in memoria, ad un certo indirizzo e provare a verificare a partire da quello se stiamo puntando una tabella strutturata secondo lo standard: possiamo ipotizzare che una certa entry i, di cui non conosciamo la posizione perché magari c'è randomizzazione, si punta ad una struttura per cui possiamo verificare se le entry puntino ad una stessa zona di memoria. Potremo però trovare dei puntatori a NULL, quindi nulla che rappresenti la ni\_syscall, quindi devo anche verificare che gli oggetti siano diversi da valori che non mi interessano.\\ Altra cosa interessante è capire come fare la ricerca quando c'è la randomizzazione:
 \begin{itemize}
 \item supponiamo di considerare un indirizzo dove si posiziona il kernel;
 \item dobbiamo considerare ovunque a partire da quel punto, perché non sappiamo precisamente dove siano posizionate le cose;
