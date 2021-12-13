@@ -1944,6 +1944,111 @@ nell'analisi del malware gli antivirus li usano costruendoli guardando solo spec
 poi si cerca di ridurre i nodi del grafo, quindi ogni nodo che è una sola istruzione o solo un jmp rimuove il nodo in modo da linearizzare il flusso del grafo. Si cerca quindi di produrre un grafo in cui si possano identificare solo le istruzioni più importanti di jump. È usato come signature per riconoscere il malware, viene costruito a run time e matchato con quelli presenti nel database.\\L'altra cosa usata sempre nel contesto del ML è l'n-gram ed è fondamentalmente una sequenza di n oggetti da un dato oggetto di testo o discorso, ad esempio abbiamo questo (slides della mucca)\\Le coppie diventano in grado di riconoscere ad esempio coppie di istruzioni che realizzano NOP. I classificatori più usati sono
 (slides)
 boosted decision tree sono quelli con risultati migliori per l'analisi del malware quando si usano gli n-grams. Anche in questo caso vanno generati gli n-gram a run time girando in un ambiente simulato.\\Abbiamo poi i byteplots, che trasformano binari in immagini: le immagini sono non-senso e ci sono tecniche di deep learning in cui si usano reti neurali che sono molto efficienti nel parsare e classificare immagini in 2D. Quindi si possono classificare i binari con le reti neurali e la cosa ottima è che possono mettere il loro focus sul dettaglio della parte affetta dal malware e non su tutto il binario. Questo richiede comunque tempo e consuma risorse.
+\subsection{Emulators}
+Le applicazioni malware cercano di fare del loro meglio per battere le tecniche messe in atto dagli antivirus, ad esempio mediante la compressione. Un antivirus usa fra le sue tecniche l'emulazione, dove quindi viene messa su una VM per far girare l'applicazione in una sandbox. Dentro questa sandbox, viene lanciato il presunto malware per verificarne il comportamento, l'obiettivo della tecnica è quello di lasciare che il virus faccia delle azioni sulla macchina virtuale per poter usare una delle tecniche di difesa viste sopra.\\Si può comunque scoprire che si sta girando in sandbox, in quanto l'antivirus non implementa davvero tutti i servizi del SO, molti sono solo stub che danno dei magic values come risultato, ad esempio \texttt{OpenMutexW} che restituisce sempre lo stesso valore e quindi il malware può capire se è in un ambiente emulato facendo una sorta di finger printing, ad esempio chiamando questa syscall in modo da poter capire quanto è verosimile che stia girando in una sandbox.\\In base a questo, il malware si comporta diversamente e quindi l'antivirus non riconosce il comportamento corretto.\\Si può anche scaricare l'antivirus e disassemblarlo per vedere se ci sono questi stub e si cerca di capire i fingerprint degli emulatori, le contromisure degli antivirus è di fare le stesse cose: se si cerca di fare debugging del kernel dell'antivirus ci sono tecniche anti-debugging oppure hanno i binari cifrati e quindi usano le stesse tecniche del malware.
+\subsection{Analisi del traffico cifrato}
+Molti antivirus possono proteggere il traffico anche se questo è cifrato, ad esempio cifrato con TLS ma sappiamo che TLS non dovrebbe permettere a qualche sorgente esterna di vedere i dati. Si usano le stesse cose che farebbe il malware per ispezionare la rete: montano un MiTM, l'antiviru stesso lo fa sulla macchina, ed installa un certificato firmato con una CA trusted, è complicato in quanto devono installare una serie di certificato on-the-fly. Quindi, quello che alcuni antivirus fanno è installare una nuova lista di root CA, quindi tutto il traffico viene rediretto verso l'antivirus ed ispezionato. Questa tecnica non è sicura per diversi motivi:
+\begin{itemize}
+	\item molti browser usano HTTP PKP
+	\item se l'implementazione non è corretta si può essere attaccati con altri MiTM
+	\item alcune implementazioni accettano DH key exchange di 8 bit
+	\item una implementazione debole di TLS può essere vulnerabile anche per gli update dell'antivirus
+\end{itemize}
+Non usare mai l'HTTPS inspection sull'antivirus.
+\subsection{Ci si può fidare del software AV?}
+La guida generale di sicurezza dice di aggiornare la password spesso ed aggiornare gli AV. Ma gli AV usano spesso linguaggi compilati memory-unsafe, possono essere fregati dai malware quindi fidarsi al 100\% dell'antivirus è sbagliato, l'unica cosa che si può fare è alzare la barra di sicurezza per il proprio sistema. Se si crea un falso senso di sicurezza negli utenti ci può essere un problema, gli AV giocano un ruolo chiave nel contrastare i malware ma non siamo in un sistema sicuro.
+\chapter{Database security}
+\section{DB security tools}
+Uno dei maggiori target degli attacchi sono i dataset, in quanto questi hanno un grande valore sia per le aziende che per gli attaccanti.\\Ancora oggi il datastore più comune è un database relazionale, c'è poca educazione e sforzo per rendere i database sicuri.\\Si parla di proteggere diverse cose:
+\begin{itemize}
+	\item il sistema su cui gira il DBMS
+	\item i dati
+	\item l'accesso al DB
+\end{itemize}
+rendere quindi un DB più sicuro implica essere robusti sia ad attacchi tradizionali ma anche a danni accidentali legati a fenomeni naturali.\\Abbiamo diversi tool da usare:
+\begin{itemize}
+	\item security policies: dicono come si cerca di ottenere la sicurezza del DBMS. Ci sono dei tool offerti dal DBMS per aumentare la sicurezza, quindi la policy riguarda sia i meccanismi del DBMS che le policy "umane". Non basta solo questo, quindi occorre considerare anche qualcosa di esterno al DB
+\end{itemize}
+\subsection{Requisiti ed obiettivi}
+Ci sono quindi dei requisiti e degli obiettivi, il curriculum di sicurezza è abbastanza leggero, le persone considerano i DBMS software che gira da qualche parte senza problemi.\\Un sacco di effort per rendere i DB sicuri riguarda come rendere la connessione al DB sicura che però non rendono globalmente il DB più sicuro, quindi va considerato il sistema complessivo e non solo io DBMS.\\Occorre quindi capire 
+\begin{itemize}
+	\item i problemi di sicurezza
+	\item la specifica implementazione del DBMS
+	\item principi di sicurezza generali come le MAC
+	\item policies, least privilege etc...
+	\item i dati sono salvati su hard drive, il DBMS li gestisce solamente: è software server side che manda i dati
+\end{itemize}
+\subsection{SQLi}
+Un DBMS riceve connessioni dove vengono richieste delle stringhe, che se non sanitizzate correttamente possono portare a diversi problemi. C'è poco da dire, usa almeno gli escape sui caratteri speciali ma la cosa importante è che occorre usare i \textbf{PREPARE STATEMENTS}: è l'unico modo corretto di interagire con un DBMS: si manda una query non completa, con dei placeholders al posto dei veri parametri, quindi ogni volta la query incompleta è parsata, analizzata e poi compilata. Si mandano al DBMS solo i parametri che realmente si vogliono usare. La tecnica è stata introdotta per motivi di performance, in quanto per connessioni a lungo termine si aveva la query compilata una volta sola, oggi sono usate per rendere il sistema più sicuro e resiliente.
+\subsection{Database authentication ed authorization}
+Sono delle tecniche che permettono di implementare DAC o anche MAC se usate bene. Sono quindi tool fondamentali che permettono di rendere l'applicazione più sicura: avendo una sola connessione con un singolo utente non abbiamo nemmeno DAC. È un mindset complesso perché molte librerie che si usano tendono a rendere la vita più facile ma al prezzo di avere meno sicurezza: se si usa una sola connessione con JDBC si fa authentication ed authorization male.\\Quindi:
+\begin{itemize}
+	\item quando si parla di autenticazione, si parla di un meccanismo che determina se un utente è chi dice di essere. Un amministratore di sistema è il responsabile per permettere agli utenti accesso al sistema creando account utenti individuali. Almeno, il sys admin può dare permessi specifici agli utenti, ed è importante non riciclare le credenziali per diversi utenti, sia umani che non.
+	\item l'autorizzazione permette di determinare, per un utente legittimato ad usare il DB, quali azioni può fare. Quindi, ogni volta che un utente cerca di fare un accesso ad un oggetto in rwe mode va verificato l'accesso e quindi questo è il modo di realizzare il principio di minimi privilegi. Ci cono moltissime applicazioni 3-tiered che usano l'account di root per entrare nel DB, quindi si tentano SQLi per fare dumping dei DB
+\end{itemize}
+\subsection{SQL Access Control e privilegi}
+SQL standard permette di di specificare chi e come può usare una porzione del DB. Gli oggetti privilegio sono tipicamente tabelle, ma è possibile avere ACL a grana molto più fine per attributi, viste, procedure etc...\\C'è un utente predefinito che ha accesso a tutto per default ma questo non è compiant con le MAC e quindi molti DB permettono di cambiare questa cosa. Un aspetto da ricordare è che l'utente che crea una risorsa ha accesso completo (pieni privilegi) a cosa crea, quindi anche il deployment del DB è problematico e va gestito correttamente.\\ Un privilegio in SQL è caratterizzato da 
+\begin{itemize}
+	\item la risorsa di riferimento
+	\item il soggetto, ovvero l'utente che riceve il privilegio
+	\item chi è l'utente che ha dato il privilegio
+	\item l'azione permessa
+	\item la capacità di trasferire il privilegio ad altri utenti, quindi è possibile avere la propagazione dei privilegi e che può causare problemi.
+\end{itemize}
+Questi sono i privilegi basilari in SQL:
+\begin{itemize}
+	\item \texttt{insert}: permette l'inserimento di una tupla
+	\item \texttt{update}: 
+	\item \texttt{delete}
+	\item \texttt{select}
+	\item \texttt{reference}
+	\item \texttt{privilege}
+	\item \texttt{usage}
+	\item \texttt{execute}: permette di lanciare una specifica stored procedure
+\end{itemize}
+Per poter dare privilegi, si usa il comando \texttt{grant}, (slides), dove la parte delle \texttt{grant options} permette di propagare il privilegio. Per revocarlo, si usa \texttt{revoke} (slides). È una pratica di ACL a grana molto fine per la gestione dei dati, in modo che se questi sono molto critici, si può pensare di usare un DBMS anche per l'accesso ai file. SQL-99 ha introdotto l'idea di \textbf{ruolo}, in modo da associare i privilegi ad uno specifico ruolo e gestire la vita dell'applicazione cambiando i privilegi
+\subsection{Views}
+Le viste sono state introdotte in SQL un meccanismi di sicurezza avanzato per estrarre i dati: si crea una tabella virtuale che restringe l'ammontare degli attributi che un utente vede. In questo modo, se non vogliamo che un utente osservi determinati attributi costruiamo una vista e l'utente non si renderà nemmeno conto dell'esistenza di quegli attributi. Possiamo quindi leggere dati da una vista come se fosse una tabella, inoltre la vista può essere aggiornata solo se definita su una singola tabella. Se il DB usa le viste e viene compromesso, c'è comunque un livello di sicurezza in più
+\section{Altri principi di sicurezza}
+I dischi che mantengono i dati possono essere attaccati, bisogna considerare anche la possibilità che qualcuno salta nella sala server e spacca i dischi con un martello (MATTO? NCAZZATO? CAPIAMO), il down di Facebook Whatsapp e IG è durato così tanto per via del fatto che un cristiano è dovuto volare dall'altra parte del modo per risolvere il problema.
+\subsection{RAID}
+I dischi possono essere combinati in gruppi o array ed il PC che fa girare il software del DBMS vedrà questo come un unico hard drive ma i dati in realtà verranno scatterati sui diversi dischi. Il modo in cui si configurano i RAID darà un certo livello di protezione. Si usa la ridondanza, in questo caso la replicazione dei dati in modo da avere almeno una copia in caso di fallimento. Anche in questo caso, il tradeoff è fra performance e sicurezza, i problemi fondamentali quando si configura un RAID è tenere conto delle due operazioni fondamentali (letture e scritture) ma queste possono essere fatte in modi diversi. Abbiamo dei controller per la gestione dei dischi, quindi se riusciamo ad avere un certo livello di concorrenza sulla lettura /scrittura dei dischi abbiamo diversi risultati.\\Il \textbf{data striping} consiste nel salvare i blocchi di un certo file su più dischi, lo striping è la ragione per cui abbiamo questo tradeoff fra throughput e concorrenza in accesso:
+\begin{itemize}
+	\item uno stripe piccolo vuol dire avere throughput alto ma poca concorrenza
+	\item uno stripe alto il contrario.
+\end{itemize}
+\subsubsection{RAID-0}
+Ci sono diversi livelli che usano i molteplici dischi in base a come si fa lo striping dei dati. In RAID-0 non c'è ridondanza: abbiamo diversi dischi su cui si scrive una porzione del file su ciascun disco, quindi la bandwidth dei dischi è incrementata. È il miglior modo per salvare i dati, ma non c'è tolleranza ai guasti quindi se uno solo fallisce si perdono tutti i dati.
+%immagine RAID-0
+\subsubsection{RAID-1}
+Anche detto disk mirror, abbiamo due dischi che mantengono la stessa esatta copia dei dati.
+%immagine
+Le performance in lettura sono le migliori, perché si può scegliere una copia piuttosto che un'altra, ma a scapito dell'operazione di scrittura. La tolleranza ai guasti è buona, inoltre è possibile ri fare il pairing in modo che se una delle due copie fallisce se ne mette una nuova senza fare rebooting della macchina
+\subsubsection{RAID-2}
+Non usa lo striping dei blocchi ma dei bit, quindi ogni bit viene scritto su una porzione dell'array.
+%immagine
+il controller del disco soffre tantissimo, quindi perché è stato fatto: c'erano bit addizionali salvati sui dischi che erano bit di parità implementati con codici di Hamming in modo che se ci fosse un fallimento si potesse ricostruire l'infomrazione. È correntemente obsoleto in quanto servono un botto di dischi e l'implementazione è complessa.
+\subsubsection{RAID-3}
+Implementa striping byte-level, quindi nell'immagine abbiamo i byte del file
+%immagine
+Non serve error correction perché il controller del disco sa quale disco fallisce, ci sono i bit di parità per poter ricostruire l'informazione in caso di fallimento, c'è un solo disco aggiuntivo. Abbiamo il throughput migliore ma la concorrenza è terribile perché per leggere si prende il lock su tutto il disco e quindi non si usa molto specialmente per supportare DBMS
+\subsubsection{RAID-4}
+Si fa striping di blocchi di file
+%immagine
+I diversi blocchi sono scritti sui diversi dischi e ce n'è uno addizionale che mantiene informazioni sulla parità, il problema è che questo disco diventa un bottleneck: piccole operazioni di scrittura scrivono un solo bit su un solo disco, ad esempio, ma va comunque aggiornata l'informazione sulla parità.
+\subsubsection{RAID-5}
+Una delle configurazioni tipicamente usate nei data center. Abbiamo sempre block level striping, buoni in quanto le scritture piccole possono essere fatte su un solo disco, inoltre la parità è distribuita
+%immagine
+Quindi, se abbiamo piccole scritture, i bit di parità vengono aggiornati solo su alcuni dischi e quindi aumenta la concorrenza sul disco, possiamo però tollerare solo il fallimento di un disco
+\subsubsection{RAID-6}
+Block striping con due insiemi di parità: per ogni stipe di dati abbiamo due blocchi distribuiti che mantengono i bit di parità. La doppia parità è utile in quanto se si perde uno dei dischi, il RAID-6 diventa un RAID-5, quindi abbiamo tolleranze a due guasti
+%immagine
+le scritture sono peggiori, in quanto vanno aggiornati due blocchi ma siccome abbiamo questa ridondanza possiamo leggere da diversi dischi se alcuni sono occupati.\\Avere più tolleranza alla rottura dei dischi è utile in quanto se si compra un batch di dischi dallo stesso vendor la possibilità che due dischi falliscano nello stesso momento è alta.
+\subsubsection{RAID-10}
+Si creano due livelli di array ridondati: abbiamo due RAID-1, uniti insieme in uno RAID-10
+%immagine
+questa è l'idea tipica per DBMS relazionali che fanno diverse letture/scritture quindi sono avvantaggiati dei RAID-1 sottostanti ma hanno anche ridondanza.
+
 
 
 

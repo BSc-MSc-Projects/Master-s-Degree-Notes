@@ -2888,6 +2888,104 @@ In questo esempio installiamo un driver per pilotare una sorta di pseudo-file, o
 	\item creiamo un altro nodo Y, che ci porta sullo stesso minor number
 \end{itemize}
 Quindi, le due sessioni simultanee portano sullo stesso file e quindi occorre sincronizzare le due sessioni.\\Possiamo comunque avere concorrenza sullo stesso lavoro se la sessione è acceduta da più thread\\\\Ci sono una serie di operazioni, abbiamo poi delle define che ci dicono che alla compilazione l'oggetto può essere per singola sessione, in modo che se l'oggetto è già aperto in una sessione verrà restituito un errore; oppure il driver è single instance, ovvero una volta aperto il driver per un oggetto questo è aperto in modo esclusivo. Questo accadeva per la scheda audio: quando si chiamava la \texttt{open} per eseguire delle operazioni non era possibile chiamarne altre.\\Se il driver può quindi lavorare in istanza singola si cerca di prendere un lock.\\Se viene chiamata una write oppure una read è perché esiste una sessione valida: qui non serve richiedere il blocco della sezione dati, serve solo usare il mutex per sincronizzare le operazioni. C'è una funzione di \texttt{ioctl}, per cui possiamo fare un'operazione diversa in base al device (??). Abbiamo registrato il driver per gestire devices fino a 8 minor numbers, quindi successivi riporteranno errore. Rispetto ad un file "classico" manca solo che questi dati andrebbero presi da hard drive o riportati su hard drive.
+\section{\texttt{proc} file system}
+Abbiamo usato alcuni pseudofile in \texttt{proc} negli esempi visti. Vediamo le caratteristiche di \texttt{proc}: in questo FS, abbiamo nella directory \texttt{proc} la possibilità di osservare i file, che forniscono informazioni riguardo quello che attualmente il kernel del SO sta facendo e quindi ad esempio su qual è la situazione operativa del kernel. Altra cosa interessante è che ci sono delle directory che permettono di caratterizzare cosa sta accadendo nel kernel del SO qualsiasi cosa sta accadendo nel SO:
+\begin{itemize}
+	\item \texttt{pid/}
+	\item \texttt{pid/cmdline}
+	\item altri
+\end{itemize}
+lo pseudo file system viene mandato in attivo nel kernel mediante la funzione \texttt{proc\_root\_init}, che fa il lavoro di creare \texttt{proc} e creare le istanze di alcune strutture dati. Questo non implica che il file system è montato, vediamo le strutture dati per gestire gli oggetti nel VFS \texttt{proc}: se ci sono dei nodi di I/O gestibili dall'archivio, questi devono essere rappresentati da apposite strutture dati, una di queste è \texttt{proc\_dir\_entyt}:
+%versione classica
+considerando questa struttura, vediamo quali campi interessanti ci sono:
+\begin{itemize}
+	\item \texttt{name}
+	\item \texttt{file\_operations}: identifichiamo un set di API per pilotare l'oggetto
+	\item \texttt{inode\_operations}
+	\item \texttt{data}
+	\item \texttt{read\_proc}
+	\item \texttt{write\_proc}
+\end{itemize}
+Con gli ultimi due puntatori possiamo identificare specifici driver ed in particolare specifici dati. \texttt{proc} è stato progettato e realizzato per prendere informazioni dal kernel o comunicarle al kernel in maniera semplice: magari ci basta un set ridotto di operazioni e non tutto un driver, quindi quando istanziamo un oggetto di I/O per \texttt{proc}, nella tabella mettiamo solo i due pointers di read e write, ritroviamo questa cosa anche in alcune API a livello kernel per creare oggetti nel VFS: passiamo un numero di parametri limitato per usare alcune delle cose che vengono messe a disposizione. In realtà, le due funzioni non sono esattamente identiche in termini di interfaccia di accesso alle due funzioni \texttt{read} e \texttt{write} identificate con un drvier, in termini del set di parametri che vengono passati.\\Abbiamo anche una versione più recente:
+%modifica più recente
+abbiamo l'utilizzo di una \texttt{union} per puntare a \texttt{file\_operations} o \texttt{proc\_ops}. Non c'è più la read procedure, quindi alcune delle API per creare dei nodi di lettura in \texttt{proc} non sono più supportate, possiamo eventualmente creare nodi di scrittura per creare oggetti; c'è sempre la solita randomizzazione per la gestione di tabelle che rappresentano i driver piuttosto che tabelle generiche.\\Per montare \texttt{proc}, questo può essere eseguito come
+\begin{itemize}
+	\item come oggetto per default configurato per il montaggio
+	\item in \texttt{fstab} si indica ad \texttt{init} che bisogna montare \texttt{proc}, quindi serve la directory applicativa \texttt{proc} nella root per poterla agganciare
+\end{itemize}
+si tende  ad usare \texttt{proc} come oggetto di default nel sistema, anche perché classicamente diversi servizi attivi nel SO vanno ad utilizzarlo.\\Il montaggio di \texttt{proc} è tale per cui non occorre specificare il device.
+\subsection{Alcune API per \texttt{proc}}
+Per creare un nodo di I/O in \texttt{proc} che sia una directory usiamo la API interna al kernel %nome API
+la cosa interessante è che possiamo indicare qual è il parent, avendo il puntatore alla tabella che lo rappresenta, il nome e basta. La directory è di \texttt{proc}, quindi la tabella in memory che la rappresenta viene riempita di informazioni automaticamente.\\Viene ritornato un puntatore se la creazione riesce.\\\\Abbiamo un altra API che è\\ \texttt{static inline struct proc\_create()}: creiamo un oggetto di \texttt{proc}, quindi occorre specificare più informazioni. Possiamo specificare ad esempio le \texttt{file\_operations}, quindi un pointer ad una tabella che specifica quali saranno le funzioni chiamate quando si andrà in I/O su quell'oggetto.\\\\Esiste un'altra API che prede un parametro in più, a differenza della precedente, stiamo anche specificando dove sono i dati di quell'oggetto di I/O, è un puntatore arbitrario e quindi possiamo identificare un qualunque oggetto. Chiamando questa API, nella rappresentazione in memoria abbiamo sicuramente quella basata sulla \texttt{proc\_dir\_entry}, ma usiamo anche altre tabelle fra qui l'\texttt{inode}, che ci permette quindi poi di arrivare ai dati mediante un pointer.
+\subsection{Operazioni di lettura/scrittura}
+Abbiamo una differenza fra le operazioni di lettura e scrittura del driver tradizionale e quelle puntate dalla \texttt{proc\_dir\_entry}: le funzioni di \texttt{read} e \texttt{write} classiche hanno la seguente forma:\\
+%forma
+le due operazioni invece sono diverse:
+%forma delle altre
+nella API ci sono parametri aggiuntivi, che ci dicono qual è l'area di dati e se realmente quell'area è stata utilizzata. La seconda variabile serve per indicare dove abbiamo impacchettati i dati, che possono non essere nell'area indicata nel parametro: questo ci permette di avere flessibilità nel driver, in quanto se i dati sono già impacchettati, non serve metterli nella page. Inoltre, le operazioni del driver classico sono user mode, mentre nel caso di queste operazioni abbiamo un'area che eventualmente può essere usata per impacchettare dei dati, questa viene data dal layer superiore del SO. Col secondo parametro si capisce se i dati sono stati impacchettati nell'area data dall'utente o nel primo parametro.\\Il seguente è un esempio di utilizzo:
+%esempio con scritto cosa si fa
+sfruttiamo quindi il fatto di copiare alcune parti dei dati in un'area di memoria consegnata dal SO.
+\subsection*{Esempio software}
+Quando scendiamo nelle informazioni dello pseudofile, ci chiediamo dove è il puntatore all'area dati da usare: usiamo una macro apposita del kernel, che risale nell'inode e lo mette di \texttt{data}. Proviamo a fare il \texttt{cat} di \texttt{/dev/zero} sul nuovo pseudofile: \texttt{/dev/zero} ha una sequenza indeterminata di zeri, il nostro pseudofile può acquisire una taglia di zeri pari al limite e pian piano ci porteremo sempre più vicini a tale limite. Quindi l'applicazione riceverà un errore in scrittura.
+\section{File system \texttt{sys}}
+Altro pseudofile interessante nel FS Linux. Se guardiamo da una shell il contenuto di \texttt{sys} e di \texttt{proc} sono del tutto omologhi: sono tutti pseudo file che ci danno indicazioni sull'oporeatività del kernel. Ma \texttt{sys} nasce come idea di progettazione più moderna, in termini del fatto che abbiamo strutture dati più semplici che però ci permettono di rappresentare cose complesse, inoltre le strutture dati di \texttt{sys} permettono al kernel di lavorare anche in altre parti oltre al FS.\\Abbiamo la seguente associazione:
+\begin{table}]!h]
+	\begin{tabular}{c | c}
+		Kernel object & Directories\\
+		Object attributes & Files\\
+		Object relationships & Symbolic Links\\
+	\end{tabular}
+\end{table}
+la prima struttura è stata introdotta per avere delle caratteristiche che si hanno in OO programming: possiamo costruire oggetti software fatti in modo che, come avviene in OO, possiamo identificare i metodi. Ma questo si può avere anche con dei drivers, la cosa interessante è che logicamente si possa espandere il set di attributi e metodi, quindi avere quello che è l'ereditarietà dell'OO programming.
+\subsection{Kernel object}
+Le strutture dati associate ai kernel objects possono permetterci di identificare diverse cose:
+(slides)
+possiamo dire che due oggetti sono della stessa tipologia, quindi a livello di sistema dire che i due oggetti vengono gestiti nello stesso modo.\\Il kernel object ha la seguente struttura dati:
+%struct del kobject
+abbiamo una \texttt{list\_head}, la fatidica lista doppiamente collegata (vista prima). Abbiamo poi il \texttt{kset}, quindi la possibilità di identificare alcune attività di gestione sullo specifico set, abbiamo poi la possibilità di fare reference counting, in quanto possiamo avere altri oggetti che fanno riferimento a questo oggetto.\\Vediamo altri campi:
+%kobject type
+la struttura che identifica il tipo di kobject esprime anche qual è il driver per lavorare su quell'oggetto. Abbiamo poi un pinter di pointer ad una struttura attributo: se l'oggetto è usato per rappresentare una directory, se mettiamo dei file nella directory, ognuno dei file è rappresentato come un attributo, quindi abbiamo un array di attributi. Stiamo quindi rappresentando i file di una directory, abbiamo poi la \texttt{release}, function pointer che punta ad un modulo usato quando il reference counter arriva a 0, quindi l'oggetto può essere eliminato.\\\\Abbiamo poi le \texttt{sysfs\_ops}, driver minimali per lavorare sull'oggetto kernel:
+\begin{itemize}
+	\item \texttt{(*show)}: è l'API di lettura di qualcosa, ad esempio di un file. Quindi chiamando una \texttt{read} su un file di \texttt{sys} si scende e si chiama questa. Non abbiamo il numero di byte che vanno consegnati, quindi l'oggetto di cui stiamo cercando di leggere i dati è tale per cui l'oggetto può impacchettare i dati nella pagina, non di più. L'architettura è tale per cui tutto è pensato per avere file di piccole dimensioni
+	\item \texttt{(*store)}: questa deve poter prendere i dati da un'area e sapere quanti prenderne
+\end{itemize}
+Uno dei classici utilizzi dei kernel object è quello di rappresentare dei set, ad esempio di tutti i device usb su un sottosistema usb etc... e questo ci permette di poter targare tutti gli oggetti dello stesso set con dei metadati di gestione. Il metadato tipicamente usato è il \texttt{kset}, la cosa particolare è questa:
+%imamgine del kset
+il \texttt{kset} all'interno ha un kernel object, si può usare la tabella del \texttt{kset} per riferire la stessa tabella, quindi che i kobjects hanno le stesse feature del parent.\\Un elemento \texttt{kset} è associato con un elemento I/O del file system \texttt{sys}, quindi troviamo dei metadati basici per la loro gestione, ovviamente possiamo usare i kobject in maniera indipendente dai set.
+\subsubsection{API basiche}
+Abbiamo alcune API basiche per lavorare con i kobjects:
+\begin{itemize}
+	\item add
+	\item delete
+	\item register
+	\item unregister
+\end{itemize}
+Abbiamo anche API per i \texttt{kset}, dove possiamo embeddare i kobject. Ci stiamo quindi avvicinando all'idea di una sorta di ereditarietà
+\begin{itemize}
+	\item init
+	\item register
+	\item unregister
+	\item get
+	\item put
+	\item set\_name
+\end{itemize}
+All'interno della struttura dati \texttt{kset} è presente l'\textbf{event to user}: quando abbiamo la struttura \texttt{kset} abbiamo una serie di campi che sono metadati di gestione per il set di kobject, fra le informazioni c'è il campo \texttt{kobject\_uevent}, che identifica un blocco di codice da attivare quando avviene un evento su quel \texttt{kset}: quando avviene l'evento, se è registrato un uevent parte un thread che tipicamente fa l'exec dell'applicazione, si chiede all'utente di fare delle cose, ad esempio chiedere se un device inserito nell'architettura deve essere accessibile e come deve esserlo.\\Ad esempio per la gestione dell'aggiunta di un device USB al gruppo. 
+\subsection{\texttt{sysfs} core API}
+Abbiamo poi le API principali per creare directory nel FS \texttt{sys}:
+%api dalle slides
+Abbiamo anche API interessanti per la creazione dei file
+%API dalle slides
+per cui specifichiamo un puntatore ad un kobject ma anche ad un attributo, con cui possiamo collegarla tramite array di pointers alla directory.\\La struttura attributo è molto semplice ed è come segue:
+%slides
+le operazioni per lavorare sullo specifico file non sono specificate, quindi l'attributo è embedded in una tabella più ampia, che è la seguente:
+%kobject attribute
+abbiamo l'attributo dove ci sono poi la \texttt{show} e la \texttt{store}. Qui non c'è l'indicazione dove sono i dati del file, quindi come costruiamo un file per \texttt{sys} dove in O(1) si arriva sui dati: quando viene creato un file si usa una delle API, abbiamo visto che la struttura è embeddata, è possibile che le \textbf{read} o \textbf{write} vadano su zone di memoria differenti? Possiamo far si che la tabella sia embeddata in un'altra, dove possiamo scrivere dati e metadati su cui le due funzioni devono operare, mediante \texttt{container\_of} e quindi lavorando su zone differenti.
+\subsection{Architettura di overall}
+Questa è quindi l'architettura di overall
+%immagine
+\subsection{Devices in \texttt{sys}}
+Abbiamo \texttt{/sys/class} che è un device che internamente contiene altri device files: abbiamo una API apposita
+%API dalle slides
 
 
 \newpage
@@ -2927,8 +3025,12 @@ Bisogna implementare un servizio bloccante, che è possibile chiamare finché un
 \end{itemize}
 Si potrebbe usare un'unica wait queue, con condizioni di risveglio differenti ma quando risvegliamo un solo thread occorre comunque risvegliare tutta la wait queue, perché tutti i thread devono verificare la propria condizione e quindi ci sono dei cicli di CPU sprecati.\\La wait queue dovrebbe essere quindi privata per quel thread, così che quando qualcuno risveglia quel thread risvegli solo quello. Nelle strutture collegate in lista, occorrerà ospitare anche la variabile che identifica la condizione di risveglio, il cambio della variabile è il trigger per il risveglio del thread e andrà fatto da chi chiama il servizio di risveglio.\\È importante perché questo ci permette di dire che nella struttura che colleghiamo in lista serve non solo lo spazio per la condizione ma anche il puntatore al TCB di quel thread.\\La posizione degli oggetti presenti sulla lista, la memoria viene presa o tramite da un allocatore in modo kernel oppure lo alloca il thread i che ha chiamato l'operazione e l'allocazione può avvenire nella stack area, quindi magari le variabili sono allocate in diverse stack areas dei vari thread. È importante che questi oggetti siano presenti nella lista finché la stack area non viene invalidata e questo è vero perché al risveglio si rimuove l'elemento prima di lasciare lo stack. Ha senso lavorare sullo stack in quanto si occupano pochi byte per salvare la tabella delle informazioni del singolo thread. Inoltre, la sleep dovrebbe essere efficiente e occorrerebbe fare un aggancio degli elementi in lista in tempo costante, così come anche lo sgancio dalla lista o anche la navigazione della coda che prevede il cambio di una condizione. Ma il tempo costante è l'analisi teorica degli algoritmi, l'analisi reale riguarda il numero di istruzioni da eseguire.\\Come facciamo a fare questa cosa usando anche un numero di cicli macchina basso quando si lavora su questi oggetti: bisogna poter essere in grado di lavorare in una rimozione dell'elemento, che magari non è il primo, in tempo costante e questo può avvenire perché ci si sta risvegliando. Il servizio che risveglia è sempre il primo della coda, ma se ci sono tanti risvegli concorrenti, questi thread concorrenti vogliono andare a rimuovere l'elemento in maniera concorrente.\\Un altro caso è l'arrivo di un segnale per essere rimessi su una run queue, quindi il thread deve rimuovere il suo blocco dalla lista. La lista deve essere doppiamente collegata ma se la lista è vuota in termini dei thread non presenti in sleep, ma se la lista non ha elementi dobbiamo includere i check nel software per verificare questa cosa e nei SO non si fa MAI, si scrive software per eseguire l'unico scenario possibile per noi, quindi la lista deve sempre essere non vuota: abbiamo gli elementi reali della lista, introduciamo due elementi virtuali, uno in cima ed uno in coda alla lista e le operazioni reali si fanno sugli elementi reali se ci sono.\\L'informazione \texttt{already\_hit} è interessante nel seguente scenario: abbiamo un thread già in sleep, l'operazione di risveglio che viene chiamata sul thread non deve rimuovere l'elemento, ma può accadere che il thread non abbia ancora rimosso il suo nodo di lista ma mettendo il campo ad 1 indichiamo che il thread è già stato svegliato.\\La coda è acceduta in maniera concorrente, quindi le operazioni vengono in questo caso sincronizzate con uno \texttt{spinlock\_t}\\Le chiamate a \texttt{preempt\_enable() / disable} serve per incrementare / decrementare il contatore che indica la possibilità di chiamare lo shceduler se il thread è o meno preemptabile, questo è utile per non rilasciare la CPU quando si passa per un safe place, ma in questo caso non è necessario perché prendendo uno spinlock si entra in sezione critica quindi non si può abbandonare la CPU per la preemption senza aver rilasciato il lock.\\Quando torniamo dalla sleep siamo stati rimessi in run queue e possono esserci due casi diversi: quando si esce dall'API si controlla la condizione di risveglio e se questa non è valida, siamo stati colpiti da un segnale.\\Nel risveglio si prende il controllo ed in un ciclo while si scandisce la coda perché ogni elemento può essere già stato marcato in quanto risvegliato, quindi si cerca il primo non marcato per poter trovare il thread da risvegliare.\\Tutti i servizi bloccanti di Linux sono implementati in delle wait queue per dormire, in modo da essere risvegliati in base ad una certa condizione.
 \section*{Homework: Process Controller}
-Un driver che scrive in aree di memoria di un certo processo. 
-
+Un driver che scrive in aree di memoria di un certo processo.\\Scrivere un device file che quando riceve un echo di questa sequenza di informazioni: "PID ADDRESS NEW\_VALUE, in termini di numeri, si va nell'address space di un processo a scrivere il valore.\\Cose a cui stare attenti:
+\begin{itemize}
+	\item quando scriviamo le informazioni è stare attenti a convertire tali informazioni in binario
+	\item quando viene chiamata la syscall di write, si colpisce l'oggetto e questo prevede che il thread che sta eseguendo l'operazione vada a scrivere nell'address space di qualcun altro. Quindi, il thread tal dei tali deve osservare l'address space di un altro thread. Deve quindi diventare un thread di un altra applicazione, almeno per quanto riguarda la memory view.
+\end{itemize}
+Supponiamo che ci sia un certo thread, abbiamo il TCB che ci porta su una tabella di MM, quindi il thread può andare sul TCB per farlo puntare alla MM dell'altro thread, in modo che tutte le scritture avvengano su quell'area. Non basta, la memoria viene vista con la page table del processo corrente, quindi va cambiato anche CR3 per cambiare la vista della page table. Inoltre, i metadati per gestire l'address space target devono poter esistere finché non finisce l'operazione: il thread nell address space target può subire lo shutdown in maniera concorrente alla scrittura del thread, altrimenti si rischia di andare in crash: per farlo, sappiamo che i metadati sono sottoposti ad un meccanismo di sincronizzazione che prevede RCU, quindi possono essere cancellati se non ci sono più readers associati. Quindi il thread deve registrarsi a sua volta come reader RCU per dire di esserci anche lui per poi de-registrarsi.\\\\Nel codice, salviamo la memory view del thread corrente per poterla poi rimettere a posto, facciamo poi una \texttt{rcu\_read\_lock()} per ritardare le strutture del kernel. Prendiamo quindi la TCB di un certo processo e ci prendiamo la mm del thread che si cerca di colpire.
 
 
 
