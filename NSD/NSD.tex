@@ -928,36 +928,82 @@ Ci sono vari problemi ogni anno:
 \end{itemize}
 la prima contromisura per questo tipo di attacco è il BGP filtering, se tutti gli AS implementassero filtering fare hijacking sarebbe impossibile: bisogna fare filtering su messaggi in ingresso ma anche in uscita perché possono esserci errori; si filtrano prefissi che vengono da AS reali.
 \subsubsection{BGP UPDATE modification}
-Modifichiamo un UPDATE ricevuto da una altro peer e si può modificare qualunque cosa, come l'AS path inserendo il proprio AS oppure cambiando path e siccome non c'è autenticazione nessuno può effettuare controlli.\\Un avversario modifica il prefisso ...
+Modifichiamo un UPDATE ricevuto da una altro peer e si può modificare qualunque cosa, come l'AS path inserendo il proprio AS oppure cambiando path e siccome non c'è autenticazione nessuno può effettuare controlli.\\Un avversario modifica il prefisso sempre con lo stesso obiettivo, ovvero quello di fare hijacking delle rotte
 \subsubsection{Route leaks}
-Tipicamente, non tutte le rotte sono richieste dai peers, dipende dalla natura del collegamento fra peers: se c'è un customer di un AS, non è detto che debba conoscere tutte le rotte verso gli altri. Quindi un root leak prevede che un AS rubi un update, tipicamente ad esempio un customer non direbbe mai le sue rotte.\\La local preference è un attributo che ha una priorità maggiore valore fra gli attributi, quindi quando un customer manda un messaggio BGP tipicamente ha la local preference più alta e quindi verrebbe scelto nella rotta per prendere tutto il traffico
+Un leak non è per forza un attacco: il significato è che si fa advertising di un prefisso per cui non si dovrebbe.\\Tipicamente, non tutte le rotte sono richieste dai peers, dipende dalla natura del collegamento fra peers: se c'è un customer di un AS, non è detto che debba conoscere tutte le rotte verso gli altri. Quindi un root leak prevede che un AS rubi un update, tipicamente ad esempio un customer non direbbe mai le sue rotte.\\La local preference è un attributo che ha una priorità maggiore valore fra gli attributi, quindi quando un customer manda un messaggio BGP tipicamente ha la local preference più alta e quindi verrebbe scelto nella rotta per prendere tutto il traffico
 %immagine
-Occorre capire quali soon i diversi tipi di peers BGP:
+questo leak quindi rompe quelli sono gli agreement fra i peers. È simile all'hijacking, ma gli obiettivi sono diversi. In ogni caso, entrambi i problemi hanno come soluzione il filtering in modo da non accettare tutti gli announcements che vengono filtrati.
+\subsection{Tipologie di BGP peers e relazioni fra essi}
+Ci mettiamo dal punto di vista dell'AS n arancione:
+%immagine con AS arancione
+Occorre capire quali sono i diversi tipi di peers BGP:
 \begin{itemize}
 \item transit provider
 \item customer AS: paga un altro AS per raggiungere il resto di Internet
 \item stub customer
 \item leaf customer: stub con un solo exit point
 \end{itemize}
-occorre considerare quali relazioni esistono fra i peers: la rete IXP è di layer 2 e viene usata per connettere diversi operatori etc... usata perché altrimenti occorrerebbe creare una connessione fisica fra i diversi peers BGP.\\Un peer connesso ad un IXP viene chiamato public peer, tipicamente ogni ISP che partecipa ad una rete IXP ha il suo router di bordo.\\Un peer privato è connesso ad un link privato, quindi gli AS connessi hanno creato una connessione, nel caso del public peer non si usa come transito verso altri AS. Lo stesso vale per i private peers, che gestiscono solo i prefissi dei customer\\Un downstream peer prevede che l'ISP faccia advertising di tutta la routing table oppure delle rotte di default, i prefissi ricevuti dai customer sono rimandati a tutti i customer, i prefissi sono ricevuti perché l'AS è di transito per il customer.\\Upstream peers: a meno di non avere un 1st tier provider, occorre comprare la connettività per raggiungere il resto dell'Internet, altrimenti si può parlare con i propri customers. Anche in questo caso o si riceve l'intera routing table oppure le route default, uno dei in quanto dipende dalla topologia.\\Le conseguenze di un root leaks sono
+occorre considerare quali relazioni esistono fra i peers: la rete IXP è di layer 2 e viene usata dagli AS per connettere i loro router e connettersi agli altri AS.È utile avere un IPX perché altrimenti occorrerebbe creare una connessione fisica fra i diversi peers BGP.\\Un peer connesso ad un IXP viene chiamato \textbf{public peer}, tipicamente ogni ISP che partecipa ad una rete IXP ha il suo router di bordo, ci sarà poi una porta WAN del router connesso verso l'AS.\\Negli IXP quindi ci colleghiamo ad altri AS e passiamo per la rete IXP solo per aggiungere gli altri AS.\\Un \textbf{private peer} è connesso ad un link privato, quindi gli AS connessi hanno creato una connessione, nel caso del public peer non si usa come transito verso altri AS.\\Lo stesso vale per i private peers, che gestiscono solo i prefissi dei customer.\\Un \textbf{downstream peer}, anche detto customer peer prevede che l'ISP faccia advertising di tutta la routing table oppure delle rotte di default, i prefissi ricevuti dai customer sono rimandati a tutti i customer, i prefissi sono ricevuti perché l'AS è di transito per il customer, può essere necessario fare advertising di tutta la tabella nel caso di un customer multi-homed.\\Abbiamo poi gli \textbf{upstream peers}, di solito è un ISP che usiamo per raggiungere l'Internet: a meno di non avere un 1st tier provider, occorre comprare la connettività per raggiungere il resto dell'Internet.Annunciamo ad un upstream peer il nostro prefisso di casa e quelli degli altri customers. Anche in questo caso o si riceve l'intera routing table oppure le route default, uno dei in quanto dipende dalla topologia.\\Le conseguenze di un root leaks sono
 \begin{itemize}
 \item Ridirezione del traffico tramite path non voluti
 \item quando un grande numero di rotte viene simultaneamente leakato, l'AS offending viene sovraccaricato e quindi si ha DoS o degrado delle performance
 \end{itemize}
-\subsection{RPKI e BGP origin validation}
-Una soluzione crittografica: abbiamo gli Internet registries regionali ed i routing registries di Internet (sono DB dove c'è l'associazione fra AS e prefissi).\\Gli oggetti presenti nell'IRR forniscono rotte dichiarate dagli operatori, è possibile col comando \texttt{whois} (slides)\\ L'informazione nel DB non erano autenticate, quindi è stato creato l'RPKI che è il PKI richiesto per certificare le informazioni di routing, vediamo la gerarchia 
+\section{RPKI e BGP origin validation}
+La prima cosa che facciamo è filtering: abbiamo gli Internet registries regionali ed i routing registries di Internet (sono DB dove c'è l'associazione fra AS e prefissi).\\Gli oggetti presenti nell'IRR forniscono rotte dichiarate dagli operatori, è possibile col comando \texttt{whois} capire l'origine di un prefisso, facendo query ad un certo DB RIR.\\L'informazione nel DB non erano autenticate, quindi è stato creato l'RPKI che è il PKI richiesto per certificare le informazioni di routing, vediamo la gerarchia
 \begin{itemize}
-\item IANA sono al top e allocano ai RIR
+\item IANA sono al top e allocano ai RIR (Europa, Asia etc...)
 \item I RIRs sub-allocano risorse agli ISPs ed alle Enterprise
-\item gli ISPs a loro volta sub-allocano ad altri ISPs
+\item gli ISPs possono a loro volta sub-allocare ad altri ISPs
 \item In alcune regioni i RIRs sub-allocano a dei LIRs, come ad esempio Telecom
 \end{itemize}
-RPKI è una autorità di certificazione locale offerta da tutti i RIR, la catena di RPKI segue lo stesso ordine visto sopra, quindi IANA è il ground truth etc... Alla fine della catena abbiamo la ROA che è un binding fra prefisso, AS ed una lunghezza massima (per evitare di mandare rotte più corte), è un altro tipo di certificato ma come in ogni PKI abbiamo una catena di certificati. Ci sono due modalità di certificazione delle risorse:
+RPKI è una autorità di certificazione locale offerta da tutti i RIR, la catena di certificati RPKI segue lo stesso ordine visto sopra, quindi IANA è il ground truth (avrà un certificato self-signed) che creerà un certificato per la RIR, la RIR firmerà a sua volta i certificati per gli ISP e così via.\\Alla fine quindi, le RIR sono le trust anchor, in fondo alla catena abbiamo la ROA che è un binding fra prefisso, AS ed una lunghezza massima (per evitare di mandare rotte più corte), è un altro tipo di certificato ma come in ogni PKI abbiamo una catena di certificati. Ci sono due modalità di certificazione delle risorse:
 \begin{itemize}
-\item hosted: viene tutto firmato dal RIR
-\item delegated: si delega la firma
+\item hosted: è il RIR che mantiene e gestisce le chiavi e fa le operazioni di RPKI 
+\item delegated: si delega la firma, il modello solamente più usato
 \end{itemize}
-Una volta che un ISP o una società (qualunque AS) riceve un certificato dalla RIR, è in grado di firmare le sue ROAs, può generare un EE-certificate ed usare la chiave privata per firmare. Una funzione ROA, ovvero l'ultimo oggetto della catena si possono avere più prefissi e se viene specificata una max length tutti i prefissi che hanno lunghezza entro il max possono essere pubblicati. (slides)\\\\Come fanno i router ad ottenere questi certificati, perché le ROAs non sono trasportate dai messaggi di annuncio BGP: i router ottengono le ROAs ed una volta ricevuti gli annunci BGP fanno un controllo incrociato. Le ROAs sono salvate nei RIRs o negli ISPs, un rotuer non vi accede direttamente, c'è una cache di ROAs negli ISPs, c'è un entità centrale dell'AS che prende le ROAs dalle repository che server RPKI validatori (uno per ogni AS), che oltre a prendere le ROAs le verificano e le salvano nelle cache. Infine, i router prendono col protocollo RTR le ROAs dalle cache.\\Quando arriva un annuncio da un peer, il router controlla se il prefisso è in uno delle ROAs, non è il router che controlla la validità delle ROA in quanto il router le scarica già validate, si controlla anche se l'AS è quello giusto nella ROA.
+Una volta che un ISP o una società (qualunque AS) riceve un certificato dalla RIR, è in grado di firmare le sue ROAs, può generare un EE-certificate ed usare la chiave privata per firmare. Le funzionalità delle ROA, ovvero l'ultimo oggetto della catena, sono vari:
+\begin{itemize}
+	\item dichiara uno specifico AS come un origine autorizzata di annunci per il prefisso
+	\item (slides) ...
+\end{itemize}
+Quindi, alla fine abbiamo questa situazione:
+%immagine della catena finale
+se si riceve una BGP update occorre verificare se questo è contenuto in un ROA valido, il che va fatto validando l'intera catena.\\Come fanno i router ad ottenere questi certificati, perché le ROAs non sono trasportate dai messaggi di annuncio BGP: i router ottengono le ROAs ed una volta ricevuti gli annunci BGP fanno un controllo incrociato. Le ROAs sono salvate nei RIRs o negli ISPs, un rotuer non vi accede direttamente, c'è una cache di ROAs negli ISPs, c'è un entità centrale dell'AS che prende le ROAs dalle repository che server RPKI validatori (uno per ogni AS), che oltre a prendere le ROAs le verificano e le salvano nelle cache. Infine, i router prendono col protocollo RTR le ROAs dalle cache.\\Quando arriva un annuncio da un peer, il router controlla se il prefisso è in uno delle ROAs, non è il router che controlla la validità delle ROA in quanto il router le scarica già validate, si controlla anche se l'AS è quello giusto nella ROA.\\Quindi, quando arriva un update, il rotuer controlla solo in cache e quindi non è il server stesso a validare le ROA, bensì lo fa il server per motivi di scalabilità
+%immagine de tutto il malloppo
+Un router BGP riceve quindi una lista di ROA validate, ed usa la lista con il BPG origin validation che è un tipo di processo di fast lookup. Ovviamente c'è un problema sulla connessione fra router e server, ma si possono usare tutte le tecniche classiche, ad esempio TLS.\\Il router quindi usa l'OV process per dire che una rotta mandata da un peer è valida se:
+\begin{itemize}
+	\item una rotta ha un'origine valida se la coppia (prefisso, AS origine )è valida e se \textbf{è valida la lunghezza massima}
+	\item una rotta è invalida se c'è qualche tipo di mismatch
+	\item una rotta è not found se non si può trovare nella lista delle ROAs
+\end{itemize}
+RPKI viene usato di solito solo per targare i prefissi, (slides) quindi si possono filtrare i BGP updates e dipende dall'AS l'azione che viene fatta.\\C'è una web app molto simpatica di cloudflare che permette di validare un RPKI:
+\begin{itemize}
+	\item abbiamo il RIPE, che è la trust anchor, che è un prefisso gestito da Unidata
+	\item abbiamo poi un certificato intermedio, che di nuovo è un "all" certificate (??) e firmato dal RIPE
+	\item c'è poi il certificato di risorsa, che è una sub delegation
+\end{itemize}
+(slides)
+Ci sono una serie di implementazioni di RPKI.
+\section{Forged-origin hijacks}
+Anche con la PKI siamo ancora vulnerabili ad attacchi basati su forged-origin hijacking: è possibile forgiare un AS di origine per un qualunque update semplicemente aggiungendo un prefisso, come viene mostrato in seguito:
+%immagine dell'attacco
+l'attaccante finge di essere nel mezzo fra la vera origine ed il router valido e non è nel path, ma comunque per il PKI risulta essere valido. Le conseguenze sono le stesse dell hijacking, in quanto verrà preferita la rotta. La soluzione è in BGPSec, protocollo pensato per proteggere questo tipo di attacchi:
+\begin{itemize}
+	\item ogni AS che implementa BGP-PV ha un router con un certificato
+	\item ogni router nel path ha una chiave privata per firmare l'update BGP: l'owner della risorsa non genera solo la ROA
+	\item le chiavi pubbliche dei router devono essere pubbliche
+	\item l'update include la subject key 
+	\item S L I D E S (COME SEMPRE)
+\end{itemize}
+La seguente figura esemplifica le cose:
+%immagine
+ogni router che riceve un update aggiunge alla firma il next-AS number, quindi in questo modo è impossibile forgiare una rotta.
+\section{Prefix filtering}
+RPKI fa binding crittografico, il filtering si basa su un insieme di policy per decidere se accettare un annuncio o no.
+
+
+
+
 \chapter{VXLAN ed EVPN}
 \section{Data center networks}
 Le reti dei datacenter sono leggermente differenti rispetto a quelle degli ISP. Le reti dei datacenter hanno una topologia di questo tipo:
