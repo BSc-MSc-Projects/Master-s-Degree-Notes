@@ -1356,6 +1356,107 @@ Ad esempio se bisogna installare un Keylogger, devono valere questi due punti. Q
 \item malware basato su rootkit: codice che viene installato a livello del SO. Quindi, un rootkit sfrutta i meccanismi di base del SO per rimanere nascosto e persistente, la maggior parte lavora kernel-space. Ci sono anche rootkit che lavorano user-space ma sono pochi in quanto non hanno gli stessi vantaggi dei rootkit kernel-space. Il vantaggio più grande del rootkit kernel-space è che è praticamente impossibile rilevarlo usando i meccanismi user-space in quanto il rootkit nasconde se stesso a livello di SO: tutto quello che l'applicazione vede, sono servizi offerti dal SO e quindi il rootkit può compromettere tutti i servizi visti dall'utente. Occorre quindi far partire un altro SO per fare analisi statica oppure usare dei meccanismi di integrità del SO, ma che servono più a prevenire l'installazione del rootkit.\\È un mondo a se stante
 \item malware App-based: infetta un singolo file, oppure infetta una singola DLL
 \end{itemize}
+\chapter{Lezione 24}
+\section{Meccanismi usati dal malware}
+È possibile fare una classificazione basata anche sul funzionamento interno del malware, ma è molto complesso. Cerchiamo invece di presentare una \textbf{\textsf{carrellata}} di metodi con cui il malware fa determinate cose: lo scopo è quello di poter riconoscere i meccanismi per sapere cosa il malware fa quando lo analizziamo.\\Il malware ha, a parte quelli "classici", una serie di \textbf{obiettivi tattici}, deve realizzare una serie di misure:
+\begin{itemize}
+	\item \textbf{persistenza}: deve poter ripartire
+	\item \textbf{ottenimento di privilegi}: non tutti i processi nel sistema hanno gli stessi privilegi, molto spesso il malware nasce lanciato da un certo utente e deve cercare di elevare i suoi privilegi
+	\item \textbf{segretezza}, il malware vuole cercare di nascondersi e non fare presente all'utente della sua opera. Come sempre, tutto va modulato caso per caso, determinati malware non fanno grande sforzo per rimanere segreti (come i ransomware), altri invece si
+	\item \textbf{evasione}, questo perché fondamentalmente nel sistema ci possono essere delle misure che cercano di bloccare le attività sospette, come il firewall che potrebbe avere una regola sulle connessioni che non nascono da un browser noto, per troncarle.
+\end{itemize}
+\subsection{Persistenza}
+\subsubsection{Persistenza basata sulle chiavi di sistema}
+La persistenza prevede di solito di lanciare il programma non appena parte il SO: in Windows c'è una chiave di sistema che permette di lanciare automaticamente un eseguibile all'avvio, che è \texttt{HKLM/Software/Microsoft/Windows/CurrentVersion/Run}, essendo conosciuto i malware evitano di usarlo.\\Nei valori della chiave, possiamo trovare i programmi che vengono lanciati ad ogni login, questo è solo uno dei posti che possono permette di lanciare programmi automaticamente e sono moltissimi, esiste un tool che si chiama \textbf{Autoruns}, che fa parte della serie di strumenti \textbf{SysInternals}. Il programma permette di verificare tutti i programmi che sono lanciati in automatico da Windows e tante altre cose, quindi abbiamo un modo comodo per verificare quali programmi partono automaticamente, invece di verificare tutte le voci di sistema.\\Un altro strumento meno noto va sotto il nome \texttt{AppInit\_DLL}: è sempre basato sul registro di sistema e permette di caricare automaticamente una o più DLL in ogni applicazione che usa una \texttt{User32 DLL}, molto diffusa ed usata in pratica da tutte le applicazioni di Windows.\\La DLL caricata può essere un malware, quindi questo permette al malware di assicurarsi la persistenza, per inciso una DLL alla fine è un programma eseguibile, la differenza fra questa ed un programma normale .exe è che quest'ultimo ha un solo simbolo esportato, che è \texttt{main} o \texttt{WinMain}. La DLL invece ha tanti punti di ingresso quante sono le API che contiene, ma alla fine la differenza non è così netta. In particolare, ciascuna DLL ha un export particolare chiamato \texttt{Dllmain}, che viene eseguito ogni volta che viene collegata una DLL ad uno spazio di indirizzamento del processo, quindi il malware scrive ciò che vuole nella \texttt{Dllmain} in modo da poter essere agganciato a qualunque processo eseguito nel sistema.\\Gran parte del malware moderno e dei meccanismi odierni sono basati sulle DLL perché questo è il modo più flessibile per rendere del codice eseguibile nel sistema. C'è un'altra voce, \texttt{HKLM/Software/Microsoft/Windows NT/CurrentVersion/Windows}, sotto cui ci sono le DLL che vengono automaticamente lanciate in conseguenza al caricamento di \texttt{User32.dll}.\\\\Altro meccanismo è \texttt{WinLogonNotify}: ci sono una serie di eventi come
+\begin{itemize}
+	\item un utente si collega
+	\item un utente si scollega
+	\item il SO fa lo shutdown
+	\item si blocca lo schermo
+\end{itemize}
+che vanno sotto la classe chiamata \texttt{WinLogon}. Windows consente di caricare una DLL quando c'è un evento di questo tipo, basta scrivere sotto il registro di sistema \texttt{HKLM/Software/Microsoft/Windows NT/CurrentVersion/WinLogon/Notify}.\\\\Un altro meccanismo prevede di sfruttare i \textbf{Windows Services}, sono """"simili"""" (glie piacerebbe) ai demoni del mondo Unix: sono dei programmi che vengono avviati, si collegano alla rete, fanno cose etc... Ogni SO ha tanti servizi attivi e Windows non fa eccezione, il vantaggio di utilizzo del malware nell'usarli è che in un sistema ci sono molti più servizi attivi che task, quindi se deve nascondersi si mette dove ci sono tante cose fra cui cercare. Il secondo motivo importante è che mentre i task girano con i privilegi degli utenti che li hanno lanciati, i servizi girano con i privilegi del sistema. C'è il programma di gestione attività, nelle versioni più recenti del SO vengono elencati anche i servizi, che hanno
+\begin{itemize}
+	\item nome
+	\item descrizione
+	\item stato, che indica se il servizio è running o meno. Questo perché il servizio può anche non essere avviato
+\end{itemize}
+C'è una chiave di registro per vedere i servizi: \texttt{HKLM/SYSTEM/CurrentControlSet/Services/$<$name$>$}. Bisogna precisare alcune cose:
+\begin{itemize}
+	\item \texttt{CurrentControlSet} non è una vera chiave, bensì un alias o puntatore ad una chiave. È un alias alle chiavi \texttt{ControlSet00X}, che sono delle configurazioni alternative di Windows, ad esempio per partire con l'ultima configurazione funzionante al riavvio, in caso di guasto.\\Descrivono quindi delle cose relative al funzionamento di Windows, nel caso in cui ci sia un solo\texttt{ControlSet}, corrisponde 1-a-1 a \texttt{CurrentControlSet}. Entrano quindi in gioco, magari nel caso in cui il sistema va in crash, un malware che si installa se \textbf{\textsf{sempliciotto}} si installa sul \texttt{CurrentControlSet}, ma se l'utente lo cambia il malware non è più attivo e quindi gli conviene installarsi su tutti.
+	\item 
+\end{itemize}
+Per cambiare \texttt{ControlSet}, possiamo cambiare da \texttt{HKLM/SYSTEM/Select} quale è il \texttt{ControlSet} da usare, ci sono varie altre voci.\\Molti servizi sono basati sulle DLL, che sono programmi eseguibili ma non da soli ni quanto devono essere collegati ad altri processi. Esiste un programma in Windows, \textbf{svchost.exe} che serve per eseguire le DLL: il programma crea un processo nel sistema, tutto questo a livello di chavi è implementato con \texttt{HKLM/SOFTWARE/Microsoft/Windows NT/CurrentVersion/Svchost}.\\Per creare un servizio in un certo gruppo di svchost, diciamo che l'imagePath non è più la DLL, bensì scvhost.exe\_kgroupName in modo che svchost sappia dove piazzare la DLL, c'è poi una sotto-chiave Parameters dove possiamo mettere il percorso della DLL, quindi il malware cerca di appoggiarsi ad un gruppo svchost e quindi creare un servizio con quel nome.\\Questo meccanismo è molto usato dal malware, in quanto è estremamente difficile, aprendo l'elenco dei task nel sistema, capire cosa è malware e cosa no. Inoltre il malware non crea nemmeno un suo gruppo, bensì usa un svchost group già esistente in modo da rendere difficile capire quali servizi sono leciti e quali no.
+\subsubsection{Persistenza senza chiavi di sistema}
+Modifichiamo un eseguibile ufficiale per riuscire ad ottenere l'esecuzione del malware, ci sono due modi di farlo
+Il modo ingenuo, non usato dal malware serio. Prende un eseguibile e lo modifica, ma ci sono software di sistema che prendono l'hash del file e  lo firmano, quindi se il malware modifica un file eseguibile non passa il controllo.\\Avendo il file eseguibile, questo avrà un suo entrypoint e quindi il malware sostituisce i byte iniziali dell'EP per saltare ad una certa locazione in RAM, sulla porzione di codice che si può sovrascrivere in quanto è fatto di byte inutili, fa ciò che vuole per poi risaltare indietro. Possiamo chiamare il meccanismo come un \textbf{detour}: sostituisco del codice macchina che sono certo che verrà eseguito, sostituiamo ai byte del codice operativo un qualcosa come JMP L0. Ad L0 ad esempio il codice vuole caricare una DLL che contiene il malware, si può fare così:
+	\begin{itemize}
+		\item pusha, per evitare di danneggiare il programma originale
+		\item CALL L1: abbiamo un problema, mentre il codice che è stato prodotto dal compilatore è rilocato, in cui gli indirizzi sono stati definiti, per del codice che implementa un detour non possiamo sapere a priori l'indirizzo perché i codice eseguibili possono essere rilocati, quindi fondamentalmente se un codice viene ricolcato ha una serie di punti da risistemare, che però non avranno il codice del detour e quindi non funzionerebbe. Si fa quindi una CALL di pochi byte avanti, si fa poi in L1 una POP ECX, dove si colloca l'indirizzo in cui il detour sta girando.
+		\item NOP
+		\item MOV EAX, ECX: non conosce l'indirizzo assoluto in cui sta girando, ma sa come è fatto il codice, per esempio sa che c'è una variabile che contiene l'indirizzo di una DLL, il detour è costruito eseguibile per eseguibile. Si potrebbe sommare ad EAX una costante, come 24h e ci potrebbe quindi essere una stringa, ad esempio col nome della DLL del malware. Se quindi 24h è la distanza fra la NOP ed EAX, possiamo mettere il nome della DLL sullo stack
+		\item PUSH EAX
+		\item a questo punto, facciamo ADD EXC, 0xhhhhj: otteniamo una variabile che contiene l'indirizzo di kernel32.dll, in quanto è quella che contiene la \texttt{LoadLibrary}
+		\item MOV EAX, ECX: abbiamo l'indirizzo di caricamento di "kernel32.dll", possiamo sapere a quale indirizzo parte il caricamento di \texttt{LoadLibrary}
+		\item ADD EAX, 0xksdlk, otteniamo l'indirizzo di partenza della \texttt{LoadLibrary}
+		\item CALL EAX, abbiamo caricato la libreria.
+	\end{itemize}
+Abbiamo invocato \texttt{LoadLibrary} senza che questa compaia mai nel codice, sono meccanismi che garantiscono anche la segretezza, in quanto non si capisce di primo acchitto cosa il codice fa. A questo punto dobbiamo:
+\begin{itemize}
+	\item POPA
+	\item PUSH EBP
+	\item MOV EBP, ESP
+	\item XOR EAX EAX
+	\item JMP L2
+\end{itemize}
+Si rifanno le istruzioni che erano state saltate e si ritorna indietro dopo la fine del detour. Facendo questo sul file eseguibile, chiunque fa una scansione lo scopre ma tutto questo applicato al file eseguibile si può fare anche al processo in esecuzione con qualche modifica. C'è una seconda classe di modifiche che vengono fatte proprio sul processo in memoria. L'idea è sempre la stessa, inoltre si evade qualunque scan dei file.
+\subsubsection{Persistenza senza modifiche a file o registri di sistema}
+Alcuni di questi meccanismi che non apportano modifiche sono basati sull'algoritmo con cui vengono cercate e caricate le DLL: quando un eseguibile richiede di usare una DLL, il SO la deve cercare fra tutti i file di sistema ed usa tipicamente un algoritmo ben definito:
+\begin{enumerate}
+	\item cerca nella cartella dell'applicazione
+	\item cerca nella cartella corrente del processo, diversa dalla 1
+	\item cerca nella cartella restituita dalla API \texttt{GetSystemDirectory}, che restituisce la cartella di sistema (\texttt{C$\backslash$Windows$\backslash$System32})
+	\item cerca in una cartella che contiene DLL a 16 bit (retro compatibilità)
+	\item \item cerca nella cartella restituita dalla API \texttt{GetWindowsDirectory}, che potrebbe essere tipicamente \texttt{C:$\backslash$Windows}
+	\item cerca in tutte le cartelle elencate in \texttt{\%PATH\%}
+\end{enumerate}
+Siccome il meccanismo è lento e potenzialmente pericoloso, nel sistema c'è il meccanismo delle \textbf{known DLL}: c'è una chiave di sistema \texttt{HKLM/SYSTEM/CurrentControlSet/Control/Session Manager/KnownDLLs}, Ci sono 100naia di DLL nel sistema, vengono elencate le più importanti e quelle che sono lì dentro sono esentate dal meccanismo di ricerca detto prima.\\Il problema è che tutte le DLL che non fanno parte di questo elenco sono vulnerabili:
+\begin{itemize}
+	\item abbiamo un eseguibile di sistema che non è in \texttt{\%SYSTEMROOT\%$\backslash$System32}
+	\item questo eseguibile carica una DLL dentro la directory \texttt{\%SYSTEMROOT\%}, la la DLL non è fra quelle note
+	\item la vulnerabilità sta nel fatto che è possibile creare una DLL con lo stesso nome di quella di sistema ma che viene caricata prima di quella di sistema
+\end{itemize}
+Abbiamo ad esempio l'eseguibile \texttt{explorer.exe}, che realizza l'interfaccia di Windows, questo sta in \texttt{\%SYSTEMROOT\%}. Supponiamo che carichi la DLL \texttt{ntshrui.dll}, che sta in \texttt{\%SYSTEMROOT\%$\backslash$System32} ma non in quelle elencate in known dll. Il malware si installa come \texttt{ntshrui.dll} all'interno di \texttt{\%SYSTEMROOT\%}. L'algoritmo cerca la DLL prima dalle known, il malware carica sicuramente anche la DLL vera così che tutto funzioni, ma nel frattempo ho un malware che può fare ciò che vuole.\\Ci sono circa una 50ina di DLL vulnerabili, è possibile fruttare anche quelle che sono in known DLL in quanto queste possono a loro volta includere delle DLL a loro volta vulnerabili.
+\subsection{Elevazione dei privilegi}
+Ci sono due grandi differenze nei diritti degli utenti:
+\begin{itemize}
+	\item utente normale
+	\item utente administrator
+\end{itemize}
+installando Windows, il primo utente che si installa è l'amministratore. Tipicamente l'account è lockato, l'utente ottiene il privilegio di poter eseguire i diritti di amministratore. Un utente normale non può eseguire un programma che necessita i privilegi di amministratore.\\C'è anche un'altra distinzione:
+\begin{itemize}
+	\item processo che lavora a livello utente
+	\item processo che lavora a livello sistema
+\end{itemize}
+un processo che lavora a livello di sistema o viene lanciato dal sistema stesso o da un utente con privilegi di amministratore.\\Per come viene lanciato il malware, potrebbe essere in esecuzione a livello utente e quindi deve guadagnare i diritti di amministratore. Per fare ciò, tipicamente bisogna sfruttare una vulnerabilità nel SO: ce ne sono 1000aia, c'è uno strumento famoso chiamato \textbf{metasploit}, framework che permette di testare un sistema rispetto a tutte le vulnerabilità conosciute.\\C'è anche il lavoro di passare da modalità di esecuzione utente ad una modalità in cui si opera system level: per fare questo, si usano una serie di API. Ogni processo nel sistema ha un così detto \textbf{descrittore di sicurezza}, che può avere una serie di access token, ovvero diritti elementari, per dire cosa il processo può fare e non. Quando un malware deve passare a lavorare con diritti di sistema, deve fare:
+\begin{itemize}
+	\item \texttt{OpenProcessToken(GetCurrentProcess(), TOKEN\_ADJUST\_PRIVILEGES, TOKEN\_QUERY, \&tokenHandle)}
+	\item \texttt{LookupPrivilegesValueA(0, "SeDebugPrivilege", \&l)}: serve per ottenere il codice di un particolare privilegio. Il privilegio nelle intenzioni della Malware-Soft serviva per fare debugging, ma dato ad un processo è come dargli tutti i privilegi di sistema.
+	\item \texttt{AdjustTokenPrivileges(\&tokenHandle, 0, \&Newstate, ...)}, il nuovo stato si costruisce dal precedente.
+\end{itemize}
+quindi queste 3 API trasformano un processo in uno da livello utente ad uno con privilegi di sistema.
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
