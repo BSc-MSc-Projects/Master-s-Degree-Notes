@@ -1858,31 +1858,40 @@ Il cross ring data move prevede lo cambio di dati in attività cross ring: facev
 \item su che segmento stiamo lavorando ora 
 \item il livello di protezione del segmento
 \end{itemize}
-le syscall classiche come read/write il passaggio di dati usando la CPU non basta più. Il problema fondamentale è l'uso dei pointer, in quanto quello che possiamo fare è definire il valore di un pointer in uno dei registri, quindi passo effettivamente un'informazione nel registro, ma questo mi determina una posizione all'interno di un area di memoria.\\Il problema quindi è che un valore di puntatore può essere definito a livello user, ma quindi la memoria puntata può essere letta o sovra scritta mentre eseguiamo modo kernel. Quindi, quando siamo in kernel mode questo non è così isolated, perché quello che si fa dipende in qualche modo da cosa di fa user level
+nelle syscall classiche come \texttt{read}/\texttt{write} il passaggio di dati usando la CPU non basta più. Il problema fondamentale è l'uso dei pointer, in quanto quello che possiamo fare è definire il valore di un pointer in uno dei registri, quindi passo effettivamente un'informazione nel registro, ma questo mi determina una posizione all'interno di un area di memoria.\\Il problema quindi è che un valore di puntatore può essere definito a livello user, ma quindi la memoria puntata può essere letta o sovrascritta mentre eseguiamo modo kernel. Quindi, quando siamo in kernel mode questo non è così isolated, perché quello che si fa dipende in qualche modo da cosa di fa user level.
 \subsection{Gestione dei pointers}
 Dobbiamo capire come poter gestire la possibilità di poter lavorare in una zona di memoria puntata, le soluzioni dipendono da 
 \begin{itemize}
 \item cosa abbiamo nell'hardware
 \item meccanismi nel software del SO
 \end{itemize}
-il problema è relativo al fatto che cosa rappresentano i pointers rompe il meccanismo dei ring.\\Consideriamo i diversi casi per il supporto alla segmentazione
-\subsection{Segmentazione flessibile}
+il problema è relativo al fatto che l'informazione rappresentata dai pointers rompe il meccanismo dei ring.\\Consideriamo i diversi casi per il supporto alla segmentazione
+\subsubsection{Segmentazione flessibile}
 La flexible segmentation si ha in x86 protected mode, ovvero i segmenti possono essere collocati in un address space dove e come si vuole.\\Nell'address space i segmenti sono in zone differenti, si lavora secondo uno schema flessibile:
 \begin{itemize}
 \item CS e DS si possono usare per identificare porzioni di dati o codice dove si vuole nell'address space lineare
 \item i segmenti possono essere collocati in maniera separata nell'arddress space, in modo che se si lavora su quel segmento non si può lavorare sugli altri
 \end{itemize} 
 Questo va riflesso nel software, che tipicamente è basato su istruzioni macchina dove i segmenti non sono specificati, ma vengono indicati solo gli offset e quindi anche se l'hardware può eseguire delle feature di protezione, queste vanno sfruttate nella costruzione del software.\\Un esempio classico può essere il seguente
-%esempio classico
-abbiamo 2 segmenti, che corrispondono a codice e dati user e kernel, in due zone differenti. Chiamiamo una \textsf{read}, l'offset y è in uno dei registri quindi entriamo in kernel mode e cerchiamo di fare le mov dei dati secondo uno schema "mov source (y)" ma y è un offset, se non si specifica il segmento dati da cui partire si usa il selettore di segmento di default che è quello corrente e quindi l'offset verrebbe applicato, se non si adottano delle peculiarità particolari, e sovrascriverebbe la zona dati kernel.\\Una soluzione prevede di implementare nel software del kernel, il fix up classico deve essere craftato a mano, non basta la compilazione classica. L'idea è cercare di usare nel software un selettore di segmento programmabile per ovviare il problema dei pointers:
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/seg_prob_1.png}
+\end{figure}
+abbiamo 2 segmenti, che corrispondono a codice e dati user e kernel, in due zone differenti. Chiamiamo una \texttt{read}, l'offset y è in uno dei registri quindi entriamo in kernel mode e cerchiamo di fare le mov dei dati secondo uno schema "mov source (y)" ma y è un offset, se non si specifica il segmento dati da cui partire si usa il selettore di segmento di default che è quello corrente e quindi l'offset verrebbe applicato, se non si adottano delle peculiarità particolari, e sovrascriverebbe la zona dati kernel.\\Una soluzione prevede di implementare nel software del kernel, il fix up classico deve essere craftato a mano, non basta la compilazione classica. L'idea è cercare di usare nel software un selettore di segmento programmabile per ovviare il problema dei pointers:
 \begin{itemize}
 \item consideriamo FS
-\item in modo kernel, mappiamo FS su USER\_DS. Quindi vediamo la zona verde di memoria come se fosse FS
+\item in modo kernel, mappiamo FS su \texttt{USER\_DS}. Quindi vediamo la zona verde di memoria come se fosse FS
 \end{itemize}
 Facendo questo, la mov a livello di codice kernel va implementata a livello kernel applicando y al segmento FS. Cambiamo cosa viene detto dal default o cosa verrebbe prodotto in maniera automatica dal compilatore facendo il \textbf{fix up della segmentazione}. Su un'architettura a segmentazione flessile bypassiamo con questo fix up il problema della rottura del ring protection, ci sono comunque dei costi perché se occorre usare FS occorre modificare lo stato di segmentazione del processore, leggere informazioni dalla gdt etc...
 (slides per tutto ciò che accade) Riassumendo:
-\\Il problema ulteriore è che questo modello non può essere sempre adottato perché su processori moderni abbiamo la segmentazione constraint
-\subsection{Segmentazione constraint}
+\begin{enumerate}
+	\item si genera una trap, prende il controllo il kernel
+	\item si materializzano i dati da consegnare nel buffer cache, oppure in altri buffer del kernel
+	\item si imposta la base di FS alla base del segmento DS utente
+	\item si esegue un modulo per la copia di memoria basato sull'istruzione "\texttt{mov source, FS:(y)}"
+	\item si ripristina FS al suo contenuto originale
+\end{enumerate}
+Il problema ulteriore è che questo modello non può essere sempre adottato perché su processori moderni abbiamo la segmentazione constraint
+\subsubsection{Segmentazione constraint}
 La abbiamo in x86 long mode, non è più vero che possiamo mettere i segmenti dove vogliamo in memoria. Su x86 long mode per default nell'hardware tutti i segmenti sono mappati sullo 0, tranne 2. Anche su x86 protected molte versioni di kernel adottano il mapping sullo 0, quindi non basta usare FS per ripuntare al segmento dati user perché se si fa questo e si usa FS per puntare lì, si punta anche al data segment kernel in quanto sono tutti sovrapposti e quindi y toccherà anche quel data segment.\\Non basta solo il fix up, serve uno scenario in cui c'è maggiore attenzione in cosa si fa in memoria:
 \begin{itemize}
 \item dove poter puntare alla memoria per poter eseguire una specifica operazione non deve poter essere definita esclusivamente in funzione di cosa l'hardware ci offre per toccare la memoria, servono meccanismi addizionali a livello kernel
@@ -1890,48 +1899,49 @@ La abbiamo in x86 long mode, non è più vero che possiamo mettere i segmenti do
 \item i check del kernel possono essere fatti in maniera differente in base all'applicazione che si sta eseguendo
 \item il controllo si può quindi fare a grana fine address space per address space, in maniera perciò flessibile e questo dinamismo non si basa solo su cosa si può fare applicazione per applicazione ma anche su cosa si può fare lungo il tempo: a $t_0$ un certo pointer non è lecito, mentre a $t_1$ lo diviene
 \end{itemize}
-L'idea è quella di imporre dei limiti nell'address space a cui i pointers possono giungere, quindi ogni volta che si esegue una operazione che comporta movimento dati si fanno dei check specifici sul pointer. Non è possibile scrivere in maniera diretta un movimento dati da una zona kernel ad una zona user, occorre determinare per ogni operazione se questa è o meno legittima. A seconda di come si determina questa cosa, si ha un costo diverso per cui vorremmo avere un meccanismo semplices
-\subsubsection{Meccanismo in Linux}
-Ogni thread che esegue è in un address space corrente, che è quello dove ci porta la page table. Associamo a quel thread l'informazione \textsf{addr\_limit}, ovvero un limite per le operazioni in memoria, tutto ciò che è al di sotto del limit non è usabile dal kernel per fare operazioni in memoria, tutto ciò che è al di sopra è usabile.\\Per ogni thread possiamo acquisire il valore dell'addr\_limit con la API \textsf{get\_fs()}, siamo anche in grado di determinare il valore di adrr\_limit e possiamo cambiarlo, secondo quell'evoluzione temporale detta prima, tramite \textsf{set\_fs(x)}.\\Questo è l'addr\_limit, il check lo sfrutta per determinare se l'operazione può essere o meno eseguita. Quindi, non possiamo ad esempio usare memcpy per fare copie dalla memoria nel kernel per eseguire movimenti di dati da kernel mode a user mode perché quello applica degli offset.\\In realtà, quando passiamo un pointer, le operazioni richieste dall'user possono essere fatte parzialmente in base alla compliance alle limitazioni del kernel.\\La configurazione tradizionale di addr\_limit è \textsf{0x00007f.....0}
+L'idea è quella di imporre dei limiti nell'address space a cui i pointers possono giungere, quindi ogni volta che si esegue una operazione che comporta movimento dati si fanno dei check specifici sul pointer. Non è possibile scrivere in maniera diretta un movimento dati da una zona kernel ad una zona user, occorre determinare per ogni operazione se questa è o meno legittima. A seconda di come si determina questa cosa, si ha un costo diverso per cui vorremmo avere un meccanismo semplice
+\subsection{Meccanismo in Linux}
+Ogni thread che esegue è in un address space corrente, che è quello dove ci porta la page table. Associamo a quel thread l'informazione \texttt{addr\_limit}, ovvero un limite per le operazioni in memoria, tutto ciò che è al di sotto del limit non è usabile dal kernel per fare operazioni in memoria, tutto ciò che è al di sopra è usabile.\\Per ogni thread possiamo acquisire il valore dell'\texttt{addr\_limit} con la API \texttt{get\_fs()}, siamo anche in grado di determinare il valore di \texttt{adrr\_limit} e possiamo cambiarlo, secondo quell'evoluzione temporale detta prima, tramite \texttt{set\_fs(x)}.\\Questo è \texttt{l'addr\_limit}, il check lo sfrutta per determinare se l'operazione può essere o meno eseguita. Quindi, non possiamo ad esempio usare \texttt{memcpy} per eseguire movimenti di dati da kernel mode a user mode perché quello applica degli offset.\\In realtà, quando passiamo un pointer, le operazioni richieste dall'user possono essere fatte parzialmente in base alla compliance alle limitazioni del kernel.\\La configurazione tradizionale di \texttt{addr\_limit} è \texttt{0x00007f.....0}
 \subsubsection{API del kernel per eseguire operazioni di memoria}
 Le API sono le seguenti
 \begin{itemize}
-\item \textsf{copy\_from\_user}: copia da una regione user verso una regione kernel, quindi vengono prelevate da indirizzi prima del limite
-\item \textsf{copy\_to\_user}: qui non si può consegnare dopo il limite
-\item \textsf{get\_user}
-\item \textsf{put\_user}
-\item \textsf{strncpy\_from\_user}: copia una stringa di taglia fissa dall'utente
-\item \textsf{access\_ok}: si esegue un certo tipo di operazione, ovvero un check che si basa, a partire dal limite, si vorrebbe poter lavorare su un certo numero di byte a partire dal limite e quindi si controlla se la zona dell'address space a partire dall'address dato e per un certo numero di byte è una zona valida.\\Questo prevede dire che il kernel può chiamare la access\_ok nel momento in cui si cerca di controllare non solo il limite, ma anche anche tutta la zona di memoria sia valida. Quindi, tutte le operazioni potrebbero copiare / consegnare un numero ridotto di byte in base al fatto che la memoria sia valida o no.\\L'altro scenario della access\_ok prevede che abbiamo un pagina valida, la quantità di memoria richiesta vuole due pagine, la prima pagina è valida mentre la seconda no e l'access\_ok è in grado di fare questi check 
+\item \texttt{copy\_from\_user(void *to, const void *from, unsigned long n)}: copia da una regione user verso una regione kernel, quindi vengono prelevate da indirizzi prima del limite
+\item \texttt{copy\_to\_user(void *to, const void *from, unsigned long n)}: qui non si può consegnare dopo il limite
+\item \texttt{get\_user(void *to, void *from)}
+\item \texttt{put\_user(void *from, void *to)}
+\item \texttt{strncpy\_from\_user(char *dst, const char *src, long count)}: copia una stringa di taglia fissa dall'utente
+\item \texttt{access\_ok(int type, unsigned long addr, unsigned long size)}: si esegue un certo tipo di operazione, ovvero un check che si basa, a partire dal limite, si vorrebbe poter lavorare su un certo numero di byte a partire dal limite e quindi si controlla se la zona dell'address space a partire dall'address dato e per un certo numero di byte è una zona valida.\\Questo prevede dire che il kernel può chiamare la \texttt{access\_ok} nel momento in cui si cerca di controllare non solo il limite, ma anche che tutta la zona di memoria sia valida. Quindi, tutte le operazioni potrebbero copiare / consegnare un numero ridotto di byte in base al fatto che la memoria sia valida o no.\\L'altro scenario di utilizzo della \texttt{access\_ok} prevede che abbiamo un pagina valida, la quantità di memoria richiesta vuole due pagine, la prima pagina è valida mentre la seconda no e \texttt{l'access\_ok} è in grado di fare questi check.
 \end{itemize}
 Le API ritornano la quantità di byte non scritti o non letti in quanto non entravano nel limite.\\Lo schema nel kernel è quindi il seguente
-%schema del kernel 
-se non vogliamo usare le API occorre un meccanismo ad hoc.\\La cosa più interessante è che le reali operazione ci copia dei dati possono portare il thread a dormire: cerchiamo di muovere dati da livello kernel a user e vice versa, in ogni caso ci sono una pagina user ed una kernel. Se una di queste due è corretta e l'altra è altre sì corretta, quindi mmappata, ma non in RAM correntemente abbiamo un page fault. Quindi, occorre attivare un driver, prendere la pagina, metterla in RAM e mettere il collegamento nella page table quindi si porta il sleep il thread.\\Stesso può avvenire con la copy to user, se la pagina utente non è materializzata.\\Sono tutti aspetti fondamentali nelle sezioni critiche del kernel: se cerchiamo di andare a prendere dati da zona user per portarle in kernel rischiamo di andare in sleep, quindi la sezione critica dura un po' e questo può essere problematico per le performance.\\Il check è fatto kernel mode, quindi se c'è qualche tipo di bug nel software e quindi i parametri vengono checkati e ritenuti corretti ci possono essere risultati non attesi.
-\subsection{Caso della syscall read o write nel kernel Linux}
-Read e write permettono di lavorare usando la specificata memoria di livello user, ma quindi se vediamo il codice del kernel dovremmo vedere copy\_to\_user o copy\_from\_user perché altrimenti salta tutto. Ma quindi se nel kernel facciamo i check, è possibile che un demone del kernel e quindi un thread che esegue operazioni di ausilio, chiami una sysread o syswrite? La page table lo fa eseguire accedendo solo ad informazioni di livello kernel, la memory view non ha la zona user, quindi può chiamare le operazioni leggendo / scrivendo file? No, quindi occorre rendere disponibili dei servizi che vanno i check per tutti i thread di "housekeeping", quindi per poter fare read user space si possono 
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/rw_kernel_api.png}
+\end{figure}
+se non vogliamo usare le API occorre un meccanismo ad hoc.\\La cosa più interessante è che le reali operazione di copia dei dati possono portare il thread a dormire: cerchiamo di muovere dati da livello kernel a user e vice versa, in ogni caso ci sono una pagina user ed una kernel. Se una di queste due è corretta e l'altra è altre sì corretta, quindi mmappata, ma non in RAM correntemente abbiamo un page fault. Quindi, occorre attivare un driver, prendere la pagina, metterla in RAM e mettere il collegamento nella page table quindi si porta in sleep il thread.\\Lo stesso comportamento può avvenire con la \texttt{copy\_to\_user}, se la pagina utente non è materializzata.\\Sono tutti aspetti fondamentali nelle sezioni critiche del kernel: se cerchiamo di andare a prendere dati da zona user per portarle in kernel rischiamo di andare in sleep, quindi la sezione critica dura un po' e questo può essere problematico per le performance.\\Il check è fatto kernel mode, quindi se c'è qualche tipo di bug nel software che porta a fat si che i parametri checkati vengano ritenuti corretti ci potrebbero essere risultati non attesi.
+\subsection{Caso della syscall \texttt{read} o \texttt{write} nel kernel Linux}
+Le \texttt{read} e \texttt{write} permettono di lavorare usando la specificata memoria di livello user, ma quindi se vediamo il codice del kernel dovremmo vedere \texttt{copy\_to\_user} o \texttt{copy\_from\_user} perché altrimenti salta tutto.\\Ma se nel kernel facciamo i check, è possibile che un demone del kernel e quindi un thread che esegue operazioni di ausilio, chiami una \texttt{sysread} o \texttt{syswrite}? La page table lo fa eseguire accedendo solo ad informazioni di livello kernel, la memory view non ha la zona user, quindi può chiamare le operazioni leggendo / scrivendo file? No, quindi occorre rendere disponibili dei servizi che fanno i check per tutti i thread di "housekeeping", quindi per poter effettuare operazioni di lettura user space si possono 
 \begin{itemize}
 \item eseguire checks e fix ups: quando viene chiamata l'API si vede che il thread è un demone, quindi si cambiano le aree di memoria viste dal thread ma questo fa si che si spendano molti cicli macchina anche per thread non demoni solo per fare il check del tipo di thread
-\item schema in cui c'è ridondanza: un servizio che deve poter toccare la memoria in modo che il parametro è stato stabilito o dal kernel o dallo user è duplicato, quindi il codice è duplicato
+\item schema in cui c'è ridondanza: un servizio che deve poter toccare la memoria in un modo che è legato al parametro, in base al fatto che questo sia stato passato dal kernel o dallo user è duplicato, quindi il codice è duplicato
 \end{itemize}
-La syscall read o write sono ridondate: kernel\_read() kernel\_write(), i blocchi di codice presuppongono che la chiamata sia fatta solo kernel mode ed il demone può quindi passare parametri che non vengono checkati. Quindi per quel thread si può eseguire una lettura di file classica, ci sono sempre problemi se ci sono bug a livello kernel.\\Senza la ridondanza di servizio occorrerebbe chiamare la \textsf{sys\_read()} ed aggiungere una patch epr identificare thread kernel, non kernel etc... quindi le complicazioni sono bypassate tramite la ridondanza.
-\subsection{memcpy con i pointers}
-Ci interessa una memcpy all'interno del kernel del SO. Nei kernel ci sono degli ulteriori meccanismi per incrementare il livello di isolation quando si lavora kernel mode, perché se non si avessero questi meccanismi e ci fossero bug nel kernel o attacchi si potrebbe danneggiare il contenuto parte user nel caso in cui il pointer è scorretto.\\Su processori più recenti abbiamo la \textbf{constrained supervisor mode}, che è sul processore ma va settato dal kernel allo startup. Questo constrained supervisor mode si basa, ad esempio su x86, su due bit di controllo di cr4 (bit 21 e 22) che sono
+La syscall \texttt{read} o \texttt{write} sono ridondate: abbiamo \texttt{kernel\_read()} e \texttt{kernel\_write()}, i blocchi di codice presuppongono che la chiamata sia fatta solo kernel mode ed il demone può quindi passare parametri che non vengono checkati. Quindi per quel thread si può eseguire una lettura di file classica, ci sono sempre problemi se ci sono bug a livello kernel.\\Senza la ridondanza di servizio occorrerebbe chiamare la \texttt{sys\_read()} ed aggiungere una patch epr identificare thread kernel, non kernel etc... quindi le complicazioni sono bypassate tramite la ridondanza.
+\subsection{\texttt{memcpy} con i pointers}
+Ci interessa una \texttt{memcpy} all'interno del kernel del SO. Nei kernel ci sono degli ulteriori meccanismi per incrementare il livello di isolation quando si lavora kernel mode, perché se non si avessero questi meccanismi e ci fossero bug nel kernel o attacchi si potrebbe danneggiare il contenuto parte user nel caso in cui il pointer è scorretto.\\Su processori più recenti abbiamo la \textbf{constrained supervisor mode}, che è sul processore ma va settato dal kernel allo startup. Questa constrained supervisor mode si basa, ad esempio in x86, su due bit di controllo del registro cr4 (bit 21 e 22) che sono
 \begin{itemize}
-\item SMAP: il processore è tale per cui se cerca di accedere ad una pagina user quando sta lavorando in modo kernel (cpl 0), ha accesso negato e c'è una trap. In modo kernel si cambia questo bit per indicare che si è in modo kernel, possiamo eseguire uno schema di protezione importante per lo user rispetto a bug del kernel
-\item SMEP: si bloccano le istruzioni quando siamo a cpl0 fetchate da pagine user.
+\item \texttt{SMAP}: il processore è tale per cui se cerca di accedere ad una pagina user quando sta lavorando in modo kernel (cpl 0), ha accesso negato e c'è una trap. In modo kernel si cambia questo bit per indicare che si è in modo kernel, possiamo eseguire uno schema di protezione importante per lo user rispetto a bug del kernel
+\item \texttt{SMEP}: si bloccano le istruzioni, quando siamo a cpl 0, che vengono fetchate da pagine user.
 \end{itemize}
-Sono fondamentali, considerano che l'applicazione che si protegge può girare come root, quindi nel sistema può creare grossi danni se attaccata.
-Quindi, le facilities sono considerate nella copy\_to\_user, in quanto la scrittura delle pagine user deve prevedere il cambiamento del bit oppure la scrittura non è valida. Quindi l'implementazione prevede
+Sono fondamentali, considerano che l'applicazione che si protegge può girare come root, quindi nel sistema può creare grossi danni se attaccata.\\Queste facilities sono considerate nella \texttt{copy\_to\_user}, in quanto la scrittura delle pagine user deve prevedere il cambiamento del bit oppure la scrittura non è valida. Quindi l'implementazione prevede
 \begin{itemize}
 \item check del limit thread
 \item si determina l'ammontare legale di dati da copiare
-\item si disabilita SMAP con l'istruzione x86 \textsf{stac}
+\item si disabilita \texttt{SMAP} con l'istruzione x86 \texttt{stac}
 \item si fa la copia
-\item si abilita SMAP con l'istruzione \textsf{clac}
+\item si abilita \texttt{SMAP} con l'istruzione \texttt{clac}
 \end{itemize}
-\subsubsection{SEGFAULT mascherati}
-C'è una relazione fra questo modo di eseguire la copy\_to\_user e la mm: quando abbiamo un thread attivo, per gestirlo c'è a livello kernel un thread control block, tabella che ha ad esempio thread id etc... Da qui, si arriva ad un altra tabella tramite il puntatore mm, che è una \textsf{mm\_struct}, informazione basica per gestire la memoria del thread. Questa tabella permette di fare una descrizione dell'address space, quindi dicendo quali zone sono mmappate e quali no, c'è una lista di elementi alle varie zone in cui ci sono informazioni basiche.\\La copy\_to\_user deve verificare se l'indirizzo va oltre il limite, poi fare il check di quante pagine sono mmappate e quindi occorre scandire la lista. Quindi, la determinazione di quanti dati si possono consegnare è tale per cui il controllo può avere un costo lineare e questo non piace algoritmicamente, specialmente quando ci sono tante zone mmappate. È possibile evitarla? Checkiamo il pointer user, non controlliamo l'address space ed eseguiamo l'operazione: può capitare un SEGFAULT, siamo entrati modo kernel e cerchiamo di scrivere su una pagina non mmappata. Possiamo però bypassare il costo lineare, è implementato in Linux in modo da determinare tramite la masked SEGFAULT: adottiamo una operazione a valle della segfault, pagando un costo solo le pagina che andava toccata non è toccabile. Nel mascheramento dei segfault si fa il controllo dell'addr\_limit e solo se le pagine non sono mmappate viene generata la segfault ed il kernel sa che è stato generato dal kernel (l'indirizzo che l'ha generato è lato kernel), quindi si cambia lo stato di processore per eseguire il codice che "mette a posto" le cose, quindi restituisce quanti byte sono ancora residui per l'operazione. Non si evitano i SEGFAULT quando si fa movimento dati user / kernel, se otteniamo un'area di memoria non lecita ce ne accorgiamo a valle.
+\subsection{\texttt{SEGFAULT} mascherati}
+C'è una relazione fra questo modo di eseguire la \texttt{copy\_to\_user} e la mm: quando abbiamo un thread attivo, per gestirlo c'è a livello kernel un thread control block, tabella che ha ad esempio thread id etc... Da qui, si arriva ad un altra tabella tramite il puntatore mm, che è una \texttt{mm\_struct}, informazione basica per gestire la memoria del thread. Questa tabella permette di fare una descrizione dell'address space, quindi dicendo quali zone sono mmappate e quali no, c'è una lista di elementi alle varie zone in cui ci sono informazioni basiche.\\La \texttt{copy\_to\_user} deve verificare se l'indirizzo va oltre il limite, poi fare il check di quante pagine sono mmappate e quindi occorre scandire la lista. Quindi, la determinazione di quanti dati si possono consegnare è tale per cui il controllo può avere un costo lineare e questo non piace algoritmicamente, specialmente quando ci sono tante zone mmappate. È possibile evitarla? Checkiamo il pointer user, non controlliamo l'address space ed eseguiamo l'operazione: può capitare un \texttt{SEGFAULT}, siamo entrati modo kernel e cerchiamo di scrivere su una pagina non mmappata. Possiamo però bypassare il costo lineare, questo viene implementato in Linux tramite il \textbf{masked \texttt{SEGFAULT}}: adottiamo un comportamento a valle del \texttt{SEGFAULT}, pagando un costo solo le pagina che andava toccata non è toccabile. Nel mascheramento dei \texttt{SEGFAULT} si fa il controllo dell'\texttt{addr\_limit} e solo se le pagine non sono mmappate viene generata il \texttt{SEGFAULT} ed il kernel sa che è stato generato dal kernel (l'indirizzo che l'ha generato è lato kernel), quindi si cambia lo stato di processore per eseguire il codice che "mette a posto" le cose, quindi restituisce quanti byte sono ancora residui per l'operazione. Non si evitano i \texttt{SEGFAULT} quando si fa movimento dati user / kernel, se otteniamo un'area di memoria non lecita ce ne accorgiamo a valle.
 \subsection*{Esempio software}
-Abbiamo la syscall \textbf{sys\_log\_message}, dove si verifica la size del messaggio. Siamo entrati a livello kernel, lo user ci ha dato il messaggio e questo viene messo in un buffer intermedio, preso con get\_zeroed\_page. Stiamo spostando dati in pagine kernel materializzate in memoria, quindi non si va mai in sleep: in questo modo, essendoci la sezione critica, evitiamo di andare in sleep.\\ Anche nella get\_message si fa il passaggio preliminare per evitare la sleep. Che allocatore si usa nel software: l'API è del buddy allocator, ma la struttura software dipende dalla versione del kernel: in versioni più recenti l'allocatore implementa al suo interno la quick list, se non ha la pagina va sul buddy allocator quindi fare un implementazione di una quick list apposita sarebbe inutile se la reale operazione lo fa già.\\Quindi è utile quando si scrive codice per il kernel sapere la versione.\\ Nel codice user c'è la possibilità di usare la macro FAULT, dove il buffer è impostato a NULL. Quindi, se passiamo NULL alla syscall e chiamiamo la get\_message troviamo che il lavoro non è stato fatto ma non è stata prodotta la SEGFAULT, non ci va il kernel o se ci va la maschera e mette a posto le cose.
+Abbiamo la syscall \texttt{sys\_log\_message}, dove si verifica la size del messaggio. Siamo entrati a livello kernel, lo user ci ha dato il messaggio e questo viene messo in un buffer intermedio, preso con get\_zeroed\_page. Stiamo spostando dati in pagine kernel materializzate in memoria, quindi non si va mai in sleep: in questo modo, essendoci la sezione critica, evitiamo di andare in sleep.\\ Anche nella get\_message si fa il passaggio preliminare per evitare la sleep. Che allocatore si usa nel software: l'API è del buddy allocator, ma la struttura software dipende dalla versione del kernel: in versioni più recenti l'allocatore implementa al suo interno la quick list, se non ha la pagina va sul buddy allocator quindi fare un implementazione di una quick list apposita sarebbe inutile se la reale operazione lo fa già.\\Quindi è utile quando si scrive codice per il kernel sapere la versione.\\ Nel codice user c'è la possibilità di usare la macro FAULT, dove il buffer è impostato a NULL. Quindi, se passiamo NULL alla syscall e chiamiamo la get\_message troviamo che il lavoro non è stato fatto ma non è stata prodotta la SEGFAULT, non ci va il kernel o se ci va la maschera e mette a posto le cose.
 \chapter{Programmazione dei moduli Linux}
 \section{Supporto alle system call e servizi}
 I concetti basici dell'esistenza dei moduli Linux sono
@@ -1941,102 +1951,186 @@ I concetti basici dell'esistenza dei moduli Linux sono
 \end{itemize}
 Vediamo cosa realmente accade quando va inserito un modulo in un kernel già attivo. Sicuramente serve RAM per poter contenere tutto ciò che caratterizza il modulo, sia strutture dati che codice. Il montaggio si basa su software, quindi se consideriamo un address space logico, in zona kernel abbiamo una zona logica dove caricare il modulo, che può essere mappata in zone non contigue di memoria fisica.\\Quando carichiamo il modulo, c'è un problema di correlazione fra le routine kernel e 
 \begin{itemize}
-\item le componenti del modulo stesso
+\item i componenti del modulo stesso
 \item gli altri sotto-sistemi del kernel, che sono da qualche parte in memoria
 \end{itemize}
 quindi deve esserci il corretto setup di dove sono gli altri oggetti all'interno del kernel.\\Lo schema è il seguente
-%schema del montaggio
-c'è una zona logica libera, carichiamo nella zona le informazioni che possono essere dati o codice, se c'è una chiamata ad un sotto-sistema esterno occorre ridirezionare la chiamata al punto specifico del kernel dove sono le informazioni.\\ Chi si occupa di tutte queste operazioni: nell'evoluzione storica, il "responsabile" è cambiato in particolare c'è un punto di rottura dal 2.4 in poi:
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/module_mount_scheme.png}
+\end{figure}
+c'è una zona logica libera, carichiamo nella zona le informazioni che possono essere dati o codice, se c'è una chiamata ad un sotto-sistema esterno occorre ridirezionare la chiamata al punto specifico del kernel dove sono le informazioni.\\ Chi si occupa di tutte queste operazioni: nell'evoluzione storica, il "responsabile" è cambiato ed in particolare c'è un punto di rottura dal 2.4 in poi:
 \begin{itemize}
-\item dal .4, un modulo non è altro che un .o generato usando gcc. Quindi, era un oggetto rilocabile, collegabile ad altri eseguibili e quindi il lavoro di dover allocare memoria per quel .o era delegato ai programmi lanciabili tramite shell, che interagivano con apposite syscall del kernel.
+\item dal 2.4, un modulo non è altro che un .o generato usando gcc. Quindi, era un oggetto rilocabile, collegabile ad altri eseguibili e quindi il lavoro di dover allocare memoria per quel .o era delegato ai programmi lanciabili tramite shell, che interagivano con apposite syscall del kernel.
 \item dal 2.6, quando viene generata la versione da montare del modulo, si genera un kernel object, che ha delle informazioni in più rispetto ad un .o, che fanno si che il kernel possa fare quelle operazioni che erano fatte user mode. Fare ad esempio la risoluzione della memoria a livello user implica la conoscenza della posizione dei moduli del kernel da collegare al .o ma questo è un importante problema di sicurezza.
 \end{itemize}
 \subsection{Evoluzione delle syscall}
 Inizialmente, c'erano 3 syscall per inserire un nuovo modulo del kernel
 \begin{itemize}
-\item \textsf{create\_module}: riserva memoria e restituisce l'indirizzo logico
-\item \textsf{init\_module}: abbiamo la versione finale del software da caricare in memoria, questa syscall lo carica. Abbiamo quindi già risolto due dei problemi visti prima, ovvero riservare la memoria e caricare la versione del modulo
-\item \textsf{delete\_module}: elimina il modulo
+\item \texttt{create\_module}: riserva memoria e restituisce l'indirizzo logico
+\item \texttt{init\_module}: abbiamo la versione finale del software da caricare in memoria, questa syscall lo carica. Abbiamo quindi già risolto due dei problemi visti prima, ovvero riservare la memoria e caricare la versione del modulo
+\item \texttt{delete\_module}: elimina il modulo
 \end{itemize}
-In una versione più moderna del kernel, la \textsf{create\_table} non è più supportata e la \textsf{init\_module} è molto più complessa in quanto si passano informazioni che sono di un .ko che va riscritto a livello kernel e modificato per poter scrivere correttamente le informazioni del modulo
+In una versione più moderna del kernel, la \texttt{create\_module} non è più supportata e la \texttt{init\_module} è molto più complessa in quanto si passano informazioni che sono di un .ko che va riscritto a livello kernel e modificato per poter scrivere correttamente le informazioni del modulo
 \begin{itemize}
 \item si riserva memoria, associando un nome all'area allocata necessaria per allocare il modulo (ci sono dei metadati di gestione)
 \item carica la parte non finalizzata dell'immagine del modulo, finalizzandola
 \item chiamata alla funzione di setup
 \end{itemize}
-la \textsf{delete\_module} rimane equivalente.\\Ci sono delle parti comuni in questa gestione del caricamento dei moduli
+la \texttt{delete\_module} rimane equivalente.\\Ci sono delle parti comuni in questa gestione del caricamento dei moduli
 \subsubsection{Parti comuni}
-La funzione di creazione del modulo e di cleanup hanno un nome fisso: \textsf{int init\_module} e \textsf{void cleanup\_module}. Non prendono parametri e non possono prenderne: le funzioni non vengono chiamate da uno specifico caller, quindi si esegue una gestione della variazione di flusso di esecuzione semplici. Nella init si ritorna un intero, lungo il thread della inizializzazione si chiama la init ed il valore intero indica se tutto è andato bene o no. Il non ok può essere anche dovuto ad una interazione con l'allocatore di memoria che non ha abbastanza memoria a disposizione\\Quando montiamo  un kernel, l'operazione prevede l'aggiornamento dei metadati del kernel fra cui c'è lo \textbf{usage count}: questo indica il numero di unità che specificano quanti saranno i thread che potranno ancora usare il contenuto del modulo. Averlo maggiore di 0 vuol dire che il modulo non è al momento smontabile, in thread management può accadere che un thread chieda ad un altro di fare qualcosa che prevede l'interazione col modulo, che può accadere in futuro. Quindi se quando viene chiamato il modulo questo non c'è più, è un problema.\\Potremmo voler usare il contenuto del modulo anche quando arriva un interrupt, perché magari il modulo monta un handler per l'interrupt, lo smontaggio può essere forzato ma è comunque rischioso. Arrivati a usage counter a 0, il modulo diviene smontabile.\\ Un altro aspetto comune fra i kernel sono i parametri verso i moduli: l'idea è che quando si monta un modulo, alcune delle variabili globali del modulo debbano essere settate ad un certo valore, quindi la variabile è un parametro. È possibile che alcune delle variabili globali siano dichiarate come parametri, la logica prevede che i parametri siano trattati 
+La funzione di creazione del modulo e di cleanup hanno un nome fisso: \texttt{int init\_module(void)} e \texttt{void cleanup\_module(void)}.\\Non prendono parametri e non possono prenderne: le funzioni non vengono chiamate da uno specifico caller, quindi si esegue una gestione della variazione di flusso di esecuzione semplici. Nella init si ritorna un intero, lungo il thread della inizializzazione si chiama la init ed il valore intero indica se tutto è andato bene o no. Il non ok può essere anche dovuto ad una interazione con l'allocatore di memoria che non ha abbastanza memoria a disposizione\\Quando montiamo  un kernel, l'operazione prevede l'aggiornamento dei metadati del kernel fra cui c'è lo \texttt{usage count}: questo indica il numero di unità che specificano quanti saranno i thread che potranno ancora usare il contenuto del modulo. Averlo maggiore di 0 vuol dire che il modulo non è al momento smontabile, in thread management può accadere che un thread chieda ad un altro di fare qualcosa che prevede l'interazione col modulo, che può accadere in futuro. Quindi se quando viene chiamato il modulo questo non c'è più, è un problema.\\Potremmo voler usare il contenuto del modulo anche quando arriva un interrupt, perché magari il modulo monta un handler per l'interrupt, lo smontaggio può essere forzato ma è comunque rischioso. Arrivati a usage counter a 0, il modulo diviene smontabile.\\ Un altro aspetto comune fra i kernel sono i parametri verso i moduli: l'idea è che quando si monta un modulo, alcune delle variabili globali del modulo devono essere settate ad un certo valore, quindi la variabile è un parametro. È possibile che alcune delle variabili globali siano dichiarate come parametri, la logica prevede che i parametri siano trattati 
 \begin{itemize}
 \item user space se siamo in kernel 2.4
 \item da 2.6$>$, il valore della variabile va scritto nell'area di memoria dove verrà allocata la variabile dal kernel
 \end{itemize}
 per far si che le variabili possano essere usate come moduli occorre marcarle nella dichiarazione del software:
 \begin{itemize}
-\item in 2.4$\leq$ si può usare una macro \textsf{MODULE\_PARAM(variable, type)} con cui possiamo dire dove la variabile risiederà
-\item 2.6 $>$ c'è \textsf{module\_param(variable, type, perm)}. Nel kernel 2.6 avviene che quando si fa l'operazione di caricamento, il kernel che prende il controllo sa che in una certa area di memoria si trova una variabile, viene quindi creato uno pseudo-file "f" nel VFS, quindi il driver dello pseudo-file permette di leggere / scrivere byte e quindi occorre specificare i permessi di gestione dello pseudo-file.\\Sempre per motivi di sicurezza, specificando i permessi, ampliamo la possibilità di chi può leggere quello pseudo-file e quindi se si specificano dei permessi troppo laschi c'è un errore di compilazione. A run time, andando nel VFS si possono cambiare i permessi, ma a compile time c'è comunque l'avviso.
+\item in 2.4$\leq$ si può usare una macro \texttt{MODULE\_PARAM(variable, type)} con cui possiamo dire dove la variabile risiederà
+\item 2.6 $>$ c'è \texttt{module\_param(variable, type, perm)}. Nel kernel 2.6 avviene che quando si fa l'operazione di caricamento, il kernel che prende il controllo sa che in una certa area di memoria si trova una variabile, viene quindi creato uno pseudo-file "f" nel VFS, quindi il driver dello pseudo-file permette di leggere / scrivere byte e quindi occorre specificare i permessi di gestione dello pseudo-file.\\Sempre per motivi di sicurezza, specificando i permessi, ampliamo la possibilità di chi può leggere quello pseudo-file e quindi se si specificano dei permessi troppo laschi c'è un errore di compilazione. A run time, andando nel VFS si possono cambiare i permessi, ma a compile time c'è comunque l'avviso.
 \end{itemize}
-Possiamo analizzare il VFS /sys, nella directory modules: negli pseudo-file di gestione ci sono proc e sys. L'informazione su dove è il modulo in memoria logica è offuscata (se vediamo sys), in modules compare una sotto-directory apposita per ogni modulo montato e dentro c'è parameters dentro cui ci sono tutte le variabili associate al modulo, la modifica viene fatta da un driver apposito associato allo pseudo-file.\\Le variabili utilizzate come parametri possono anche essere array, tramite la \textsf{module\_param\_array()} a cui passiamo i diversi parametri. L'array è mappato sempre su un unico file, che possiamo estrarre come una serie di valori.
+Possiamo analizzare il VFS \texttt{/sys}, nella directory \texttt{modules}: negli pseudo-file di gestione ci sono \texttt{/proc} e \texttt{/sys}.\\L'informazione su dove è il modulo in memoria logica è offuscata (se vediamo sys), in modules compare una sotto-directory apposita per ogni modulo montato e dentro c'è \texttt{parameters}, dentro cui ci sono tutte le variabili associate al modulo, la modifica viene fatta da un driver apposito associato allo pseudo-file.\\Le variabili utilizzate come parametri possono anche essere array, dichiarato tramite la \texttt{module\_param\_array()} a cui passiamo i diversi parametri. L'array è mappato sempre su un unico file, che possiamo estrarre come una serie di valori.
 \subsection{Caricare e scaricare i moduli}
 Ci sono dei comandi basici di shell
 \begin{itemize}
-\item \textsf{insmod}, è possibile avere una variabile che è anche un parametro, settata al valore iniziale all'atto del caricamento
-\item \textsf{rmmod} permette di rimuove il modulo, che fallisce se lo usage count è maggiore di 0
-\item il montaggio si può fare anche con \textsf{modprobe}, che cerca direttamente il modulo da montare in /lib/modules/\$(uname -a)
+\item \texttt{insmod}, è possibile avere una variabile che è anche un parametro, settata al valore iniziale all'atto del caricamento
+\item \texttt{rmmod} permette di rimuove il modulo, che fallisce se lo usage count è maggiore di 0
+\item il montaggio si può fare anche con \texttt{modprobe}, che cerca direttamente il modulo da montare in \texttt{/lib/modules/\$(uname -a)}
 \end{itemize}
-Quando chiamiamo insmode su kernel 2.4 abbiamo questo execution path
+Quando chiamiamo \texttt{insmod} su kernel 2.4 abbiamo questo execution path
 \begin{itemize}
-\item create\_module
-\item rilocazione del modulo
-\item slides
+\item \texttt{create\_module}
+\item rilocazione del modulo, sfruttando la symtab esposta ad esempio nello pseudo file \texttt{/proc/kallsysms}
+\item \texttt{init\_module}
 \end{itemize}
 Nel caso di kernel 2.6 cambia
-(slides)\\La seconda attività nel caso di kernel 2.4 prevede la rilocazione, ma quali informazioni sfrutta insmod per poterlo fare, ad esempio come fa a cambiare una CALL per inserire il target corretto che porta al modulo del kernel necessario (come get\_zeroed\_page()). L'informazione va passata, che sono esposte nello pseudo-file /proc/kallsyms, quindi il contenuto del "file" viene assemblato dal kernel in base ad un contenuto in una certa tabella. Nel caso di kernel sopra al 2.4 il file non viene più consultato
-\subsubsection{System calls}
-La \textsf{create\_module} è fatta del seguente modo (slides)\\Abbiamo poi la \textsf{init\_module} (codice), dove passiamo il nome del modulo da montare, che corrisponde all'area di memoria, viene passato anche un puntatore ad una \textsf{struct module} %codice
-l'idea era quella di avere a livello applicativo in memoria la struct module + routine e dati impaccati in memoria. Quindi se vediamo la memoria come un array di taglia N, aggiungevamo dei metadati iniziali del modulo, utili per la gestione da parte del kernel.\\Ci sono due puntatori alle funzioni di init e di cleanup, c'è  anche lo usage count. C'è un field next, per collegare l'elemento struttura ad altri omologhi all'interno del kernel e quindi gli header sono collegati in lista per ottenere ad esempio lo usage count scorrendo tale lista.\\Nella gestione fino al 2.4 non ci sono parametri per poter specificare il valore dei parametri del modulo, né se ci sono e né quanto devono valere, questo avviene user space.\\ Quindi queste variabili non possono essere cambiate a run time dall'esterno del modulo, per cambiarlo occorre conoscere la posizione in memoria.\\Abbiamo poi la \textsf{delete\_module}\\\\Da kernel 2.6 abbiamo le due init
 \begin{itemize}
-\item \textsf{int init\_module}, possiamo passare un puntatore ad una stringa in cui inseriamo i nomi delle variabili=valore per poter dinamicamente montare i parametri del modulo
-\item \textsf{int finit\_module}: passiamo un descrittore di file , quindi dobbiamo averlo aperto in precedenza.
+	\item \texttt{insmod}
+	\item \texttt{init\_module}
 \end{itemize}
-Non si può fare address resolution a livello user, in un file .ko vengono postati dei metadati addizionali, che indicano al kernel quali informazioni vanno usate dal kernel object del kernel attuale.\\ Quindi viene generato un .o, da cui tramite il programma \textbf{modpost} viene generato un sorgente C chiamato \textsf{.mod}, gli oggetti vengono poi linkati insieme per generare il .ko\\
+La seconda attività nel caso di kernel 2.4 prevede la rilocazione, ma quali informazioni sfrutta \texttt{insmod} per poterlo fare, ad esempio come fa a cambiare una CALL per inserire il target corretto che porta al modulo del kernel necessario (come \texttt{get\_zeroed\_page()}). L'informazione va passata ed è esposta nello pseudo-file \texttt{/proc/kallsyms}, quindi il contenuto del "file" viene assemblato dal kernel in base ad un contenuto in una certa tabella. Nel caso di kernel sopra al 2.4 il file non viene più consultato in quanto è offuscato.
+\section{System calls}
+La \texttt{create\_module} è fatta del seguente modo:\\
+\texttt{caddr\_t create\_module(const char *name, size\_t size);}
+\\Abbiamo poi la\\
+\texttt{int init\_module(const char *name, struct module *image)}\\dove passiamo il nome del modulo da montare, che corrisponde all'area di memoria, viene passato anche un puntatore ad una \texttt{struct module}
+\begin{lstlisting}
+struct module{
+		unsigned long size_of_struct;
+		struct module *next;
+		unsigned long size;
+		unsigned long flags;
+		unsigned long ndeps;
+		struct module_ref *deps;
+		int (*init)(void);
+		const struct exception_table_entry *ex_table_start;
+		const struct exception_table_entry *ex_table_end;
+		const char *name;
+		long usecount;
+		unsigned int nsyms;
+		struct module_symbol *sysm;
+		struct module_ref *refs;
+		
+		#ifdef __alpha__
+			unsigned long gp;
+		#endif
+}
+\end{lstlisting}
+l'idea era quella di avere a livello applicativo in memoria la \texttt{struct module} + le routine e dati impaccati in memoria. Quindi se vediamo la memoria come un array di taglia N, aggiungevamo dei metadati iniziali del modulo, utili per la gestione da parte del kernel.\\Ci sono due puntatori alle funzioni di init e di cleanup, c'è  anche lo usage count. C'è un field next, per collegare l'elemento struttura ad altri omologhi all'interno del kernel e quindi gli header sono collegati in lista per ottenere ad esempio lo usage count scorrendo tale lista.\\Nella gestione fino al 2.4 non ci sono parametri per poter specificare il valore dei parametri del modulo, né se ci sono e né quanto devono valere, questo avviene user space.\\ Quindi queste variabili non possono essere cambiate a run time dall'esterno del modulo, per cambiarlo occorre conoscere la posizione in memoria.\\Abbiamo poi la \texttt{delete\_module}\\\\Da kernel 2.6 abbiamo le due init
+\begin{itemize}
+\item \texttt{int init\_module}, possiamo passare un puntatore ad una stringa in cui inseriamo i nomi delle variabili=valore per poter dinamicamente montare i parametri del modulo
+\item \texttt{int finit\_module}: passiamo un descrittore di file , quindi dobbiamo averlo aperto in precedenza.
+\end{itemize}
+Non si può fare address resolution a livello user, in un file .ko vengono postati dei metadati addizionali, che indicano al kernel quali informazioni vanno usate dal kernel object del kernel attuale.\\ Quindi viene generato un .o, da cui tramite il programma \texttt{modpost} viene generato un sorgente C con estensione .mod, gli oggetti vengono poi linkati insieme per generare il .ko\\
 \section{Facilities}
-Ci sono una serie di module headings, così come anche delle macro che permettono di includere parti sin compilazione solo parti dei moduli (ifdef).\\ Ci sono headings come smp, interessante se si programma un modulo per una macchina parallela che offre delle facilities per sincronizzare i thread. Quando si includono gli oggetti, la logica di gestione di cose già viste user level è diversa kernel level, ad esempio bloccando uno spin lock, il thread diventa non-preemptabile.
-%esempio snippet
+Ci sono una serie di module headings, così come anche delle macro che permettono di includere parti sin compilazione solo parti dei moduli (ifdef).\\ Ci sono headings come \texttt{smp}, interessante se si programma un modulo per una macchina parallela che offre delle facilities per sincronizzare i thread. Quando si includono gli oggetti, la logica di gestione di cose già viste user level è diversa kernel level, ad esempio bloccando uno spin lock, il thread diventa non-preemptabile.
 \subsection{Gestione dello usage count}
-Inizialmente c'era le facilities incluse nell'heading module.h, i metadati vengono gestiti per il modulo da cui internamente si chiama la facility. Con queste facility non possiamo avere questo tipo di soluzione: supponiamo di montare un modulo che implementa qualcosa di raggiungibile solo tramite altre parti del kernel. La possibilità di usare un certo modulo prevede quindi che ci può essere forte dipendenza fra le diverse attività, quindi avere usage count solo dentro al modulo non considera le interazioni con altri moduli. È stata quindi introdotta la possibilità di cambiare il contatore dall'esterno del modulo, reperendo i metadati di quest ultimo in modo che quando viene chiamata la open per aprire un driver verso uno pseudo-file, viene bloccato il modulo.\\Dal 2.6 in su abbiamo due API per cercare di bloccare il modulo, occorre avere un puntatore che punta ai metadati basici del modulo, abbiamo anche put per incrementare il contatore d'uso, occorre sempre conoscere dove è in memoria la posizione del modulo, per saperlo si può chiamare la \textsf{find\_module} (PESANTEMENTE SLIDES, MANCANO TUTTE LE SEGNATURE DELLE API).\\Le chiamate delle API non sono tipicamente atomiche, quindi è importante controllare come l'effettiva operazione sulla struttura dati stia avvenendo.
-\subsection{Exported symbols}
-I simboli esportati del kernel originale ma anche delle nuove parti. Il simbolo esportato è visibile all'esterno, quindi usabile da altro software, c'è una macro apposita in modo da indicare nel kernel object che una parte del modulo verrà usato per costruire un altro modulo del kernel. L'esportazione si basa sull'idea che viene mantenuta una tabella dei simboli esportati che inizialmente erano contenuti nella kallsyms, la quantità di simboli esportati può dipendere da come è stato configurato il kernel, si possono in particolare configurare
+Inizialmente c'era le facilities incluse nell'heading \texttt{module.h}, i metadati vengono gestiti per il modulo da cui internamente si chiama la facility. Con queste facilities non possiamo avere questo tipo di soluzione: supponiamo di montare un modulo che implementa qualcosa di raggiungibile solo tramite altre parti del kernel. La possibilità di usare un certo modulo prevede quindi che ci può essere forte dipendenza fra le diverse attività, quindi avere usage count solo dentro al modulo non considera le interazioni con altri moduli. È stata quindi introdotta la possibilità di cambiare il contatore dall'esterno del modulo, reperendo i metadati di quest'ultimo in modo che quando viene chiamata la \texttt{open} per aprire un driver verso uno pseudo-file, viene bloccato il modulo.\\Dal 2.6 in su abbiamo due API per cercare di bloccare il modulo:
 \begin{itemize}
-\item kallsyms
-\item kallsyms all: esporta anche le variabili
+	\item \texttt{try\_module\_get(struct module *module)}
+	\item \texttt{module\_put(struct module *module)}
 \end{itemize}
-Su kernel più recenti kallsyms non viene più usato, avendo build installato si possono vedere i simboli esportati.\\
+occorre avere un puntatore che punta ai metadati basici del modulo, abbiamo anche put per incrementare il contatore d'uso, occorre sempre conoscere dove è in memoria la posizione del modulo, per saperlo si può chiamare la \texttt{find\_module}.\\Le chiamate delle API non sono tipicamente atomiche, quindi è importante controllare come l'effettiva operazione sulla struttura dati stia avvenendo.
+\subsection{Exported symbols}
+I simboli esportati del kernel originale ma anche delle nuove parti. Il simbolo esportato è visibile all'esterno, quindi usabile da altro software, c'è una macro apposita in modo da indicare nel kernel object che una parte del modulo verrà usato per costruire un altro modulo del kernel. L'esportazione si basa sull'idea che viene mantenuta una tabella dei simboli esportati che inizialmente erano contenuti nella \texttt{kallsyms}, la quantità di simboli esportati può dipendere da come è stato configurato il kernel, si possono in particolare configurare
+\begin{itemize}
+\item \texttt{kallsyms}
+\item \texttt{kallsyms all}: esporta anche le variabili
+\end{itemize}
+Su kernel più recenti \texttt{kallsyms} non viene più usato, avendo \texttt{build} installato si possono vedere i simboli esportati.\\
 \section*{Esempi}
-Correliamo due moduli:\\\\k\_probe installa una probe sul kernel, ovvero un modulo kernel tale per cui viene eseguito prima di eseguire qualunque funzione del kernel, quindi inserirla in un contesto di wrapping, poiché si può mettere anche dopo il ritorno della funzione kernel.\\ Diciamo che esistono delle variabili di modulo con certi parametri. Il concetto della tail\_hook è quello di far si che svenga preso il controllo tramite un "gancio", nell'init andiamo proprio a dire che l'hook va attaccata alla funzione specificata da target\_function. In questo caso, la funzione è \textsf{finish\_stask\_switch}, chiamata in caso di context switch per finalizzare, quindi quando la funzione completa viene chiamata anche la funzione di hook e riusciamo quindi a contare il numero di context switch.\\Possiamo cambiare il valore della hook\_func può cambiare, scrivendo nello pseudo-file: dovremmo poter scrivere un indirizzo di memoria coerente della funzione da chiamare. Viene introdotto quindi un altro modulo per fare questo: si espone un function pointer verso una funzione.\\\\Il secondo modulo ha la variabile \textsf{the\_hook}, per agganciare il modulo al recedente possiamo usare \textsf{find\_module} e la \textsf{try\_module\_get} per poi inizializzare la variabile all'indirizzo del modulo kernel richiesto\\Con questo tipo di moduli il kernel Linux permette anche di fare self-patching.
+Correliamo due moduli:\\\\\texttt{k\_probe} installa una probe sul kernel, ovvero un modulo kernel tale per cui viene eseguito prima di eseguire qualunque funzione del kernel, quindi inserirla in un contesto di wrapping, poiché si può mettere anche dopo il ritorno della funzione kernel.\\ Diciamo che esistono delle variabili di modulo con certi parametri. Il concetto della tail\_hook è quello di far si che svenga preso il controllo tramite un "gancio", nell'init andiamo proprio a dire che l'hook va attaccata alla funzione specificata da target\_function. In questo caso, la funzione è \texttt{finish\_stask\_switch}, chiamata in caso di context switch per finalizzare, quindi quando la funzione completa viene chiamata anche la funzione di hook e riusciamo quindi a contare il numero di context switch.\\Possiamo cambiare il valore della hook\_func può cambiare, scrivendo nello pseudo-file: dovremmo poter scrivere un indirizzo di memoria coerente della funzione da chiamare. Viene introdotto quindi un altro modulo per fare questo: si espone un function pointer verso una funzione.\\\\Il secondo modulo ha la variabile \texttt{the\_hook}, per agganciare il modulo al recedente possiamo usare \texttt{find\_module} e la \texttt{try\_module\_get} per poi inizializzare la variabile all'indirizzo del modulo kernel richiesto\\Con questo tipo di moduli il kernel Linux permette anche di fare self-patching.
 \section{Kernel self-probing}
-Il kernel è in grado di applicare delle patch su se stesso, applicando dei meccanismi per ottenere degli obiettivi di questo tipo: dato un thread che cerca di eseguire la funzione f, il thread esegue un blocco di codice che è un preambolo di f.\\Per fare kprobing, serve il concetto di \textbf{kprobe}, nel kernel Linux c'è una tabella che indica come deve essere fatta la funzione a cui fare self-patching: nella tabella si specifica il nome della funzione a cui fare self-patching, ogni volta che una funzione vuole fare patching contatta la tabella.\\Ci sono quindi le API , la seconda ha delle informazioni minori nella tabella, che vengono prese per default. È possibile registrare delle kretprobes per dire che siamo interessati che al termine di una funzione f si possa eseguire una ulteriore funzione da eseguire, vedremo che il meccanismo è complesso.\\ Si possono anche de-registrare le kprobe, anche in maniera selettiva, inoltre questo meccanismo permette, quando specifichiamo una kprobe, possiamo dare valore nullo, questo permette comunque di avere informazioni sul thread che esegue quella probe nulla, come dire dove l'oggetto è posizionato in memoria (il thread).\\Abbiamo un codice di esempio
-%codice
+Il kernel è in grado di applicare delle patch su se stesso, applicando dei meccanismi per ottenere degli obiettivi di questo tipo: dato un thread che cerca di eseguire la funzione f, il thread esegue un blocco di codice che è un preambolo di f.\\Per fare kernel probing, serve il concetto di \textbf{kprobe}, nel kernel Linux c'è una tabella che indica come deve essere fatta la funzione su cui si vuole fare self-patching: nella tabella si specifica il nome della funzione a cui fare self-patching, ogni volta che una funzione vuole fare patching contatta la tabella.\\Ci sono quindi le API , la seconda ha delle informazioni minori nella tabella, che vengono prese per default. È possibile registrare delle kretprobes per dire che siamo interessati che al termine di una funzione f si possa eseguire una ulteriore funzione da eseguire, vedremo che il meccanismo è complesso.\\ Si possono anche de-registrare le kprobe, anche in maniera selettiva, inoltre questo meccanismo permette, quando specifichiamo una kprobe, possiamo dare valore nullo, questo permette comunque di avere informazioni sul thread che esegue quella probe nulla, come dire dove l'oggetto è posizionato in memoria (il thread).\\Abbiamo un codice di esempio
+\begin{lstlisting}
+	memset(&kp, 0, sizeof(kp));
+	kp.symbol_name = "flush_tlb_all";
+	...
+	if(!register_kprobe(&kp)) {
+			flush_tlb_all_lookup = (void *) kp.addr;
+			...
+			unregister_kprobe(&kp);
+	}
+\end{lstlisting}
 data una tabella, passiamo l'indirizzo della variabile e settiamo tutti i byte a 0, prendiamo poi l'indirizzo della kprobe ed infine de-registriamo e quindi è possibile fare la discovery on-the-fly degli oggetti nel kernel.\\Questa è la versione basica di una struttura dati di kprobing:
-%struct
+\begin{lstlisting}
+<linux/kprobes.h>
+
+struct kprobe {
+	struct hlist_node hlist; /* Internal */
+	...
+	kprobe_opcode_t addr; /* Address of probe */
+	kprobe_pre_handler_t pre_handler; /* Address of pre-handler */
+	kprobe_post_handler_t post_handler; /* Address of post-handler */
+	...
+	kprobe_fault_handler_t fault_handler /* Address of fault handler */
+	kprobe_break_handler_t break_handler /* Internal */
+}
+\end{lstlisting}
 possiamo specificare due indirizzi logici, la pre e post handler. Nelle versioni del kernel da 3 in su ci sono altri campi, tra cui questo
-%altra struct
-abbiamo list\_head, quindi possiamo collegare ad altre tabelle dello stesso tipo, quindi ad ogni funzione del kernel si possono applicare più probe.\\Abbiamo anche il numerello nmissed, che dice il numero di volte in cui si è presa l'esecuzione degli handler, ovvero la probe non viene realmente eseguito. Il meccanismo è fatto in maniera tale che quando si installa un kprobe possiamo specificare il numero massimo di handler concorrenti da gestire, che può essere 1 solo perché magari nel stiamo facendo delle cose critiche nella funzione ed entrare in più di uno nel kprobe può essere un problema.\\Quindi, un thread passa nel post-handler ed un altro no se quello sta ancora eseguendo, è interessante l'uso in quanto inizialmente si usava kprobing per fare debugging
+\begin{lstlisting}
+struct kprobe {
+	struct hlist_node hlist;
+	
+	/* list of kprobes for multi-handler support */
+	struct list_head list;
+	
+	/*count the number of times this probe was temporarily disarmed*/
+	unsigned long nmissed;
+	...
+	...
+}
+\end{lstlisting}
+abbiamo \texttt{list\_head}, quindi possiamo collegare ad altre tabelle dello stesso tipo, quindi ad ogni funzione del kernel si possono applicare più probe.\\Abbiamo anche il \textbf{\textsf{numerello}} nmissed, che dice il numero di volte in cui si è presa l'esecuzione degli handler, ovvero la probe non viene realmente eseguito. Il meccanismo è fatto in maniera tale che quando si installa un kprobe possiamo specificare il numero massimo di handler concorrenti da gestire, che può essere 1 solo perché magari nel kernel stiamo facendo delle cose critiche nella funzione ed entrare in più di uno nel kprobe può essere un problema.\\Quindi, un thread passa nel post-handler ed un altro no se quello sta ancora eseguendo, è interessante l'uso in quanto inizialmente si usava kprobing per fare debugging.
 \subsection{Meccanismo del kprobing}
-Come fare per far si che se il thread vuole entrare ad eseguire f, c'è un pre-handling: magari il thread h ha una CALL verso il target f. Quando f fa RET, come faccio a dire di eseguire un post-handler.\\Il meccanismo base in Linux è identificare la zona di memoria dove c'è il binary code della funzione, il cui indirizzo è registrato nella tabella del probing, ed il primo byte viene sovrascritto con int3: questa è un'istruzione compatta di trap, quindi si passa il controllo ad un gestore di debugging.\\Per il ritorno, una funzione nella sua struttura interna potrebbe avere più return point e lavorare su tutti questi è complicato, ma possiamo fare questo: quando chiamiamo la CALL che colpisce l'int3, avrà generato sullo stack il punto di ritorno, quindi si salverà quel punto di ritorno e si sovrascriverà con l'indirizzo dell'architettura di kprobing che passerà il controllo al post-handler.\\Abbiamo sempre quindi due parti di una kprobe
+Come fare per far si che se il thread vuole entrare ad eseguire f, c'è un pre-handling: magari il thread h ha una CALL verso il target f. Quando f fa RET, come faccio a dire di eseguire un post-handler.\\Il meccanismo base in Linux è identificare la zona di memoria dove c'è il binary code della funzione, il cui indirizzo è registrato nella tabella del probing, ed il primo byte viene sovrascritto con int3: questa è un'istruzione compatta di trap, quindi si passa il controllo ad un gestore di debugging.\\Per il ritorno, una funzione nella sua struttura interna potrebbe avere più return point e lavorare su tutti questi è complicato, ma possiamo fare questo: quando chiamiamo la CALL che genera l'int3, avrà generato sullo stack il punto di ritorno, quindi si salverà quel punto di ritorno e si sovrascriverà con l'indirizzo dell'architettura di kprobing che passerà il controllo al post-handler.\\Abbiamo sempre quindi due parti di una kprobe
 \begin{itemize}
 \item pre
 \item post
 \end{itemize}
-se la kernel probe ha solo un post handler, abbiamo sempre la parte pre dove si salva l'indirizzo di ritorno per dare il controllo al post-handler, il pre-handler verrà eseguito solo se serve (stessa cosa vale per il pre-handler, il controllo si passa solo se questi sono definiti).\\La riscrittura del codice binario del kernel viene attuata, invece che con la int3, con una JUMP in modo da evitare il passaggio per il GATE.\\Vediamo la segnatura degli handler per e post
-%typedef degli handlers
-sono chiamati dall'architettura di kernel probing, quando prende il controllo.\\Il pre\_handler riceve anche un pointer a pt\_regs, quando si entra nella funzione in cui si è applicato il probing il sistema di probing esegue uno snapshot completo del contenuto della CPU, messo da qualche parte in memoria. Il pointer allo snapshot è consegnato sia al pre che al post handler, quindi sono in grado di eseguire conoscendo il contesto di CPU osservato dalla funzione, possiamo quindi modificare quei parametri e questo avrà effetto sulla funzione eseguita nell'handling, possiamo modificare quindi il contenuto che non ci piace, ad esempio l'IP, applicare quindi delle cose articolate nel kernel.\\Il post handler prende un flag in più, ma tipicamente non è usato, possiamo specificare anche un fault handler nella tabella, chiamato in caso di fault.\\Abbiamo poi una struttura dati per la kretprobe, dove siamo interessati solo a cosa accade dopo l'uscita della funzione
-%snippet
+se la kernel probe ha solo un post handler, abbiamo sempre la parte pre-handler dove si salva l'indirizzo di ritorno per dare il controllo al post-handler, il pre-handler verrà eseguito solo se serve (stessa cosa vale per il post-handler, il controllo si passa solo se questi sono definiti).\\La riscrittura del codice binario del kernel viene attuata, invece che con la int3, con una JUMP in modo da evitare il passaggio per il GATE.\\Vediamo la segnatura degli handler pre e post
+\begin{itemize}
+	\item \texttt{typedef int (*kprobe\_pre\_handler\_t) (struct kprobe*, struct pt\_regs*)};
+	\item \texttt{typedef void (*kprobe\_post\_handler\_t)(struct kprobe*, struct pt\_regs*, unsigned long flags)};
+	\item \texttt{typedef int (*kprobe\_fault\_handler\_t)(struct kprobe*, struct pt\_regs*, int trapnr)};
+\end{itemize}
+sono chiamati dall'architettura di kernel probing, quando prende il controllo.\\Il pre\_handler riceve anche un pointer a \texttt{pt\_regs}, quando si entra nella funzione in cui si è applicato il probing il sistema di probing esegue uno snapshot completo del contenuto della CPU, messo da qualche parte in memoria. Il pointer allo snapshot è consegnato sia al pre che al post handler, quindi sono in grado di eseguire conoscendo il contesto di CPU osservato dalla funzione, possiamo quindi modificare quei parametri e questo avrà effetto sulla funzione eseguita nell'handling, possiamo modificare quindi il contenuto che non ci piace, ad esempio l'IP, applicare quindi delle cose articolate nel kernel.\\Il post handler prende un flag in più, ma tipicamente non è usato, possiamo specificare anche un fault handler nella tabella, chiamato in caso di fault.\\Abbiamo poi una struttura dati per la kretprobe, dove siamo interessati solo a cosa accade dopo l'uscita della funzione
+\begin{lstlisting}
+struct kretprobe {
+	struct kprobe kp;
+	kretprobe_handerl_t handler;
+	kretprobe_handler_t entry_handler;
+	int maxactive;
+	int nmissed;
+	size_t data_size;
+	struct hlist_head free_istances;
+	raw spinklock_t lock;
+}
+\end{lstlisting}
 possiamo appunto specificare maxactive e nmissed.\\Le kprobes non sono applicabili a tutte le funzioni del kernel, per diversi motivi
 \begin{itemize}
 \item ci sono alcune funzioni ottimizzate a livello di compilazione con l'inlining, quindi occorrerebbe tenere traccia di tutti i punti dove i blocchi sono innestati
 \item ci sono poi funzioni che possono essere triggerate quando si eseguono attività di pre e post handling nell'architettura, quindi tutte quelle del sottosistema di kprobing, si avrebbe un loop sul passaggio di controllo
-\item le funzioni escluse sono in uno pseudofile apposito, \textsf{/sys/kernel/debug/kprobes/blacklist}
+\item le funzioni escluse sono in uno pseudofile apposito, \texttt{/sys/kernel/debug/kprobes/blacklist}
 \end{itemize}
 Quello che il kernel probing permette di fare è sempre fattibile, con un modulo di livello kernel si può anche fare binary patching del codice già esistente: l'approccio si usa nel momento in cui non si vogliono pagare i costi legati alle trap etc...
 \subsection*{Esempi}
@@ -2044,42 +2138,47 @@ Vediamo l'esempio \textbf{stdin\_kprobe\_interceptor}\\\\Decidiamo quale funzion
 \section{Kernel versioning}
 Sempre nei moduli, ci sono una serie di marco per lavorare con le versioni del kernel. Le macro sono in un file di header e alcune delle più interessanti sono 
 \begin{itemize}
-\item UTS\_RELEASE
-\item LINUX\_VERSION\_CODE, tramite informazione binaria dice qual è la versione del kernel
-\item KERNEL\_VERSION slides
+\item \texttt{UTS\_RELEASE}
+\item \texttt{LINUX\_VERSION\_CODE}, tramite informazione binaria dice qual è la versione del kernel
+\item \texttt{KERNEL\_VERSION}(major, minor, release) che viene espansa al valore binario che rappresenta il numero di versione definito con \texttt{major}, \texttt{minor} e \texttt{release}
 \end{itemize}
-è possibile quindi combinare queste macro nel seguente modo
-%codice di esempio
+è possibile quindi combinare queste macro
+\begin{lstlisting}
+#if LINUX_VERSION_CODE > KERNEL_VERSION(x,y,z)
+	<whatever you want to specify>
+#else
+	<whatever else you want to specify>
+#endif
+\end{lstlisting}
 in modo da poter includere nel codice un qualcosa piuttosto che altro.\\\\Possiamo anche scrivere dei moduli con nomi diversi da quelli obbligatori per le funzioni di startup e shutdown, usando due macro applicate ad i nomi scelti per tale funzioni. In questo modo quando il modulo diventa un intero sotto-sistema del kernel da includere in compilazione, basta gestire le macro.
 \section{Messaging system di Linux}
-Abbiamo visto la \textbf{printk} per produrre messaggi dal kernel, intanto cerchiamo di capire perché non usiamo sys\_write() o kernel\_write(): i messaggi che possiamo produrre mentre il kernel Linux è attivo possono essere del tipo quando il sotto-sistema che gestisce queste API non è disponibile, magari per mostrare dei messaggi di errore.\\Inoltre usare quei servizi per produrre messaggi ha un costo non minimale, perché prima di arrivare al driver effettivo dell'oggetto di I/O ci sono diversi layer da attraversare che portano via diversi cicli macchina.\\ printk è un sotto-sistema separato che ha due destinazioni
+Abbiamo visto la \texttt{\texttt{printk}} per produrre messaggi dal kernel, intanto cerchiamo di capire perché non usiamo \texttt{sys\_write()} o \texttt{kernel\_write()}: i messaggi che possiamo produrre mentre il kernel Linux è attivo possono essere legate al fatto che il sotto-sistema che gestisce queste API non è disponibile, magari per mostrare dei messaggi di errore.\\Inoltre usare quei servizi per produrre messaggi ha un costo non minimale, perché prima di arrivare al driver effettivo dell'oggetto di I/O ci sono diversi layer da attraversare che portano via diversi cicli macchina.\\ \texttt{printk} è un sotto-sistema separato che ha due destinazioni
 \begin{itemize}
 \item buffer circolare in cui vengono inseriti i messaggi, quando è pieno si sovrascrivono i più vecchi
 \item il messaggio che cerchiamo di immettere in output va in console, dove console è un dispositivo di visualizzazione immediato
 \end{itemize}
-abbiamo per questo in printk la gestione di due differenti flussi, una volta gestiti non sono correlati.
-\subsection{Sotto-sistema printk()}
-La printk permette di fare più o meno tutto quello che gestisce la printf, meno che gestire floating point perché al kernel interessano puntatori, bitmap etc... e non tipi di dato floating point.\\Quando chiamiamo printk, possiamo specificare anche il livello di criticità del messaggio, quindi la sua importanza: tipicamente se poco critico va solo nel buffer, altrimenti va anche nel terminale.\\Si può specificare la priorità del messaggio specificando una delle macro possibili, la stringa al suo interno porta il codice numerico: in genere ci sono 8 livelli di priorità, più si va verso 0 e più il messaggio indica qualcosa di critico che è stato prodotto.\\Quando si chiama kernel emergency è verificare tutti i terminali attivi e immettere il messaggio per avvertire che c'è qualcosa di critico in atto. Nel kernel ci sono anche API tali per cui si produce il messaggio in output targato col livello di priorità a seconda dell'API.\\La gestione dei messaggi nel sotto-sistema printk si basa su 4 parametri del kernel, uno di questi è il livello al di sotto del quale va messo in console il messaggio, le informazioni sono in uno pseudofile
+abbiamo per questo in \texttt{printk} la gestione di due differenti flussi, una volta gestiti non sono correlati.
+\subsection{Sotto-sistema \texttt{\texttt{printk}}}
+La \texttt{printk} permette di fare più o meno tutto quello che gestisce la printf, meno che gestire floating point perché al kernel interessano puntatori, bitmap etc... e non tipi di dato floating point.\\Quando chiamiamo \texttt{printk}, possiamo specificare anche il livello di criticità del messaggio, quindi la sua importanza: tipicamente se poco critico va solo nel buffer, altrimenti va anche nel terminale.\\Si può specificare la priorità del messaggio specificando una delle macro possibili, la stringa al suo interno porta il codice numerico: in genere ci sono 8 livelli di priorità, più si va verso 0 e più il messaggio indica qualcosa di critico che è stato prodotto.\\Quando si chiama kernel emergency, si verificano tutti i terminali attivi e si immettere il messaggio per avvertire che c'è qualcosa di critico in atto.\\Nel kernel ci sono anche API tali per cui si produce il messaggio in output targato col livello di priorità a seconda dell'API.\\La gestione dei messaggi nel sotto-sistema \texttt{printk} si basa su 4 parametri del kernel, uno di questi è il livello al di sotto del quale va messo in console il messaggio, le informazioni sono in uno pseudofile
 \begin{itemize}
-\item \textsf{console\_loglevel}: a seconda del livello, si includono/escludono messaggi in console e la console può essere un oggetto reale o virtuale e se è reale ruba un po' di cicli macchina prima di ritornare;
-\item 
+\item \texttt{console\_loglevel}: a seconda del livello, si includono/escludono messaggi in console e la console può essere un oggetto reale o virtuale e se è reale ruba un po' di cicli macchina prima di ritornare;
+\item \texttt{default\_message\_loglevel}: è il livello di priorità che viene associato per default ad ogni messaggio che non specifica un livello di priorità
+\item \texttt{minimum\_comsole\_loglevel}: il minimo livello per ammettere il logging dei messaggi sulla console
+\item \texttt{default\_console\_loglevel}: è il livello di default per i messaggi destinati ai device di console.
 \end{itemize}
-il contenuto dei parametri (valori) è nello pseudofile \textsf{/proc/sys/kernel/printk}, ad esempio, \textsf{console\_loglevel} di solito è impostato a 7.\\Vediamo come lavorare sul buffer
+il contenuto dei parametri (valori) è nello pseudofile \texttt{/proc/sys/kernel/printk}, ad esempio, \texttt{console\_loglevel} di solito è impostato a 7.\\Vediamo come lavorare sul buffer
 \subsubsection{Gestione del buffer circolare}
-Serve una syscall apposita per fare la gestione del buffer, che è \textsf{syslog} che è altamente parametrica perché in base al comando passato abbiamo un certo comportamento:
-questa è la segnatura
-%segnatura
-e ci sono diversi comandi
+Serve una syscall apposita per fare la gestione del buffer, che è \texttt{int syslog(int type, char *bufp, int len)} che è altamente parametrica perché in base al comando passato abbiamo un certo comportamento:
 \begin{itemize}
 \item rimuovere tutti i dati dal buffer: magari un sysadmin fa delle cose che producono dei messaggi kernel che vanno rimossi per evitare che il logging sia disponibile, questo è un problema importante di sicurezza
 \item chiusura e ri-apertura del buffer, ma non è implementato quindi non è mai chiuso
 \item read and clear: leggo tutto ma poi cancello
 \end{itemize}
-tutto si trova sulla pagina man della syslog.\\Tutto questo avviene quando si usa dmesg, ma ci sono applicazioni nel kernel Linux che permettono di gestire i messaggi in maniera più sistematica, come klogd ovvero il kernel log deamon che può essere chiamato per mettere i messaggi su file per poterli poi analizzare quando serve.\\ Inoltre, l'operatività della printk prevede che il controllo al chiamante non possa tornare finché tutte le attività non siano state realizzate, è bloccante perché può produrre anche messaggi critici e quindi la latenza può dipendere dall'interazione con la console. L'utilizzo del printk nel software sviluppato va quindi usato in maniera accorta, inoltre si può accedere al buffer circolare in concorrenza, quindi se lo mettiamo in pre o post handler rendiamo bloccante una funzione che di per se è magari non bloccante.\\C'è differenza fra la console ed il terminale generico, il terminale generico riceve i messaggi in caso di priorità 0.
-\subsubsection{API panic()}
-Panic, il kernel non sa cosa fare: arriviamo a chiamarla quando non siamo più in grado di portare avanti le attività. Un esempio è quando si richiede il montaggio di un filesystem non supportato.\\ panic() chiama printk per produrre un messaggio, ma al ritorno il kernel va in stop. Questo può essere usato per motivi di sicurezza, magari su check della validità delle informazioni contenuta in particolari strutture dati, in modo da bloccare tutto in caso di problemi.
+tutto si trova sulla pagina man della \texttt{syslog}.\\Tutto questo avviene quando si usa \texttt{dmesg}, ma ci sono applicazioni nel kernel Linux che permettono di gestire i messaggi in maniera più sistematica, come \texttt{klogd} ovvero il kernel log deamon che può essere chiamato per mettere i messaggi su file per poterli poi analizzare quando serve.\\Inoltre, l'operatività della \texttt{printk} prevede che il controllo al chiamante non possa tornare finché tutte le attività non siano state realizzate, è bloccante perché può produrre anche messaggi critici e quindi la latenza può dipendere dall'interazione con la console. L'utilizzo del \texttt{printk} nel software sviluppato va quindi regolato, inoltre si può accedere al buffer circolare in concorrenza, quindi se lo mettiamo in pre o post handler rendiamo bloccante una funzione che di per se è magari non bloccante.\\C'è differenza fra la console ed il terminale generico, il terminale generico riceve i messaggi in caso di priorità 0.
+\subsubsection{API \texttt{panic()}}
+Panic, il kernel non sa cosa fare: arriviamo a chiamarla quando non siamo più in grado di portare avanti le attività. Un esempio è quando si richiede il montaggio di un filesystem non supportato.\\ \texttt{panic()} chiama \texttt{printk} per produrre un messaggio, ma al ritorno il kernel va in stop. Questo può essere usato per motivi di sicurezza, magari su check della validità delle informazioni contenuta in particolari strutture dati, in modo da bloccare tutto in caso di problemi.
 \subsection{Esempio software}
-Viene fatta una stampa con diversi livelli di priorità, per ogni messaggio stabiliamo tale livello passandolo a printk. Lato user si chiama una syscall con codice 134, otteniamo al lancio dell'applicativo che questo venga inviato non solo in console ma anche sui terminali di sistema, in modo da potersi regolare sull'attività svolta in base al fatto di aver ricevuto un messaggi di emergenza.
+Viene fatta una stampa con diversi livelli di priorità, per ogni messaggio stabiliamo tale livello passandolo a \texttt{printk}. Lato user si chiama una syscall con codice 134, otteniamo al lancio dell'applicativo che questo venga inviato non solo in console ma anche sui terminali di sistema, in modo da potersi regolare sull'attività svolta in base al fatto di aver ricevuto un messaggi di emergenza.
 \chapter{Kernel level task management}
 \section{Advanced/scalable task management schemes}
 Vediamo la gestione delle attività all'interno di un SO, dove per task definiamo qualsiasi cosa una CPU possa fare.\\I task non sono altro che una serie di istruzioni macchina, il problema è come siamo scalabili in una architettura moderna che non è banale, infatti vedremo cose nella programmazione di sistema non intuitive.\\I task che possiamo volere eseguire in una architettura di sistema dove c'è hardware + SO: un task è una traccia di esecuzione, quindi T è un task legato ad una serie di istruzioni macchina e le traccie basiche conosciute sono
@@ -2324,7 +2423,7 @@ int hrtimer_try_to_cancel(struct hrtimer *timer);
 \end{lstlisting}
 la seconda API è una variante non bloccante della prima, si prova a rimuovere l'attività ma se il SoftIRQ deamon sta già processando tale attività si ritorna senza bloccare.
 \subsection{Cos'è una richiesta di preemption}
-È possibile che, durante l'evoluzione di un thread arrivi un interrupt e nella gestione top half dell'interrupt si vada nei dati, ad esempio del TCB, per flaggarlo come preemptable: è successo qualcosa per cui il thread deve lasciare la CPU per darla a qualcun altro, come nello scenario dell'interrupt da HRTIMER, ma abbiamo anche interrupt da altri devices.\\Mentre il thread continua ad eseguire in modo  kernel, possono esserci delle chiamate ad API che cercano di controllare il flag di preemptability che se attivato lascia la CPU. Una funzione che fa questo è \texttt{printk}, quindi attenzione all'utilizzo se si embedda nel kernel un oggetto time-critical che usa questo tipo di API che hanno dei safe places interni.\\Si può evitare che non si chiama lo scheduler anche se il thread è preemptabile? per farlo ci sono i cosiddetti \textbf{preemption counters}: ogni thread all'interno del suo TCB o tramite il suo TCB può portare sul preemption counter, quindi è uno associato ad ogni thread attivo nel sistema.Il preemption conuter è tale per cui se il counter non è 0, allora il preemption check non porta mai all'attivazione dello scheduler: anche se si esegue un blocco di codice kernel dove si passano per vari safe palces, non si chiama lo scheduler se il counter non è pari a 0.\\Così siamo in grado di specificare che un blocco di codice del kernel è non preemptable finché il counter non va a 0, ci sono delle API per fare questo
+È possibile che, durante l'evoluzione di un thread arrivi un interrupt e nella gestione top half dell'interrupt si vada nei dati, ad esempio del TCB, per flaggarlo come preemptable: è successo qualcosa per cui il thread deve lasciare la CPU per darla a qualcun altro, come nello scenario dell'interrupt da HRTIMER, ma abbiamo anche interrupt da altri devices.\\Mentre il thread continua ad eseguire in modo  kernel, possono esserci delle chiamate ad API che cercano di controllare il flag di preemptability che se attivato lascia la CPU. Una funzione che fa questo è \texttt{\texttt{printk}}, quindi attenzione all'utilizzo se si embedda nel kernel un oggetto time-critical che usa questo tipo di API che hanno dei safe places interni.\\Si può evitare che non si chiama lo scheduler anche se il thread è preemptabile? per farlo ci sono i cosiddetti \textbf{preemption counters}: ogni thread all'interno del suo TCB o tramite il suo TCB può portare sul preemption counter, quindi è uno associato ad ogni thread attivo nel sistema.Il preemption conuter è tale per cui se il counter non è 0, allora il preemption check non porta mai all'attivazione dello scheduler: anche se si esegue un blocco di codice kernel dove si passano per vari safe palces, non si chiama lo scheduler se il counter non è pari a 0.\\Così siamo in grado di specificare che un blocco di codice del kernel è non preemptable finché il counter non va a 0, ci sono delle API per fare questo
 \begin{itemize}
 \item \texttt{prepempt\_enable()}: decrementa il contatore, si checka anche se si deve chiamare lo scheduler (nel caso in cui il counter sia pari a 0)
 \item \texttt{preempt\_disable()}: aumenta il contatore
