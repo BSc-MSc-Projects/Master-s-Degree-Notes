@@ -1,8 +1,17 @@
-\documentclass{article}
+\documentclass[12pt, oneside]{extbook}
 \usepackage[utf8]{inputenc}
 \usepackage{amsmath}
 \usepackage{graphicx}
 \usepackage{amssymb}
+\usepackage{geometry}
+
+\geometry{
+	a4paper
+	top = 1.5cm
+	bottom = 1.5cm
+	left = 1.5cm
+	right = 1.5cm
+}
 
 \begin{document}
 \Large
@@ -189,8 +198,11 @@ Il tempo di esecuzione $e_i$ di un job $J_i$ è l'ammontare di tempo necessario 
 \item criticalità
 \item funzione di utilizzazione
 \end{itemize}
-UN job è interrompibile se la sua esecuzione può essere sospesa in qualunque istante per dare spazio ad altri job, per poi essere ripresa.\\ Non esistono job sempre interrompibili in quanto le condizioni possono far si che il job non lo sia. Ad esempio nella programmazione di un dispositivo hardware, la modifica di una struttura dati condivisa con altri job richiede il salvataggio delle informazioni che permettono di riprendere l'esecuzione.\\ Tale insieme di informazioni, che occorrono per riprendere l'esecuzione a seguito di un interruzione, è chiamato contesto.\\ Un cambio di contesto è una procedura con la quale si salva il contesto di un job e si recupera il contesto del job che prende il suo posto in esecuzione.\\ Il tempo per effettuare il context switch è un parametro cruciale, in quanto toglie tempo al processore e quindi all'esecuzione del job.\\ La criticalità di un job è la sua importanza rispetto agli altri job del sistema, non va confusa con la priorità o il peso, che sono attributi non necessariamente legati alla criticalità.\\ La funzione di utilità di un job va distinta in base al tipo di job (se hard o soft real-time) ed indica quanto è utile completare un job se questo è in ritardo.\\ È un parametro soggettivo, quindi non va considerato come parametro di sistema.\\
-\includegraphics[scale=0.2]{images/image1.jpg}\\
+Un job è interrompibile se la sua esecuzione può essere sospesa in qualunque istante per dare spazio ad altri job, per poi essere ripresa.\\ Non esistono job sempre interrompibili in quanto le condizioni possono far si che il job non lo sia. Ad esempio nella programmazione di un dispositivo hardware, la modifica di una struttura dati condivisa con altri job richiede il salvataggio delle informazioni che permettono di riprendere l'esecuzione.\\ Tale insieme di informazioni, che occorrono per riprendere l'esecuzione a seguito di un interruzione, è chiamato contesto.\\ Un cambio di contesto è una procedura con la quale si salva il contesto di un job e si recupera il contesto del job che prende il suo posto in esecuzione.\\ Il tempo per effettuare il context switch è un parametro cruciale, in quanto toglie tempo al processore e quindi all'esecuzione del job.\\ La criticalità di un job è la sua importanza rispetto agli altri job del sistema, non va confusa con la priorità o il peso, che sono attributi non necessariamente legati alla criticalità.\\ La funzione di utilità di un job va distinta in base al tipo di job (se hard o soft real-time) ed indica quanto è utile completare un job se questo è in ritardo.\\ È un parametro soggettivo, quindi non va considerato come parametro di sistema.\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-000.jpg}
+\end{figure}
 \subsection{Scheduler}
 Uno scheduler è un modulo del sistema che utilizza un algoritmo per ordinare l'esecuzione e l'accesso alle risorse. Uno schedule è l'assegnazione dei job ai processi disponibili, una schedulazione si dice valida se:
 \begin{itemize}
@@ -243,14 +255,23 @@ La procedura che implementa un algoritmo di schedulazione ciclico è detta cycli
 Algoritmi a priorità dinamica, come EDF, sono ottimali (sotto determinate condizioni): se $\exists$ schedulazione fattibile $\Rightarrow$ anche EDF trova schedulazione.\\ Nessun algoritmo X a priorità fissa può avere un fatto di utilizzazione U$_{X}$ = 1, deve per forza essere $<$ 1.\\ Inoltre RM è ottimale (in senso assoluto, ovvero può raggiungere U = 1) per sistemi armonici con scadenze implicite.\\ In questa condizione RM è tanto buono quanto EDF.\\ DM è ottimale tra gli algoritmi a priorità fissa, ma non in senso assoluto: se $\exists$ algoritmo a priorità fissa che trova una schedulazione fattibile per un insieme di task, allora lo fa anche DM. Questo mi fa capire assegnare priorità fisse ai task,in modo arbitrario, non fa guadagnare nulla rispetto ad assegnarle con un parametro come la scadenza relativa. Algoritmo è altrettanto buono, se non più buono di algoritmi che fissano le scadenze in modo soggettivo, posso realizzare sistemi di task basati su parametri oggettivi e non soggettivi.\\ Corollario: RM è ottimale tra gli algoritmi a priorità fissa per sistemi ti task con scadenza proporzionale al periodo.\\ Mi pongo un problema generale: se ho sys di task generale ed un algoritmo di schedulazione a priorità fissa, come faccio a verificare il sistema, ovvero a certificare che l'algoritmo produrrà sempre una schedulazione valida?
 \subsection{Istanti critici}
 Istanti critici: suppongo che nel sys di task tutti i job abbiano un tempo di risposta piccolo, ovvero ogni job termina prima del rilascio del job successivo del task $\Rightarrow$ ogni job viene rilasciato in un periodo e si conclude entro quel periodo (job potrebbe non rispettare la scadenza, se questa è minore del periodo).\\ L'istante critico è il momento in cui il rilascio del job comporta il massimo tempo di risposta possibile  per quel job.\\ Se almeno un job T$_{i}$ non rispetta la scadenza relativa, l'istante critico è un momento in cui il rilascio di un job provoca il mancato rispetto della scadenza di quel job.\\ Io voglio verificare che tutti i job rispettino le scadenze, sottigliezza della definizione è irrilevante dal punto di vista critico.\\ Teorema: Se ho un sistema di task a priorità fissa e tempi di risposta piccoli, l'istante in cui uno dei job di T$_{i}$  viene rilasciato contemporaneamente ai job di tutti i task con priorità maggiore di T$_{i}$ è l'istante critico di T$_{i}$.\\ Teorema non da condizione necessaria e sufficiente, ma solo sufficiente: se capita tale condizione $\Rightarrow$ ho un istante critico, ma potrei averne altri.\\ esempio : T$_{1}$=(2, 0.6) T$_{2}$=(2.5,0.2), T$_{3}$=(3,1.2).\\ T$_{1}$ ha la priorità massima: tutti i multipli di 2 sono istanti critici.\\ T$_{2}$ ha istanti critici 0 e 10, che sono anche i momenti in cui rilascio job di T$_{1}$, non c'è nessun altro momento in cui c'è rilascio contemporaneo di job di T$_{1}$ e T$_{2}$.\\ T$_{3}$ avrà rilasci in 0, 3, 6, 9: in 0 ho istante critico, 6 e 9 sono critici ma il thm non li evidenzia.\\
-\includegraphics[scale=0.2]{images/-al-001.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-001.jpg}
+\end{figure}
 Stesso esempio anche se i task non sono in fase: 6 è istante critico, è descritto dal teorema.\\ Quando c'è rilascio in fase, siccome priorità è fissa, la schedulazione prodotta risulta identica a qualsiasi schedulazione non in fase $\Rightarrow$ mi interessa ricondurmi a quando tutti i task sono in fase.
 \subsection{Schedulabilità per priorità fissa e tempi di risposta piccoli}Supponiamo che in un sistema ho task a priorità fissa e tempi di risposta piccoli.\\ Ordino i task per priorità decrescente, suppongo siano in fase all'istante t$_{0}$.\\ Ho i task T$_{1}$......T$_{i}$ e mi chiedo il tempo necessario per eseguire tutti i job dei task T$_{1}$......T$_{i}$, nell'intervallo [t$_{0}$, t$_{0}$+t] (t $\leq$ p$_{i}$:\\
 w$_{i}$(t) = e$_{i}$ +  $\sum\limits_{k=0}^{i-1} \lceil\frac{t}{p_{k}}\rceil \cdot e_{k}$.\\ Somma si estende su tutti i task di priorità superiore di T$_{i}$, devo considerarli perché portano via tempo al job di T$_{i}$. Prendo k-esimo task: a t$_{0}$ tutti i task sono in fase, quindi rilascio sicuro un job, quando ne rilascio? Prendo il ceil di $\frac{t}{p_{k}}$,anche job rilasciato nel periodo dopo quello considerato mi ruba tempo; moltiplico tutto per e$_{k}$, il tempo che ci metto per completare i job.\\ Test di schedulabilità: dati job T$_{1}$......T$_{i}$, in fase a t$_{0}$ con priorità decrescenti con T$_{1}$......T$_{i-1}$ effettivamente schedulabili. Il task T$_{i}$ può essere schedulato nell'intervallo di tempo [t$_{0}$, t$_{0}$+D] se $\exists$ t $\leq$ D$_{i}$ tale che w$_{i}$(t) $\leq$ t. IL mio scopo è sempre quello di verificare la schedulabilità del sistema, se ne trovo uno non schedulabile la mia analisi è finita, non ci faccio nulla col sistema di task.\\ Applicazione: ho T$_{1}$......T$_{n}$ con priorità decrescenti. \\Considero un task alla volta: $\forall$ task T$_{i}$  calcolo il valore della funzione di tempo necessario w$_{i}$(t) per tutti i valori t $\leq$D$_{i}$ tali per cui t è un multiplo intero di p$_{k}$ per k $\in$ \{1,2....,i \}.Funzione w$_{i}$(t) sale a gradini, devo considerare valori per cui tale funzione cambia valori.\\ Se per almeno uno dei valori t vale che w$_{i}$(t) $\leq$ t allora T$_{i}$ è effettivamente schedulabile. Altrimenti il test fallisce, ovvero n job di T$_{i}$ potrebbe mancare la scadenza, ovvero la manca sicuro se c'è un rilascio di tutti i job in fase dei task di priorità superiore e tutti quei task hanno un tempo di esecuzione pari al loro worst-case.\\ Possono esserci casi fortuiti, quindi in ipotesi rilassate il test non conferma schedulabilità ma scheduler riesce, però il risultato non è rilevante.\\Tanto vale fermarsi e riprogettare il sistema.\\
 esempio: T$_{1}$=(3,1), T$_{2}$=(5,1.5), T$_{3}$=(7, 1.25), T$_{4}$=(9,0,5) e considero le funzioni di tempo necessario:\\
-\includegraphics[scale=0.3]{images/-al-002.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-002.jpg}
+\end{figure}
 Grafico per l'esempio precedente, ho la bisettrice del 1° quadrante, dire che w$_{i}$(t) è $\leq$ t vuol dire che w$_{i}$(t) sta sotto la bisettrice. La funzione è a scalini, non ha senso calcolarla, la applico nel periodo tra 0 e la fine del periodo.In T$_{2}$ la funzione sale sopra la bisettrice, ma non è importante: devo verificare che sia sotto in un certo momento, se fosse sempre sopra non sarebbe schedulabile.\\ Ogni volta che c'è rilascio di un task a priorità superiore $\Rightarrow$ ho gradino nella funzione di tempo necessario.\\
-\includegraphics[scale=0.2]{images/-al-003.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-003.jpg}
+\end{figure}
 \subsection{Massimo tempo di risposta}
 Massimo tempo di risposta W$_{i}$ di T$_{i}$ è il più piccolo valore prima della scadenza relativa t.c : t=w$_{i}$(t). Se l'equazione non ha soluzioni $\leq$ a D$_{i}$, allora qualche job di T$_{i}$ mancherà la scadenza relativa.\\ Uso un algoritmo:\\
 \begin{itemize}
@@ -365,13 +386,22 @@ Un job rilasciato non può essere eseguito perché in attesa di eventi esterni, 
 \item attendo scadenza di un timer
 \end{itemize}
 Nei SO questo tipo di operazioni sono chiamate operazioni bloccanti, nell'ambito real-time ci possono essere operazioni di auto-sospensione che però non è bloccante: in questo ambito ha senso attivo, ovvero un job ne blocca un altro. Anche in questo caso ci sono conseguenze su un altro job.\\ Supponiamo che ogni job di un task T$_{i}$ si auto-sospende per un certo tempo x, in questo caso non appena rilasciato. Come schedulo: considero l'istante di rilascio come p$_{i}$-x, e la scadenza relativa come D$_{i}$-x.\\ Approccio semplificato, non funziona nel caso in cui i job si auto-sospendono solo all'inizio o per un tempo determinato, devo definire il tempo massimo di auto-sospensione b$_{i}$(ss).\\ esempio: T$_{1}$ = (4, 2.5) T$_{2}$ = (3.7, 2, 7) schedulato con RM. Se primo job di T$_{1}$ si auto-sospende subito dopo il rilascio, le cose possono andare male: il primo job del task T$_{2}$ manca la scadenza, job di T$_{1}$ si risveglia in modo che per completare occupa tutto il suo periodo, quindi quando job di T$_{2}$ comincia esecuzione di porta avanti ma non riesce a finire.\\
-\includegraphics[scale=0.3]{images/-al-004.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-004.jpg}
+\end{figure}
 Ho impatto sui job di priorità inferiore: anche se job si auto-sospende on no lo fa, se c'è job di priorità superiore non è danneggiato, ma quelli di priorità inferiore si.
 \subsubsection{Rallentamento dovuto all'auto-sospensione}
 1° caso: il tempo di auto-sospensione di un job è maggiore della durata del job: job di T$_{i}$ con priorità inferiore è rallentato al massimo per un tempo pari alla durata del job di T$_{k}$ È il worst case: job T$_{i}$ non riesce ad arrivare mente job di T$_{k}$ è in auto-sospensione\\
-\includegraphics[scale=0.3]{images/-al-005.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-005.jpg}
+\end{figure}
 2° caso: il tempo di auto-sospensione di un job è minore della durata del job. Un job di T$_{i}$ con priorità minore è rallentato al massimo per un tempo pari alla durata dell'auto sospensione.\\
-\includegraphics[scale=0.3]{images/-al-006.jpg}
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-006.jpg}
+\end{figure}
 \subsubsection{Tempo massimo di sospensione di blocco per auto-sospensione}
 Dato task T$_{k}$ chiamo x$_{k}$ il tempo massimo di sospensione di ciascun job di T$_{k}$, questo è un parametro del sistema.\\ Prendo task T$_{i}$ con priorità minore, il rallentamento inflitto ad un job T$_{i}$ da un job di T$_{k}$ è minore o uguale ad x$_{k}$ e minore o uguale ad e$_{k}$:
 b$_{i}$(ss) = x$_{i}$ + $\sum\limits_{k = 1}^{i-1}min(e_{k}, x_{k})$.\\ Manca qualcosa, sto assumendo che un job si auto-sospenda una volta sola, ma non c'è nessun motivo reale per cui questo sia vero: job può auto-sospendersi più volte, devo contare il numero di volte. Devo definire anche il massimo numero di volte k$_{i}$ in cui un job di T$_{i}$ si sospende.\\ Difatti:
@@ -388,7 +418,10 @@ Assunzione irrealistica che i job non siano interrompibili, esistono sempre ista
 \item costo del context switch è troppo elevato
 \end{itemize}
 Un job J$_{i}$ è bloccato per non interrompibilità quando è  pronto per essere eseguito, ma non può perché è in esecuzione un job non interrompibile.\\ Quando si verifica questo fenomeno, si parla di inversione di priorità quando la priorità del job in esecuzione è minore di quella del job pronto per l'esecuzione. esempio: T$_{1}$ = ($\epsilon$, 4, 1, 4), T$_{2}$ = ($\epsilon$, 5, 1.5, 5), T$_{3}$ = (9, 2). Qualunque sia l'algoritmo, all'istante 0 viene messo in esecuzione job di T$_{3}$, inoltre U = 0.77 ed è schedulabile per EDF e RM, ma solo se job sono non interrompibili. Suppongo che T$_{3}$ non sia interrompibile, conclude nell'istante 2, quindi tra [$\epsilon$,2] blocca due job con priorità maggiore. Nell'intervallo tra [2, 5+$\epsilon$] eseguo 3 job, 2 di T$_{1}$ ed uno di T$_{2}$, ma non c'è abbastanza tempo e quindi T$_{2}$ manca la scadenza.\\ 
-\includegraphics[scale=0.5]{images/-al-007.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-007.jpg}
+\end{figure}
 \\Come faccio a modellare che il job è non interrompibile, devo capire la durata massima di non interrombilità di un job: sia $\\Theta_{k}$ il tempo di esecuzione massimo della più lunga sezione non interrompibile dei job di T$_{k}$. Sia b$_{i}$(np) il tempo massimo di blocco per non interrompibilità, che è tempo subito da un job a causa dei job di priorità inferiore, quando vale? b$_{i}$(np) = max\{$\Theta_{k}$: per ogni task T$_{k}$ di priorità minore a T$_{i}$ \}: suppongo che c'è job di alta priorità rilasciato, ho sul processore job di priorità inferiore T$_{k}$ appena entrato nella sezione critica non interrompibile più lunga, subisco rallentamento di $\Theta_{k}$, ma appena finisce la sezione lo scheduler da la priorità a me, non importa quanto solo lunghe le sezioni degli altri job: caso peggiore è che vengo rilasciato quando il job che ha il $\Theta_{k}$ più lungo entra in esecuzione.\\ Il tempo massimo di blocco totale dipende da entrambe i due tempi di blocco:
 b$_{i}$ = b$_{i}$(ss) + (K$_{i}$+1) $\cdot$ b$_{i}$(np). Considero numero massimo di volte per cui il job J$_{i}$ si sospende, il +1 è il fatto che la prima volta deve essere rilasciato sia che si auto-sospende che non.
 \subsection{Cambi di contesto}
@@ -414,7 +447,10 @@ Come posso applicare il test di schedulabilità ad uno scheduler a priorità fis
 \end{itemize}
 Perché non considero le auto-sospensione per i task a priorità inferiore? Perché task inferiore non viene mai eseguito al posto mio, pago solo il primo rilascio, perché fin quando io sono eseguibile, quelli con meno priorità di me non hanno possibilità di essere eseguiti prima di me.
 \item Devo anche considerare il tempo di blocco per non-interrompibilità, anche se tutti i miei job sono sempre non interrompibili. b$_{i}$(np) = ($\lceil max_{i+1 \leq k \leq n}\frac{\Theta_{k}}{p_{0}}\rceil$ + 1) $\cdot$ p$_{0}$. max $\Theta_{k}$ moltiplicato il p$_{0}$ diventa il max di tutti i $\Theta_{k}$ di priorità inferiore, in più c'è un p$_{0}$. esempio:\\
-\includegraphics[scale=0.3]{images/-al-008.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-008.jpg}
+\end{figure}
 ho lo shceduler che viene invocato con periodo p$_{0}$. Ad un certo istante viene rilasciato il job del task T$_{i}$, mi metto nel worst case, ovvero il job T$_{i}$ arriva un infinitesimo dopo che lo scheduler ha finito di controllare la coda dei job pendenti, quindi fino al prossimo p$_{0}$ non potrò eseguire il job. In questo periodo, prima che possa intervenire lo shceduler, si continua ad eseguire un job di priorità inferiore di T$_{k}$ e questo job entra nella regione interrompibile all'interno del periodo p$_{0}$ in cui è arrivato T$_{i}$, task T$_{k}$ continua l'esecuzione per un numero di periodi pari a $\frac{\Theta_{k}}{p_{0}}$. Solo quando scheduler interviene si rende conto che job di T$_{k}$ è diventato interrompibile e può entrare T$_{1}$, e c'è la parte intera superiore perché se il n° di periodi non è intero,anche la frazione non completata porta via tempo e devo aspettare comunque il periodo successivo; il +1 è il rilascio, almeno un periodo lo devo aspettare anche se non ho sezione critica, il job è arrivato prima.
 \end{itemize}
 esempio: T$_{1}$ = (0.1, 4, 1, 4.5), T$_{2}$ = (0.1, 5, 1.8, 7.5), T$_{3}$ = (0, 20, 5, 19.5) non interrompibile in [r$_{3}$, r$_{3}$+1.1]. Scheduler ha p$_{0}$ = 1, e$_{0}$ = 0.05, CS$_{0}$ = 0.06.\\ Faccio analisi dei singoli task:\\
@@ -442,18 +478,30 @@ Se non ho nessuna ipotesi su tempi di arrivo ed esecuzioni non posso prendere im
 \subsubsection{Schedulazione di job aperiodici soft RT in background}
 Metto in coda apposta e quando job è in background eseguo il job aperiodico in cima alla coda. Algoritmo è corretto, i task periodici non sono influenzati, ma non è ottimale: ritardo job aperiodici senza motivo.esempio:\\
 T$_{1}$ = (3,1), T$_{2}$ = (10,4) job aperiodico A con rilascio 0.1 e durata 0.8.\\
-\includegraphics[scale=0.3]{images/-al-009.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-009.jpg}
+\end{figure}
 \subsubsection{Schedulazione di job aperiodici soft RT interrupt-driven}
 Esegui job aperiodici nel mo,mento in cui li rilasci, algortimo non è corretto ma è ottimo: job aperiodici finiscono nei tempi minimi, ma task periodici possono mancare le scadenze.\\
-\includegraphics[scale=0.3]{images/-al-010.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-010.jpg}
+\end{figure}
 \subsubsection{Schedualzione di job aperiodici soft RT con slack stealing}
 Algoritmo esegue i job aperiodici in anticipo rispetto a quelli periodici finché c'è uno slack globale positivo.\\ È corretto perché i job periodici non perdono le scadenze. È ottimale, solo per job aperiodico in cima alla coda. Svantaggio è che tenere uno slack globale in uno scheduler priority divern è difficile.
 Job aperiodico riprende quando lo slack torna positivo.\\
-\includegraphics[scale=0.3]{images/-al-011.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-011.jpg}
+\end{figure}
 \subsubsection{Schedulazione di job aperiodici soft RT con polling}
 Algoritmo basato su polling, ovvero nel sys di task periodici introduco server di polling o poller, a cui do un certo periodo p$_{s}$ e tempo di esecuzione e$_{s}$ e gli do priorità massima,così da ridurre i tempi di risposta dei job aperiodici. Server controlla coda job aperiodici, se vuota si auto-sospende fino a prossimo tick, altrimenti esegue per al più
 e$_{s}$ unità di tempo, per poi auto-sospendersi.\\ 
-\includegraphics[scale=0.3]{images/-al-012.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-012.jpg}
+\end{figure}
 È corretto se dimensiono il poller in modo tale che il suo fattore di utilizzazione non ecceda quello dell'algoritmo di schedulazione, è come aggiungere un task periodico che ha worst case pari ad e$_{s}$. \\ Non è ottimale, job aperiodico può arrivare subito dopo esecuzione del poller. Nell'esempio forse potevo anticipare l'esecuzione del job A senza far mancare le scadenze. Posso migliorare le capacità del server? Sì.
 \subsubsection{Server periodici}
 I server periodici sono una classe di task periodici aventi:
@@ -478,9 +526,16 @@ Problema del server di polling è che se si svuota la coda, il server ha budget 
 Sono già molto sofisticati, usarne di più sofisticati comporterebbe overhead computazionale elevato. Questi algoritmi usati anche altrove, es gestione code di pacchetti.
 \subsection{Server procrastinabile}
 Server più semplice possibile. Devo definire le regole di consumo e riferimento, premesso che ho consumo p$_{s}$ e budget p$_{s}$. Regola di consumo: budget è decrementato di 1 per ogni unità di tempo in cui il server è in esecuzione (è proporzionale, quindi se è meno di 1 unità perdo meno di 1 unità). Non viene azzerato il budget se la coda dei job aperiodici è vuota.\\ Regola di rifornimento: ad ogni istante multiplo di p$_{s}$, il budget è impostato ad e$_{s}$. Nota bene: il budget non si accumula, quello che non spendo viene perso.\\
-\includegraphics[scale=0.3]{images/-al-013.jpg}\\ 
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-013.jpg}
+\end{figure}
 stesso esempio di prima, all'istante 0 coda è vuota e quindi scheduler seleziona qualcun altro, quando a 0.1 arriva job aperiodico, questo interrompe job di T$_{1}$ ed esegue per 0.5 che è il budget massimo. Questo tipo di server minimizza tempo di risposta del job aperiodico. esempio: schedulazione a priorità fissa\\
-\includegraphics[scale=0.3]{images/-al-014.jpg}.\\ All'inizio server non ha nulla da fare, va in esecuzione job di T$_{2}$, le cose cambiano quando all'istante 2.8 arriva il job aperiodico di durata 1.7, server ha priorità superiore, budget è positivo quindi è eleggibile e quindi esegue fino a 3. All'istante 3 cade il periodo del server, quindi budget è rifornito ad 1 ed esegue fino anche non finisce.Va eseguito altro, rimetto dentro il job di T$_{1}$, dopo di che non succede nulla: processore è idle anche se avrebbe qualcosa da fare, job aperiodico non è finito, ma algoritmo continua a non schedulare job. All'istante 6 termino job aperiodico e tutto procede. È vero che l'algoritmo cerca di anticipare esecuzione dei job aperiodici, ma non è perfetto. Non è ad esempio come un slack stealing, ho dei limiti: intervallo in cui processore è idle.\\ Posso fare la stessa schedulazione con EDF, in questo caso server non ha la priorità più grande: la priorità è data dalla scadenza assoluta che è data implicitamente dai periodi del server.Schedulazione simile a quella di prima, ci anche sono degli istanti in cui il processore è idle.\\ È possibile applicare condizioni di schedulabilità a sistemi a priorità fissa con server procrastinabile? La difficoltà è che il caso peggiore non è più vero, perché il server procrastinabile non ha un comportamento simile agli altri task periodici. Se il server è eleggibile e nessun task di priorità maggiore è in esecuzione viene subito eseguito, ma qui non appena arriva job aperiodico task diviene eleggibile, ma non so in che istante arriva il job: server con budget $>$ 0 può diventare eleggibile in qualunque momento. esempio: T$_{DS}$=(3,1.2), T$_{1}$=(3.5,1.5), r$_{1,c}$=10, r$_{A}$=10, e$_{A}$ $>$ 3, budget(10)=1.2, fase=2.2\\ All'istante 10 viene rilasciato job di T$_{1}$, ma all'istante 10 sto anche eseguendo job molto lungo aperiodico, questo job viene eseguito fino allo scadere del budget. Caso peggiore vuole che a 11.2 c'è scadenza del periodo del server, quindi budget è nuovamente incrementato, quindi esegue per un altro tempo e si azzera a 12.4, ma a 12.4 non c'è più abbastanza tempo per eseguire job di T$_{1}$. Assunzione non più vera: job arriva in un qualsiasi momento, configurazione è tale per cui job continua ad eseguire per un tempo più lungo di quello che doveva ed intacca job regolare.
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-014.jpg}
+\end{figure}
+\\All'inizio server non ha nulla da fare, va in esecuzione job di T$_{2}$, le cose cambiano quando all'istante 2.8 arriva il job aperiodico di durata 1.7, server ha priorità superiore, budget è positivo quindi è eleggibile e quindi esegue fino a 3. All'istante 3 cade il periodo del server, quindi budget è rifornito ad 1 ed esegue fino anche non finisce.Va eseguito altro, rimetto dentro il job di T$_{1}$, dopo di che non succede nulla: processore è idle anche se avrebbe qualcosa da fare, job aperiodico non è finito, ma algoritmo continua a non schedulare job. All'istante 6 termino job aperiodico e tutto procede. È vero che l'algoritmo cerca di anticipare esecuzione dei job aperiodici, ma non è perfetto. Non è ad esempio come un slack stealing, ho dei limiti: intervallo in cui processore è idle.\\ Posso fare la stessa schedulazione con EDF, in questo caso server non ha la priorità più grande: la priorità è data dalla scadenza assoluta che è data implicitamente dai periodi del server.Schedulazione simile a quella di prima, ci anche sono degli istanti in cui il processore è idle.\\ È possibile applicare condizioni di schedulabilità a sistemi a priorità fissa con server procrastinabile? La difficoltà è che il caso peggiore non è più vero, perché il server procrastinabile non ha un comportamento simile agli altri task periodici. Se il server è eleggibile e nessun task di priorità maggiore è in esecuzione viene subito eseguito, ma qui non appena arriva job aperiodico task diviene eleggibile, ma non so in che istante arriva il job: server con budget $>$ 0 può diventare eleggibile in qualunque momento. esempio: T$_{DS}$=(3,1.2), T$_{1}$=(3.5,1.5), r$_{1,c}$=10, r$_{A}$=10, e$_{A}$ $>$ 3, budget(10)=1.2, fase=2.2\\ All'istante 10 viene rilasciato job di T$_{1}$, ma all'istante 10 sto anche eseguendo job molto lungo aperiodico, questo job viene eseguito fino allo scadere del budget. Caso peggiore vuole che a 11.2 c'è scadenza del periodo del server, quindi budget è nuovamente incrementato, quindi esegue per un altro tempo e si azzera a 12.4, ma a 12.4 non c'è più abbastanza tempo per eseguire job di T$_{1}$. Assunzione non più vera: job arriva in un qualsiasi momento, configurazione è tale per cui job continua ad eseguire per un tempo più lungo di quello che doveva ed intacca job regolare.
 \subsubsection{Istanti critici per server procrastinabili}
 Sistema di task periodici indipendenti e interrompibili, e priorità fissa con D$_{i}$ $\leq$ p$_{i}$ ed un server procrastinabile (p$_{s}$, e$_{s}$) con priorità massima, un istante critico di un task T$_{i}$ si verifica all'istante t$_{0}$ se 
 \begin{itemize}
@@ -502,7 +557,10 @@ U$_{RM/DS}$(n) = $\frac{e_s}{p_s}$ + [$(\frac{e_s + 2p_s}{p_s +2e_s})^{\frac{1}{
 \end{itemize}
 \subsubsection{Condizione di schedulabilità di EDF con server procrastinabile}
 Un task periodico T$_{i}$ in un sistema di n task indipendenti ed interrompibili è schedulabile con EDF insieme ad un server procrastinabile (p$_{s}$, e$_{s}$) se:\\ $\sum\limits_{k = 1}^{n} \frac{e_k}{min(D_k, p_k)}$ + $\frac{e_s}{p_s}$ $\cdot$ (1 + $\frac{p_s - e_s}{D_i}$) $\leq$ 1.\\ Dim: per D$_{k}$ $\leq$ p$_{k}$. Suppongo che un job di T$_{i}$ rilasciato a r$_{i}$ manca la scadenza a t; t' $<$ t è l'ultimo istante in cui il processore è idle o esegue un job a priorità inferiore. Ma allora r$_{i}$ $\geq$ t', questo significa che l'istante t in cui manco la scadenza assoluta meno t' è maggiore o uguale alla scadenza relativa. Ma quindi, invertendo: $\frac{1}{t-t'}$ $\leq$ $\frac{1}{D_i}$. Quando tempo viene rubato dal server procrastinabile tra t' e t: $e_{s}$ + $\lfloor \frac{t - t'- e_s}{p_s}\rfloor \cdot e_s$, la parte intera è inferiore perché se t cade nel mezzo vuol dire che il server procrastinabile avrà una scadenza che sarà dopo, la frazione va scartata in quanto non ruberà tempo.\\
-\includegraphics[scale=0.3]{images/-al-015.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-015.jpg}
+\end{figure}
 Quindi t-t' $<$ $\sum\limits_{k=1}^{n} \frac{e_k}{p_k} \cdot (t-t')$ + $\frac{e_s}{p_s}$ $\cdot$ (t-t'-p$_s$-e$_{s}$). L'intervallo non è sufficiente a fare tutto il lavoro: il lavoro è eseguire tutti i job periodici, in più il tempo del server procrastinabile nell'intervallo t-t' ed in più +p$_{s}$ - e$_{s}$, togliendo la parte intera. Ma sto dicendo che la sommatoria + il resto è $>$ 1, ovvero se la condizione è $\leq$ 1 il task periodico rispetterà la scadenza.
 \subsection{Server sporadici}
 Un server procrastinabile può ritardare i task di priorità minore più di un task periodico con identici parametri. Vorrei avere un server con impatto su schedulabilità del sistema uguale a quello di un qualsiasi task periodico: server sporadico, shcedulabilità del sistema si studia semplicemente, ne esistono vari tipi: differenza sta nelle regole di consumo/rifornimento.
@@ -542,11 +600,17 @@ Se le condizioni sono false, il budget si conserva. Il server consuma budget pi�
 \end{itemize}
 \end{enumerate}
 Significato della regola di consumo 1: nessun job del server esegue per un tempo maggiore di e$_{s}$ in un periodo p$_{s}$\\ Significato di C2: il server conserva budget se un task di T$_{H}$ è eseguile oppure il server non ha mai eseguito t$_{r}$; altrimenti il budget è consumato.\\ Significato di R2: se nell'intervallo (t$_{r}$, t$_{f}$) sono stati sempre in esecuzione task di T$_{H}$, il prossimo rifornimento sarà a t$_{r}$+p$_{s}$. Ma se questo non è vero il prossimo rifornimento sarà a t$_{e}$+p$_{s}$ dove t$_{e}$ è l'ultimo istante di (t$_{r}$, t$_{f}$] in cui non esegue un task di T$_{H}$.\\ Significato di R3a: il job del server ha atteso per più di p$_{s}$ unità di tempo prima di iniziare l'esecuzione, quindi il job continua nel prossimo periodo (serve il test di schedulabilità generale).\\ R3b: il budget è rifornito nell'ostante iniziale di ogni intervallo totalmente occupato di T. \\ esempio di schedulazione RM con server sporadico semplice:\\
-\includegraphics[scale=0.3]{images/-al-016.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-016.jpg}
+\end{figure}
 Da 3.5 comincio T$_{f}$ e consumo il budget, ma ora devo anche capire t$_{e}$, che qui è 3. Questo mi dice anche quando sarà il prossimo rifornimento, che sarà ad 8 (3+5). All'istante 5.5 termina il job aperiodico, e qui lo scheduler da il controllo al job di T$_{3}$, ma il budget continua ad essere consumato fino a diventare 0: non sono più nelle condizioni in cui il budget si preserva, e qui sta eseguendo un job con priorità minore del server. All'istante 7 arriva il 2° job aperiodico ma non posso eseguirlo perché il budget è 0, quindi devo aspettare 8. A 9.5 termina l'intervallo totalmente occupato, quindi posso eseguire job aperiodici.
 \subsubsection{Server sporadico background}
 Variante del server sporadico (ne esistono di verse via via sempre più costose da implementare). Ogni volta che nessun job periodico è eseguibile, il server esegue un job aperiodico.\\ Regola di consumo è identica a quella del server sporadico semplice, tranne che se nessun task periodico è eseguibile il budget è uguale a e$_{s}$. \\ regola di consumo è uguale tranne che per R3b: il budget è ripristinato all'inizio di ogni intervallo in cui nessun task periodico è eseguibile; t$_{r}$ (ed eventualmente t$_{f}$) è la fine dell'intervallo.\\ Conviene sempre implementare questo server, perché questo tende ad abbassare il tempi di risposta dei job aperiodici, l'unico caso in cui non conviene usarlo è quando si utilizzano più server sporadici per differenti tipi di job aperiodici.\\ esempio precedente:\\
-\includegraphics[scale=0.3]{images/-al-017.jpg}\\ 
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-017.jpg}
+\end{figure} 
 Da un certo punto in poi budget rimane sempre al valore massimo, per un motivo o per un altro.
 \subsection{Constant Bandwidth server}
 Server inventato da L. Abeni e G. Buttazzo (1998). Server abbastanza recente, importante per diversi motivi:
@@ -579,8 +643,11 @@ Il rapporto u$_{s}$ = $\frac{e_s}{p_s}$ è la bandwidth del server.\\ Il server 
 \end{itemize}
 Non esiste mai un intervallo di tempo $>$ 0 in cui il server ha un budget nullo.
 \end{itemize}
-esempio EDF con server CBS:\\
-\includegraphics[scale=0.3]{images/-al-018.jpg}
+esempio EDF con server CBS:
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-018.jpg}
+\end{figure}
 \subsection{Schedulabilità di job aperiodici hard real-time}
 Concetto di densità del job aperiodico con istante di rilascio r e tempo massimo di esecuzione e e scadenza la sua densità è: $\frac{e}{d-r}$.\\ Vale questo teorema: Un sistema di job aperiodici, indipendenti e interrompibili è schedulabile con EDF se la densità totale di tutti i job attivi (nell'intervallo tra rilascio e scadenza) è in ogni istante $\leq$ 1.\\ In ogni istante di tempo la densità totale di tutti i job rilasciati e non ancora conclusi deve essere $\leq$ 1; è una condizione sufficiente, teorema permette di realizzare anche un test di accettazione. Dim: un job manca la scadenza a t, t' è l'ultimo momento in cui il processore non ha eseguito un job con scadenza $\leq$ t $\Rightarrow$ $\sum\limits_{i} e_i$ $>$ t-t'. Partiziono l'intervallo fra (t',t] in (t$_{1}$,t$_{2}$],(t$_{2}$,t$_{3}$].... dove t$_{k}$ è l'istante di rilascio o scadenza per qualche job, in ciascuno dei quali l'insieme dei job attivi è differenze. Considero X$_{k}$ l'insieme dei job attivi in (t$_{k}$,t$_{k+1}$] e $\Delta_k$ la loro densità:\\ $\sum\limits_{i} e_i$ =  $\sum\limits_{j = 1}^{l} (t_{j+1} - t_j)$ $\cdot$ $\sum\limits_{J_{k} \in X_{i}} \frac{e_k}{d_k - r_k}$ $\leq$ $\sum\limits_{j = 1}^{l} \Delta_{j}(t_{j+1} - t_j)$ $\leq$ t-t'. Vedo la somma di e$_{i}$ come la densità per quell'intervallo moltiplicata per la lunghezza dell'intervallo. Ma il risultato è in contraddizione col fatto che qualcuno ha mancato la scadenza. esempio: \\
 Considero job aperiodici J$_{1}$=(r=0, e=1,d=2), J$_{2}$=(r=0.5, e=1,d=2.5), J$_{3}$=(r=1, e=1,d=3)\\
@@ -608,9 +675,15 @@ Un jbo che deve acquisire un certo n° $\eta$ di unità della risorsa R$_{i}$ pr
 \subsection{Sezioni critiche}
 Si definisce sezione critica un segmento di esecuzione di jon che inizia con L(R$_{i}$, $\eta$) e termina con U(R$_{i}$, $\eta$). Le richieste di risorse di un job possono essere annidate, ma assumiamo che i rilasci sono sempre LIFO.\\ Una sezione critica non contenuta in alcun'altra sezione critica è detta esterna.\\ La notazione [R$_{1}$, $\eta_1$;e$_{1}$[R$_{2}$,$\eta_2$;e$_{2}$]] corrisponde a:\\ L(R$_{i}$, $\eta_1$) L(R$_{2}$, $\eta_2$) U(R$_{2}$, $\eta_2$) U(R$_{1}$, $\eta_1$) rispettivamente la lunghezza di e$_{2}$ è contenuta nella la lunghezza di e$_{1}$ (ovvero nella regione critica di R$_{1}$ viene fatta la richiesta di R$_{2}$). Quando un certo job richiede una certa risorsa? Non c'è l'indicazione, ragiono sul worst case. esempio:\\
 schedulazione con EDF con una unità di risorsa (notazione: freccia bassa è richiesta di risorsa, freccia alta è rilascio).\\
-\includegraphics[scale=0.3]{images/-al-019.jpg}\\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-019.jpg}
+\end{figure}
 Le inversioni di priorità causata dal possedere la risorsa causa anomalie di schedulazione: se ad esempio riduco la durata della regione critica d T$_{3}$, quindi apparentemente i job di priorità più alta dovrebbero essere favoriti, ma non è così:\\ 
-\includegraphics[scale=0.3]{images/-al-020.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-020.jpg}
+\end{figure}
 quando job di T$_{3}$ rilascia la risorsa, il job di T$_{1}$ non è ancora stato rilasciato e quindi entra job di T$_{2}$, quindi T$_{1}$ otterrà la ricorsa troppo tardi. Le inversioni di priorità possono causare anomalie di schedulazione, devo tenerne conto nell'analisi di schedulabilità.
 \subsection{Controllo d'accesso alle risorse condivise}
 Algoritmi per il controllo di accesso sono necessari:
@@ -620,10 +693,16 @@ Algoritmi per il controllo di accesso sono necessari:
 \end{itemize}
 \subsubsection{Grafi di attesa}
 Mutua relazione tra job e risorse è modellabile con grafi di attesa: i nodi dono i job, altri nodi le risorse. Un arco da un nodo di tipo risorsa ad un di tipo job indica che il job ha allocato un certo n° di unità della risorsa. Il viceversa indica che job ha richiesto un certo numero di unità della risorsa ma questa non può essere soddisfatta. Un ciclo del grafo rappresenta un deadlock:\\
-\includegraphics[scale=0.3]{images/-al-021.jpg}
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-021.jpg}
+\end{figure}
 \subsection{Protocollo NPCS}
 Il più semplice protocollo di accesso alle risorse condivise, Nonpreemptive Critcial Section: un job avente una risorsa assegnata non può essere interrotto.\\ Questo risolve tutti i problemi, posso avere deadlock? No, solo a condizione che il job non si auto-sospenda quando ha la risorsa: se job ottiene risorsa e non può essere interrotto non può esserci deadlock, job di priorità superiore non potrà richiedere altra risorsa perché non potrà andare in esecuzione. Se job si auto-sospende tutto il discorso cade: processore è libero e qualcuno può essere schedulato, richiedere una risorsa ed alla fine causare un deadlock.\\ esempio precedente,  schedulazione con NPCS:\\
-\includegraphics[scale=0.3]{images/-al-022.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-022.jpg}
+\end{figure}
 Non ci sono deadlock e non c'è inversione di priorità incontrollata: al massimo J$_{1}$ sarà bloccato da J$_{3}$ per una durata pari alla regione critica.
 \subsubsection{Tempo di blocco per conflitto di risorse}
 Sia b$_{i}$(rc) il tempo di blocco dovuto ad un conflitto di risorse. Per NPCS con task a priorità fissa T$_{1}$,....,T$_{n}$:\\
@@ -635,7 +714,10 @@ Protocollo adatto ad ogni scheduler priority-driven, non si basa sui tempi di es
 \item Se R non è disponibile, J è sospeso (bloccato)
 \end{itemize}
 Quando un job J viene bloccato a causa di una contesa su una risorsa R, il job J$_{l}$ che blocca J eredita la priorità corrente $\pi$(t)  di J finché non rilascia R; a quel punto, la priorità corrente di J$_{l}$ torna ad essere la priorità $\pi_{l}$(t') che aveva al momento t' in cui aveva acquisito la risorsa R.\\ esempio: schedulazione a priorità fissa con priority-inheritance, qui supponiamo che la risorsa venga chiesta dopo un'unità di tempo dal rilascio.\\
-\includegraphics[scale=0.3]{images/-al-023.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-023.jpg}
+\end{figure}
 Limiti:
 \begin{itemize}
 \item Non evita i deadlock
@@ -655,7 +737,10 @@ Confrontando le priorità, $\pi$(t) $>$ $\pi'$(t) significa che $\pi$(t) ha magg
 \item altrimenti J è bloccato.
 \end{itemize}
 Se J$_{l}$ blocca J, J$_{l}$ eredità la priorità corrente $\pi$(t) di J finché J$_{l}$ non rilascia l'ultima risorsa R tale che $\lceil\rceil$(R) $\geq$ $\pi$(t); a quel punto la priorità di J$_{l}$ torna ad essere la priorità $\pi_{l}$(t') che aveva al momento t' in cui aveva acquisito la risorsa R.\\ esempio:\\
-\includegraphics[scale=0.3]{images/-al-024.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-024.jpg}
+\end{figure}
 Stabilisco prima i priority ceiling delle risorse. Ho un blocco: il motivo per cui J$_{4}$ non può continuare perché è bloccato da J$_{5}$, quindi J$_{5}$ eredita la priorità di J$_{4}$.\\ In quanti casi diversi un job J$_{l}$ può bloccare un job J$_{h}$ con priorità $\pi{l}$ $<$ $\pi{h}$:
 \begin{itemize}
 \item Blocco diretto: J$_{h}$ richiede una risorsa R assegnata a J$_{l}$.
@@ -663,7 +748,10 @@ Stabilisco prima i priority ceiling delle risorse. Ho un blocco: il motivo per c
 \item Blocco dovuto al priority ceiling (o avoidance blocking): J$_{h}$ ha richiesto una risorsa R ma J$_{l}$ possiede un'altra risorsa R' tale che $\lceil\rceil$(R') $\geq$ $\pi_{h}$.
 \end{itemize}
 I deadlock possono essere evitati se tutti i job acquisiscono le risorse annidate rispettando un unico ordinamento globale delle risorse; metodo principale usato nei sistemi operativi.\\ I priority ceiling non definiscono un ordinamento globale delle risorse, bensì parziale ma che basta ad evitare i deadlock. esempio:\\
-\includegraphics[scale=0.3]{images/-al-025.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-025.jpg}
+\end{figure}
 Sono esposto ad un deadlock, ma con priority ceiling non avverrà: al tempo 2.5 J$_{2}$ richiede R$_{2}$, ma la richiesta viene rifiutata anche se R$_{2}$ è libera, così si evita un possibile deadlock con J$_{3}$. I job con priorità corrente maggiore di $\lceil\rceil'$(t) possono acquisire risorse sezna rischiare deadlock con le risorse già assegnate.\\ Posso avere molti job e risorse: ho J$_{1}$, che usa R$_{1}$,R$_{2}$, poi ho J$_{2}$ che usa R$_{3}$,R$_{4}$, userà anche R$_{1}$,R$_{2}$ ma non è un problema, perché il priority ceiling di R$_{1}$,R$_{2}$ è quelli di J$_{1}$ e così via per i vari livelli:\\
 $\lceil\rceil$(R$_{1}$) = $\lceil\rceil$(R$_{2}$) = $\pi_{1}$\\
 $\lceil\rceil$(R$_{3}$) = $\lceil\rceil$(R$_{4}$) = $\pi_{2}$.
@@ -692,31 +780,52 @@ Quindi priority ceiling evita i deadlock.\\ Non basta questa proprietà per gius
 \item Non esiste blocco transitivo: non si verifica mai il caso J$_{3}$ blocca J$_{2}$ e J$_{2}$ blocca J$_{1}$.
 \end{itemize}
 Unicità del job bloccante:\\ ho 3 job di priorità variabili.
-\includegraphics[scale=0.3]{images/-al-026.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-026.jpg}
+\end{figure}
 J$_{h}$ è bloccato sia da J$_{m}$ che da J$_{l}$. Perché non può avvenire in priority ceiling:\\ $\pi_{h}$ $>$ $\pi_{m}$ $>$ $\pi_{l}$ $\Rightarrow$ $\lceil\rceil$(R$_{1}$) $\geq$ $\pi_{h}$ e $\lceil1rceil$(R$_{2}$) $\geq$ $\pi_{h}$.\\ Ora: $\lceil\rceil'$(t$_{0}$) $\geq$ $\lceil\rceil$(R$_{1}$) $\geq$ $\pi_{h}$. Il requisito per l'allocazione a t$_{0}$ deve essere $\pi_{m}$ $>$ $\lceil\rceil$(R$_{1}$) $\geq$ $\pi_{h}$. Ma questo non è verificato e quindi il priority ceiling nega l'assegnazione della risorsa a J$_{m}$.\\ Se J$_{m}$ acquisisce una risorsa a t$_{0}$, nessun job con priorità maggiore o uguale può richiedete una risorsa già in uso a t$_{0}$.\\ Impossibilità del blocco transitivo:\\
-\includegraphics[scale=0.3]{images/-al-027.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-027.jpg}
+\end{figure}
 J$_{l}$ sta bloccando J$_{m}$ e J$_{m}$ sta bloccando J$_{h}$. Perché non può verificarsi:\\ $\pi_{h}$ $>$ $\pi_{m}$ $\pi_{l}$ $\Rightarrow$ $\lceil\rceil$(R$_{1}$) $\geq$ $\pi_{m}$ e $\lceil\rceil$(R$_{2}$) $\geq$ $\pi_{h}$.\\ Quindi $\lceil\rceil'$(t$\_{0}$) $\geq$ $\lceil\rceil$(R$\_{1}$) $\geq$ $\lceil\rceil'$t$_{0}$; quindi l'allocazione non può avvenire.\\
 \subsubsection{Tempo di blocco per conflitto di risorse}
 È il massimo tempo di ritardo un job del task T$\_{i}$ causato da un conflitto di risorse.\\ Come faccio per calcolarlo: ho 3 tipi di blocco, quindi devo calcolarlo per tutti e 3  tipi, mi il teorema mi dice che il job può essere bloccato per al massimo una sezione critica, quindi considero il massimo.esempio:\\ J$_{1}$:[R$_{1}$;0.8], J$_{2}$, J$_{3}$:[R$_{2}$;0.2], J$_{4}$:[R$_{1}$;1].\\ 
-\includegraphics[scale=0.3]{images/-al-028.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-028.jpg}
+\end{figure}
 J$_{4}$ può bloccare direttamente J$_{1}$ per 1 unità di tempo $\Rightarrow$ b$_{1}$(rc) = 1. J$_{4}$ può bloccare anche J$_{2}$ e J$_{3}$, quando acquisisce R$_{1}$ $\Rightarrow$ b$_{2}$(rc) = b$_{3}$(rc) = 1: può bloccare per priority inheritance. Sto facendo analisi pessimista: J$_{4}$ chiede la risorsa e subito dopo la chiede J$_{1}$. Il job per J$_{4}$ è b$_{4}$(rc) = 0, perché il job di priorità più bassa.\\ Per esempi più complessi, conviene avere un algoritmo automatico per derivare i tempi di blocco:
-\includegraphics[scale=0.3]{images/-al-029.jpg}
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-029.jpg}
+\end{figure}
 \begin{itemize}
 \item Costruisco una tabella dei tempi di blocco diretti. Su entrambe le colonne avrò i nomi dei job, ciascuna componente rappresenta il tempo di blocco diretto che il job della colonna fa subire al job della riga.\\ Le righe hanno i 5 job di priorità superiore mentre le colonne i 5 di priorità inferiore
 \item Metto asterisco sugli elementi della "diagonale", ovvero le righe e colonne con lo stesso job, so che sotto la diagonale il blocco non può avvenire, quindi avrò valore 0.
 \item Riempio le componenti sopra gli asterischi: vedo chi è in conflitto sulle varie risorse.
 \end{itemize}
 Posso derivare in maniera automatica la tabella per i blocchi dovuti all'inheritcance: 
-\includegraphics[scale=0.3]{images/-al-030.jpg}
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-030.jpg}
+\end{figure}
 \\avviene in caso di contesa, quindi quando un job nel blocca un altro viene trasferita la priorità. J$_{3}$ blocca J$_{1}$ per 6 unità di tempo. Ma allora il job di priorità intermedia può essere bloccato per 6 unità di tempo, quindi il 6 scende di una posizione nella tabella. Blocco tra J$_{2}$ e J$_{4}$, questo danneggia i job di priorità intermedia, ovvero J$_{3}$, il 5 scende fino alla riga di J$_{3}$.\\ J$_{6}$: blocca per inheritance anche tutti i job di priorità intermedia tra lui e J$_{1}$, e quindi tutti gli altri. Voci scendono sempre fino all'asterisco. Ad un certo punto, trovo che J$_{6}$ sta bloccando direttamente anche J$_{3}$, quindi per inheritance J$_{3}$ è bloccato per 2 unità di tempo, ma poi J$_{4}$ sarebbe bloccato per 2 unità di tempo a causa della contesa con J$_{1}$ ma anche per 4 unità per via della contesa con J$_{3}$. Devo considerare il worst case: ora è 4, quindi è il 4 a propagarsi verso il basso.\\ Infine ho la tabella per il blocco per priority ceiling:\\
-\includegraphics[scale=0.3]{images/-al-031.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-031.jpg}
+\end{figure}
 Questo diventava simile al blocco per inheritance: J$_{4}$ può essre danneggiato da J$_{6}$ perché J$_{6}$ richiede risorsa che innalza il priority ceiling, caso peggiore è il max fra la lunghezza della regione critica fra R$_{1}$ ed R$_{2}$ (per J$_{6}$). Siccome J$_{5}$ non richiede risorse, manca il valore perché J$_{5}$ non può mai essere bloccato in quanto non richiede risorse.\\ A questo punto posso definire B$_{i}$(r,c) = max\{B$_{d}$(j, c): 1 $\leq$ j $\leq$ r-1\}.\\ Se le priorità dei job sono tutte diverse, B$_{c}$ = B$_{i}$, tranne che per i job che non utilizzano risorse.\\ b$_{i}$(rc) = max$_{k}${B$_{d}$ B$_{i}$(j, k), B$_{c}$(i, k)}: considero il valore massimo per ciascuna riga, perché priority ceiling mi dice che blocco al massimo 1 volta. Cosa cambiare se i job possono avere priorità identiche?
 \subsection{Schedulabilità con priority ceiling}
 Ho i tempi di blocco, li considero tra i tempi di blocco totali dei task, lo faccio task per task:\\
 b$_{i}$ = b$_{i}$(ss) + (K$_{i}$ + 1)$\cdot$b$_{i}$(np) + (K$_{i}$ + 1)$\cdot$b$_{i}$(rc), con K$_{i}$ massimo numero di auto-sospensioni di un job del task T$_{i}$. Il fatto dell'unicità del job bloccante vale solo se i job non si auto-sospendono. Devo anche tenerne conto all'overhead su cambi di contesto: e$_{i}$' = e$_{i}$ + 2$\cdot$(K$_{i}$ + 1)$\cdot$CS + 2$\cdot$(K$_{i}$ + 1)$\cdot$CS, ma solo se il job usa le risorse condivise.
 \subsection{Protocollo stack-based priority-ceiling}
 Baker, 1991. È una semplificazione del protocollo priority-ceiling, motivato da un esigenza particolare: la condivisione di un unico stack da parte dei job. Usare uno stack unico comporta problemi: stack è LIFO, ogni volta che arriva un job sopra, interrompe quello sotto. Se un job arriva e richiede una risorsa, ma poi arriva una altro job che interrompe: comincia ad usare lo stack, in una zona contigua a quel job interrotto. Quando il job si conclude, toglie dallo stack tutte le informazioni che aveva introdotto. Ma se il jbo richiede la stessa risorsa del job che ha interrotto: per priority ceiling deve tornare in esecuzione il job interrotto. Probelma: il job non può togliere le info dallo stack ed ora il job che torna si trova una parte dello stack occupato.\\ Questo porta al fatto che nessun job deve bloccare o auto-sospendersi.\\ Per ogni risorsa R, $\lceil\rceil$(R) definito come nel protocollo priority-ceiling. C'è regola di aggiornamento che  è la stessa. \\ Regola di schedulazione: non appena rilasciato, un job J con priorità maggiore assegnata $\pi$ non può essere eseguito finché non è vera la condizione $\pi$ $\leq$ $\lceil\rceil$'(t). I job eseguibili sono schedulati in modo interrompibile in accordo alle priorità assegnate.Non c'è priority inheritance\\ Regola di allocazione: quando un job richiede una risorsa, la richiesta è soddisfatta.\\ Un job di priorità alta può interrompere un job di priorità bassa, e quest'ultimo non può tornare in esecuzione finché il primo non ha finito. Potrebbe farlo se il job bloccasse, ma questo non succede perché risorsa è libera o se si auto-sospendesse, ma qui questo non avviene. Quando un job comincia l'esecuzione tutte le risorse di cui ha bisogno sono libere: difatti inizia solo se la sua priorità diviene uguale o maggiore del priority ceiling del sistema.\\ Non ci sono mai deadlock: le risorse sono sempre libere quando le richiedo. Job non i auto-sospendono: il controllo d'accesso è effettuato solo al rilascio di un job e assume che il job non venga sospeso.\\ esempio di schedulazione:\\
-\includegraphics[scale=0.3]{images/-al-032.jpg}
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-032.jpg}
+\end{figure}
 \subsection{Ceiling priority}
 Usato nel Real-time System Annex di Ada95: linguaggio molto usato negli USA. È stato definito dal governo per lo sviluppo del sw in tutte le commesse militari.\\ Regola di schedulazione:
 \begin{itemize}
@@ -734,7 +843,10 @@ I vari protocolli vanno adattati all'auto-sospensione:
 \item Ceiling-priority; se un job si auto-sospende in una sezione critica, nessun job di priorità inferiore o uguale può essere eseguito. È come se nullificasse i vantaggi dell'auto-sospensione nelle sezioni critiche
 \end{itemize}
 esempio: auto-sospensione\\
-\includegraphics[scale=0.3]{images/-al-033.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-033.jpg}
+\end{figure}
 Tempi di blocco per autosospensione
 \begin{itemize}
 \item NPCS: b$_{i}$ = b$_{i}$(ss) + (K$_{i}$ + 1)$\cdot$max\{b$_{i}$(np), b$_{i}$(rc)\}
@@ -742,7 +854,10 @@ Tempi di blocco per autosospensione
 \end{itemize}
 \subsection{Priorità dinamica}
 È possibile applicare i protocolli priority-ceiling e ceiling-priority a sistemi con priorità dinamica. Il valore del priority ceiling di una risorsa non è costante, ma dipende dalla priorità dinamica che potenzialmente fanno uso della risorsa. Il priority ceiling può cambiare, ad esempio con EDF ogni volta che rilascio un nuovo job, questo ha una prioirtà dovuta alla scadenza assoluta che fa cambiare i valori di priorità di tutti ti job del sistema, quindi i, pririty ceiling delle risorse e quindi il current priority ceiling del sistema. Molto poco applicabile nella realtà. Quando schedulo con algoritmi a priorità dinamica uso o NPCS o priority inheritance o altri sistemi per evitare deadlock come allocare risorse in tempi predefiniti.\\ esempio di priority ceiling con EDF:\\
-\includegraphics[scale=0.3]{images/-al-034.jpg}
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-034.jpg}
+\end{figure}
 \subsection{Accesso alle risorse di job aperiodici}
 Problema: un server procrastinabile che sta eseguendo un job aperiodico esaurisce il budeget mentre il job è in sezione critica:
 \begin{itemize}
@@ -765,7 +880,11 @@ Un sistema real-time è statico se ciascun job è assegnato perennemente ad uno 
 \item L'insieme dei task è assegnato ad uno specifico processore dal SO (o scheduler) durante la fase di creazione del task. Scheduler partizionati.
 \end{itemize}
 In entrambi i casi, lo scheduler non decide su quale processore sarà eseguito un job appena rilasciato.\\ esempio di schedulazione:\\
-\includegraphics[scale=0.3]{images/-al-035.jpg}\\ I job hanno delle dipendenze: questo fa capire che il sistema non è analogo a tanti sistemi mono-processore, non ci sarebbero vincoli fra job su processori diversi. Ogni scheduler decide i job assegnati ai processori, ma i vincoli di dipendenza sono grosse complicazioni.\\ Vantaggi:
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-035.jpg}
+\end{figure}
+\\I job hanno delle dipendenze: questo fa capire che il sistema non è analogo a tanti sistemi mono-processore, non ci sarebbero vincoli fra job su processori diversi. Ogni scheduler decide i job assegnati ai processori, ma i vincoli di dipendenza sono grosse complicazioni.\\ Vantaggi:
 \begin{itemize}
 \item Si può analizzare la schedulabilità su  ciascun processore usando i risultati teorici validi per il caso mono-processore
 \item Se un job va in overrun (impiega più tempo del previsto) può ritardare l'esecuzione dei soli task che sono sul suo stesso processore (se job sono indipendenti tra di loro)
@@ -782,9 +901,16 @@ Un sistema real-time è dinamico se lo scheduler assegna dinamicamente un job ad
 \end{itemize}
 Una algoritmo di schedulazione per un sistema dinamico è globale perché stabilisce quale processore eseguirà quale job. \\esempio:\\
 1° caso: job interrompibili e migrabili:\\
-\includegraphics[scale=0.3]{images/-al-036.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-036.jpg}
+\end{figure}
 2° caso, job non interrompibili:
-\includegraphics[scale=0.3]{images/-al-037.jpg}\\ Il momento in cui l'ultimo job completa il lavoro è uguale nel caso dei job migrabili a quello della schedulazione nel sistema statico $\Rightarrow$ anomalia di schedulazione.\\ Vantaggi:
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-037.jpg}
+\end{figure}
+\\Il momento in cui l'ultimo job completa il lavoro è uguale nel caso dei job migrabili a quello della schedulazione nel sistema statico $\Rightarrow$ anomalia di schedulazione.\\ Vantaggi:
 \begin{itemize}
 \item Hanno tipicamente meno cambi di contesto: quando viene rilasciato un job, in un sistema statico se c'è in esecuzione job di priorità minore devo interrompere e fare context swtich. In sistema dinamico posso avere processori free, quindi metto in esecuzione lì.
 \item Se un job esegue per meno tempo di quello che è il suo worst case, il tempo liberato sul processore può essere utilizzato potenzialmente da tutti i task de sistema (nel caso del sistema statico è usato solo da quelli locali al processore).
@@ -800,7 +926,10 @@ Gli algoritmi clock-driven sono in generale utilizzabili senza problemi, infatti
 \end{itemize}
 \subsection{Effetto Dhall}
 Teorema (Dhall \& Liu): Per ogni numero di processori m $\geq$ 2, esistono insieme di task con utilizzazione bassa che non sono schedulabili con RM, DM o EDF.\\ Considero T$_{1}$=81, 2$\epsilon$), T$_{2}$=(1,2$\epsilon$,....,T$_{m}$=(1,2$\epsilon$), T$_{m+1}$?(1+$\epsilon$, 1). Utilizzazione globale = 2$\epsilon$ $\cdot$ m + $\frac{1}{1+ \epsilon}$ $\rightarrow$ 1 se $\epsilon$ $\rightarrow$ 0. Basterebbe uno o al massimo due processori per eseguire tutti questi task.\\ Ho una schedulazione fattibile: esempio per m=2\\
-\includegraphics[scale=0.3]{images/-al-038.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-038.jpg}
+\end{figure}
 Problema è che la schedulazione non è RM né DM né EDF: se schedulo con EDF vincono le scadenze assolute, quando tutti i job vengono rilasciati due job hanno priorità sugli altri, quindi quando i processori si liberano uno dei job manca la scadenza; stesso vale per RM e DM.\\ Questo risultato ha scoraggiato per tanti anni la ricerca su sistemi multiprocessore real-time, riprende quando siatemi multiprocessore si sono largamente diffusi da costringere a riguardare il problema: 2001, effetto Dhall esiste solo con sistemi di task in cui uno dei task ha un utilizzazione molto alta. Se task hanno utilizzazione non uguale ad 1 non si verifica l'effetto Dhall.
 \subsection{Anomalie di schedulazione}
 Comportamene di un algoritmo tale che, a fronte di variazione apparentemente vantaggiose dei parametri si hanno dei peggioramenti delle prestazioni. Esempi:
@@ -818,19 +947,33 @@ Anomalie di schedulazione si verificano se task sono non interrompibili o indipe
 \item Sistema dinamico, job interrompili e migrabili: sì.
 \end{itemize}
 Perché le anomalie complicano la validazione? Non esiste un worst case a cui ricondursi, bisogna cercare un modo per tenere sotto controllo le anomalie.\\ esempio: anomalie di schedulazione con job non migrabili\\
-\includegraphics[scale=0.3]{images/-al-039.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-039.jpg}
+\end{figure}
 anomalie di schedulazione con job migrabili:\\
-\includegraphics[scale=0.3]{images/-al-040.jpg}
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-040.jpg}
+\end{figure}
 \subsection{Schedulabilità}
 Istanti critici in schedulazioni globali: c'è un teorema che mi dice che usando uno scheduler globale a priorità fissa a livello di task, l'istante in cui un job di un task T$_{i}$ è rilasciato contemporaneamente ai job di tutti i task di priorità superiore T$_{1}$,....,T$_{i-1}$ non è necessariamente un istante critico di T$_{i}$\\ esempio:\\
-\includegraphics[scale=0.3]{images/-al-041.jpg}\\ No ho modo di usare il test di schedulabilità.\\ Fattore di utilizzazione per multiprocessore: (thm) dato un sistema di task periodici con scadenze uguali ai periodi ed m processori, se X è un qualsiasi algoritmo di schedulazione partizionato con priorità fissa a livello di task:\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-041.jpg}
+\end{figure}
+\\Non ho modo di usare il test di schedulabilità.\\ Fattore di utilizzazione per multiprocessore: (thm) dato un sistema di task periodici con scadenze uguali ai periodi ed m processori, se X è un qualsiasi algoritmo di schedulazione partizionato con priorità fissa a livello di task:\\
 U$_{X}$ $\leq$ $\frac{m + 1}{1 + 2^{\frac{1}{m +1}}}$. In pratica: se ad esempio uso RM, che ha su mono processore U$_{X}$ $\simeq$ 0.69, considerandolo partizionato il fattore di utilizzazione è limitato, non può in nessun modo utilizzarlo.\\ Teorema(2001): dato un sistema di task periodici con scadenze implicite ed m processori, sia X:
 \begin{itemize}
 \item un qualsiasi algoritmo di schedulazione partizionato
 \item un qualsiasi algoritmo di schedulazione globale con priorità fissa a livello di job
 \end{itemize}
 allora per il fattore di utilizzazione di X si ha: U$_{X}$ $\leq$ $\frac{m + 1}{2}$.\\ Man mano che aumento il numero di processori, devo lasciarne sempre di più liberi. Sto quindi lavorando in perdita: se voglio aumentare di un processore il mio sistema, ne devo aggiungere 2 e cos' via...\\ Corollario: nessun algoritmo di schedulazione globale con priorità fissa a livello di job è ottimale su multiprocessore. Non posso sfruttare al 100\% tutti i processori del sistema.\\ esempio:\\
-\includegraphics[scale=0.3]{images/-al-042.jpg}\\ Come si vede nell'esempio, schedulazione non EDF ottimale esiste.\\ Esistono algoritmi ottimali di schedulazione dinamica a livello di job che hanno fattore di utilizzazione pari ad m, esempio LST che però è complicato da implementare. Non esistono algoritmi on-line ottimali se gli istanti di rilascio dei job non sono esattamente prefissati.\\ Classe di algoritmi ottimali su multiprocessore è derivata dall'algoritmo Pfair:
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-042.jpg}
+\end{figure}
+\\Come si vede nell'esempio, schedulazione non EDF ottimale esiste.\\ Esistono algoritmi ottimali di schedulazione dinamica a livello di job che hanno fattore di utilizzazione pari ad m, esempio LST che però è complicato da implementare. Non esistono algoritmi on-line ottimali se gli istanti di rilascio dei job non sono esattamente prefissati.\\ Classe di algoritmi ottimali su multiprocessore è derivata dall'algoritmo Pfair:
 \begin{itemize}
 \item basati sul concetto di schedulazione fluida. Ogni task progredisce in modo proporzionale alla sua utilizzazione.
 \item tempo diviso in quanti: allo scadere di ogni quanto, lo scheduler assegna i task ai processori in modo che per ogni task T$_{i}$, il lavoro compiuto sia $\lceil \frac{te_i}{p_i}\rceil$ o $\lfloor\frac{te_i}{p_i}\rfloor$.\\ Più è piccolo il quanto di tempo, più mi avvicino ad una schedulazione fluida, come in un SO in cui processi si alternano per quanti piccoli: sembra come se processi facessero progressi contemporaneamente
@@ -905,9 +1048,16 @@ Ha senso considerare scheduler globali non partizionati? Assumo tutti i job indi
 Estensione del teorema per scadenze arbitrarie, teorema: Un sistema di task T, sporadici con scadenze arbitrarie, densità totale $\Delta_T$ e densità massima dei task $\Delta_{max}$ è schedulabile con EDF globale su un sistema con m processori se:\\ $\Delta_T$ $\leq$ m -(m-1)$\Delta_{max}$.\\ Esistono diverse altre condizioni di schedulabilità per EDF globale basate sulla densità dei singoli task e/o sul calcolo del tempo di processore richiesto dai task. È possibile avere algoritmi di schedulazione a priorità fissa (a livello di task o job) migliori di EDF globale per insiemi di task generici?\\ Considero EDF partizionato: ha una garanzia di schedulabilità che è $\frac{m+1}{2}$, certamente migliore della garanzia di schedulabilità di EDF globale, in quanto in quest'ultimo caso la garanzia è 1. Per insieme di task grandi, EDF partizionato va meglio, ma in generale gli algoritmi globali potrebbero andare bene o anche meglio di quelli partizionati per insiemi di task piccoli. Posso trovare algoritmi ibridi che vadano meglio di quelli visti fin ora?
 \subsubsection{EDF-US[zeta]}
 EDF-US[$\zeta$] è un algoritmo ibrido, proposto nel 2002, $\zeta$ è un parametro $\leq$ 1.\\ Una parte dei task ha priorità fissa, questi sono i task T$_t$ tali che $\frac{e_i}{p_i}$ $>$ $\zeta$, quindi sono tutti i task grandi.\\ Tutti hanno identica priorità, perché l'idea è che $\zeta$ è minore del numero di processori del sistema, quindi i task potranno sempre essere seguiti in parallelo.\\ Gli altri task hanno priorità più piccola dei task a priorità fissa e sono schedulati mediate EDF: la priorità non è più del task, ma del job. Hanno però priorità inferiore, quindi verranno sempre interrotti da quelli a priorità fissa. Idea: task grandi prendono sempre i processori disponibili,task piccoli prendono quello che rimane.\\ Non ho effetto Dhall: se ho task grandi, prendo processore, uso algoritmo globale per schedulare i task piccoli, quindi ebito l'effetto Dhall.\\ esempio:\\
-\includegraphics[scale=0.3]{images/-al-043.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-043.jpg}
+\end{figure}
 Classico effetto Dhall se schedulo con EDF globale\\
-\includegraphics[scale=0.3]{images/-al-044.jpg}\\ Task T$_3$ ha utilizzazione $>$ $\frac{1}{2}$ ,quindi ha priorità fissa ed averà precedenza.\\ Prestazioni:\\ teorema: Un sistema di task sporadici implicite è  schedulabile secondo EDF-US[$\frac{m}{(2m-2)}$] su m processori è U$_T$ $\leq$ $\frac{m^2}{(2m-2)}$.\\ Corollario: Un sistema di task sporadici con scadenze implicite è schedulabile con EDF-US[$\frac{1}{2}$] su m processori se $U_T$ $\leq$ $\frac{m + 1}{2}$. Ottengo il meglio, continuano a valere le ipotesi del teorema visto in precedenza (Andersson).\\ Posso esistere algoritmi di schedulazione globale a priorità fissa migliori di EDF-US[$\frac{1}{2}$]: non devo confondere la garanzia di schedulazione data da questa condizione con l'effettiva capacità di shedulare sistemi di task generici
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-044.jpg}
+\end{figure}
+\\Task T$_3$ ha utilizzazione $>$ $\frac{1}{2}$ ,quindi ha priorità fissa ed averà precedenza.\\ Prestazioni:\\ teorema: Un sistema di task sporadici implicite è  schedulabile secondo EDF-US[$\frac{m}{(2m-2)}$] su m processori è U$_T$ $\leq$ $\frac{m^2}{(2m-2)}$.\\ Corollario: Un sistema di task sporadici con scadenze implicite è schedulabile con EDF-US[$\frac{1}{2}$] su m processori se $U_T$ $\leq$ $\frac{m + 1}{2}$. Ottengo il meglio, continuano a valere le ipotesi del teorema visto in precedenza (Andersson).\\ Posso esistere algoritmi di schedulazione globale a priorità fissa migliori di EDF-US[$\frac{1}{2}$]: non devo confondere la garanzia di schedulazione data da questa condizione con l'effettiva capacità di shedulare sistemi di task generici
 \subsubsection{EDF(k)}
 Algoritmo ibrido, variante del precedente: k è un parametro, $<$ m. Una parte dei task ha priorità fissa, i primi k-1 con fattore di utilizzazione $\frac{e_i}{p_i}$ $>$ più alti; tutti gli altri hanno priorità dinamiche e sono schedulati con EDF.\\ L'idea è sempre la stessa: assegno i task grandi ai processori disponibili, gli altri li schedulo con EDF. Garanzie di schedulabilità:\\ Teorema: Un sistema di task sporadici con scadenze implicite è schedulabile con EDF(k) su m processori se: (k-1) + $\rceil \frac{U_t - u_k}{1 - u_k}\lceil$ $\leq$ m; dove u$_{k}$ è  il fattore di utilizzazione del k-esimo task.\\ Algoritmo EDF(k$_{min}$): Sia fissato m (in numero di processori), e sia k$_{min}$ il minimo valore di k che soddisfa la condizione del teorema precedente. Un sistema di task sporadici con scadenze implicite è schedulabile con EDF(k$_{min}$) se U$_T$ $\leq$ $\frac{m+1}{2}$.\\ Vale quanto detto prima: l'insieme dei task schedulabili con EDF-US[$\frac{1}{2}$] è un sotto-insieme proprio di EDF(k$_{min}$). Se guardo insieme di task con utilizzazione maggiore di $\frac{m+1}{2}$ EDF(k$_{min}$) schedula più job rispetto ad EDF-US[$\frac{1}{2}$], non confondere con la garanzia di schedulabilità.
 \subsubsection{Scheduler globali basati su priorità fissa a livello di task}
@@ -1472,9 +1622,15 @@ Se sbaglio qualcosa nella scelta, devo rivedere tutto il progetto. Tutte le funz
 \item Definisco l'architettura del sistema embedded, ed in particolare l'interfacciamento tra hardware e software
 \item Determino le specifiche di hardware e software, ora si può lavorare in parallelo.
 \end{itemize}
-\includegraphics[scale=0.3]{images/-al-045.jpg}\\
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-045.jpg}
+\end{figure}
 C'è fase di debugging, in cui si cerca di capire cosa non funziona, quando tutto è apposto, si ha il sistema completo.\\ Sempre più spesso sistemi embedded vengono definiti con piattaforme di riferimento. Metodologia comune sono i Systems-on-Chips: la piattaforma è un dispositivo o una architettura di base che può essere facilmente modificata per realizzare nuove funzionalità o modificare quelle esistenti.\\ È utile quando il sistema embedded deve realizzare funzioni definite e regolate da standard. Processo di sviluppo è composto da due fasi: si definisce la piattaforma e poi il prodotto specifico per la piattaforma\\
-\includegraphics[scale=0.3]{images/-al-046.jpg}
+\begin{figure}[!h]
+\centering
+\includegraphics[scale=0.4]{images/image-046.jpg}
+\end{figure}
 \subsection{Application Specific Integrated Circuit}
 Si usano circuiti integrati, basata su fabbricazione planare (anni 50'): come dei fogli sottili di silicio sul quale sono ricavati i componenti elettronici, processo litografico per inglobare fogli di silicio dei circuiti integrati. Grado di miniaturizzazione si è alzato sempre, di più negli anni, circuiti integrati sono sempre più piccoli e quindi sempre più veloci (elettroni nei conduttori si spostano a velocità finita).\\ In pratica il progettista ha ampia scelta tra i circuiti integrati:
 \begin{itemize}
