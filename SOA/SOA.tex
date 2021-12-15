@@ -2382,30 +2382,61 @@ secondo uno schema time-sharing: occorre stare attenti, perché si genera un thr
 L'interrupt da timer è un concetto basico, abbiamo vari timer in un'architettura moderna, che permettono di avere un'evoluzione articolata del tempo. Abbiamo in chipset moderni 3 timer diversi
 \begin{itemize}
 \item timer che non manda interrupt, ma permette al software di capire l'evoluzione temporale. Il famoso \texttt{rdtsc}, usato in maniera massiva nel SO per creare l'accounting dei vari thread, ovvero determinare quanto tempo di CPU usano realmente;
-\item LAPIC-T, un local apic timer ovvero un timer locale per ogni hyperhtread fisico dove sfruttando gli interrupt del timer di decrementano i residual ticks.Il timer è tale per cui si programma l'intervallo da offrire a startup del SO e manda un interrupt ad ogni scadere dell'intervallo. È programmabile in modo da mandare interrupt periodici o one-shot, in genere Linux lo programma per mandare interrupt periodici. Il timer, almeno in Linux, manda un interrupt ogni 1ms oer macchine single core o 4 ms su macchine multi core. 4ms sono grandi su sistemi convenzionali, fa capire che col timer non facciamo temporizzazione a grana fine, bensì a grana medio-alta per tenere traccia dello scorrere del tempo;
-\item HPET: suite di timers, è programmabile, che permette di ricevere interrupt basati su evoluzione temporale periodici o one-shot, in Linux tipicamente si hanno interrupt one-shot.\\Linux lo usa per portare avanti richieste di ricevere interrupt da timer a grana fine, siamo in grado di:
-a $t_0$ il thread riceve la CPU, comincia a consumare i residual ticks. Nell'intervallo di tempo, è possibile che sia stato programmato il 3° timer per mandare l'interrupt a grana fine, con cui possiamo eseguire delle attività a livello di SO, nella SoftIRQ architecture possiamo risvegliare il demone e far si che prenda il controllo della CPU il prima possibile, ma per fare questo il thread deve passare per una safe zone e rendersi conto che c'è il softIRQ deamon.\\Si marca quindi il thread corrente come preemptable, nelle strutture di gestione del thread (il flag è in realtà un counter) in modo che il thread lasci la CPU quando passerà per il safe place. 
+\item \textbf{LAPIC-T}, un local apic timer ovvero un timer locale per ogni hyperthread fisico dove sfruttando gli interrupt del timer si decrementano i residual ticks.Il timer è tale per cui si programma l'intervallo da offrire a startup del SO e manda un interrupt ad ogni scadere dell'intervallo. È programmabile in modo da mandare interrupt periodici o one-shot, in genere Linux lo programma per mandare interrupt periodici. Il timer, almeno in Linux, manda un interrupt ogni 1ms per macchine single core o 4 ms su macchine multi core. 4ms sono grandi su sistemi convenzionali, fa capire che col timer non facciamo temporizzazione a grana fine, bensì a grana medio-alta per tenere traccia dello scorrere del tempo;
+\item \textbf{HPET}: suite di timers, è programmabile, che permette di ricevere interrupt basati su evoluzione temporale periodici o one-shot, in Linux tipicamente si hanno interrupt one-shot.\\Linux lo usa per portare avanti richieste di ricevere interrupt da timer a grana fine, siamo in grado di fare quanto segue:\\
+a $t_0$ il thread riceve la CPU, comincia a consumare i residual ticks. Nell'intervallo di tempo, è possibile che sia stato programmato il 3° timer per mandare l'interrupt a grana fine, con cui possiamo eseguire delle attività a livello di SO, nella SoftIRQ architecture possiamo risvegliare il demone e far si che prenda il controllo della CPU il prima possibile, ma per fare questo il thread deve passare per una safe zone e rendersi conto che c'è il SoftIRQ deamon.\\Si marca quindi il thread corrente come preemptable, nelle strutture di gestione del thread (il flag è in realtà un counter) in modo che il thread lasci la CPU quando passerà per il safe place. 
 \end{itemize}
 \subsubsection{LAPIC timer}
 Vediamo la gestione del top half da LAPIC-T, questo prevede che il gestore che riceve e processa l'interrupt è semplice:
 \begin{itemize}
-\item flagga la \texttt{tq\_timer} come pronta la flush in versioni vecchie;
-\item incremento di una variabile globale \texttt{jiffies};
-\item decremento del numero di clock ticks;
-\item indicare che la CPU deve essere rischedulabile nel thread control block del thread corrente
+\item flagga la \texttt{tq\_timer} come pronta al flush in versioni vecchie;
+\item incrementa una variabile globale \texttt{jiffies};
+\item decrementa il numero di clock ticks;
+\item indica che la CPU deve essere rischedulabile nel thread control block del thread corrente
 \end{itemize}
-In Linux esiste quindi il concetto di \texttt{TIF\_NEED\_RESCHED}, che indica che il thread è stato flaggato per lasciare la CPU per via del fatto che non c'è più tempo per lui, può esserci lo scenario in cui il thread sia non-preemptable e quindi lascerà la CPU quando diventerà preemptable.\\Possiamo preemptare un thread anche prima della fine dei residui temporali se diventa peremptable e lui stesso chiama la CPU per rischedulazione, senza questa cosa non si potrebbe mettere in piedi un sistema real time.\\Gli effetti del raising di \texttt{need\_resched} o (slides) si fa il check sui metadati del thread corrente e se occorre rischedulare si chiama la funzione \texttt{schedule()} di Linux.\\Vediamo qualche dettaglio in più, l'old style era definito nel file \texttt{linux/kernel/timer.c}
-%snippet
-si passa prima per un gestore sintetico che fa uno snapshot prima di eseguire il codice, si marca eventualmente il bottom half come eseguibile
-%snippet del bottom half
+In Linux esiste quindi il concetto di \texttt{TIF\_NEED\_RESCHED}, che indica che il thread è stato flaggato per lasciare la CPU per via del fatto che non c'è più tempo per lui, può esserci lo scenario in cui il thread sia non-preemptable e quindi lascerà la CPU quando diventerà preemptable.\\Possiamo preemptare un thread anche prima della fine dei residui temporali se diventa preemptable e lui stesso chiama la CPU per il reschedule, senza questa cosa non si potrebbero mettere in piedi un sistema real time.\\Gli effetti del raising di \texttt{need\_resched} o di \texttt{TIF\_NEED\_RESCHED} fanno si che venga effettuato il check sui metadati del thread corrente e se occorre rischedulare si chiama la funzione \texttt{schedule()} di Linux.\\Vediamo qualche dettaglio in più, l'old style era definito nel file \texttt{linux/kernel/timer.c} ed abbiamo il seguente top half
+\begin{lstlisting}
+void do_timer(struct pt_regs *regs)
+{
+	(*(unsigned long *)&jiffies)++;
+	#ifndef CONFIG_SMP
+		/* SMP process accounting uses the local APIC timer */
+		
+		update_process_times(user_mode(regs));
+	#endif
+	mark_bh(TIMER_BH);
+	if (TQ_ACTIVE(tq_timer))
+		mark_bh(TQUEUE_BH);	
+}
+\end{lstlisting}
+si passa prima per un gestore sintetico che fa uno snapshot prima di eseguire il codice, si marca eventualmente il bottom half come eseguibile. Abbiamo quindi il seguente codice per la gestione del bottom half:
 \begin{lstlisting}
 void timer_bh(void)
 {
-	
+	update_times();
+	run_timer_list();
 }
 \end{lstlisting}
-Su architetture Linux più recenti i bottoon half sono eseguiti dal SofIRQ deamon, il top half è questo:
-%immagine del kernel 3
+dove la funzione \texttt{run\_timer\_list()} si fa carico di ogni azione legata al tempo.\\Su architetture Linux più recenti i bottom half sono eseguiti dal SofIRQ deamon, il top half è questo:
+\begin{lstlisting}
+__visible void __irq_entry smp_apic_timer_interrupt(struct pt_regs *regs)
+{
+		struct pt_regs *old_regs = set_irq_regs(regs);
+		/*
+		 * NOTE! We'd better ACK the irq immediately,
+		 * because timer handling can be slow.
+		 *
+		 * update_process_times() expects us to have done irq_enter().
+		 * Besides, if we don't timer interrupts ingore the global
+		 * interrupt lock, which is the WrongThing (tm) to do.
+		 */
+		entering_ack_irq();
+		local_apic_timer_interrupt();
+		exiting_irq();
+		
+		set_irq_regs(old_regs);
+}
+\end{lstlisting}
 \subsubsection{High Resolution timers}
 Quando arriva un interrupt di questo timer abbiamo un thread in esercizio che processa delle cose:
 \begin{itemize}
@@ -2413,13 +2444,13 @@ Quando arriva un interrupt di questo timer abbiamo un thread in esercizio che pr
 \item si programma il prossimo interrupt nel prossimo intervallo, basato su una richiesta di log;
 \item si lancia una richiesta di preemption, in modo che se si passa per un safe place si lascia la CPU a vantaggio del prossimo thread da mandare in CPU, ovvero il SoftIRQ deamon
 \end{itemize}
-Esiste in Linux questo tipo di organizzazione: il SoftIRQ deamon da processare l'attività flaggata come tale va a guardare in una struttura dati in cui sono state registrare tante entry tali per cui a ciascuna deve corrispondere un interrupt in modo che quando l'interrupt arriva occorre eseguire la funzione registrata nella entry. Si possono quindi inserire elementi qualsiasi nella struttura dati, quindi a livello kernel si possono inserire elementi che verranno acceduti quando arriva un interrupt, in questo caso antecedente.\\Quando usiamo nel software di applicazioni per sistemi POSIX \texttt{uspleep()} che chiede di andare in sleep per un tempo a grana fine, il suo funzionamento è il seguente:
+Esiste in Linux questo tipo di organizzazione: il SoftIRQ deamon, per processare l'attività flaggata come tale va a guardare in una struttura dati in cui sono state registrare tante entry tali per cui a ciascuna deve corrispondere un interrupt in modo che quando l'interrupt arriva occorre eseguire la funzione registrata nella entry. Si possono quindi inserire elementi qualsiasi nella struttura dati, quindi a livello kernel si possono inserire elementi che verranno acceduti quando arriva un interrupt, in questo caso antecedente.\\Quando usiamo nel software applicativo per sistemi POSIX \texttt{uspleep()} che chiede di andare in sleep per un tempo a grana fine, il suo funzionamento è il seguente:
 \begin{itemize}
 \item un thread livello user passa modo kernel e quando è modo kernel si colloca una funzione nella struttura dati per ricevere un interrupt dopo il tempo per cui si dorme
 \item dopo aver registrato questa "sveglia", si va in stato di wait chiamando lo scheduler
 \item abbiamo inserito un elemento e lasciato la CPU, inoltre non siamo schedulabili perché siamo in wait. L'elemento genererà un interrupt, quando arriva viene risvegliato il demone che processa quello che è scritto nelle elemento: la funzione prende il thread e lo mette ready.
 \end{itemize}
-Il thread è stato fuori CPU per un intervallo di tempo a grana fine, che non si può fare con timer come LAPIC: se vogliamo ad esempio, fare polling col software sullo stato di dispositivi o informazioni in memoria, del SO non si potrebbe fare nulla di realmente ottimizzato.\\L'interfaccia kernel per HR è la seguente
+Il thread è stato fuori CPU per un intervallo di tempo a grana fine, che non si può fare con timer come LAPIC: se vogliamo ad esempio, fare polling col software sullo stato di dispositivi o informazioni in memoria, nel SO non si potrebbe fare nulla di realmente ottimizzato.\\L'interfaccia kernel per HR è la seguente
 \begin{lstlisting}
 ktime_t kt;
 kt = ktime_set(long secs, long nanosecs)
@@ -2437,7 +2468,7 @@ int hrtimer_try_to_cancel(struct hrtimer *timer);
 \end{lstlisting}
 la seconda API è una variante non bloccante della prima, si prova a rimuovere l'attività ma se il SoftIRQ deamon sta già processando tale attività si ritorna senza bloccare.
 \subsection{Cos'è una richiesta di preemption}
-È possibile che, durante l'evoluzione di un thread arrivi un interrupt e nella gestione top half dell'interrupt si vada nei dati, ad esempio del TCB, per flaggarlo come preemptable: è successo qualcosa per cui il thread deve lasciare la CPU per darla a qualcun altro, come nello scenario dell'interrupt da HRTIMER, ma abbiamo anche interrupt da altri devices.\\Mentre il thread continua ad eseguire in modo  kernel, possono esserci delle chiamate ad API che cercano di controllare il flag di preemptability che se attivato lascia la CPU. Una funzione che fa questo è \texttt{\texttt{printk}}, quindi attenzione all'utilizzo se si embedda nel kernel un oggetto time-critical che usa questo tipo di API che hanno dei safe places interni.\\Si può evitare che non si chiama lo scheduler anche se il thread è preemptabile? per farlo ci sono i cosiddetti \textbf{preemption counters}: ogni thread all'interno del suo TCB o tramite il suo TCB può portare sul preemption counter, quindi è uno associato ad ogni thread attivo nel sistema.Il preemption conuter è tale per cui se il counter non è 0, allora il preemption check non porta mai all'attivazione dello scheduler: anche se si esegue un blocco di codice kernel dove si passano per vari safe palces, non si chiama lo scheduler se il counter non è pari a 0.\\Così siamo in grado di specificare che un blocco di codice del kernel è non preemptable finché il counter non va a 0, ci sono delle API per fare questo
+È possibile che, durante l'evoluzione di un thread arrivi un interrupt e nella gestione top half dell'interrupt si vada nei dati, ad esempio nel TCB, per flaggarlo come preemptable: è successo qualcosa per cui il thread deve lasciare la CPU per darla a qualcun altro, come nello scenario dell'interrupt da \texttt{HRTIMER}, ma abbiamo anche interrupt da altri devices.\\Mentre il thread continua ad eseguire in modo  kernel, possono esserci delle chiamate ad API che cercano di controllare il flag di preemptability che se attivato lascia la CPU. Una funzione che fa questo è \texttt{printk}, quindi attenzione all'utilizzo se si embedda nel kernel un oggetto time-critical che usa questo tipo di API che hanno dei safe places interni.\\Si può evitare di chiamare lo scheduler anche se il thread è preemptabile? per farlo ci sono i cosiddetti \textbf{preemption counters}: ogni thread all'interno del suo TCB o tramite il suo TCB può portare sul preemption counter, quindi è uno associato ad ogni thread attivo nel sistema.Il preemption counter è tale per cui se il counter non è 0, allora il preemption check non porta mai all'attivazione dello scheduler: anche se si esegue un blocco di codice kernel dove si passano per vari safe palces, non si chiama lo scheduler se il counter non è pari a 0.\\Così siamo in grado di specificare che un blocco di codice del kernel è non preemptable finché il counter non va a 0, ci sono delle API per fare questo
 \begin{itemize}
 \item \texttt{prepempt\_enable()}: decrementa il contatore, si checka anche se si deve chiamare lo scheduler (nel caso in cui il counter sia pari a 0)
 \item \texttt{preempt\_disable()}: aumenta il contatore
@@ -2447,7 +2478,7 @@ la seconda API è una variante non bloccante della prima, si prova a rimuovere l
 \end{itemize}
 si può solo incrementare/decrementare altrimenti si rischierebbe di chiamare un oggetto esterno che non è preemptabile.
 \subsubsection{Preemption e per-CPU memory}
-La per-CPU memory implica dire che il thread comincia a lavorare su una zona di memoria di una specifica CPU, quindi se l'operazione viene resa preempatible, questo venga tolto e rimesso su un'altra CPU e tocchi la memoria per-CPU di un altro core che ha poco senso. Questo accadeva ad esempio nelle quicklist, è anche il motivo per cui quando si usano le API \texttt{get/put\_cpu\_var()} vanno a chiamare enable e disable della CPU, altrimenti si violerebbe lo schema di atomicità delle operazioni sulla per-CPU memory dove non c'è sincronizzazione per motivi di efficienza.\\ C'è un problema importante da considerare: è possibile che un thread lasci la CPU mentre è non-preemptable? Può avvenire se viene chiamata, durante l'esecuzione, una API del kernel bloccante, ad esempio l'allocazione di memoria bloccante. Questo non viene evitato dai preemption counter, quindi va evitato da parte del software scritto, esistono diverse correlazioni fra queste cose.
+La per-CPU memory implica dire che il thread comincia a lavorare su una zona di memoria di una specifica CPU, quindi se l'operazione viene resa preempatible, può accadere che questo venga tolto e rimesso su un'altra CPU e tocchi la memoria per-CPU di un altro core che ha poco senso. Questo accadeva ad esempio nelle quicklist, è anche il motivo per cui quando si usano le API \texttt{get/put\_cpu\_var()} vanno a chiamare enable e disable della CPU, altrimenti si violerebbe lo schema di atomicità delle operazioni sulla per-CPU memory dove non c'è sincronizzazione per motivi di efficienza.\\ C'è un problema importante da considerare: è possibile che un thread lasci la CPU mentre è non-preemptable? Può avvenire se viene chiamata, durante l'esecuzione, una API del kernel bloccante, ad esempio l'allocazione di memoria bloccante. Questo non viene evitato dai preemption counter, quindi va evitato da parte del software scritto, esistono diverse correlazioni fra queste cose.
 \subsection*{Esempio running - riscrittura della usleep}
 Vediamo l'implementazione di una variante di un servizio di sleep a grana fine: dove viene presa la tabella per registrare i dati da inserire nella "timer wheel". Mettiamo la struttura hrtimer embeddata in una struttura più ampia, dentro cui scriviamo un puntatore ad una task struct, ovvero ad un thread control block, quindi l'elemento è embeddato in una tabella tale per cui possiamo arrivare in memoria a conoscere dove in memoria è il TCB, che serve al SoftIRQ deamon.\\Nella usleep reale, se passiamo un timeout e non siamo thread real time, viene applicato comunque un minimo per non andare contro a (perso), è fondamentale quando c'è del software che fa polling a grana fine su un certo device.\\Abbiamo ancora qualcosa da considerare sul running example: per implementare un servizio di sleep a grana fine
 \begin{itemize}
@@ -2463,7 +2494,7 @@ C'è la questione di dove è collocato in memoria la struttura dati che contiene
 \end{itemize}
 Questo permette di avere uno sleep a grana fine che duri pochi cicli macchina, non va bene né per la nostra applicazione e né per la CPU.\\Quindi quando si entra in una funzione del kernel eventualmente atomica è tale per cui possiamo usare delle informazioni del nostro stack frame per collegarle a strutture dati eventualmente di sistema.
 \section{Thread nei SO moderni}
-Abbiamo nominato tante volte il concetto di Thread Control Block, anche nel precedente esempio running si arriva al TCB del thread corrente, ovvero il dato \texttt{current}. Vediamo cosa ha un control block di un thread come informazioni di base
+Abbiamo nominato tante volte il concetto di Thread Control Block, anche nel precedente esempio running si arriva al TCB del thread corrente, ovvero il dato \texttt{current}. Vediamo come è fatto un control block di un thread in termini di informazioni di base
 \begin{itemize}
 \item con che regola di shedulazione di CPU va gestito il thread: un thread in un SO moderno può essere in una certa categoria, tali categorie possono essere gestite da regole di schedulazione diverse. L'informazione può essere settata allo statup del thread ma modificata tramite syscall;
 \item come gestire la memoria per conto di questo thread: possiamo ad esempio avere un page fault per il thread corrente, quindi abbiamo le mempolicy specifiche per la gestione del thread. Ci sono anche altre cose, inclusa l'idea che se c'è un fault causato dal thread si verifica se tale fault è risolvibile dal kernel o no, quindi ad esempio se la pagina è solo mmappata e va materializzata;
@@ -2477,12 +2508,12 @@ Un TCB dice in ogni istanza di tempo se il thread è schedulabile o no in CPU, q
 \item waitqueue A head pointer
 \item waitqueue B head pointer, che può ad esempio registrare un solo TCB
 \end{itemize}
-Facendo le cose in questo modo, stiamo anche esemplificando la programmazione a livello kernel, in quanto per portare un thread eseguibile oppure eliminare la possibilità che questo sia eseguibile prevede l'utilizzo di API semplici.\\Quando un thread chiama un servizio bloccante nel SO il suo TCB deve essere eliminato dalla runqueue, supponiamo che il thread sia A ed attualmente è sulla run queue. Ovviamente, quando chiama il servizio bloccante, il CPU core viene assegnato ad un altro thread, magari B. Quello che accade è che A, mentre gira invoca sincronamente lo scheduler che dovrà assegnare la CPU a B e mentre facciamo questo il TCB è ancora presente sulla runqueue, per escludere il TCB del thread A dalla scheduler logic si possono usare gli \textbf{sleep/wait sevices}: quando si chiama un servizio bloccante, internamente questa chiama una API di un servizio spleep/wait, che esegue tutte le attività di cui parlavamo prima, in particolare 
+Facendo le cose in questo modo, stiamo anche esemplificando la programmazione a livello kernel, in quanto portare un thread eseguibile oppure eliminare la possibilità che questo sia eseguibile prevede l'utilizzo di API semplici.\\Quando un thread chiama un servizio bloccante nel SO il suo TCB deve essere eliminato dalla runqueue, supponiamo che il thread sia A ed attualmente è sulla run queue. Ovviamente, quando chiama il servizio bloccante, il CPU core viene assegnato ad un altro thread, magari B. Quello che accade è che A, mentre gira invoca in modo sincrono lo scheduler che dovrà assegnare la CPU a B e mentre facciamo questo il TCB è ancora presente sulla runqueue, per escludere il TCB del thread A dalla scheduler logic si possono usare gli \textbf{sleep/wait sevices}: quando si chiama un servizio bloccante, internamente questa chiama una API di un servizio spleep/wait, che esegue tutte le attività di cui parlavamo prima, in particolare 
 \begin{itemize}
 \item lo scheduling esegue una attività di default, che è l'eliminazione dalla runqueue se serve. Per quanto riguarda il collegamento del thread ad eventuali waitqueue la cosa è avvenuta prima. Questa marca solo il TCB come eliminabile;
 \item lo scheduler entra e cancella dalla runqueue il thread
 \end{itemize}
-È possibile che il thread sia eliminato prima dell'analisi della runqueue, ma nel TCB possiamo anche trovare informazioni di controllo che si scontrano con questa situazione, ovvero anche se il thread ha chiamato un servizio bloccante c'è un thread B che ha colpito con un segnale il thread A, quindi il thread A è marcato per essere schedulato il prima possibile per terminare o gestire il segnale.\\Quindi, c'è un layering di API per cui può accadere che lo scheduler non elimini il TCB dalla runqueue in base alle informazioni di controllo trovate, può accadere che il TCB sia amrcato come eliminabile perché il thread chiama un servizio bloccante ma qualcun altro l'ha marcato come non eliminabile perché magari colpito da un segnale.\\Il TCB di un thread che invoca un servizio bloccante viene mantenuto su una waitqueue, ovvero la API wait/sleep ci porta su una attività per cui inseriamo il TCB in una waitqueue marcandolo come eliminabile, poi con una API di più basso livello andiamo ad eliminare eventualmente dalla runqueue, quindi ci sono zone temporali in cui il thread è in entrambe le code. Quindi la timeline è la seguente
+È possibile che il thread sia eliminato prima dell'analisi della runqueue, ma nel TCB possiamo anche trovare informazioni di controllo che si scontrano con questa situazione, ovvero anche se il thread ha chiamato un servizio bloccante c'è un thread B che ha colpito con un segnale il thread A, quindi il thread A è marcato per essere schedulato il prima possibile per terminare o gestire il segnale.\\Quindi, c'è un layering di API per cui può accadere che lo scheduler non elimini il TCB dalla runqueue in base alle informazioni di controllo trovate, può accadere che il TCB sia marcato come eliminabile perché il thread chiama un servizio bloccante ma qualcun altro l'ha marcato come non eliminabile perché magari colpito da un segnale.\\Il TCB di un thread che invoca un servizio bloccante viene mantenuto su una waitqueue, ovvero la API \texttt{wait}/\texttt{sleep} ci porta su una attività per cui inseriamo il TCB in una waitqueue marcandolo come eliminabile, poi con una API di più basso livello andiamo ad eliminare eventualmente dalla runqueue, quindi ci sono zone temporali in cui il thread è in entrambe le code. Quindi la timeline è la seguente
 \begin{itemize}
 \item viene linkato il TCB ad una waitqueue
 \item si flagga il TCB come eliminabile
@@ -2490,52 +2521,95 @@ Facendo le cose in questo modo, stiamo anche esemplificando la programmazione a 
 \item si rimuove il TCB dalla runqueue
 \end{itemize}
 la timeline classica in SO moderni quindi è la seguente
-% immagine della classica timeline
+\begin{figure}
+	\includegraphics[scale=0.3]{immagini/tcb_timeline.png}
+\end{figure}
 finché è il thread ad invocare la sleep/wait API non andrà mai in sleep.\\Dobbiamo anche porci il problema di come ci si scollega da una waitqueue e come ci si ricollega ad una runqueue, vediamo quali sono i vari eventi che possono collegarsi a tali scenari
 \begin{itemize}
-\item il relinkage alla run queue viene fatto da qualcun altro, non c'è verso. Chiamando ad esempio la syscall kill (in sistemi Linux/Posix) questo mette il thread come running;
-\item unlinkage dalla waitqueue: l'oggetto visto prima prevede che l'API sia layered, quando si esce dal layer più basso siamo in quello più lato e quindi è lui che elimina il TCB dalla waitqueue una volta ripreso il controllo dallo scheduler. Possiamo lavorare all'unlinkage lungo lo stesso thread che ha chiamato il sevizio bloccante.
+\item il relinkage alla run queue viene fatto da qualcun altro, non c'è verso. Chiamando ad esempio la syscall \texttt{kill} (in sistemi Linux/Posix) questa mette il thread come running;
+\item unlinkage dalla waitqueue: l'oggetto visto prima prevede che l'API sia layered, quando si esce dal layer più basso siamo in quello più alto e quindi è lui che elimina il TCB dalla waitqueue una volta ripreso il controllo dallo scheduler. Possiamo lavorare all'unlinkage lungo lo stesso thread che ha chiamato il sevizio bloccante.
 \end{itemize}
-Abbiamo anche il concetto di context swtich, la cosa interessante è di cercare di capire quando lungo la timeline di esecuzione il context switch è realmente avvenuto:
+Abbiamo anche il concetto di context swtich, la cosa interessante è cercare di capire quando lungo la timeline di esecuzione il context switch è realmente avvenuto:
 \begin{itemize}
 \item chiamiamo \texttt{schedule}
 \item viene esaminato a chi può essere passata la CPU, finché non avviene la selezione è il thread corrente ad eseguire
 \end{itemize}
-una volta presa la decisione di quale thread deve eseguire, ci vogliono altre istruzioni macchina per rimettere a posto lo snapshot di CPU, l'istante di tempo per cui possiamo sicuramente dire che il context switch è avvenuto è dato dallo stack pointer: cambiando stack area, vuol dire che il thread non può più eseguire perché non osserva più lo stesso stack. La cosa interessante è che epr tutta una serie di motivi storici abbiamo che se la CPU ha lo stack pointer che punta ad una stack kernel A e poi passa a stack kernel B, viene aggiornato anche \texttt{current}, che è una quindi una macro che lavora sul valore corrente dello stack pointer.
+una volta presa la decisione di quale thread deve eseguire, ci vogliono altre istruzioni macchina per rimettere a posto lo snapshot di CPU, l'istante di tempo per cui possiamo sicuramente dire che il context switch è avvenuto è dato dallo stack pointer: cambiando stack area, vuol dire che il thread non può più eseguire perché non osserva più lo stesso stack. La cosa interessante è che per tutta una serie di motivi storici abbiamo che se la CPU ha lo stack pointer che punta ad una stack kernel A e poi passa a stack kernel B, viene aggiornato anche \texttt{current}, che è una quindi una macro che lavora sul valore corrente dello stack pointer.
 \subsection{TCB in Linux}
 La struttura che identifica il TCB è chiamata \texttt{struct task\_struct}: alcuni campi erano mantenuti fino al kernel 2.6, ora c'è una ri-organizzazione a livello software di tali campi.
-%copia la tabella
+\begin{itemize}
+	\item[$>$] \texttt{volatile long state}
+	\item[$>$] \texttt{struct mm\_struct *mm}
+	\item[$>$] \texttt{pid\_t pid}
+	\item[$>$] \texttt{pid\_t pgrp}
+	\item[$>$] \texttt{struct fs\_struct *fs}
+	\item[$>$] \texttt{struct files\_struct *files}
+	\item[$>$] \texttt{struct signal\_struct *sig}
+	\item[$>$] \texttt{volatile long need\_resched}
+	\item[$>$] \texttt{struct thread\_struct thread}
+	\item[$>$] \texttt{long counter}
+	\item[$>$] \texttt{long nice}
+	\item[$>$] \texttt{unsigned long policy}
+\end{itemize}
+Fra i campi più importanti abbiamo quindi:
 \begin{itemize}
 \item il \texttt{pid} del thread;
 \item \texttt{volatile long state}, lo stato del thread;
 \item puntatore per fare memory management;
 \item una cosa interessante era la \texttt{volatile long need\_resched}, messa ad 1 nel caso in cui fosse ricevuto un segnale;
-\item \texttt{counter indicava il tick corrente} 
+\item \texttt{counter} indicava il tick corrente
 \item \texttt{tgid}: codice numerico del gruppo a cui il thread appartiene, quando si è in relazione con altri thread ad esempio della stessa applicazione. Tipicamente il primo thread di ogni gruppo ha pid e gid uguali, mentre altri thread hanno pid diversi.
 \end{itemize}
 In versioni moderne alcune cose sono state modificate, ad esempio il \texttt{volatile long need\_resched} non esiste più e si usa un bit in una maschera che è il  \texttt{TIF\_NEED\_RESCHED}, in ogni caso i campi più importanti sono nella struct
 \subsubsection{Allocazione del TCB in Linux prima del kernel 2.6}
-A livello di base, il minimo delle informazioni per gestire un thread in Linux è un TCB ed una stack area. Le tabelle esterne ad esempio porrebbero già esistere, in quanto sono un thread di un gruppo, ma devo avere questo due informazioni basiche.\\In Linux, quando veniva tirato su un nuovo thread si chiamava l'allocatore una sola volta: veniva allocata un'unica area di memoria sia per TCB che per stack, dove la parte alta era riservata al TCB ed il resto alla stack area. Quell'area era 8KB, in cui una zona iniziale non si può utilizzare, quindi in un kernel di SO non esistono blocchi di codice ricorsivo in Linux, bensì è tutto iterativo. Inoltre, quando si programmano blocchi del codice del kernel Linux le variabili locali dichiarate sono poche e compatte, altrimenti c'è il rischio di andare in overflow della stack area e quindi rischiare di sovrascrivere il TCB.\\Tipicamente quindi si prendevano 2 frame di memoria dal buddy allocator per tirare su le due informazioni, quest'area è già presente nell'immagine di Linux al boot che serve per l'\texttt{init\_task}, per cui la base della stack area è \texttt{\&init\_task + 8192(?)}, veniva quindi usato \texttt{\_get\_free\_pages()} per prendere una kernel area.\\ C'era però una non indipendenza dello scaling usato per la kernel area rispetto a quella usata per il TCB: se facciamo delle versioni avanzate del kernel per cui il TCB deve crescere, aumentando la taglia del TCB c'è meno spazio per la stack area e se ne faccio lo scale up, usando il buddy allocator devo per forza almeno raddoppiarla, in quanto la buddy allocation funziona così (riveditela, che ad oggi non sai un cazzo cojone).\\Quindi si sono rese queste due cose indipendenti evitando problemi di buffer overflow o anche di frammentazione di memoria.\\ Si è passati quindi da una \texttt{union} per la stack area
-% snippet della union
+A livello di base, il minimo delle informazioni per gestire un thread in Linux è un TCB ed una stack area. Le tabelle esterne ad esempio porrebbero già esistere, in quanto sono un thread di un gruppo, ma devo avere questo due informazioni basiche.\\In Linux, quando veniva tirato su un nuovo thread si chiamava l'allocatore una sola volta: veniva allocata un'unica area di memoria sia per TCB che per stack, dove la parte alta era riservata al TCB ed il resto alla stack area. Quell'area era 8KB, in cui una zona iniziale non si può utilizzare, quindi in un kernel di SO non esistono blocchi di codice ricorsivo, bensì è tutto iterativo. Inoltre, quando si programmano blocchi del codice del kernel Linux le variabili locali dichiarate sono poche e compatte, altrimenti c'è il rischio di andare in overflow della stack area e quindi rischiare di sovrascrivere il TCB.\\Tipicamente quindi si prendevano 2 frame di memoria dal buddy allocator per tirare su le due informazioni, quest'area è già presente nell'immagine di Linux al boot che serve per l'\texttt{init\_task}, per cui la base della stack area è \texttt{\&init\_task + 8192(?)}, veniva quindi usato \texttt{\_get\_free\_pages()} per prendere una kernel area.\\ C'era però una non indipendenza dello scaling usato per la kernel area rispetto a quella usata per il TCB: se facciamo delle versioni avanzate del kernel per cui il TCB deve crescere, aumentando la taglia del TCB c'è meno spazio per la stack area e se ne faccio lo scale up, usando il buddy allocator devo per forza almeno raddoppiarla, in quanto la buddy allocation funziona così (riveditela, che ad oggi non sai un cazzo cojone).\\Quindi si sono rese queste due cose indipendenti evitando problemi di buffer overflow o anche di frammentazione di memoria.\\ Si è passati quindi da una \texttt{union} per la stack area
+\begin{lstlisting}
+union task_union{
+	struct task_struct task;
+	unisgned long stack[INIT_TASK_SIZE/sizeof(long)];
+}
+\end{lstlisting}
 \subsubsection{Fino a kernel 4.8}
 Allochiamo TCB e stack area in maniera separata, chiamando due allocatori diversi che quindi possono essere di tipo differente: potevamo prendere la stack area mediante buddy allocator e magari il TCB con un altro allocatore (di cui non sai scrivere il nome sempre perché non studi un cazzo).\\Abbiamo comunque un metadato basico per la gestione del TCB, ma non è più il TCB ed è importante perché avendo fatto stack switch è stato switchato anche quel metadato che mantiene una struttura dati limitata che contiene l'indirizzo in memoria del TCB. L'organizzazione della struttura è quindi la seguente
-%snippet
-per cui un campo punto alla \texttt{task\_struct}, quindi al TCB del thread.
+\begin{lstlisting}
+union thread_info{
+	struct task_struct task;	/* main task structure */
+	struct exec_domain *exec_domain	/* execution domain */
+	__u32 flags;	/* low level flags */
+	__u32 status;	/* thread synchronous flags */
+	__u32 cpu;	/* current CPU */
+	int saved_preempt_count;
+	mm_segment_t adrr_limit;
+	struct restart_block restart_block;
+	void __user *sysenter_return;
+	unsigned int sig_on_uacess_error:1;
+	unsigned int uacess_err:1;	/* uaccess failed */
+};
+\end{lstlisting}
+per cui un campo punta alla \texttt{task\_struct}, quindi al TCB del thread.
 Abbiamo in kernel 4 e 5 la macro \texttt{THEAD\_SIZE} che indica la taglia massima per lo stack del thread, che è funzione della taglia della pagina e dell'ordine.
 \subsubsection{La macro \texttt{current}}
-La macro \texttt{current} sfrutta il fatto che la stack area è allocata da buddy allocator, in quanto sa che in memoria è allineata alle due pagine in memori fisica. Quindi, per reperire la parte iniziale delle due pagine si possono mascherare i bit meno significativi dello stack pointer per ottenere la parte iniziale della stack area, in base alla versione del kernel abbiamo il TCB oppure un puntatore al TCB.\\Alla fine c'è un problema con questo tipo di organizzazione: il mascherare i bit funziona perché abbiamo usato buddy allocation, quindi sappiamo di essere allineati in memoria, infatti nei kernel nuovi è stato eliminato in quanto è un problema legato alla sicurezza. Un certo thread può creare danno a qualcun altro, andando in overflow sulla propria stack area andando su una kernel stack area di un altro thread o addirittura sovrascrivere un driver. Come si potrebbe evitare: si può decidere di prendere la memoria con la buddy allocation, per poi prendere una pagina e anche quella in basso e de-validarle dall'address space del kernel, in modo che se si esce dalla stack area ho un seg fault e non danneggio nulla.\\Ma quando si chiama il buddy allocator per ottenere una pagina poi non si può richiamare per ottenere la pagina sottostante, perché potrebbe già essere stata consegnata, a meno di avere vincoli forti su delle aree di memoria usate appositamente per questo scopo.\\Inoltre, la devalidazione dell'address space implica che fa fatta una flush per tutta la page table del kernel, per tutte le CPU dove il thread andrà a lavorare quindi riflettere su tutto il TLB.\\Nelle nuove versioni del kernel sappiamo di avere a disposizione il concetto di per-CPU memory, quindi nell'address space ci sono delle zone di memoria valide solo per la singola CPU. Se questo è vero, non serve avere la stack area data dal buddy allocator, quindi possiamo posizionare a stack area ovunque ed avere una taglia non consegnabile dal buddy allocator e addirittura non essere fisicamente contigua, la buddy allocation da memoria contigua sia fisicamente che logicamente, mentre la virtual alloc la da solo virtualmente contigua.\\Quindi, si usa la vitual alloc in cui a priori ci sono delle pagine kernel de-validate.\\ \texttt{current} nelle versioni recenti di Linux è realizzato in questo modo
-%snippet di current
-Quindi non siamo più limitati ad una stack area data da multipli di pagine, arrivando ad una taglia generica arbitraria. Abbiamo i virtually ampped stack che sono delle stack areas non date dai buddy allocators, mappata virtualmente con la \texttt{vmalloc()}, che permette di avere anche il meccanismo di inclusione di pagine de-mappate per proteggerci dall'overflow.
+La macro \texttt{current} sfrutta il fatto che la stack area è allocata da buddy allocator, in quanto sa che in memoria è allineata alle due pagine in memori fisica. Quindi, per reperire la parte iniziale delle due pagine si possono mascherare i bit meno significativi dello stack pointer per ottenere la parte iniziale della stack area, in base alla versione del kernel abbiamo il TCB oppure un puntatore al TCB.\\Alla fine c'è un problema con questo tipo di organizzazione: il mascherare i bit funziona perché abbiamo usato buddy allocation, quindi sappiamo di essere allineati in memoria, infatti nei kernel nuovi è stato eliminato in quanto è un problema legato alla sicurezza. Un certo thread può creare danno a qualcun altro, andando in overflow sulla propria stack area e quindi finendo su una kernel stack area di un altro thread o addirittura sovrascrivendo un driver.\\Come si potrebbe evitare: si può decidere di prendere la memoria con la buddy allocation, per poi prendere una pagina e anche quella in basso e de-validarle dall'address space del kernel, in modo che se si esce dalla stack area ho un seg fault e non danneggio nulla.\\Ma quando si chiama il buddy allocator per ottenere una pagina poi non si può richiamare per ottenere la pagina sottostante, perché potrebbe già essere stata consegnata, a meno di avere vincoli forti su delle aree di memoria usate appositamente per questo scopo.\\Inoltre, la devalidazione dell'address space implica che fa fatto un flush per tutta la page table del kernel, per tutte le CPU dove il thread andrà a lavorare quindi riflettere su tutto il TLB.\\Nelle nuove versioni del kernel sappiamo di avere a disposizione il concetto di per-CPU memory, quindi nell'address space ci sono delle zone di memoria valide solo per la singola CPU. Se questo è vero, non serve avere la stack area data dal buddy allocator, quindi possiamo posizionare la stack area ovunque ed avere una taglia non consegnabile dal buddy allocator e addirittura non essere fisicamente contigua, la buddy allocation da memoria contigua sia fisicamente che logicamente, mentre la virtual alloc la da solo virtualmente contigua.\\Quindi, si usa la vitual alloc in cui a priori ci sono delle pagine kernel de-validate.\\ \texttt{current} nelle versioni recenti di Linux è realizzato in questo modo
+\begin{lstlisting}
+struct task_struct;
+DECLARE_PER_CPU(struct task_struct *,current_task);
+
+Static __always_inline struct task_struct *get_current(void){
+	return this_cpu_read_stable(current_task);
+}
+#define current get_current()
+\end{lstlisting}
+Quindi non siamo più limitati ad una stack area data da multipli di pagine, arrivando ad una taglia generica arbitraria. Abbiamo i virtually mapped stack che sono delle stack areas non date dai buddy allocators, mappata virtualmente con la \texttt{vmalloc()}, che permette di avere anche il meccanismo di inclusione di pagine de-mappate per proteggerci dall'overflow.
 \subsection{Run queue e wait queue in 2.4}
 La runqueue del kernel 2.4 era composta da n code di TCB, a seconda del numero di CPU presenti sul sistema c'era un array con un elemento per ogni CPU, ed ogni entry era la testa della runqueue e quindi ogni CPU faceva analizzare la sua runqueue allo scheduler ma la reale implementazione della runqueue era unica, ovvero tutti i pointer della multicoda puntavano alla stessa testa della lista.Il primo TCB presente nella testa era quello del thread che faceva lo startup del kernel, per collegare le varie cose nei TCB abbiamo delle strutture dati in modo da avere liste doppiamente collegate etc...\\Chiamando schedule si faceva la scan effettiva della lista, quindi il costo è O(n), dove n è il numero di thread della runqueue, la cosa interessante sono le API per le waitqueue
 \begin{itemize}
-\item \texttt{void interruptible\_sleep\_on()}: interruptible, nel senso che il thread ha richiesto di essere messo in wait queue ma il thread può essere rimesso in runqueue da un interrput software
-\item \texttt{void sleep\_on()}: non interrompibile, il thread verrà rimesso in run queue per via di qualcun altro
-\item \texttt{void interruptible\_sleep\_on\_timeout()}: quando scade il timeout ci pensa il SofIRQ deamon a rimettere il thread in runqueue
-\item \texttt{void sleep\_on\_timeout()}
-\item \texttt{void wake\_up()}: prevede che si indichi il puntatore alla head di una wait queue e si svegliano tutti i thread della wait queue portandoli in run queue
-\item \texttt{void wake\_up\_interruptible()}
-\item \texttt{void wake\_up\:process()}: si risveglia uno specifico thread
+\item \texttt{void interruptible\_sleep\_on(wait\_queue\_head\_t *q)}: interruptible, nel senso che il thread ha richiesto di essere messo in wait queue ma il thread può essere rimesso in runqueue da un interrput software
+\item \texttt{void sleep\_on(wait\_queue\_head\_t *q)}: non interrompibile, il thread verrà rimesso in run queue per via di qualcun altro
+\item \texttt{void interruptible\_sleep\_on\_timeout(wait\_queue\_head\_t *q, long timeout)}: quando scade il timeout ci pensa il SofIRQ deamon a rimettere il thread in runqueue
+\item \texttt{void sleep\_on\_timeout(wait\_queue\_head\_t *q, long timeout)}
+\item \texttt{void wake\_up(wait\_queue\_head\_t *q)}: prevede che si indichi il puntatore alla head di una wait queue e si svegliano tutti i thread della wait queue portandoli in run queue
+\item \texttt{void wake\_up\_interruptible(wait\_queue\_head\_t *q)}
+\item \texttt{void wake\_up\_process(struct task\_struct *p)}: si risveglia uno specifico thread
 \end{itemize}
 in realtà le API di risveglio dei thread possono essere sia selettive che non selettive, ma la selettiva è troppo selettiva ed è un problema di efficacia ed efficienza delle API nel come viene costruito sopra del software anche applicativo.\\Per gli stati dei thread abbiamo i seguenti
 \begin{itemize}
@@ -2544,19 +2618,41 @@ in realtà le API di risveglio dei thread possono essere sia selettive che non s
 \item \texttt{TASK\_UNINTERRUPTIBLE}	2
 \item \texttt{TASK\_ZOMBIE} 4
 \end{itemize}
-Ci sono poi le relazioni fra le sleepqueue e runqueue, con determinate macro (vedi la slide).\\Abbiamo infine degli studi prestazionali fatti con dei benchmark: avendo un certo numero di thread, abbiamo che Linux comincia a degradare dai 160 thread in poi ed era dovuto alle problematiche del fatto che quando girano i thread si chiamano servizi bloccanti ed il risveglio dei thread era tale per cui quando si dava la possibilità ad un thread di accedere a qualche struttura, come un semaforo, ne risvegliavo troppi e quindi andavano tutti ad insistere ed uno solo riusciva mentre gli altri introducevano solo overhead.
-%immagine
+Ci sono poi le relazioni fra le sleepqueue e runqueue, con determinate macro.\\Abbiamo infine degli studi prestazionali fatti con dei benchmark: avendo un certo numero di thread, abbiamo che Linux comincia a degradare dai 160 thread in poi ed era dovuto alle problematiche del fatto che quando girano i thread si chiamano servizi bloccanti ed il risveglio dei thread era tale per cui quando si dava la possibilità ad un thread di accedere a qualche struttura, come un semaforo, ne risvegliavo troppi e quindi andavano tutti ad insistere ed uno solo riusciva mentre gli altri introducevano solo overhead.
+\begin{figure}[!h]
+	\includegraphics[scale=.5]{immagini/malware_wins.png}
+\end{figure}
 \subsubsection{Wait event queues}
-Sono state introdotte delle API chiamate le wait event queuesAPI: prima, si indicava la coda sulla quale dormire, senza indicare l'evento che ci deve realmente risvegliare per essere eliminato dalla waitqueue, quindi o si sveglia tutta la coda o se ne sveglia uno solo.\\Vogliamo quindi poter indicare la condizione per il risveglio del thread specifico, possiamo avere condizioni differenti per il risveglio di thread che sono attestati sulla stessa coda, che permette di fare il fire delle condizioni viste da solo un sotto-insieme dei thread della coda. La condizione può essere ad esempio il valore di una variabile, lo schema effettivo è basato sul concetto di polling, in modo che sveglio i thread e questi fanno rapidamente il check della condizione e tornano a dormire se la condizione non è rispettata.\\Una API base è \texttt{wait\_event\_interruptible}, che prede la wait queue e la condizione, che se è già rispettata non porta il thread a dormire.\\Ci sono una serie di altre API (vedile dalle slides). Inoltre, se il thread è interrompibile, si può uscire dalla sleep anche quando arriva un segnale da qualche altro thread, vediamo come internamente sono realizzate queste API: un parametro è la copia di un valore consegnato alla funzione che deve essere consegnato alla funzione, quindi come funziona il passaggio di una condizione come parametro, per questo le API sono delle macro, ovvero le API rappresentano degli oggetti su cui la marco lavora direttamente, se ad esempio ne guardiamo una:
-%snippet
-quindi al suo interno si rivaluta ogni volta la condizione e una volta verificata si esce dal costrutto ciclico. Il costrutto ciclico serve per mandare il thread in sleep, si elimini dalla run queue ed ogni volta possa rieseguire questi passi in base alla valutazione della condizione.\\All'interno delle API si fa questo tipo di attività:
-%immagine dell'attività
-se la condizione per il risveglio è già in fire, si ritorna; altrimenti si ci rimuove dalla run queue e si chiama lo scheduler. Non è rappresentato la segnalazione classica di sistemi POSIX/Linux, ma qui è implicito perché può avvenire che qualcuno abbia risvegliato il thread prima del controllo della condizione.\\ Occorre ragionare anche sulla correttezza dell'utilizzo degli schemi, associandoli al concetto di correttezza della linearizzabilità: quando lavoriamo con una di queste API, abbiamo che in ognuno dei due casi di sleep/risveglio di lavora in due sezioni critiche
+Sono state introdotte delle API chiamate le wait event queues API: prima, si indicava la coda sulla quale dormire, senza indicare l'evento che ci deve realmente risvegliare per essere eliminato dalla waitqueue, quindi o si sveglia tutta la coda o se ne sveglia uno solo.\\Vogliamo quindi poter indicare la condizione per il risveglio del thread specifico, possiamo avere condizioni differenti per il risveglio di thread che sono attestati sulla stessa coda, che permette di fare il fire delle condizioni viste da solo un sotto-insieme dei thread della coda. La condizione può essere ad esempio il valore di una variabile, lo schema effettivo è basato sul concetto di polling, in modo che sveglio i thread e questi fanno rapidamente il check della condizione e tornano a dormire se la condizione non è rispettata.\\Una API base è \texttt{wait\_event\_interruptible}, che prede la wait queue e la condizione, che se è già rispettata non porta il thread a dormire.\\Ci sono una serie di altre API (vedile dalle slides).\\Inoltre, se il thread è interrompibile, si può uscire dalla sleep anche quando arriva un segnale da qualche altro thread, vediamo come internamente sono realizzate queste API: un parametro è la copia di un valore consegnato alla funzione, quindi come è implementato il passaggio di una condizione come parametro, per questo le API sono delle macro, ovvero le API rappresentano degli oggetti su cui la marco lavora direttamente, se ad esempio ne guardiamo una:
+\begin{lstlisting}
+#define __wait_event(wq_head, condition, state, exclusive,ret,cmd)
+({
+	__label__ __out;
+	struct wait_queue_entry __wq_entry;
+	long __ret = ret;
+	init_wait_entry(&__wq_entry, exclusive?WQ_FLAG_EXCLUSIVE:0);
+	for(;;){
+		long __int = prepare_to_wait_event(&wq_head,&__wq_entry,styate);
+		if(condition)
+			break;
+		if(__wait_is_interruptible(state) && __int){
+			__ret = __int
+		}
+		cmd;
+	}
+	finish_wait(&wq_head,&__wq_entry);
+})
+\end{lstlisting}
+quindi al suo interno si rivaluta ogni volta la condizione e una volta verificata si esce dal costrutto ciclico. Il costrutto ciclico serve per mandare il thread in sleep, si elimina dalla run queue ed ogni volta è possibile rieseguire questi passi in base alla valutazione della condizione.\\All'interno delle API si fa questo tipo di attività:
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/wait_activities.png}
+\end{figure}
+se la condizione per il risveglio è già in fire, si ritorna; altrimenti si ci rimuove dalla run queue e si chiama lo scheduler. Non è rappresentata la segnalazione classica di sistemi POSIX/Linux, ma qui è implicito perché può avvenire che qualcuno abbia risvegliato il thread prima del controllo della condizione.\\ Occorre ragionare anche sulla correttezza dell'utilizzo degli schemi, associandoli al concetto di correttezza della linearizzabilità: quando lavoriamo con una di queste API, abbiamo che in ognuno dei due casi di sleep/risveglio si lavora in due sezioni critiche
 \begin{itemize}
 \item se si vuole dormire, si blocca l'accesso al TCB
 \item anche le API usate per risvegliare il thread cercano di toccare il TCB
 \end{itemize}
-inoltre quando si cerca di risvegliare un thread, nella chiamata di awake se si lavora su una sezione critica tramite spinlock non è mai possibile che l'update sulla condizione venga visto dopo il rilascio della sezione critica (vedi le slides per capire meglio).\\Rivediamo alcuni dei running examples per colmare le linee lasciate in sospeso
+inoltre quando si cerca di risvegliare un thread, nella chiamata di awake se si lavora su una sezione critica tramite spinlock non è mai possibile che l'update sulla condizione venga visto dopo il rilascio della sezione critica: fare spin locking porta ad avere sincronizzazione, quindi è questa la parte che garantisce la linearizzabilità, quindi un awake aggiorna lo stato del thread dopo che la condizione è stata impostata.\\Rivediamo alcuni dei running examples per colmare le linee lasciate in sospeso
 \subsection*{Revisione dei running examples}
 Avevamo visto il servizio \texttt{usleep.c}, dove c'era una syscall dove si andava a dormire:
 \begin{itemize}
@@ -2574,7 +2670,7 @@ Vediamo la realizzazione dell'oggetto, composto da diverse cose
 \item service: installazione della syscall che può essere chiamata per osservare le informazioni nella stack area;
 \end{itemize}
 chiamiamo \texttt{smp\_processor\_id()} per conoscere su che processore siamo, che non è il massimo in quanto chiama CPUID che fa lo squash della pipeline, quindi per evitarlo occorre usare la per-CPU memory: se si mette un modulo un cui c'è la per-CPU memory, vuol dire che la variabile in cui si registra la cpu\_id vuol dire che è per-CPU, quindi come facciamo ad inizializzarla? Nel montaggio del modulo, occorre risolvere il problema\\Abbiamo poi l'installatore per i servizi, dove non c'è il problema della critical section perché è lo stesso thread che fa o una o l'altra cosa in base a quali sono i punti di codice in cui lui sta girando.\\Ora, se si rimuove il modulo core, le syscall sono ancora utilizzabili e se si esegue la rimozione dell'hook e si riesegue il sevizio si ottiene sempre -1 come risultato, perché la query prende il valore di reset scritte nel monitoraggio.
-\subsection{Memory management e Thread management}
+\section{Memory management e Thread management} 
 Due sotto sistemi interessanti da correlare sono quelli di thread management ma anche di memory management, in modo da garantire anche la separazione nel modo in cui viene vista la memoria da thread diversi. Muovendosi su tutte le strutture introdotte abbiamo la possibilità di collegare una page table ed il TCB di un thread. Il collegamento si effettua tramite una tabella intermedia che è la tabella di \textbf{memory management}, usata da i molteplici thread dell'applicazione, la struttura della tabella di memory management è la \texttt{mm\_struct}, che permette di recuperare la locazione in memoria logica la page table corrente (quindi anche in memoria fisica), altra cosa interessante è un puntatore aduna lista di elementi, che è la rappresentazione sintetica e compatta dell'address space dell'applicazione: ogni elemento ci dica qual è una zona dell'address space che mantiene pagine mmappate per l'applicazione. Sono più di una perché possiamo avere zone read only, oppure read write etc... però ogni elemento della lista è di tipo \texttt{vm\_area\_strcut}, occorre fra le informazioni basiche sapere dove la zona inizia e finisce, la struttura è fatta così
 %snippet
 abbiamo anche informazioni su qual è la protezione sulla zona, inoltre c'è un puntatore ad un'altra struttura dati \texttt{vm\_ops} che è il driver della zona di memoria ovvero l'insieme delle funzioni che ci permettono di lavorare su quella zona di memoria, quindi abbiamo i function pointers.\\Nella tabella \texttt{vm\_ops} c'è un puntatore \texttt{nopage} per gestire il page fault: parte un gestore che cerca l'indirizzo non identificato e quando la trova chiama la \texttt{nopage} che triggererà ulteriori operazioni.\\Quando chiamiamo mmap, tipicamente viene aggiunto un elemento nella lista, in modo da chiamare il gestore quando necessario. In base a cosa c'è scritto nell'ELF del binario, (slides)
