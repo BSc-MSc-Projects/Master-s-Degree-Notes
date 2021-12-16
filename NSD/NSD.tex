@@ -999,8 +999,40 @@ La seguente figura esemplifica le cose:
 %immagine
 ogni router che riceve un update aggiunge alla firma il next-AS number, quindi in questo modo è impossibile forgiare una rotta.
 \section{Prefix filtering}
-RPKI fa binding crittografico, il filtering si basa su un insieme di policy per decidere se accettare un annuncio o no.
-
+RPKI fa binding crittografico, il filtering si basa su un insieme di policy per decidere se accettare un annuncio o no.\\È il meccanismo più basico o meglio la prima soluzione per evitare di avere BGP leaking ed hijacking, non viene forzato ovunque ma è comunque una delle soluzioni.Servono sia filtri inbound che outbound, in quanto possono esserci errori in cosa si manda in output ed ovviamente occorre filtrare cosa arriva da fuori.\\Possiamo avere una visione come le ACL Cisco:
+%immagine tipo acl
+ogni cosa dipende dal tipo di relazione, quindi in base alla relazione che si ha col peer può essere necessario filtrare determinati prefissi ed altri no. Possiamo avere diversi tipi di prefissi:
+\begin{itemize}
+	\item unallocated prefixes: prefissi non assegnati dallo IANA a nessuno. È buona pratica non accettare dei prefissi non allocati, è chiaramente un anomalia ricevere un prefisso di questo tipo
+	\item special purpose prefix: 
+	\item prefissi controllati da un AS: se un AS riceve il suo stesso prefisso come advertisment è strano. Può esserci nu loop, ma se lo ricevo da un AS path in cui non ci sono c'è qualcosa di strano
+	\item prefissi che eccedono un limite dato: normalmente un ISP non accetta prefissi che siano troppo lunghi, ad esempio più di /24 per IPv4 o /48 per IPv6. È un attacco, perché una volta fatto hijacking si annuncia un prefisso più lungo di quello dell'owner reale. Alcuni operatori potrebbero decidere di rigettare prefissi anche troppo corti, ad esempio se un AS sa che il prefisso più lungo nella sua zona è /8 perché accettare uno /4?
+	\item default route: la rotta può essere annunciata, ma solo in scenario specifici, ad esempio per customer single home, se il provider usa BGP deve annunciare la rotta di default, ma in generale va filtrata.
+	\item IXP LAN prefixes: un IXP dovrebbe annunciare il suo prefisso LAN o l'intero prefisso agli AS membri, ma si accetta solo dal root server dell'IXP e non da un altro peer BGP
+\end{itemize}
+Le raccomandazioni variano in base al tipo di relazione fra peers, ci sono diversi documenti pubblici che danno una lista di raccomandazioni dettagliate.\\Un ISP può recuperare dagli RPKI routers tutte le rotte originariamente autorizzate corrispondenti agli AS che sa che sono fra i suoi customers. Possiamo quindi usare RPKI per migliorare il filtering, filtrare è obbligatorio ed andrebbe fatto ovunque.
+\subsection{Route leaks}
+Se la rotta scoperta è nello stesso AS possiamo fare qualcosa, fra AS è più difficile.\\Nello stesso AS la soluzione prevede di taggare gli updates usando un attributo, che non si propaga nell'eBGP. (slides)\\Per l'inter-AS è più complesso, ma c'è lavoro che continua per cercare una soluzione che non è maturo.
+\subsection*{Lab-013}
+Configuriamo una topologia per usare BGP, vediamo cosa fare in base ai prefissi che riceviamo:
+\begin{itemize}
+	\item filtrare esplicitamente i prefissi assegnati, quindi manualmente. Non è scalabile
+	\item filtrare esplicitamente gli AS\_PATH
+	\item usares il community attribute: usiamo questa strada. Solo il provider edge router marca il pacchetto in arrivo e propaga l'udpate internamente con eBGP con il community value che utilizza.\\Quindi, gli altri nodi filtreranno non sul prefisso bensì sul community value
+\end{itemize}
+\subsection{Altri tipi di filtering}
+Abbiamo visto solo strict filtering, quindi si accetta solo cosa si suppone di dover ricevere.\\Possiamo fare filtering lasco, dove filtriamo:
+\begin{itemize}
+	\item local host
+	\item indirizzi privati
+	\item il nostro prefisso, che sappiamo per certo non può essere annunciato da altri
+	\item loopback
+	\item prefissi non allocati
+	\item prefissi $>$ /24
+\end{itemize}
+va comunque usato quando non possiamo usare il filtering strict.\\RPKI non è obbligatorio, quindi non possiamo solo buttare via i ROA non trovati, possiamo usare route-map, come mostrato in seguito:
+%immagine
+con queste poche linee filtriamo in base alla ROA RPKI.
 
 
 

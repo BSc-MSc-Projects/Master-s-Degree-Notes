@@ -2671,25 +2671,56 @@ Vediamo la realizzazione dell'oggetto, composto da diverse cose
 \end{itemize}
 chiamiamo \texttt{smp\_processor\_id()} per conoscere su che processore siamo, che non è il massimo in quanto chiama CPUID che fa lo squash della pipeline, quindi per evitarlo occorre usare la per-CPU memory: se si mette un modulo un cui c'è la per-CPU memory, vuol dire che la variabile in cui si registra la cpu\_id vuol dire che è per-CPU, quindi come facciamo ad inizializzarla? Nel montaggio del modulo, occorre risolvere il problema\\Abbiamo poi l'installatore per i servizi, dove non c'è il problema della critical section perché è lo stesso thread che fa o una o l'altra cosa in base a quali sono i punti di codice in cui lui sta girando.\\Ora, se si rimuove il modulo core, le syscall sono ancora utilizzabili e se si esegue la rimozione dell'hook e si riesegue il sevizio si ottiene sempre -1 come risultato, perché la query prende il valore di reset scritte nel monitoraggio.
 \section{Memory management e Thread management} 
-Due sotto sistemi interessanti da correlare sono quelli di thread management ma anche di memory management, in modo da garantire anche la separazione nel modo in cui viene vista la memoria da thread diversi. Muovendosi su tutte le strutture introdotte abbiamo la possibilità di collegare una page table ed il TCB di un thread. Il collegamento si effettua tramite una tabella intermedia che è la tabella di \textbf{memory management}, usata da i molteplici thread dell'applicazione, la struttura della tabella di memory management è la \texttt{mm\_struct}, che permette di recuperare la locazione in memoria logica la page table corrente (quindi anche in memoria fisica), altra cosa interessante è un puntatore aduna lista di elementi, che è la rappresentazione sintetica e compatta dell'address space dell'applicazione: ogni elemento ci dica qual è una zona dell'address space che mantiene pagine mmappate per l'applicazione. Sono più di una perché possiamo avere zone read only, oppure read write etc... però ogni elemento della lista è di tipo \texttt{vm\_area\_strcut}, occorre fra le informazioni basiche sapere dove la zona inizia e finisce, la struttura è fatta così
-%snippet
-abbiamo anche informazioni su qual è la protezione sulla zona, inoltre c'è un puntatore ad un'altra struttura dati \texttt{vm\_ops} che è il driver della zona di memoria ovvero l'insieme delle funzioni che ci permettono di lavorare su quella zona di memoria, quindi abbiamo i function pointers.\\Nella tabella \texttt{vm\_ops} c'è un puntatore \texttt{nopage} per gestire il page fault: parte un gestore che cerca l'indirizzo non identificato e quando la trova chiama la \texttt{nopage} che triggererà ulteriori operazioni.\\Quando chiamiamo mmap, tipicamente viene aggiunto un elemento nella lista, in modo da chiamare il gestore quando necessario. In base a cosa c'è scritto nell'ELF del binario, (slides)
+Due sotto sistemi interessanti da correlare sono quelli di thread management ma anche di memory management, in modo da garantire anche la separazione nel modo in cui viene vista la memoria da thread diversi. Muovendosi su tutte le strutture introdotte abbiamo la possibilità di collegare una page table ed il TCB di un thread. Il collegamento si effettua tramite una tabella intermedia che è la tabella di \textbf{memory management}, usata dai molteplici thread dell'applicazione, la struttura della tabella di memory management è la \texttt{mm\_struct}, che permette di recuperare la locazione in memoria logica la page table corrente (quindi anche in memoria fisica), altra cosa interessante è un puntatore aduna lista di elementi, che è la rappresentazione sintetica e compatta dell'address space dell'applicazione: ogni elemento ci dice qual è una zona dell'address space che mantiene pagine mmappate per l'applicazione. Sono più di una perché possiamo avere zone read only, oppure read write etc... però ogni elemento della lista è di tipo \texttt{vm\_area\_struct}, occorre fra le informazioni basiche sapere dove la zona inizia e finisce, la struttura è fatta così
+\begin{lstlisting}
+struct vm_area_struct{
+	struct mm_struct *vm_mm;	/* The address space we belong to. */
+	unsigned long vm_start;	/* Our start address within vm_mm */
+	unisgned long vm_end;	/* The first byte after our end address */
+	
+	struct vm_area_struct *vm_next;
+	ptprot_t vm_page_prot	/* Access  permission of this VMA. */
+	....
+	/* Function pointers to deal with this struct */
+	....
+	struct vm_operations_struct *vm_ops;
+	....
+}
+\end{lstlisting}
+abbiamo anche informazioni su qual è la protezione sulla zona, inoltre c'è un puntatore ad un'altra struttura dati \texttt{vm\_ops} che è il driver della zona di memoria ovvero l'insieme delle funzioni che ci permettono di lavorare su quella zona di memoria, quindi abbiamo i function pointers.\\Nella tabella \texttt{vm\_ops} c'è un puntatore \texttt{nopage} per gestire il page fault: parte un gestore che cerca l'indirizzo non identificato e quando la trova chiama la \texttt{nopage} che triggererà ulteriori operazioni.\\Quando chiamiamo \texttt{mmap}, tipicamente viene aggiunto un elemento nella lista, in modo da chiamare il gestore quando necessario.\\Nell'ELF, il formato per i file eseguibili in Linux, abbiamo la specifica per ogni sezione (testo, dati) la posizione del layout di memoria virtuale ed i permessi in accesso.
 \subsubsection*{Esempio software}
 Una syscall per avere informazioni sulla memoria per il processo corrente, la query in base all'indirizzo richiede se è possibile leggere, o leggere e scrivere etc...\\Si scorre la mappa finché è diversa da NULL, è possibile avere un mmap pari a NULL, o meglio avere un thread associabile ad una mmap pari a NULL? La lista mmap indica la struttura dell'address space per quanto riguarda la parte user, quindi se un thread è kernel deamon, non ha una mmap diversa da NULL. Questo ci mostra che sulla memoria non possiamo avere read-only, possiamo avere read o read write perché c'è un solo bit.
 \subsection{Identificazione dei thread}
-I thread nei sistemi moderni sono associabili al contesto di container e se due thread dello stesso SO sono in due container differenti, non si vedono l'un l'altro. Il concetto basico per la costruzione di un container è quello dei \textbf{namespaces}, una delle modalità è stata quella di andare in \texttt{current} e prendere il campo \texttt{pid}, che è l'identificatore reale univoco del pid, ad ognuno dei thread possiamo associare una targa virtuale.\\Vediamo lo schema classico in Linux per la gestione dei namepsaces, ovvero quanti ne possiamo creare e quindi poter associare i thread a namespaces diversi: in generale sono 32, dati dalla macro \texttt{MAX\_PID\_NS\_LEVEL}, l'organizzazione per i namespaces è la seguente
-%immagine
-ad esempio un thread che vive nel default namespace è l'idle thread. Questo, ad un certo punto chiama init, che è un altro thread e può essere creato usando un nuovo namespace, quindi il thread originale ha un pid all'interno della task struct, quello generato ha il virtual pid. Possiamo lavorare secondo questo schema, il vpid è univoco nel namespace e non globalmente nel sistema e quindi a seconda di dove stiamo lavorando usiamo uno piuttosto che un altro pid in base al namespace dove stiamo lavorando.\\La visibilità nei namespaces prevede che un thread non abbia visibilità del parent se questo vive in un altro namespace. Come si fa ad associare un namespace ad un thread, l'implementazione in Linux prevede di usare il TCB ed all'intero c'è il namespace proxy, dove indichiamo il namespace del PID ed anche il valore del PID nel reference PID namespace. Le informazioni scritte nelle due diverse struct sono correlate? Ed in particolare se si vuole conoscere subito il TCB di un thread è possibile capirlo facilmente in base al pid? Nel namespace reale tutti i TCB soon collegati fra loro usando una hash table: quando un nuovo TCB viene allocato, la hash table porta su una lista di trabocco dove ci sono i TCB e quando vogliamo sapere dove è il TCB di un thread si effettua una query sulla hash table, la ricerca viene effettuata mediante la 
-%snippet della funzione che cerca nella lista di trabocco.
+I thread nei sistemi moderni sono associabili al contesto di container e se due thread dello stesso SO sono in due container differenti, non si vedono l'un l'altro. Il concetto basico per la costruzione di un container è quello dei \textbf{namespaces}, una delle modalità è stata quella di andare in \texttt{current} e prendere il campo \texttt{pid}, che è l'identificatore reale univoco del processo ed associare ad ognuno dei thread una targa virtuale.\\Vediamo lo schema classico in Linux per la gestione dei namepsaces, ovvero quanti ne possiamo creare e quindi poter associare i thread a namespaces diversi: in generale sono 32, dati dalla macro \texttt{MAX\_PID\_NS\_LEVEL}, l'organizzazione per i namespaces è la seguente
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/namespaces.png}
+\end{figure}
+ad esempio un thread che vive nel default namespace è l'idle thread. Questo, ad un certo punto chiama init, che è un altro thread e può essere creato usando un nuovo namespace, quindi il thread originale ha un pid all'interno della task struct, quello generato ha il virtual pid. Possiamo lavorare secondo questo schema, il vpid è univoco nel namespace e non globalmente nel sistema e quindi a seconda di dove stiamo lavorando usiamo uno piuttosto che un altro pid in base al namespace dove stiamo lavorando.\\La visibilità nei namespaces prevede che un thread non abbia visibilità del parent se questo vive in un altro namespace. Come si fa ad associare un namespace ad un thread, l'implementazione in Linux prevede di usare il TCB ed all'intero c'è il namespace proxy, dove indichiamo il namespace del PID ed anche il valore del PID nel reference PID namespace. Le informazioni scritte nelle due diverse struct sono correlate? Ed in particolare se si vuole conoscere subito il TCB di un thread è possibile capirlo facilmente in base al pid? Nel namespace reale tutti i TCB sono collegati fra loro usando una hash table: quando un nuovo TCB viene allocato, la hash table porta su una lista di trabocco dove ci sono i TCB e quando vogliamo sapere dove è il TCB di un thread si effettua una query sulla hash table, la ricerca viene effettuata nel seguente modo:
+\begin{lstlisting}
+static inline struct task_struct *find_task_by_pid(int pid){
+	struct task_struct *p, **htable = &pidhash[pid_hashfn(pid)];
+	
+	for(p= *htable; p && p->pid != pid; p = p->pidhash_next);
+	return p;
+}
+\end{lstlisting}
 Va bene per identificare nel namespace reale, ma quando lavoriamo in namespace non reali cambia l'identificazione:
 \begin{itemize}
 \item l'API usa il vpid e non più il pid, quindi passiamo il pid virtuale che potrebbe corrispondere al pid reale se il namespace dove vive il thread è quello reale
 \item c'è una ulteriore hash table dove si hanno oggetti di questo tipo:
-%snippet, conviene togliere sto elenco
+\begin{lstlisting}
+struct pid{
+	amtomic_t count;
+	unsigned int level;
+	struct hlist_head tasks[PIDTYPE_MAX];
+	struct rcu_head rcu;
+	struct upid numbers[1];
+};
+\end{lstlisting}
 \end{itemize}
-possiamo tramite l'array collegare elementi multipli a questo specifico oggetto, ma usare la stessa entry anche per altri thread che stiamo rappresentando in un namespace differente.\\Tutto ciò può essere usato in un modulo kernel mediante una API esportata che è \texttt{pid\_task}, il cui primo parametro può essere \texttt{find\_vpid}.
+possiamo tramite l'array collegare elementi multipli a questo specifico oggetto, ma usare la stessa entry anche per altri thread che stiamo rappresentando in un namespace differente.\\Tutto ciò può essere usato in un modulo kernel mediante una API esportata che è \texttt{struct task\_struct *pid\_task(struct pid *pid, enum pid\_type)}, il cui primo parametro può essere \texttt{find\_vpid}.
 \subsection{Creazione di thread in sistemi POSIX}
-La \texttt{pthread\_create} è una funzione di libreria, la syscall Linux che permette di creare nuovi thread è \texttt{sys\_clone()}, che è differente dalla \texttt{sys\_fork()}: entrambe chiamano la stessa \texttt{to\_fork()}, ma cambia il fatto che il processo è strettamente relazionato al suo parent. La syscall è anche esposta come API di libreria, che è la \texttt{clone}: una cosa interessante è il child stack, ovvero dove è posizionata a livello user la stack area, che va anche inizializzata.\\In realtà, l'interfaccia di basso livello con cui poter lavorare con questa roba non prevede nemmeno che si indichi la funzione da eseguire, si può solo indicare la stack area, i flag etc... e ci sono diverse varianti a seconda dell'architettura.\\ I flag permettono, ad esempio, di specificare i namespace del thread. La \texttt{CLONE\_NEWPID} crea un nuovo thread o processo in un nuovo namespace.\\Internamente la \texttt{do\_fork()}, che è il blocco del kernel Linux che tira su il nuovo thread, internamente si chiede se i due thread devono condividere lo stesso address space, se invece è derivato da una una \texttt{fork()} deve essere diverso., quindi controllerà diverse cose, tra cui dividere fra parent e child il tempo di utilizzo della CPU, altrimenti generando thread si potrebbe prendere il sopravvento sulla CPU. Abbiamo quindi definito la possibilità di associare ad ogni thread un certo namespace in modo che questo sia visibile in quel namesapce e non visibile in un altro namespace, abbiamo quindi 
+La \texttt{pthread\_create} è una funzione di libreria, la syscall Linux che permette di creare nuovi thread è \texttt{sys\_clone()}, che è differente dalla \texttt{sys\_fork()}: entrambe chiamano la stessa \texttt{to\_fork()}, ma cambia il fatto che il processo è strettamente relazionato al suo parent. La syscall è anche esposta come API di libreria, che è la \texttt{clone}: una cosa interessante è il child stack, ovvero dove è posizionata a livello user la stack area, che va anche inizializzata.\\In realtà, l'interfaccia di basso livello con cui poter lavorare con questa roba non prevede nemmeno che si indichi la funzione da eseguire, si può solo indicare la stack area, i flag etc... e ci sono diverse varianti a seconda dell'architettura.\\ I flag permettono, ad esempio, di specificare i namespace del thread. La \texttt{CLONE\_NEWPID} crea un nuovo thread o processo in un nuovo namespace.\\Internamente la \texttt{do\_fork()}, che è il blocco del kernel Linux che tira su il nuovo thread, si chiede se i due thread devono condividere lo stesso address space, se invece è derivato da una una \texttt{fork()} deve essere diverso, quindi controllerà diverse cose, tra cui dividere fra parent e child il tempo di utilizzo della CPU, altrimenti generando thread si potrebbe prendere il sopravvento sulla CPU. Abbiamo quindi definito la possibilità di associare ad ogni thread un certo namespace in modo che questo sia visibile in quel namesapce e non visibile in un altro namespace, abbiamo quindi 
 \begin{itemize}
 \item un ID reale, che è l'unico namespace reale del sistema in cui si può identificare tutto nel kernel Linux
 \item un ID virtuale
@@ -2698,120 +2729,316 @@ Vivendo solo nel namepsace real, l'ID virtuale coincide con quello reale.
 \subsubsection{Esempio software per identificare gli ID}
 Nel modulo kernel virtual PID inseriamo un nuovo modulo per chiedere al kernel come ci chiamiamo, passando come parametro il tipo di identificatore che vogliamo reperire, in quanto inseriremo la stringa real oppure virtual a seconda del parametro passato.\\Nel software utente, all'inizio si chiama \texttt{getpid()}, l'API POSIX per ottenere il PID che va nelle strutture dati per namespaces per restituire il pid, viene poi usata la syscall definita, che può restituire lo stesso valore o valori differenti a seconda del namespace dove il thread vive. Quando lanciamo il servizio di new-namespace abbiamo un init thread con PID pari ad 1, è il primo del namespace ed il suo parent è proprio il kernel, con pid pari a 0.\\Richiamando la syscall, abbiamo un virtual pid pari a 34, mentre il pid nel namepsace originale è differente.
 \section{Gestione della sincronizzazione fra thread}
-Abbiamo diverse API per la gestione della sincronizzazione, ad esempio quando si chiama una API di spinlock viene controllata la preemption andando ad interagire con il contatore.\\I thread possono essere segnalabili anche a causa del fatto che arrivi un interrupt, diversi dall'architettura per la gestione della preemption che viene fatto dal thread stesso.Il problema è che sia necessario che lungo i thread ci siano delle zone di codice in cui non solo ci "si mette a posto" per poter essere preemptati (incremento del contatore), ma anche di lavorare sugli interrupt in particolare quando eseguiamo in sezioni critiche senza essere disturbati da un top half dell'interrupt handler. Questo è possibile se consideriamo l'estensione delle API offerte dal SO
+Abbiamo diverse API per la gestione della sincronizzazione, ad esempio quando si chiama una API di spinlock viene controllata la preemption andando ad interagire con il contatore.\\I thread possono essere segnalabili anche a causa del fatto che arrivi un interrupt, diversi dall'architettura per la gestione della preemption che viene fatto dal thread stesso.Il problema è che può risultare necessario che lungo i thread ci siano delle zone di codice in cui non solo ci "si mette a posto" per poter essere preemptati (incremento del contatore), ma anche di lavorare sugli interrupt in particolare quando eseguiamo in sezioni critiche senza essere disturbati da un top half dell'interrupt handler. Questo è possibile se consideriamo l'estensione delle API offerte dal SO
 \subsection{API di sincronizzazione}
-Abbiamo i mutex, all'interno del kernel è possibile inizializzare un mutex indicando il numero di token utilizzabili (per le API vedi slides). Se vogliamo un controllo a grana fine dove non vogliamo essere interrotti per evitare che gli altri spinnino per il token per troppo tempo è l'API di spinlock: possiamo prenderlo in modo che nella CS il thread sia non preemptabile ma interrompibile, ma anche di usare delle API che sono
-\begin{itemize}
-\item \texttt{spinlock\_irqsave}
-\item \texttt{spinlock\_irq}
-\end{itemize}
-con cui possiamo acquisire un token ed eventualmente abbiamo anche che il processore è correntemente non interrompibile. La save e la non-save hanno la seguente differenza: abbiamo un flusso di esecuzione e chiamiamo una delle API per andare ad eseguire in sezione critica e renderci non interrompibili. Quando viene chiamata la API di rilascio del lock, quindi ci si rende interrompibili, si passa il controllo al flusso esterno rispetto alla zona di codice che abbiamo eseguito, l'interrompibilità del processore nella zona esterna era settata ad interrompibile ma questo è un problema perché se entriamo in un blocco di codice che poi diviene interrompibile abbiamo problemi per l'eventuale atomicità.\\Può quindi accadere che il codice esterno venga portato in due modi di interrompibilità differenti, per cui la versione save/restore possiamo indicare all'API, passando oltre al lock da acquisire, un flag che indica che la API deve salvare l'informazione relativa allo stato corrente del processore, in modo che quando si rilascia lo spinlock si può fare rimettendo a posto lo stato di interrompibilità del processore, così che la parte esterna del codice esegua secondo la logica corretta.\\Nella variabile flags va scritta una informazione, ma passando la copia del valore non è possibile scrivervi e quindi la API è una macro, con organizzazione simile a quella di altre API per la gestione delle wait queue. (Non si usano pointer in quanto sono dimostrati essere più bug prone)\\Vanno chiamate solo se è strettamente necessario, perché se viene fatto in particolare in una macchina multicore, vuol dire che quel processore non può sentire gli interrupt degli altri processori.
+Abbiamo i mutex, all'interno del kernel è possibile inizializzare un mutex indicando il numero di token utilizzabili
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/mutex_api.png}
+\end{figure}
+Se vogliamo un controllo a grana fine dove non vogliamo essere interrotti per evitare che gli altri spinnino per il token per troppo tempo c'è l'API di spinlock: possiamo prenderlo in modo che nella CS il thread sia non preemptabile ma interrompibile, ma anche di usare delle API che sono
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/spinlock_api.png}
+\end{figure}
+con cui possiamo acquisire un token ed eventualmente abbiamo anche che il processore è correntemente non interrompibile. La save e la non-save hanno la seguente differenza: abbiamo un flusso di esecuzione e chiamiamo una delle API per andare ad eseguire in sezione critica e renderci non interrompibili. Quando viene chiamata la API di rilascio del lock, quindi ci si rende interrompibili, si passa il controllo al flusso esterno rispetto alla zona di codice che abbiamo eseguito, l'interrompibilità del processore nella zona esterna era settata ad interrompibile ma questo è un problema perché se entriamo in un blocco di codice che poi diviene interrompibile abbiamo problemi per l'eventuale atomicità.\\Può quindi accadere che il codice esterno venga portato in due modi di interrompibilità differenti, per cui con la versione save/restore possiamo indicare all'API, passando oltre al lock da acquisire un flag che indica che la API deve salvare l'informazione relativa allo stato corrente del processore, in modo che quando si rilascia lo spinlock si può fare rimettere a posto lo stato di interrompibilità del processore, così che la parte esterna del codice esegua secondo la logica corretta.\\Nella variabile flags va scritta una informazione, ma passando la copia del valore non è possibile scrivervi e quindi la API è una macro, con organizzazione simile a quella di altre API per la gestione delle wait queue. (Non si usano pointer in quanto sono dimostrati essere più bug prone)\\Vanno chiamate solo se è strettamente necessario, perché se viene fatto in particolare in una macchina multicore, vuol dire che quel processore non può sentire gli interrupt degli altri processori.
 \section{Assegnazione della CPU}
 Abbiamo capito che in Linux se un thread non è sulla run queue non prende la CPU, ma sulla run queue ci possono essere i TCB di più thread, quindi selezionare quello giusto può essere un problema.\\Linux è passato attraverso 3 fasi di riorganizzazione della funzione di sheduling della CPU, che è la funzione che guarda alla run queue e restora il contesto di quel thread, la storia passa per il concetto di
 \begin{itemize}
 \item \textbf{perfect load sharing}: abbiamo un costo O(N) per passare la CPU ai thread, ma si usano diverse istruzioni macchina;
-\item \textbf{load balancing}: O(1), ma c'è un problema importante che si riflette su aspetti di sicurezza dove un thread meno prioritario può prendere la CPU prima di uno meno prioritario;
+\item \textbf{load balancing}: O(1), ma c'è un problema importante che si riflette su aspetti di sicurezza dove un thread meno prioritario può prendere la CPU prima di uno più prioritario;
 \item \textbf{completely fair}: O(log(N)) è il caso peggiore nel senso che i thread sono organizzati in classi tali per cui nelle classi migliori si paga ancora O(1), ma si ovvia al problema precedente.
 \end{itemize}
-C'è un ulteriore aspetto basico, il concetto di \textbf{epoca}: un epoca in un SO, in particolare per l'assegnazione della CPU, è un intervallo di tempo dove si mettono in atto delle decisioni di assegnazione della CPU prese all'inizio dell'epoca. Un epoca in un SO termina quando tutti i thread che sono su una run queue non hanno ancora del tempo di CPU da spendere, possiamo dirlo in quanto sono stati assegnati al thread un certo numero di tick. È possibile che dei thread abbiano ancora dei tick residui, magari perché sono andati in servizio bloccante, quindi alla fine dell'epoca si riassegnano tutti i tick da utilizzare anche a chi ha dei tick residui, quindi quando un epoca finisce tutto ciò che era stato deciso viene cambiato per la nuova epoca.\\Inoltre, muovendosi in un'architettura di scheduling un epoca inizierà a $t_0$ e finirà a $t_1$, i diversi thread potrebbero aver usato la CPU per diverso tempo e la differenza nei tick usati può essere dovuto al concetto di priorità.
+C'è un ulteriore aspetto basico, il concetto di \textbf{epoca}: un epoca in un SO, in particolare per l'assegnazione della CPU, è un intervallo di tempo dove si mettono in atto delle decisioni di assegnazione della CPU prese all'inizio dell'epoca. Un epoca in un SO termina quando tutti i thread che sono su una run queue non hanno ancora del tempo di CPU da spendere, possiamo dirlo in quanto sono stati assegnati al thread un certo numero di tick. È possibile che dei thread abbiano ancora dei tick residui, magari perché hanno chiamato un servizio bloccante, quindi alla fine dell'epoca si riassegnano tutti i tick da utilizzare anche a chi ha dei tick residui, quindi quando un epoca finisce tutto ciò che era stato deciso viene cambiato per la nuova epoca.\\Inoltre, muovendosi in un'architettura di scheduling un epoca inizierà a $t_0$ e finirà a $t_1$, i diversi thread potrebbero aver usato la CPU per diverso tempo e la differenza nei tick usati può essere dovuto al concetto di priorità.
 \subsection{Perfect load sharing (POSIX classic)}
-Nel perfect load sharing avevamo 40 livello di priorità differenti, da +19 a -20 e più è basso il valore e maggiore è la priorità e possiamo muoverci fra i livelli usando la niceness interfacciandosi al SO, per aumentare la priorità occorre essere un thread con privilegi maggiori. Il concetto di priorità è detta \textbf{statica} all'intero di un SO, ovvero fra i metadati del TCB avevamo un informazione che dava la priorità statica del thread, che metteva in uno dei livelli ed alla fine di un epoca i tick erano assegnati in base a questo valore.\\Il blocco di codice del kernel Linux che deve selezionare il thread da mandare in esercizio, chiamato \texttt{schedule()}, va a  guardare i TCB di tutti i thread che sono sulla run queue. La run queue è un unico oggetto, dentro cui sono collegati tutti i TCB dei thread runnable, quindi possiamo selezionare uno qualsiasi dei TCB da mandare in CPU. La selezione avviene su una certa CPU se sono in un sistema multi-core, quindi con questo tipo di organizzazione il thread può andare su una qualsiasi CPU, che è quella su cui gira la \texttt{schedule()} ma chiaramente si guarda l'affinità con la CPU nelle thread.\\La decisione è basata sulla priorità, tipicamente un thread più prioritario è che ha più tick da spendere ma la decisione è anche basata sul tentativo di ottimizzare il comportamento dell'hardware, ad esempio per ottimizzare il caching: la decisione quindi dipende anche da cosa è successo prima, che può avere avuto effetto sull'architettura di caching.\\I 3 step che l'algoritmo esegue sono i seguenti
+Nel perfect load sharing avevamo 40 livello di priorità differenti, da +19 a -20 e più è basso il valore e maggiore è la priorità e possiamo muoverci fra i livelli usando la niceness interfacciandosi al SO, per aumentare la priorità occorre essere un thread con privilegi maggiori. Il concetto di priorità è detta \textbf{statica} all'intero di un SO, ovvero fra i metadati del TCB avevamo un informazione che dava la priorità statica del thread, che metteva in uno dei livelli ed alla fine di un epoca i tick erano assegnati in base a questo valore.\\Il blocco di codice del kernel Linux che deve selezionare il thread da mandare in esercizio, chiamato \texttt{schedule()}, va a guardare i TCB di tutti i thread che sono sulla run queue. La run queue è un unico oggetto, dentro cui sono collegati tutti i TCB dei thread runnable, quindi possiamo selezionare uno qualsiasi dei TCB da mandare in CPU. La selezione avviene su una certa CPU se sono in un sistema multi-core, quindi con questo tipo di organizzazione il thread può andare su una qualsiasi CPU, che è quella su cui gira la \texttt{schedule()} ma chiaramente si guarda l'affinità con la CPU per i thread.\\La decisione è basata sulla priorità, tipicamente un thread più prioritario è uno che ha più tick da spendere ma la decisione è anche basata sul tentativo di ottimizzare il comportamento dell'hardware, ad esempio per ottimizzare il caching: la decisione quindi dipende anche da cosa è successo prima, che può avere avuto effetto sull'architettura di caching.\\I 3 step che l'algoritmo esegue sono i seguenti
 \begin{itemize}
 \item controllare il processo corrente: il thread che ha chiamato lo scheduler va eliminato dalla run queue?
 \item analisi della run queue, non c'è più il processo corrente
 \item context switch dopo aver analizzato la run queue, si salva il contesto del thread tolto dalla CPU
 \end{itemize}
 Il check sul processo corrente avviene nel seguente blocco di codice:
-%listato
+\begin{lstlisting}
+....
+prev = current;
+....
+switch(prev->state){
+	case TASK_INTERRUPTIBLE:
+		if(signal_penind(prev)) {
+			prev->state = TASK_RUNNING;
+			break;
+		}
+	default:
+		del_from_runqueue(prev);
+	case TASK_RUNNING:;
+}
+prev->need_resched = 0;
+\end{lstlisting}
 ci rendiamo conto qui se il thread va eliminato dalla run queue oppure, a seconda di cosa c'è nel TCB o se ci sono segnali pendenti, va mantenuto nella run queue. Si controlla se il thread è stato flaggato come interruptible (passato per una API della wait queue), si controlla la maschera dei segnali e nel caso ci sia si cambia lo stato. Il defualt è essere cancellato dalla run queue; infine, resettiamo \texttt{need\_resched}. Il thread è stato eliminato dalla run queue, ma è ancora lui ad eseguire e sarà lui finché non effettuiamo il context switch.\\Dopo questa attività, facciamo l'analisi della run queue ed in particolare una cosa molo interessante sono queste due macro:
-%scrivi le macro
-la prima macro è parametrica su \texttt{pos} ed \texttt{head}, dove \texttt{head} è un puntatore a qualche cosa che ha un next con cui identifichiamo quindi l'oggetto iniziale di qualche cosa che è una lista doppiamente collegata. Possiamo fare quindi l'analisi di una lista circolare, che nel kernel è fatta di oggetti disparati e potremmo quindi avere oggetti che seguono una struttura A ed una di oggetti che seguono una struttura B, le macro permettono di analizzare qualunque lista di oggetti perché il campo è semplicemente \texttt{next}. Se ad esempio tocchiamo una lista di TCB, ci interessa il contenitore dell'elemento \texttt{next}, quindi con \texttt{container\_of} possiamo fare il retrieve della task struct. Possiamo quindia avere un oggetto di questo tipo:
-%immagine
+\begin{lstlisting}
+#define list_for_each(pos, head)
+for (pos = (head)->next; pos != (head); pos = pos->next)
+
+#define list_entry(pos, type, number)
+container_of(prt,type,member)
+\end{lstlisting}
+la prima macro è parametrica su \texttt{pos} ed \texttt{head}, dove \texttt{head} è un puntatore a qualche cosa che ha un next con cui identifichiamo quindi l'oggetto iniziale di qualche cosa che è una lista doppiamente collegata. Possiamo fare quindi l'analisi di una lista circolare, che nel kernel è fatta di oggetti disparati e potremmo quindi avere oggetti che seguono una struttura A ed oggetti che seguono una struttura B, le macro permettono di analizzare qualunque lista di oggetti perché il campo è semplicemente \texttt{next}. Se ad esempio tocchiamo una lista di TCB, ci interessa il contenitore dell'elemento \texttt{next}, quindi con \texttt{container\_of} possiamo fare il retrieve della task struct. Possiamo quindi avere un oggetto di questo tipo:
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/scan_tcb.png}
+\end{figure}
 usiamo l'oggetto per costruire delle liste in Linux, che sono liste doppiamente collegate circolari, la lista ha sempre quel valore fittizio che evita di scrivere codice per il caso in cui la head si parai a \texttt{NULL}.\\Abbiamo quindi il blocco di codice che ci permette di fare l'analisi dell'unica run queue
-%snippet del codice
-Usiamo \texttt{list\_for\_each}, dove analizziamo ciascuno degli elementi, dove diamo la testa della run queue ed abbiamo un elemento che permette di scorrere gli oggetti e da questo elemento chiamiamo \texttt{list\_entry} in modo da poter ottenere l'indirizzo del task control.\\Se p è un puntatore ad un task control block, dobbiamo verificare l'affinità di processore del thread con la \texttt{can\_schedule} e se è effettivamente schedulabile occorre calcolare la sua \textbf{goodness} ed il thread che ha la goodness più alta sarà quello schedulato.\\Nella chiamata all \texttt{goodness} abbiamo come ultimo parametro il puntatore alla \texttt{active\_mm}, quindi guardiamo anche qualcosa di chi sta lasciando la CPU in quanto prev è settato col thread che ha chiamato lo scheduling. Per cui la goodness viene valutata anche in base a chi ha chiamato lo scheduling, calcolato il peso vediamo se questo è maggiore di c, se è vero troviamo un thread meglio dell'ultimo.\\L'informazione aggiuntiva considerata è un puntatore ad una tabella mm, quindi una \texttt{mm\_struct} ed avevamo già visto in prev un puntatore di questo tipo. Il campo punta ad una tabella di mm che permette di fare un'operazione di controllo, in questo caso ricordare l'ultima mm table considerata su questa CPU.\\Ogni thread regolare che gira su una CPU ha un sua mm table, ma se abbiamo un thread kernel level questo non ha una tabella di mm in quanto la mm table serve per la parte user.\\Quindi un kernel level thread ha mm == \texttt{NULL}, quindi possiamo fare questo
-%immagine dell'assegnazione
+\begin{lstlisting}
+repeat_schedule:
+	/* Default process to select ... */
+	next = idle_task(this_cpu);
+	c = -1000;
+	list_for_each(tmp, &runqueue_head) {
+		p = list_entry(tmp, struct task_struct, run_list);
+		if (can_schedule(p, this_cpu)){
+			int weight = goodness(p, this_cpu, prev->active_mm)
+			if(weigth > c)
+				c = weight, next = p;
+		}
+	}
+\end{lstlisting}
+Usiamo \texttt{list\_for\_each}, dove analizziamo ciascuno degli elementi, dove diamo la testa della run queue ed abbiamo un elemento che permette di scorrere gli oggetti e da questo elemento chiamiamo \texttt{list\_entry} in modo da poter ottenere l'indirizzo del task control.\\Se p è un puntatore ad un task control block, dobbiamo verificare l'affinità di processore del thread con la \texttt{can\_schedule} e se è effettivamente schedulabile occorre calcolare la sua \textbf{goodness} ed il thread che ha la goodness più alta sarà quello schedulato.\\Nella chiamata alla \texttt{goodness} abbiamo come ultimo parametro il puntatore alla \texttt{active\_mm}, quindi guardiamo anche qualcosa di chi sta lasciando la CPU in quanto prev è settato col thread che ha chiamato lo scheduling. Per cui la goodness viene valutata anche in base a chi ha chiamato lo scheduling, calcolato il peso vediamo se questo è maggiore di c, se è vero troviamo un thread meglio dell'ultimo.\\L'informazione aggiuntiva considerata è un puntatore ad una tabella mm, quindi una \texttt{mm\_struct} ed avevamo già visto in prev un puntatore di questo tipo. Il campo punta ad una tabella di mm che permette di fare un'operazione di controllo, in questo caso ricordare l'ultima mm table considerata su questa CPU.\\Ogni thread regolare che gira su una CPU ha un sua mm table, ma se abbiamo un thread kernel level questo non ha una tabella di mm in quanto la mm table serve per la parte user.\\Quindi un kernel level thread ha mm == \texttt{NULL}, quindi possiamo fare questo
+\begin{figure}
+	\includegraphics[scale=0.5]{immagini/schedule_assignement.png}
+\end{figure}
 il kernel thread x non ha una tabella di mm da assegnare alla CPU, ma questa può ricordare l'ultima tabella che aveva in CPU. Una volta schedulato il thread B, questo potrebbe avere la stessa mm di quello precedente, quindi in questo scheduling ci siamo mossi nello stesso address space quindi l'informazione serve per capire quale è l'ultimo address space su cui la CPU ha lavorato e quindi se un thread lavorerà sullo stesso address space permette di dare goodness maggiore a questo thread per far si che si sfrutti il caching.\\La goodness viene calcolata così:
 \begin{equation}
 goodness(p) = 20 - p \rightarrow nice
-p \rightarrow counter :
+p \rightarrow counter +1 +15
 \end{equation}
-+ 1 se la page table vive nello stesso adress space user che abbiamo osservato nei context switch, +15 se p è stato runnato l'ultima volta su questa CPU. Col +15, quando siamo in un era, i tempi possono essere spesi in maniera continua perché assegno la CPU al thread A per un quanto, arriva un momento in cui lascia la CPU ma poi la riassegno sempre a lui se ha ancora ticks da spendere dandogli quel bonus, quindi si ha un tipo di workload batched.
+dove:
+\begin{itemize}
+	\item + \texttt{p$\rightarrow$counter} sono i ticks rimanenti
+	\item +1 viene assegnato se la page table è condivisa col processo precedente
+	\item +15 in SMP, se p era l'ultimo che ha girato sulla stessa CPU
+\end{itemize}
+inoltre, se \texttt{p$\rightarrow$counter} è 0 la goodness viene impostata a 0.\\Quindi, possiamo avere + 1 se la page table vive nello stesso adress space user che abbiamo osservato nei context switch, +15 se p è stato runnato l'ultima volta su questa CPU. Col +15, quando siamo in un'era, i tempi possono essere spesi in maniera continua perché assegno la CPU al thread A per un quanto, arriva un momento in cui lascia la CPU ma poi la riassegno sempre a lui se ha ancora ticks da spendere dandogli quel bonus, quindi si ha un tipo di workload batched.
 \subsubsection{Gestione delle epoche}
-Quando finisce un epoca, quindi il peso che otteniamo dall'analisi è 0 per ogni thread occorre ricalcolare i tick da attribuire a tutti, non solo per quelli nella run queue ma anche per quelli fuori, quello che accadeva è che quando un'epoca era completa, il nuovo counter veniva calcolato secondo questa regola
+Quando finisce un epoca, quindi il peso che otteniamo dall'analisi è 0 e per ogni thread occorre ricalcolare i tick da attribuirgli, non solo per quelli nella run queue ma anche per quelli fuori, quello che accadeva è che quando un'epoca era completa, il nuovo counter veniva calcolato secondo questa regola
 \begin{equation}
 p \rightarrow counter = \frac{p \rightarrow counter}{2} + 6 - \frac{p \rightarrow nice}{4}
 \end{equation}
-C'è poi il seguente snippet
-%snippet C
+C'è poi il seguente codice:
+\begin{lstlisting}
+....
+/* Do we need to re-calculate counters? */
+if (unlikely(!c)){
+	struct task_struct *p;
+	
+	spin_unlock_irq(&runqueue_lock);
+	read_lock(&tasklist_lock);
+	for_each_task(p)
+		p->counter = (p->counter >> 1) + NICE_TO_TICKS(p->nice);
+	read_unlock(&tasklist_lock);
+	spin_lock_irq(&runqueue_lock);
+	goto repeat_schedule;
+}
+....
+\end{lstlisting}
 È iniziata quindi una nuova epoca, quindi si torna ad analizzare la run queue per trovare a chi assegnare nuovamente la CPU
 \subsubsection{Limitazioni dello scheduler}
-Sono tutte legate alla poca scalabilità dello scheduler. Il primo problema dello shceduler è che analizza dei task anche non runnable, ovvero che ha ticks pari a 0, quindi si perde tempo per analizzare dei thread non schedulabili.\\Il problema è dovuto a questo mix di task runnable / non runnable in ogni epoca nella run queue. Inoltre, abbiamo un problema prestazionale nel fatto che analizziamo la run queue con un algoritmo di complessità O(N) ed inoltre non è eseguibile in concorrenza, altrimenti lo stesso thread verrebbe magari schedulato da due CPU core in contemporanea.\\Ad esempio su 4 CPU core è possibile chiamare in simultanea \texttt{schedule()}, quindi uno dei due prende il lock, analizza la run queue e poi rilascia. IL lock è uno spinlock, spendiamo tempo di lavoro, cicli macchina ed energia (E LA BIMBA QUELLA DELLA SCANDINAVIA NON È PER NULLA CONTENTA E TE MENA PERCHÉ INQUINI, LE RUBI IL FUTURO GNE GNE GNE).\\Per questo motivo, si è passati da perfect sharing a load balancing.
+Sono tutte legate alla poca scalabilità dello scheduler. Il primo problema dello shceduler è che analizza dei task anche non runnable, ovvero che ha ticks pari a 0, quindi si perde tempo per analizzare dei thread non schedulabili.\\Il problema è dovuto a questo mix di task runnable / non runnable in ogni epoca nella run queue. Inoltre, abbiamo un problema prestazionale nel fatto che analizziamo la run queue con un algoritmo di complessità O(N) che inoltre non è eseguibile in concorrenza, altrimenti lo stesso thread verrebbe magari schedulato da due CPU core in contemporanea.\\Ad esempio su 4 CPU core è possibile chiamare in simultanea \texttt{schedule()}, quindi uno dei due prende il lock, analizza la run queue e poi rilascia. Il lock è uno spinlock, spendiamo tempo di lavoro, cicli macchina ed energia (E LA BIMBA QUELLA DELLA SCANDINAVIA NON È PER NULLA CONTENTA E TE MENA PERCHÉ INQUINI, LE RUBI IL FUTURO GNE GNE GNE).\\Per questo motivo, si è passati da perfect sharing a load balancing.
 \subsection{Load balancing}
-Qui c'è constant time scheduling, ci mettiamo tempo costante ad analizzare la run queue per scegliere il thread da schedulare, inoltre abbiamo che la probabilità di andare in conflitto è molto bassa. In sostanza, il tempo di evoluzione del sistema in cui due CPU diverse guardano una run queue è molto ridotto. Abbiamo poi un workload bilanciato su tutte le CPU ed inoltre introduciamo delle priorità molteplici di quelle dello scheduler POSIX.\\Abbiamo che non c'è alcun mix di task runnable e non runnable all'interno della run queue, quindi se un task ha finito il tick counter ma vuole continuare ad eseguire dove va messo? La coda inizialmente è fatta di task con valore di counter diverso da 0, inoltre nel load balancing non si definisce la priorità guardando nel TCB, ma definiamo la sua priorità solo in base a dove lui è collegato.\\Quindi la run queue è una multi-coda, dove i TCB dei thread sono collegati a livelli diversi della coda.\\Ulteriormente, per ridurre la probabilità di andare in conflitto sulla run queue abbiamo che sono una per ogni hyperthread fisico all'interno del sistema e ciascun CPU core analizza con la logica di scheduling la sua run queue.\\Ci possono essere conflitti in cui una determinata run queue sia piena ed un'altra sia vuota, per cui occorre ogni tanto ri-bilanciare il carico per cui le code sono accedute in sezioni critiche dove la probabilità di collidere è bassa.\\Quindi idealmente si conflitta perché occorre spostare un TCB su una run queue, può avvenire perché si sporta un certo TCB oppure si rimette un TCB nella coda.\\Lo spostamento viene fatto da qualche thread, che guarda le strutture e verifica se è necessario aggiornarle, una possibilità è che venga fatto da dei demoni che periodicamente si sveglia e fa load balancing, che deve entrare i CS per non conflittare con le CPU che va a scorrere la coda.\\Il problema può sussistere anche quando risvegliamo un thread e dobbiamo re-inserirlo nella sua run queue, per cui ci può sempre essere un conflitto. Per i livelli di priorità, ci sono 140 livelli
+Qui c'è constant time scheduling, ci mettiamo tempo costante ad analizzare la run queue per scegliere il thread da schedulare, inoltre abbiamo che la probabilità di andare in conflitto è molto bassa. In sostanza, il tempo di evoluzione del sistema in cui due CPU diverse guardano una run queue è molto ridotto. Abbiamo poi un workload bilanciato su tutte le CPU ed inoltre introduciamo delle priorità molteplici rispetto a quelle dello scheduler POSIX.\\Abbiamo che non c'è alcun mix di task runnable e non runnable all'interno della run queue, quindi se un task ha finito il tick counter ma vuole continuare ad eseguire dove va messo? La coda inizialmente è fatta di task con valore di counter diverso da 0, inoltre nel load balancing non si definisce la priorità guardando nel TCB, ma definiamo la sua priorità solo in base a dove lui è collegato.\\Quindi la run queue è una multi-coda, dove i TCB dei thread sono collegati a livelli diversi della coda.\\Ulteriormente, per ridurre la probabilità di andare in conflitto sulla run queue abbiamo che sono una per ogni hyperthread fisico all'interno del sistema e ciascun CPU core analizza con la logica di scheduling la sua run queue.\\Ci possono essere conflitti in cui una determinata run queue sia piena ed un'altra sia vuota, per cui occorre ogni tanto ri-bilanciare il carico per cui le code sono accedute in sezioni critiche dove la probabilità di collidere è bassa.\\Quindi idealmente si conflitta perché occorre spostare un TCB su una run queue, può avvenire perché si sporta un certo TCB oppure si rimette un TCB nella coda.\\Lo spostamento viene fatto da qualche thread, che guarda le strutture e verifica se è necessario aggiornarle, una possibilità è che venga fatto da dei demoni che periodicamente si svegliano e fanno load balancing, che devono entrare i CS per non conflittare con le CPU che vanno a scorrere la coda.\\Il problema può sussistere anche quando risvegliamo un thread e dobbiamo re-inserirlo nella sua run queue, per cui ci può sempre essere un conflitto. Per i livelli di priorità, ci sono 140 livelli
 \begin{itemize}
 \item [100-139] corrispondono alle priorità classiche
 \item [0-99] priorità real time
 \end{itemize}
 Quindi ogni coda ha 140 sotto-code, quando si schedula occorre evitare il mix fra thread con ticks pari a 0 e thread schedulabili: la coda è organizzata come una coda corrente ed una coda futura
-%immagine
-individualmente quindi la coda è schedulata in base alle priorità e c'è una coppia di code per ognuna di queste 140 code, ogni epoca finisce quando la coda corrente è vuota e per cambiare epoca basta switchare i pointer fra le code.\\Quando un thread viene messo nell'epoca futura, possiamo anche dargli il nuovo tick counter che verrà usato nell'epoca successiva. Siamo a tempo costante perché abbiamo una bitmap che dice qual è il primo livello non vuoto da schedulare e noi andiamo lì, il check della bitmap avviene in tempo costante e quindi è indipendente dal carico ed inoltre non faccio controllo della goodness della singola coda perché metto in schedule il primo che trovo.
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/sched_queues.png}
+\end{figure}
+individualmente quindi la coda è schedulata in base alle priorità e c'è una coppia di code per ognuna di queste 140 code, ogni epoca finisce quando la coda corrente è vuota e per cambiare epoca basta switchare i pointer fra le code.\\Quando un thread viene messo nell'epoca futura, possiamo anche dargli il nuovo tick counter che verrà usato nell'epoca successiva. Siamo a tempo costante perché abbiamo una bitmap che dice qual è il primo livello non vuoto da schedulare e noi andiamo lì, il check della bitmap avviene in tempo costante e quindi è indipendente dal carico ed inoltre non si fanno controllo della goodness della singola coda perché si mette in schedule il primo che trovo.
 \subsubsection{Relazione con le API di wakeup}
 Stiamo eseguendo sulla CPU 0 un thread che ne risveglia un altro, quindi implica dire metterlo nella run queue in una certa CPU:
 \begin{itemize}
 \item se il thread può essere schedulato sulla CPU corrente si mette lì
 \item altrimenti si verificano le informazioni di affinità del thread
 \end{itemize}
-quindi se possiamo definire dove mettere il thread in base all'affinità, avremo una API per poter inserire un thread nella run queue di una data CPU: \texttt{ttwu\_queue()} ed è un concetto importante in sistemi con un certo livello di parallelismo.
+quindi se possiamo definire dove mettere il thread in base all'affinità, avremo una API per poter inserire un thread nella run queue di una data CPU: \texttt{ttwu\_queue(struct task\_struct *p, int cpu, int wake\_flags)} ed è un concetto importante in sistemi con un certo livello di parallelismo.
 \subsubsection{Carichi e ticks}
-Nel perfect load sharing assegnavamo i tick con una certa equazione, ma c'erano molti meno livello di priorità. Per 140 livelli diventa complicato lavorare secondo quella logica, quindi è stata fatta una ulteriore modifica basata sull'idea che quando devo assegnare il numero di ticks per la prossimo epoca ad uno specifico thread
+Nel perfect load sharing assegnavamo i ticks con una certa equazione, ma c'erano molti meno livello di priorità. Per 140 livelli diventa complicato lavorare secondo quella logica, quindi è stata fatta una ulteriore modifica basata sull'idea che quando devo assegnare il numero di ticks per la prossimo epoca ad uno specifico thread
 \begin{itemize}
 \item l'informazione viene messa nella struct del thread
 \item si scrive il peso del thread, il numero di ticks che può usare
 \item il peso si calcola usando un array di 40 elementi
 \end{itemize}
-I livelli sono 40 perché nello scheduling real time se siamo nella classe 10, è vero che due thread abbiamo esattamente la stessa priorità ovvero c'è ancora il discorso sulla niceness, possiamo ancora discriminare la niceness in modo da assegnare più ticks. I 40 elemento servono per attribuire i ticks a seconda della classe di appartenenza: a parità di niceness, un thread di una classe più alta becca più ticks perché è più privilegiato.
+I livelli sono 40 perché nello scheduling real time se siamo nella classe 10, è vero che due thread abbiamo esattamente la stessa priorità ovvero c'è ancora il discorso sulla niceness, possiamo ancora discriminare la niceness in modo da assegnare più ticks. I 40 elementi servono per attribuire i ticks a seconda della classe di appartenenza: a parità di niceness, un thread di una classe più alta becca più ticks perché è più privilegiato.
 \subsubsection{Problemi dello scheduler}
-È vero che abbiamo le 40 classi per rappresentare il carico non real time del sistema (other), ma in realtà abbiamo un problema legato al fatto che i livelli di priorità sono identificabili come livelli di priorità dei vari thread, ma nella classe other conta anche il comportamento del thread: quindi, se il thread ha bassa priorità e "si comporta bene" sarebbe utile favorirlo così che il sistema è scarico ha lavoro da fare, quindi i thread possono essere spostati fra le varie fasce di priorità, in base al concetto di priorità dinamica, che è scritta nel TCB e nella coda i TCB vengono collegati in base alla loro priorità dinamica. La cosa interessante è che lo scheduling è sempre O(1), ma cambia il meccanismo per come un thread possano essere spostati. C'è un problema: un thread che chiama la funzione di scheduling può vedersi togliere la CPU per vederla consegnata ad un thread con priorità dinamica maggiore, che però magari ha una priorità base più bassa della mia. È un problema, tra l'altro da un punto di vista della sicurezza perché magari sappiamo che lungo dei thread che vanno in sleep poi prendono la CPU prima di altri. I classici scenari in cui questo accade è
+È vero che abbiamo le 40 classi per rappresentare il carico non real time del sistema (other), ma in realtà abbiamo un problema legato al fatto che i livelli di priorità sono identificabili come livelli di priorità dei vari thread, ma nella classe other conta anche il comportamento del thread: quindi, se il thread ha bassa priorità e "si comporta bene" sarebbe utile favorirlo così che se il sistema è scarico ha lavoro da fare, quindi i thread possono essere spostati fra le varie fasce di priorità, in base al concetto di priorità dinamica, che è scritta nel TCB e nella coda i TCB vengono collegati in base alla loro priorità dinamica.\\La cosa interessante è che lo scheduling è sempre O(1), ma viene introdotto un meccanismo secondo cui i thread possano essere spostati. C'è un problema: un thread che chiama la funzione di scheduling può vedersi togliere la CPU per vederla consegnata ad un thread con priorità dinamica maggiore, che però magari ha una priorità base più bassa della mia. È un problema, tra l'altro da un punto di vista della sicurezza perché magari sappiamo che lungo dei thread che vanno in sleep poi prendono la CPU prima di altri.\\I classici scenari in cui questo accade sono:
 \begin{itemize}
-\item un thread che risveglia un altro thread, che avrà priorità dinamica più alta di chi lo ha svegliato
-\item qualcuno sveglia un thread (slides)
+\item un thread che risveglia un altro thread, che avrà priorità dinamica più alta di chi lo ha svegliato, per poi chiamare la schedule
+\item qualcuno sveglia un thread mettendolo su un'altra CPU e la CPU è quindi colpita da una richiesta di reschedule cross-CPU
 \end{itemize}
 \subsubsection{API in Linux}
 Qui abbiamo diversi fattori differenti dal caso perfect sharing. Il counter dei tick non si chiama più counter ma time\_slice, abbiamo diverse API
 \begin{itemize}
-\item \texttt{schedule()}
-\item \texttt{load\_balance()}: il demone sposta i thread, sempre in base all'affinità
-\item \texttt{effective\_prio()}
-\item \texttt{recal\_()}
+\item \texttt{schedule}
+\item \texttt{load\_balance}: il demone sposta i thread, sempre in base all'affinità
+\item \texttt{effective\_prio}
+\item \texttt{recalc\_task\_prio}
+\item \texttt{source\_load}
+\item \texttt{target\_load}
 \end{itemize}
 \subsubsection{Altri dettagli}
-Lo scheduler precedente ha una funzione di scheduling stateless, in quanto si guardano informazioni precedenti durante l'attività di scheduling e questo è una esemplificazione di ciò che abbiamo in un sistema, dove il concetto di stato c'è: quando chiamo la run queue, devo sapere quale coda guardare. Va considerata quindi la problematica dell'\textbf{explicit stack referesh}: supponiamo dia vere una funzione f, che in un certo punto esegue delle attività che lavorano su certa strutture dati legate alla specifica CPU su cui si esegue. Più avanti, si eseguono delle attività su una CPU di cui non conosciamo l'identità, quindi eseguiamo attività per-CPU ma non sappiamo che CPU è. La \texttt{schedule} è fatta così, non garantisce che la CPU su cui si viene rischedulati sia proprio quella di partenza, quindi le variabili locali presenti nei moduli vanno ri-aggiornate, cosa che avviene nella funzione \texttt{schedule()} per kenrel 2.6 $>$
-%snippet della nuova schedule()
+Lo scheduler precedente ha una funzione di scheduling stateless, in quanto si guardano informazioni precedenti durante l'attività di scheduling e questo è una esemplificazione di ciò che abbiamo in un sistema, dove il concetto di stato c'è: quando chiamo la run queue, devo sapere quale coda guardare. Va considerata quindi la problematica dell'\textbf{explicit stack referesh}: supponiamo di avere una funzione f, che in un certo punto esegue delle attività che lavorano su certa strutture dati legate alla specifica CPU su cui si esegue. Più avanti, si eseguono delle attività su una CPU di cui non conosciamo l'identità, quindi eseguiamo attività per-CPU ma non sappiamo che CPU è. La \texttt{schedule} è fatta così, non garantisce che la CPU su cui si viene rischedulati sia proprio quella di partenza, quindi le variabili locali presenti nei moduli vanno ri-aggiornate, cosa che avviene nella funzione \texttt{schedule()} per kenrel 2.6 $>$
+\begin{lstlisting}
+asmlinkage void __sched schedule(void)
+{
+	struct task_struct *prev, *next;
+	unsigned long *switch_count;
+	struct rq *rq;
+	int cpu;
+	
+	need_resched:
+	preempt_disable();
+	cpu = smp_processor_id();
+	rq = cpu_rq(cpu);
+	rcu_qsctr_inc(cpu);
+	prev = rq->curr;
+	switch_count = &prev->nivcsw;
+		
+	release_kernel_lock(prev);
+	need_resched_nonpreemptible:
+	.....
+	spin_lock_irw(&rq->lock);
+	update_rq_lock(rq);
+	clear_task_need_resched(prev);
+	....			
+}
+\end{lstlisting}
 se cambiamo CPU, abbiamo il refresh delle informazioni dopo un context switch
-%snippet 2 della schedule()
+\begin{lstlisting}
+.....
+#ifdef CONFIG_SMP
+	if(prev->sched_class->pre_schedule)
+		prev->shed_class->pre_schedule(rq, prev);
+#endif
+
+	if(unlikely(!rq->nr_running)) idle_balance(cpu, rq);
+	
+	prev->sched_class->put_prev_task(rq, prev);
+	next = pick_next_task(rq, prev);
+	
+	if(likely(prev != next)) {
+		sched_info_switch(prev, next);
+		
+		rq->nr_switches++;
+		rq->curr = next;
+		++*switch_count;
+		
+		context_siwtch(rq, prev, next)	/* unlocks the rq */
+		/* the context switch might have flipped the stack from under us, hence refresh the local variabiles */
+		cpu = smp_processor_id();
+		rq = cpu_rq(cpu);	
+	} else spin_unlock_irq(&rq->lock);
+
+	if (unlikely(reacquire_kernel_lock(current) < 0))
+		goto need_resched_nonpreemptible;
+	preempt_enable_no_resched();
+	if(unlikely(test_thread_flag(TF_NEED_RESCHED)))
+		goto need_resched;
+\end{lstlisting}
 La run queue moderna è la seguente
-%snippet della run queue
+\begin{lstlisting}
+struct rq{
+	/* runqueue lock: */
+	spinlock_t lock;
+	
+	/* nr_running and cpu_load should be in the same cacheline because remote CPUs use both these fields when doing load calculation */
+	unisgned long nr_running;
+	#define CPU_LOAD_IDX_MAX 5
+	unisgned long cpu_load[CPU_LOAD_IDX_MAX];
+	unsigned char idle_at_tick;
+	....
+	/* capture load from *all* tasks on this cpu: */
+	struct load_weight load;
+	
+	.....
+	struct task_struct *curr, *idle;
+	.....
+	struct mm_struct *prev_mm;
+	....
+};
+\end{lstlisting}
 \subsection{Fair scheduling}
 Vediamo come risolvere il problema della priorità dinamica. Non ci sono più delle code multiple per la zona di priorità normal, si usa una struttura dati che è un red/black tree: se le strutture dati quindi mi dicono che c'è qualcosa da schedulare in other, abbiamo uno scheduler che ha un costo logaritmico per la classe non real time ma possiamo comunque avere thread che non hanno la stessa importanza, quindi 40 livelli di priorità. Inoltre, possiamo ottenere equi-distribuzione della CPU su thread che hanno la stessa nicencess in un livello e questo viene fatto col concetto di \textbf{virtual CPU}: la virtual CPU è il reale tempo di CPU diviso per il peso. Lo schema è il seguente:
-%mmagine
+\begin{figure}
+	\includegraphics[scale=0.5]{immagini/vcpu_schema.png}
+\end{figure}
 tutti i thread vengono mantenuti nel rb-tree in base alla VCPU, si prende quello che ce l'ha più bassa e si assegna per un quanto, per poi fare context switch inserendo il thread con la VCPU più bassa. Quindi, conta solo la priorità statica e come tale thread ha eseguito in CPU ma sempre funzione della priorità statica.\\Si lavora con O(log(N)) sul rb-tree ma le informazioni per poter eseguire lo scheduling sono compatte perché ci considera solo la VCPU.
-\subsection{Kernel thread}
-Manca solo la possibilità di lanciare dei demoni di sistema, in quanto per lanciare dei thread applicativi si usa la \texttt{clone()}, come farlo velocemente a livello kernel.\\Cerchiamo di capire come sono fatte le chiamate alle API per lanciare kernel thread: avevamo l'API \texttt{kernel\_thread()}, dove non si tornava più user level, quindi il thread veniva tarato per eseguire una funzione del kernel. Si sfruttava comunque la \texttt{sys\_clone()}, passando dei parametri appositi, la cosa interessante è che l'API nella sua esecuzione è che viene chiamata \texttt{arch\_kernel\_thread()}: c'era un concetto che legava il concetto di thread in esecuzione a quello di stack pointer, abbiamo delle istruzioni machine dependent nella funzione ed in x86 è fatta tale per cui lungo il thread originale si entra nell'API e quindi lì dentro
-\begin{itemize}
-\item si chiama \texttt{sys\_clone}
-\item lo stato di CPU nell'evoluzione del software permette di capire se sono il thread corrente
-\end{itemize}
+\section{Kernel thread}
+Manca solo la possibilità di lanciare dei demoni di sistema, in quanto per lanciare dei thread applicativi si usa la \texttt{clone()}, come farlo velocemente a livello kernel.\\Cerchiamo di capire come sono fatte le chiamate alle API per lanciare kernel thread: avevamo l'API \texttt{kernel\_thread()}, dove non si tornava più user level, quindi il thread veniva tarato per eseguire una funzione del kernel. Si sfruttava comunque la \texttt{sys\_clone()}, passando dei parametri appositi, la cosa interessante è che l'API nella sua esecuzione chiama \texttt{arch\_kernel\_thread()}: c'era un concetto che legava il thread in esecuzione allo stack pointer, abbiamo delle istruzioni machine dependent nella funzione ed in x86 è fatta tale per cui lungo il thread originale si entra nell'API e quindi lì dentro avviene quanto segue:
+\begin{lstlisting}
+long kernel_thread(int (*fn)(void *), void *arg, unsigned long flags)
+{
+	struct task_struct *task = current;
+	unsigned old_task_dumpable;
+	long ret;
+	
+	/* lock out any potential ptracer */
+	task_lock(task);
+	if (task->ptrace) {
+		task_unlock(task);
+		return -EPERM;
+	}
+
+	old_task_dumpable = task->task_dumpable;
+	task->tasl_dumpable = 0;
+	task_unlock(task);
+	
+	ret = arch_kernel_thread(fn, arg, flag);
+	
+	/* never reached in child process, only in parent */
+	current->task_dumpable = old_task_dumpable;
+	
+	return ret;
+}
+\end{lstlisting}
 La \texttt{arch\_kernel\_thread()} è la seguente
-% """poche""" istruzioni assembly
-il thread che invoca la creazione chiama tale funzione, esegue 
+\begin{lstlisting}
+int arch_kernel_thread((fn*)(void *), void *arg, unsigned long flags)
+{
+	long retval, d0;
+	
+	__asm__ __volatile__(
+		"movl %%esp, %%esi\n\t"
+		"int $0x80\n\t"	/* Linux/i386 system call */
+		"cmpl %%esp, %%esi\n\t" /* child or parent? */
+		"je 1f\n\t"	/* parent jump */
+		/* Load the argument into eax, and push it. That way, it does 
+		* not matter wether the called function is comiled with
+		* -mregparm or not. */
+		"movl %4, %%eax\n\t"
+		"pushl %%eax\n\t"
+		"call *%5\n\t"	/* call fn */
+		"movl %3,%0\n\t"	/* exit */
+		"int $0x80\n\t"
+		"1:\t"
+		:"=&a" (retval), "=&S" (d0)
+		:"=0" (__NR_clone), "i" (__NR_exit),
+		"r" (arg), "r" (fn),
+		"b" (flags | CLONE_VM)
+		: "memory");
+		
+		return retval;
+}
+\end{lstlisting}
+il thread che invoca la creazione chiama tale funzione ed esegue 
 \begin{itemize}
-\item mov esp esi: salvo lo stack pointer, perché il nuovo thread userà un'altra stack area e quindi in base allo stack pointer saprò quale thread sono
+\item mov esp esi: salva lo stack pointer, perché il nuovo thread userà un'altra stack area e quindi in base allo stack pointer si saprà quale thread sono
 \item int \$0x80, che chiama clone ovvero chiamando l'accesso al gate per chiamare la syscall.
 \end{itemize}
-Finita la clone, entrambi i thread ripartono dalla stessa istruzione, si controlla se esp è uguale ad esi e se è vero sono il parent quindi esco dalla funzione core. La parte sotto viene eseguita solo dal thread nuovo, la struttura seguente è molto simile a quello che è nella pthread\_create(), l'uso di più flussi di esecuzione era presente in Linux molto prima di offrirli come syscall allo user space.\\Abbiamo poi una movl ed un'altra int 0x80 per chiamare la exit ed uscire una volta che il thread ha finito\\Abbiamo API più moderne, fra cui la \texttt{kthread\_create()}, dove possiamo anche dare un nome al thread creato, inoltre possiamo anche specificare l'affinità del thread come maschera che specifica tutti i processori del sistema.\\Quando creiamo un nuovo thread questo è attivo? No, il thread è in wait e per poterlo mandare ad essere eseguibile va svegliato, inoltre le API internamente quando vanno a gestire le strutture dati del nuovo thread dicono che non è killabile, solo il nuovo thread deve abilitare la possibilità di farsi colpire con delle segnalazioni. Se possiamo mandare segnali a demoni del kernel senza che loro l'abbiano deciso, non ci piace molto.\\Una volta colpito un demone del kernel con una segnalazione l'effetto è solo quello di rimetterlo in run queue, il thread può verificare con le API se è stato colpito.
+Finita la clone, entrambi i thread ripartono dalla stessa istruzione, si controlla se esp è uguale ad esi e se è vero sono il parent quindi esco dalla funzione core. La parte sotto viene eseguita solo dal thread nuovo, la struttura seguente è molto simile a quello che è nella \texttt{pthread\_create()}, l'uso di più flussi di esecuzione era presente in Linux molto prima di offrirli come syscall allo user space.\\Abbiamo poi una movl ed un'altra int 0x80 per chiamare la exit ed uscire una volta che il thread ha finito\\Abbiamo API più moderne, fra cui la\\ 
+\texttt{struct task\_struct *kthread\_create(int(*function)(void *data), void *data, const char name[])}\\
+dove possiamo anche dare un nome al thread creato, inoltre possiamo anche specificare l'affinità del thread come maschera che specifica tutti i processori del sistema con la\\
+\texttt{struct task\_struct *kthread\_create\_on\_cpu(int(*function)(void *data), void *data, unsigned int cpu\_id, const char name[])}
+\\Quando creiamo un nuovo thread questo è attivo? No, il thread è in wait e per poterlo mandare ad essere eseguibile va svegliato, inoltre le API internamente quando vanno a gestire le strutture dati del nuovo thread dicono che non è killabile, solo il nuovo thread deve abilitare la possibilità di farsi colpire con delle segnalazioni. Se possiamo mandare segnali a demoni del kernel senza che loro l'abbiano deciso, non ci piace molto.\\Una volta colpito un demone del kernel con una segnalazione l'effetto è solo quello di rimetterlo in run queue, il thread può verificare con le API se è stato colpito.
 \subsection{Esempi running}
 Vediamo un kernel thread: montiamo un modulo che lancia un kernel thread, finché quindi il thread esegue non si può smontare il modulo. C'è un variabile che se guardata dal demone, permette a quest'ultimo di andare in shut down.\\\\Il secondo esempio monta un modulo che embedda un syscall per lanciare demoni di sistema.
+
 \chapter{Architettura per trap/interrupt}
 \section{Hints architetturali}
 L'organizzazione interna dell'hardware ha un riflesso anche sul software. Cerchiamo di considerare il primo aspetto importante quando lavoriamo su un architettura moderna: questa non è single core, quindi non c'è un solo hyperthread perché su macchine single core avevamo interrupt sincroni o asincroni:
