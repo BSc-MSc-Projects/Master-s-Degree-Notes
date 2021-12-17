@@ -2965,7 +2965,7 @@ struct rq{
 \end{lstlisting}
 \subsection{Fair scheduling}
 Vediamo come risolvere il problema della priorità dinamica. Non ci sono più delle code multiple per la zona di priorità normal, si usa una struttura dati che è un red/black tree: se le strutture dati quindi mi dicono che c'è qualcosa da schedulare in other, abbiamo uno scheduler che ha un costo logaritmico per la classe non real time ma possiamo comunque avere thread che non hanno la stessa importanza, quindi 40 livelli di priorità. Inoltre, possiamo ottenere equi-distribuzione della CPU su thread che hanno la stessa nicencess in un livello e questo viene fatto col concetto di \textbf{virtual CPU}: la virtual CPU è il reale tempo di CPU diviso per il peso. Lo schema è il seguente:
-\begin{figure}
+\begin{figure}[!h]
 	\includegraphics[scale=0.5]{immagini/vcpu_schema.png}
 \end{figure}
 tutti i thread vengono mantenuti nel rb-tree in base alla VCPU, si prende quello che ce l'ha più bassa e si assegna per un quanto, per poi fare context switch inserendo il thread con la VCPU più bassa. Quindi, conta solo la priorità statica e come tale thread ha eseguito in CPU ma sempre funzione della priorità statica.\\Si lavora con O(log(N)) sul rb-tree ma le informazioni per poter eseguire lo scheduling sono compatte perché ci considera solo la VCPU.
@@ -3046,76 +3046,126 @@ L'organizzazione interna dell'hardware ha un riflesso anche sul software. Cerchi
 \item trap, che portano al passaggio per un gate per raggiungere un handler. Ad esempio, l'accesso ad una pagina non mappata
 \item interrupt dei devices
 \end{itemize}
-Quando capitavano questi eventi, si passava il controllo sull'unico CPU core al gestore dell'interrupt e tutto era gestito correttamente, quindi ogni cosa che veniva cambiata era visibile a tutte le attività che sarebbero arrivate dopo in CPU.\\Ora l'architettura è multi-core, multi-thread e quindi non è più vero che quando viene dato il controllo al gestore degli interrupt questo è in grado di rendere coerente tutto. Quello che accade quindi nel caso della singola CPU è che tutte le modifiche sull'hardware dove il gestore ha eseguito, avremo lo stesso punto di vista per ogni altro thread che vi esegue.\\Un esempio relativo al memory management: abbiamo un'applicazione attiva, un thread chiama la syscall munmap, che quindi cambia la struttura della memoria corrente, quindi si eliminano delle pagine dall'address space delle pagine che devono essere tolte anche dalla page table. Ma la page table ha anch'essa una cache che è il TLB, quindi anche il TLB viene reso compatibile con l'unmapping. Se sullo stesso CPU core si fa girare un altro thread, questo vedrà la stessa situazione del TLB aggiornato.\\In uno scenario multi-core, possiamo avere due thread della stessa applicazione su due core diversi:
+Quando capitavano questi eventi, si passava il controllo sull'unico CPU core al gestore dell'interrupt e tutto era gestito correttamente, quindi ogni cosa che veniva cambiata era visibile a tutte le attività che sarebbero arrivate dopo in CPU.\\Ora l'architettura è multi-core, multi-thread e quindi non è più vero che quando viene dato il controllo al gestore degli interrupt questo è in grado di rendere coerente tutto. Quello che accade quindi nel caso della singola CPU è che tutte le modifiche sull'hardware dove il gestore ha eseguito, saranno visibili per ogni altro thread che vi esegue.\\Un esempio relativo al memory management: abbiamo un'applicazione attiva, un thread chiama la syscall munmap, che quindi cambia la struttura della memoria corrente, eliminando delle pagine dall'address space che devono essere tolte anche dalla page table. Ma la page table ha anch'essa una cache che è il TLB, quindi anche il TLB viene reso compatibile con l'unmapping. Se sullo stesso CPU core si fa girare un altro thread, questo vedrà la stessa situazione del TLB aggiornato.\\In uno scenario multi-core, possiamo avere due thread della stessa applicazione su due core diversi:
 \begin{itemize}
 \item il thread A gira sul core 0, chiama \texttt{munmap}. Qui, può accedere al TLB locale e quindi può farne il flush per invalidare ciò che è relativo alla page table aggiornata
 \item sul core 1 però il thread potrebbe aver portato le informazioni della page table in quella TLB
 \end{itemize}
-in alcuni casi nell'hardware è possibile avere degli oggetti che sono toccabili solo per lo specifico CPU core, come nel caso del TLB. Quindi la trap in questo scenario necessita di avere un meccanismo di propagazione, per cui anche gli altri CPU core vengano notificati della modifica al TLB (ad esempio).\\L'idea è che abbiamo che se il sistema ha uno stato replicato o distribuito nell'architettura hardware, abbiamo bisogno di un meccanismo di propagazione, quindi l'invio di richieste di interrupt. Ma come vengono gestisti questi interrupt a livello di chi lo riceve? È a livello software oppure è possibile avere dei meccanismi di gestione degli interrupt a livello hardware? Quando mandiamo da un CPU-core un interrupt ad un altro CPU-core, se la gestione è deterministica può essere codificata nel micro-codice, altrimenti ci deve essere un oggetto software codificato nel SO.\\Perché è non deterministico il cambiamento dell'address space logico da parte di un thread, e quindi la necessità di reagire in diversi modi nei vari CPU core: il TLB potrebbe essere invalidato o non invalidato, se codificassimo in hardware questa cosa potremmo avere un solo scenario. Ma in questo caso, non è detto che il CPU core si attestato su una page table uguale a quella su cui avviene l'update e quindi il TLB sta cachando informazioni di un altro address space rispetto a quello su cui avviene l'invalidazione.
+in alcuni casi nell'hardware è possibile avere degli oggetti che sono toccabili solo per lo specifico CPU core, come nel caso del TLB. Quindi la trap in questo scenario necessita di avere un meccanismo di propagazione, per cui anche gli altri CPU core vengano notificati della modifica al TLB (ad esempio).\\L'idea è che abbiamo che se il sistema ha uno stato replicato o distribuito nell'architettura hardware, abbiamo bisogno di un meccanismo di propagazione, quindi l'invio di richieste di interrupt. Ma come vengono gestisti questi interrupt a livello di chi lo riceve? È a livello software oppure è possibile avere dei meccanismi di gestione degli interrupt a livello hardware? Quando mandiamo da un CPU-core un interrupt ad un altro CPU-core, se la gestione è deterministica può essere codificata nel micro-codice, altrimenti ci deve essere un oggetto software codificato nel SO.\\Perché è non deterministico il cambiamento dell'address space logico da parte di un thread, e quindi la necessità di reagire in diversi modi nei vari CPU core: il TLB potrebbe essere invalidato o non invalidato, se codificassimo in hardware questa cosa potremmo avere un solo scenario. Ma in questo caso, non è detto che il CPU core sia attestato su una page table uguale a quella su cui avviene l'update e quindi il TLB sta cachando informazioni di un altro address space rispetto a quello su cui avviene l'invalidazione.
 \subsection{Inter Processor Interrupt}
 Consideriamo quindi lo scenario non deterministico, in cui la gestione avviene a livello del software del SO: esiste quindi un terzo tipo di evento che sono gli IPI, eventi sia sincroni che asincroni
 \begin{itemize}
 \item sono sincroni per chi spedisce l'IPI, tipicamente va eseguita una specifica istruzione macchina
 \item è asincrono per le CPU coinvolte
 \end{itemize}
-quello che si fa in un SO usando le IPI è implementare dei protocolli per coordinare le attività dei CPU core, che sono tipicamente dei request/reply protocol. Con questo tipo di architettura si può cambiare lo stato di qualsiasi componente dell'hardware, mandando interrupt quando si ritiene necessario.\\Ci sono due livelli di priorità con cui si gestiscono gli IPI
+quello che si fa in un SO usando gli IPI è implementare dei protocolli per coordinare le attività dei CPU core, che sono tipicamente dei request/reply protocol. Con questo tipo di architettura si può cambiare lo stato di qualsiasi componente dell'hardware, mandando interrupt quando si ritiene necessario.\\Ci sono due livelli di priorità con cui si gestiscono gli IPI
 \begin{itemize}
 \item alto: ad ogni istante di tempo è possibile che esista al più una sola stading request. A livello di organizzazione del SO, quando più di un CPU core vuole spedire un IPI di priorità alta deve acquisire un lock;
 \item basso: possono essere di più e vengono processate sequenzializzate.
 \end{itemize} 
 \subsection{Supporto su x86}
 Su x86 abbiamo un componente che è l'APIC, un oggetto che ha componenti logicamente associati ai vari CPU core (ed ai vari hyperthreads) e componenti centralizzati. Fra questi è interessante il LAPIC, che è il componente locale e questo al suo interno a un timer, il LAPIC timer che abbiamo visto nella gestione dell'avanzamento del tempo.\\Lo scenario è che quindi ogni CPU core\footnote{che equivale a dire hyperthread fisico} ha un componente locale che segnala il passaggio del tempo, quindi un CPU core scrivendo su un particolare registro, può richiedere di inoltrare una richiesta di interrupt ad altri CPU-core. La reale architettura è rappresentata in questo schema
-%immagine dello schema
-tutto avviene usando un bus interno, su cui viaggiano anche le richieste di invio di un interrupt nell'architettura hardware. Avendo un bus unico e condiviso, questo permette di implementare meccanismi di invio di IPI in broadcast. Si possono usare diverse linee di interrupt, che sono ora 255 e quindi si possono inoltrare codici di richieste di interrupt abbastanza disparati all'interno dell'intera architettura interrupt.\\Ogni sorgente di interrupt va identificato con un codice numerico, che è IRQ ma è ambiguo: la CPU in realtà riceve un codice numerico differente dato da INT = F(IRQ). Il motivo è che alcuni codici sono usati secondo quello che il vendor dell'architettura hardware ha deciso per quanto riguarda la loro identificazione: l'architettura permette di gestire solo gli interrupt e non le trap, che sono legate solo a cosa sta succedendo sulla specifica CPU.\\La funzione attualmente prevede che venga aggiunto 32 ad ogni linea di interrupt, in quanto le prime 32 sono associate a delle trap, questo permette quindi di essere capaci di lavorare in termini di sviluppo dell'hardware in quanto possiamo cambiare la funzione in base all'aumento del numero di trap identificate dall'architettura hardware.\\Inoltre, il componente centralizzato dell'architettura APIC può essere configurabile, per farlo lavorare secondo
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/APIC_architecture.png}
+\end{figure}
+tutto avviene usando un bus interno, su cui viaggiano anche le richieste di invio di un interrupt nell'architettura hardware. Avendo un bus unico e condiviso, questo permette di implementare meccanismi di invio di IPI in broadcast. Si possono usare diverse linee di interrupt, che sono ora 255 e quindi si possono inoltrare codici di richieste di interrupt abbastanza disparati all'interno dell'intera architettura interrupt.\\Ogni sorgente di interrupt va identificato con un codice numerico, che è IRQx ma è ambiguo: la CPU in realtà riceve un codice numerico differente dato da INT = F(IRQx). Il motivo è che alcuni codici sono usati secondo quello che il vendor dell'architettura hardware ha deciso per quanto riguarda la loro identificazione: l'architettura permette di gestire solo gli interrupt e non le trap, che sono legate solo a cosa sta succedendo sulla specifica CPU.\\La funzione attualmente prevede che venga aggiunto 32 ad ogni linea di interrupt, in quanto le prime 32 sono associate a delle trap, questo permette quindi di essere capaci di lavorare in termini di sviluppo dell'hardware in quanto possiamo cambiare la funzione in base all'aumento del numero di trap identificate dall'architettura hardware.\\Inoltre, il componente centralizzato dell'architettura APIC può essere configurabile, per farlo lavorare secondo
 \begin{itemize}
 \item fixed/physical operations: le richieste di interrupt che provengono dai dispositivi verso il CPU core vengono inoltrare verso una sola CPU. C'è quindi una sorta di affinità fra la richiesta ed il CPU core che processerà a livello di SO tale interrupt, è interessante ad esempio in architetture di processamento di networking nei data center
-\item Logical/low priority operations: possiamo consegnare gli interrupt a più di una di queste, tipicamente in round robin, in cui possiamo impostare dei gruppi su cui fare l'inoltro delle richieste. È interessante per scenari in cui possiamo avere la volontà esplicita di processare gli interrupt su più CPU core.
+\item logical/low priority operations: possiamo consegnare gli interrupt a più di una di un CPU core, tipicamente in round robin, in cui possiamo impostare dei gruppi su cui fare l'inoltro delle richieste. È interessante per scenari in cui possiamo avere la volontà esplicita di processare gli interrupt su più CPU core.
 \end{itemize}
 \subsection{Interfaccia Linux per APIC}
-Facendo il cat del file \texttt{/proc/interrupts} abbiamo diversi interrupt, fra cui uno interessante è il function call interrupt, dove a livello di gestione del software viene richiesto di eseguire una funzione ad un certo core da parte di un altro. È importante ad esempio nella gestione della per-CPU memory, quindi ad esempio al montaggio di un modulo kernel che usa una per-CPU variable occorre dire a tutte le altre CPU di aggiornare la loro per-CPU variaible. TLB shotdowns è quello come visto prima\\ È possibile anche configurare l'affinità degli interrupt sui CPU core, fatto a startup del sistema (pseudo file \texttt{/proc/irq/})
-\subsection{IDT di Linux}
-Nella IDT (su x86), questa ha 256 entry ed all'interno di questo oggetto oltre ad esserci l'identificazione del blocco di codice che deve prendere il controllo quando si accetta l'interrupt anche delle informazioni riguardo la protezione. La IDT di Linux deve aver descritto 
+Facendo il cat del file \texttt{/proc/interrupts} abbiamo diversi interrupt, fra cui uno interessante è il function call interrupt, dove a livello di gestione del software viene richiesto di eseguire una funzione ad un certo core da parte di un altro. È importante ad esempio nella gestione della per-CPU memory, quindi ad esempio al montaggio di un modulo kernel che usa una per-CPU variable occorre dire a tutte le altre CPU di aggiornare la loro per-CPU variaible. TLB shotdowns è quello di cui si parla sopra.\\ È possibile anche configurare l'affinità degli interrupt sui CPU core, fatto a startup del sistema (pseudo file \texttt{/proc/irq/})
+\subsection{IDT (Iinterrupt Descriptor Table) di Linux}
+Nella IDT (su x86), questa ha 256 entry ed all'interno di questo oggetto, oltre ad esserci l'identificazione del blocco di codice che deve prendere il controllo quando si accetta l'interrupt, vi sono anche delle informazioni riguardo la protezione. La IDT di Linux descrive
 \begin{itemize}
 \item una zona per le trap, da 0-31. Le prime zone vanno riservate per le informazioni legate alla gestione delle trap
 \item una zona intermedia dove si possono inserire le informazioni degli interrupt dei device, dove abbiamo sia device esterni che interni,come il LAPIC timer
-\item zona per la gestione degli IPI, quindi in Linux se ne usano pochi ma necessari.
+\item una zona per la gestione degli IPI, quindi in Linux se ne usano pochi ma necessari.
 \end{itemize}
-All'interno della tabella si inserisce anche almeno una entry per la gestione degli interrupt spuri: tale interrupt non è necessariamente riconosciuto come richiesta di un interrupt ricevuto da una sorgente. Può accadere che il valore di una linea, basso o alto siano due:
+All'interno della tabella si inserisce anche almeno una entry per la gestione degli interrupt spuri: tale interrupt non è necessariamente riconosciuta come richiesta di un interrupt ricevuto da una sorgente. Il valore di una linea può avere i due valori basso o alto, dove:
 \begin{itemize}
-\item basso identifica non c'è
+\item basso identifica non c'è interrupt
 \item alto che c'è
 \end{itemize}
 ci sarà una threashold per cui se si è sotto soglia l'interrupt non c'è, ma mentre il circuito lavora è possibile salire da alto/basso in modo non diretto ma fluttuante e questo porta ad avere un interrupt a volte vero ed a volte no e questo è un interrupt spurio. Tale interrupt viene non considerato?\\In x86 è facile identificare la tabella mediante un registro apposito e packed, l'idtr che ha due campi
 \begin{itemize}
-\item taglia della tabella
-\item indirizzo della tabella
+\item taglia della tabella, in termini delle entries attualmente presenti nella tabella stessa, espressi con 2 byte (fino a 256 entries)
+\item indirizzo della tabella, espresso come indirizzo lineare di 6 byte e quindi 48 bit
 \end{itemize}
-possiamo quindi vedere la struttura della tabella in memoria.
+possiamo quindi vedere la struttura della tabella in memoria, che viene mantenuta da ogni CPU core
 \subsubsection{x86 protected}
-Nella versione protected di x86, ogni entry non è altro che una coppia di maschere di unsigned long, le maschere di bit devono essere popolate secondo una certa regola perché è il firmware a guardare lì dentro all'arrivo di un interrupt. La descrizione è strutturata secondo questa regola:
-%immagine
-all'interno della maschera possiamo specificare un offset a 32 bit che dice a che indirizzo di memoria è presente il modulo che deve gestire l'interrupt (il selettore non è per forza è mappato a base 0). Abbiamo poi il DPL, ovvero il livello di privilegio per cui si può passare per la entry e quindi se siamo a livello 0 si può passare solo quando si è già kernel mode, mentre a livello 3 si possono far passare anche flussi user mode. Può accadere che se avviene una specifica trap venga portato a 0 il DPL, ma solo perché è avvenuto l'evento a priori. C'è poi un bit nella maschera, 1 o 0 nelle due descrizioni, indica se siamo in trap gate o interrupt gate:
+Nella versione protected di x86, ogni entry non è altro che una coppia di maschere di \texttt{unsigned long}, le maschere di bit devono essere popolate secondo una certa regola perché è il firmware a guardare lì dentro all'arrivo di un interrupt. La descrizione è strutturata secondo questa regola:
+\begin{figure}[!h]
+	\includegraphics[scale=0.2]{immagini/x86_protected_idt_entry.png}
+\end{figure}
+all'interno della maschera possiamo specificare un offset a 32 bit che dice a che indirizzo di memoria è presente il modulo che deve gestire l'interrupt (il selettore non è per forza mappato a base 0). Abbiamo poi il DPL, ovvero il livello di privilegio per cui si può passare per la entry e quindi se siamo a livello 0 si può passare solo quando si è già kernel mode, mentre a livello 3 si possono far passare anche flussi user mode. Può accadere che se avviene una specifica trap venga portato a 0 il DPL, ma solo perché è avvenuto l'evento a priori. C'è poi un bit nella maschera, 1 o 0 nelle due descrizioni, che indica se siamo in trap gate o interrupt gate:
 \begin{itemize}
 \item in un interrupt gate, quando parte il codice per la gestione il processore è settato su non interrompibile
 \item nel trap gate il processore è interrompibile
 \end{itemize}
 questo va deciso dal sotto-sistema di gestione.\\
-Nella IDT identifichiamo anche il segmento di memoria dove è presente l'iterrupt gate, la GDT viene acceduta per identificare il livello di protezione del gate. Molti segmenti sono comunque mappati sullo 0, quindi l'offset diventa comunque un indirizzo lineare, quindi possiamo identificare il displacement semplicemente mediante \&.
+Nella IDT identifichiamo anche il segmento di memoria dove è presente l'iterrupt gate, la GDT viene acceduta per identificare il livello di protezione del gate. Molti segmenti sono comunque mappati sullo 0, quindi l'offset diventa un indirizzo lineare, quindi possiamo identificare il displacement semplicemente mediante \&.
 \subsubsection{Long mode}
-Ogni entry ha una taglia pari al doppio, ma una parte non viene usata ed è marcata come riservata dai vendor. Ulteriormente, la parte addizionale serve per ampliare la possibilità di definire l'offset ed inoltre è stato introdotto un capo IST: Interrupt Stakc Table, che permette di dire una serie di cose ulteriori al fimrware che deve attivare il blocco di codice. Una delle cose fondamentali è che nel momento in cui attiviamo il blocco di codice, dobbiamo conoscere la stack area dove il codice deve eseguire.
-%immagine
-È interessante l'accesso all'indirizzo del gate: i gate sono mantenuti su segmenti codice, che hanno mapping di base 0 e quindi l'offset è l'indirizzo lineare. Le entry sono tali per cui l'offset è distribuito in diversi punti, quindi dobbiamo recuperare i punti e comporli in una maschera di bit
-%macro
-se abbiamo quindi un puntatore ad un gate descriptor, possiamo entrare nei campi dell'oggetto.\\L'Interrupt Stack Table permette di dire che quando vogliamo utilizzare una certa entry della tabella per passare il controllo ad un certo elemento nello stack, non è vero che il blocco di codice esegue nello stesso stack. Possiamo quindi dire che diversi inuterrupt possono essere legati ad eseguire in diverse stakc areas, con 3 bit aggiuntivi possiamo specificare le diverse aree e quindi di distribuire i diversi interrupt rispetto alle aree di memoria che questi possono toccare.\\Questo permette che sia possibile che se mentre si esegue un codice di gestione sia generata un'altra trap, quindi questa lavorerà su una stack area pulita e la gestione avviene in maniera corretta. Possiamo specificare dei codici, quindi con 3 bit non si può specificare l'indirizzo della stack area e la specifica è scritta nel TSS, ci sono quindi i puntatori per arrivare nelle stack areas, quindi il codice identifica quali degli elementi considerare.\\È il sotto-sistema di controllo che controlla questa entry ed inoltre salva delle informazioni come lo stack pointer per poter poi riprendere l'esecuzione. Le stack areas possono essere per-CPU e quindi ottimizzare il posizionamento in specifiche zone NUMA.\\Questo non c'è in protected mode, si associa lo stack del livello su cui si va in landing (tipicamente è il livello 0 del thread in esecuzione).
+Ogni entry ha una taglia pari al doppio, ma una parte non viene usata ed è marcata come riservata dai vendor. Ulteriormente, la parte addizionale serve per ampliare la possibilità di definire l'offset ed inoltre è stato introdotto un capo IST: Interrupt Stack Table, che permette di dire una serie di cose ulteriori al fimrware che deve attivare il blocco di codice. Una delle cose fondamentali è che nel momento in cui attiviamo il blocco di codice, dobbiamo conoscere la stack area dove il codice deve eseguire.
+\begin{figure}[!h]
+	\includegraphics[scale=0.2]{immagini/x86_long_idt_entry.png}
+\end{figure}
+È interessante l'accesso all'indirizzo del gate: i gate sono mantenuti su segmenti codice, che hanno mapping di base 0 e quindi l'offset è l'indirizzo lineare. Le entry sono tali per cui l'offset è distribuito in diversi punti, quindi dobbiamo recuperare i punti e comporli in una maschera di bit, secondo la seguente macro:
+\begin{lstlisting}
+#define HML_TO_ADRR(h,m,l)
+	((unsigned long) (l) | (unsigned long) (m) << 16 | 
+	(unsigned long) (h) << 32)
+
+....
+gate_desc *gate_ptr;
+
+gate_ptr = ....;
+
+HML_TO_ADRR(gate_ptr->offset_high, gate_ptr->offset_middle, gate_ptr->offset_low)
+\end{lstlisting}
+se abbiamo quindi un puntatore ad un gate descriptor, possiamo entrare nei campi dell'oggetto.\\L'Interrupt Stack Table permette di dire che quando vogliamo utilizzare una certa entry della tabella per passare il controllo ad un certo elemento nello stack, non è vero che il blocco di codice esegue nello stesso stack. Possiamo quindi dire che diversi interrupt possono essere legati ad eseguire in diverse stack areas, con 3 bit aggiuntivi possiamo specificare le diverse aree e quindi distribuire i diversi interrupt rispetto alle aree di memoria che questi possono toccare.\\Ciò permette che sia possibile che se mentre si esegue un codice di gestione venga generata un'altra trap, quindi questa lavorerà su una stack area pulita e la gestione avverrà in maniera corretta. Possiamo specificare dei codici, quindi con 3 bit non si può specificare l'indirizzo della stack area e la specifica è scritta nel TSS, ci sono quindi i puntatori per arrivare nelle stack areas, quindi il codice identifica quali degli elementi considerare.\\È il sotto-sistema di controllo che controlla questa entry ed inoltre salva delle informazioni come lo stack pointer per poter poi riprendere l'esecuzione. Le stack areas possono essere per-CPU e quindi ottimizzare il posizionamento in specifiche zone NUMA.\\Questo non è presente in protected mode, si associa lo stack del livello su cui si va in landing (tipicamente è il livello 0 del thread in esecuzione).
 \subsubsection{API in Linux per la IDT}
 Ci sono API per settare un elemento nella tabella IDT, le 3 API più interessanti sono
 \begin{itemize}
-\item \texttt{set\_trap\_gate}
-\item \texttt{set\_intr\_gate}
-\item \texttt{set\_system\_gate}
+\item \texttt{set\_trap\_gate(displacement, \&symbol\_name)}
+\item \texttt{set\_intr\_gate(displacement, \&symbol\_name)}
+\item \texttt{set\_system\_gate(displacement, \&symbol\_name)}
 \end{itemize}
-(slides) tutte le informazioni per i bit di controllo sono hard codati nella API, ad esempio sull'interrompibilità o l'accessibilità ai diversi livelli. Questo è per x86 protected mode.
-Su x86 protected ed in versioni di kernel più recenti abbiamo (slides), dove troviamo hard coded che la stack area usata è quella di livello 0.\\Su kernel 4 e 5 l'API è ancora più semplice per cui si fa una scrittura nativa sulla IDT (slides)
+tutte le informazioni per i bit di controllo sono hard codati nella API, ad esempio sull'interrompibilità o l'accessibilità ai diversi livelli. Questo è per x86 protected mode.
+Su x86 long ed in versioni di kernel più recenti abbiamo
+\begin{lstlisting}
+/* CODE SNIPPET FROM desc.h */
+
+/*
+ * This routine sets up an interrupt gate at directory privledge level 3.
+ */
+static inline void set_system_intr_gate(unsigned int n, void *addr)
+{
+	BUG_ON((unsigned)n > oxFF);
+	_set_gate(n, GATE_INTERRUPT, addr, 0x3, 0, __KERNEL_CS);
+}
+
+static inline void set_system_trap_gate(unsigned int n, void *addr)
+{
+	BUG_ON((unsigned)n > 0xFF);
+	_set_gate(n, GATE_TRAP, addr, 0x3, 0, __KERNEL_CS);
+}
+
+static inline void set_trap_gate(unsigned int n, void *addr)
+{
+	BUG_ON((unsigned)n > 0xFF);
+	_set_gate(n, GATE_TRAP, addr, 0, 0, __KERNEL_CS);
+}
+\end{lstlisting}
+dove troviamo hard coded che la stack area usata è quella di livello 0.\\Su kernel 4 e 5 l'API è ancora più semplice per cui si fa una scrittura nativa sulla IDT
+\begin{lstlisting}
+#define write_idt_entry(dt,entry,desc)
+	native_write_idt_entry(dt,entry,desc)
+	
+statci inline void native_write_idt_entry(gate_desc *dt, int entry, const gate_desc *gate){
+	memcpy(&idt[entry], gate, sizeof(*gate));
+}
+\end{lstlisting}
 \subsubsection{Entry riservate vs disponibili della IDT}
 L'attività che dobbiamo considerare quando parte uno degli elementi è il seguente:
 \begin{itemize}
@@ -3127,7 +3177,7 @@ L'attività che dobbiamo considerare quando parte uno degli elementi è il segue
 \end{itemize}
 tale error code viene generato dal sotto-sistema di controllo del processore e registrato nella stack area su cui viene eseguito il gestore.
 \end{itemize}
-L'error code è importante, in quanto fa capire perché la trap è accaduta e può essere importante usarlo nell'handler di gestione per identificare le attività che vanno svolte.\\L'allineamento della stack area quando vengono generati gli error codes è differente dalla stack area che si ha quando gli error code non vengono generati. In molti dgeli interrupt generati a livello software vengono generati degli errori per ri-allineare la stack area, in modo che lo smontaggio sia effettuato con una regola univoca
+L'error code è importante, in quanto fa capire perché la trap è accaduta e può essere importante usarlo nell'handler di gestione per identificare le attività che vanno svolte.\\L'allineamento della stack area quando vengono generati gli error codes è differente dalla stack area che si ha quando gli error code non vengono generati. In molti degli interrupt generati a livello software vengono generati degli errori per ri-allineare la stack area, in modo che lo smontaggio sia effettuato con una regola univoca
 \begin{itemize}
 \item generazione dello snapshot di CPU sulla stack area
 \item management dell'error code, per poter allineare la stack area così da smontare con una regola univoca
@@ -3136,15 +3186,33 @@ L'error code è importante, in quanto fa capire perché la trap è accaduta e pu
 \end{itemize}
 Ci sono quindi una serie di domande da fare, che se fossero davvero implementate come tali userebbero cicli macchina e quindi in sistemi moderni sono implementati in modo da evitarle per risparmiare cicli macchina, quindi la gestione degli interrupt è articolata.
 \subsection{Management degli handler modulari}
-Esiste un file entry.S che identifica dove sono presenti tutti i gate per accedere al kernel, c'era anche il concetto di additional dispatcher, per cui la prima fase per portare avanti la gestione degli interrupt faceva un'attività minimalissima in un blocco apposito per poi passare il controllo ad un blocco dedicato. Abbiamo che tipicamente c'era un additional dispatcher per fare delle attività comuni per la gestione degli interrupt a valle di un blocco di codice che ad esempio inseriva l'error codice fittizio (se non presente). Occorreva dire al dispatcher unico quale è la zona di codice da eseguire alla fine dell'esecuzione, avendo quindi questa architettura:
-%immagine
+Esiste un file \texttt{i386/kernel/entry.S} che identifica dove sono presenti tutti i gate per accedere al kernel, c'era anche il concetto di additional dispatcher, per cui la prima fase per portare avanti la gestione degli interrupt faceva un'attività minimalissima in un blocco apposito per poi passare il controllo ad un blocco dedicato. Abbiamo che tipicamente c'era un additional dispatcher per fare delle attività comuni per la gestione degli interrupt a valle di un blocco di codice che ad esempio inseriva l'error code fittizio (se non presente). Occorreva dire al dispatcher unico quale è la zona di codice da eseguire alla fine dell'esecuzione, avendo quindi questa architettura:
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/interrupt_dispatcher.png}
+\end{figure}
 il dispatcher genera quindi lo snapshot di CPU, per poi passare il controllo al gestore reale.\\C'è la necessità di collegare oggetti machine dependent (per fare lo snapshot di CPU) a codice che non lo è (l'handler può essere scritto in C) ed il link può essere fatto con asmlinkage oppure (traplinkage??).\\È possibile quindi che la stack area abbia due configurazioni differenti:
-%immagine
-in assenza dell'error code, abbiamo due allineamenti differenti perché servirebbe codice per gestire le due situazioni diverse e quindi si inserisce l'error code fittizio. Nella stack area, quando parte il blocco di codice, riusciamo anche a trovare l'informazione Return CS, potremmo quindi identificare se la trap è partita mentre eravamo modalità user o kernel a livello software, in base all'informazione di controllo e quindi fare attività differenti in base allo scenario.\\Il gestore di primo livello, in esempi datati:
-%snippets per i gestori datati
-In diverse implementazioni di Linux, il passaggio al dispatcher e poi all'handler attuale avveniva mediante dei salti, ma è possibile in configurazioni dell'x86 occorra farsi delle domande, tra cui ad esempio quale sia la stack area da vedere. Un'altra attività da fare è dovuta al fatto che questo tipo di passaggio fa si che si passi modo kernel e quindi occorre cambiare la page table per rispettare la page table isolation, quindi avevamo uno schema complesso del blocco di codice. Per evitare quindi un numero eccessivo di jump e sfruttare la località, visto che le istruzioni sono poche, si è deciso di unificare il blocco di codice compatto. Avremo quindi scenari in cui l'handler chiama direttamente l'handler senza passare per il dispatcher che in base alla trap fa delle cose senza farsi delle domande. Lo spashot dello stato della CPU che ritroviamo sulla stack area è un oggetto del tipo (figura sopra) che è una struttura dati differente in base alla modalità di x86, nel caso di 64 bit abbiamo registri in più che occupano più spazio nella stack area, il gestore che prende il controllo quali parametri prende: tipicamente al massimo 2
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/interrupt_stacks.png}
+	\label{interrupt_stacks}
+\end{figure}
+in assenza dell'error code, abbiamo due allineamenti differenti che renderebbe necessario avere del codice per gestire le due situazioni diverse e quindi si inserisce l'error code fittizio. Nella stack area, quando parte il blocco di codice, riusciamo anche a trovare l'informazione Return CS, potremmo quindi identificare se la trap è partita mentre eravamo modalità user o kernel a livello software, in base all'informazione di controllo e quindi fare attività differenti in base allo scenario.\\Il gestore di primo livello, in esempi datati, aveva la seguente struttura:
+\begin{lstlisting}
+ENTRY(overflow)
+	pushl $0
+	pushl $SYMBOL_NAME(do_overflow)
+	jmp error_code
+
+ENTRY(general_protection)
+	pushl $SYMBOL_NAME(do_general_protection)
+	jmp error_code
+	
+ENTRY(page_fault)
+	pushl $SYMBOL_NAME(do_page_fault)
+	jmp error_code
+\end{lstlisting}
+In diverse implementazioni di Linux, il passaggio al dispatcher e poi all'handler attuale avveniva mediante dei salti, ma è possibile che in configurazioni dell'x86 occorra farsi delle domande, tra cui ad esempio quale sia la stack area da vedere.\\Un'altra attività da fare è dovuta al fatto che questo tipo di passaggio fa si che si passi modo kernel e quindi occorre cambiare la page table per rispettare la page table isolation, quindi avevamo uno schema complesso del blocco di codice. Per evitare quindi un numero eccessivo di jump e sfruttare la località, visto che le istruzioni sono poche, si è deciso di unificare il blocco di codice compatto. Avremo quindi scenari in cui l'handler di primo livello chiama direttamente l'handler di secondo livello, senza passare per il dispatcher che in base alla trap fa delle cose senza farsi delle domande. Lo spashot dello stato della CPU che ritroviamo sulla stack area è un oggetto del tipo \ref{interrupt_stacks}, che è una struttura dati differente in base alla modalità di x86, nel caso di 64 bit abbiamo registri in più che occupano più spazio nella stack area.\\Il gestore che prende il controllo, tipicamente vuole al massimo 2 parametri:
 \begin{itemize}
-\item puntatore allo snapshot creato nello stack, quindi ad una struttura dati di quel tipo.
+\item puntatore allo snapshot creato nello stack, quindi ad una struttura dati di tipo \texttt{pt\_regs}
 \item magari anche l'error code, perché l'handler dovrebbe lavorare sullo snapshot di CPU ma conoscendo anche il perché è stato attivato. L'error code viene passato dall'handler di primo livello e tale codice è nella stack area (è sempre presente, in un caso è sintetico e scritto sempre dal firmware).
 \end{itemize}
 \subsection{Gestore del page fault in architettura Linux}
@@ -3153,8 +3221,7 @@ Il gestore è il seguente, che prende due parametri come detto
 \item uno è il \texttt{pt\_regs}
 \item l'altro è il codice di errore
 \end{itemize}
-%esempio
-Il tipo d fault viene specificato dai bit meno significativi. Questo oggetto rappresenta comunque un top half di gestione di una trap o interrupt, quindi si faranno delle attività per fari si che avvenga qualcosa di deferred dopo. Ma non è sempre così, gestori delle trap che portano ad eseguire in modo kernel quando originariamente eravamo user, non ha senso usare TBH programming perché stiamo interrompendo attività user e non kernel per cui questi gestori vengono eseguiti in maniera asincrona.\\Se invece arriva ad esempio un interrupt da timer, si esegue un top half e poi lascia il lesto del lavoro deferred.
+\texttt{do\_page\_fault(struct pt\_regs *regs, unsigned long error\_code)}\\Il tipo d fault viene specificato dai bit meno significativo. Questo oggetto rappresenta comunque un top half di gestione di una trap o interrupt, quindi si faranno delle attività per fari si che avvenga qualcosa di deferred dopo. Ma non è sempre così, ad esempio per gestori delle trap che portano ad eseguire in modo kernel quando originariamente eravamo user, non ha senso usare TBH programming perché stiamo interrompendo attività user e non kernel per cui questi gestori vengono eseguiti in maniera asincrona.\\Se invece arriva ad esempio un interrupt da timer, si esegue un top half e poi lascia il lesto del lavoro deferred.
 \subsection*{Esempi software}
 Introduzione nella IDT table di un nuovo gestore degli interrupt. Dobbiamo quindi trovare una entry libera della IDT table ed inserire un blocco di codice per gestire l'interruzione. Una volta trovata l'entry, si aggiorna il contenuto dell'entry per inserire un blocco di codice che viene lanciato quando si verifica quel tipo di istruzione. Il blocco di codice è quindi non presente nelle pagine kernel quando stiamo eseguendo user mode, viene allocato in maniera dinamica.\\Il gestore iniziale è scritto in maniera machine dependent:
 \begin{itemize}
@@ -3167,15 +3234,15 @@ Lo swapgs serve quando eravamo in modalità user e siamo passati a  kernel mode,
 \subsection{Installazione di una trap con page table isolation}
 Per installare la trap, dobbiamo sfruttare un handler già esistente:
 \begin{itemize}
-\item abbiamo la IDT ed una entry che porta su un blocco di codice di primo livello alla fine della cui arriverò sull'handler.
+\item abbiamo la IDT ed una entry che porta su un blocco di codice di primo livello alla fine della quale arriverò sull'handler.
 \item nel caso della patch pti per la sicurezza, la parte della IDT è visibile perché sennò il codice non potrebbe essere attivato dal sotto-sistema di controllo, al massimo ciò che non è visibile è l'handler finale
 \end{itemize} 
-Quindi come installiamo un oggetto su memoria non visibile? Occorre prendere un oggetto già presente, la CALL va poi ridirezionata verso un gestore presente all'interno del mio modulo kernel.\\Occorre quindi fare binary patching, per cui se so da quale entry voglio entrare devo
+Quindi come installiamo un oggetto su memoria non visibile? Occorre prendere un oggetto già presente, la CALL va poi ridirezionata verso un gestore presente all'interno del mio modulo kernel.\\Occorre quindi fare binary patching, per cui se so da quale entry voglio utilizzare devo
 \begin{itemize}
 \item reperire l'indirizzo di memoria
 \item identificare la CALL che porta sul gestore effettivo della trap, cambiare quella
 \end{itemize}
-quando analizziamo le CALL, possiamo vedere se il target su cui arriviamo è noto, quindi devo conoscere il modulo dell'indirizzo di memoria e quando troviamo quella CALL sappiamo che è quella da riscrivere. Per reperire l'indirizzo possiamo ad esempio usare kprobing, per capire dove è poisizionato il gestore effettivo della trap, quindi poi ridirezioniamo la CALL verso il nostro gestore.
+quando analizziamo le CALL, possiamo vedere se il target su cui arriviamo è noto, quindi devo conoscere il modulo dell'indirizzo di memoria e quando troviamo quella CALL sappiamo che è quella da riscrivere. Per reperire l'indirizzo possiamo ad esempio usare kprobing, per capire dove è posizionato il gestore effettivo della trap, quindi poi ridirezioniamo la CALL verso il nostro gestore.
 \subsubsection*{Esempio software}
 Abbiamo un handler che dobbiamo cercare di installare, possiamo fare diverse cose cui ottenere l'indirizzo di una funzione tramite kprobing. La entry 255 è usata per gli interrupt spuri per molte versioni del kernel, in un for analizziamo se troviamo nel codice il byte "0xE8", ovvero una CALL in x86. Trovata una call, dobbiamo capire dove sta puntando la CALL, dobbiamo prendere i byte +1, +2, +3 e +4 per vederlo (in quanto il primo byte rappresenta la CALL). Nella CALL l'offset è relativo alla posizione della CALL, ma occorre anche conoscere l'indirizzo della CALL a cui va sommato l'offset e quindi l'indirizzo risultante viene comparato con quello che è stato trovato facendo kprobing. Se è quella giusta, abbiamo un match found e cambiamo il codice
 \begin{itemize}
@@ -3197,36 +3264,74 @@ il gestore a livello kernel può guardare quel valore e quindi possiamo identifi
 \section{Ancora su IPI}
 Quando un processore viene colpito da un IPI abbiamo due possibilità
 \begin{itemize}
-\item l'esecuzione dell'IPI va eseguita in maniera immediata perché un altro processore lo sta aspettando (il flusso di esecuzione è bloccato). Abbiamo immediate handling in alcuni casi per l'esecuzione di funzioni cross-cpu.
+\item l'esecuzione dell'IPI va effettuata in maniera immediata perché un altro processore lo sta aspettando (il flusso di esecuzione è bloccato). Abbiamo immediate handling in alcuni casi per l'esecuzione di funzioni cross-cpu.
 \item altro caso è che non si aspetti il completamento del lavoro, ad esempio se si va in panic intanto molla la cpu che segnala e non aspetta gli altri
 \item un altro caso è avvisare gli altri di resettare il tlb
-\item ancora, di rischedulare cosa fa la cpu in quanto può essere un thread in coda da un'altra cpu
+\item ancora, di rischedulare cosa fa la cpu in quanto può essere messo un thread in coda da un'altra cpu
 \end{itemize}
-Gli esempi più interessanti in Linux prevede che ci siano diversi lettori
+Gli esempi più interessanti in Linux prevedono che ci siano diversi lettori
 \begin{itemize}
 \item \texttt{CALL\_FUNCTION\_VECTOR}, abbiamo diverse API per fare questo in Linux
 \begin{itemize}
 \item \texttt{smp\_call\_function()}
 \item \texttt{call\_function\_interrupt()}
 \end{itemize}
-\item \texttt{RESCHEDULE\_VECTOR}: si chiama l'interrupt quando è necessario che una cpu effettui un reschedule perché abbiamo inserito un thread nella coda di quella cpu e va schedulato
-\item \texttt{INVALIDATE\_TLB\_VECTOR}
+si invia a tutte le CPU meno che al sender, forzando tali CPU ad eseguire una funzione passata dal sender.\\L'iterrupt handler corrispondente è la seconda API. Tipicamente, questo interrupt è inviato a tutte le CPU eccetto quella che esegue la chiamata alla prima API
+\item \texttt{RESCHEDULE\_VECTOR}: si chiama l'interrupt quando è necessario che una cpu effettui un reschedule perché abbiamo inserito un thread nella coda di quella cpu e va schedulato, si usa l'handler \texttt{reschedule\_interrutp()}
+\item \texttt{INVALIDATE\_TLB\_VECTOR}, usato per dire a tutte le CPU di invalidare il loro TLB, l'handler corrispondente è \texttt{invalidate\_interrupt()}
 \end{itemize}
 L'API attuale della IPI è la seguente
 \begin{itemize}
 \item \texttt{send\_IPI\_all()}: viene mandata a tutti, quindi compreso la cpu sorgente
 \item \texttt{send\_IPI\_allbutself()}
 \item \texttt{send\_IPI\_self()}
+\item \texttt{send\_IPI\_mask()}
 \end{itemize}
 \subsection{Sequenzializzazione della gestione degli IPI}
 C'è la necessità di sequenzializzare perché magari mentre uso un IPI dico ad una cpu di fare qualcosa ma nel mentre aspetto e quindi serve la necessità di dire che qualcuno passa prima, altrimenti l'altro potrebbe dire a me di fare qualcosa ed aspettarmi.\\Serve quindi questo meccanismo, a livello modellistico è necessario quando gestendo gli IPI occorre gestire una struttura condivisa, l'informazione scritta nella struttura deve avere validità finché il protocollo non è finito. Usiamo diverse locazioni di memoria per scrivere informazioni che non possono essere usati dagli altri, è quello che accade in \texttt{smp\_call\_function()}, l'informazione che la cpu colpita deve conoscere per eseguire è stata scritta in shared memory.\\ Lo schema è il seguente:
-%immagine dello schema
-supponiamo di avere 2 cpu, il core 0 ha deciso di chiamare una API del kernel per far si che una funzione sia chiamata da un altra cpu, deve quindi usare i registri LAPIC per far si che la notifica arrivi. Prima di questo, il gestore dell'interrupt si scrive in un'area di memoria condivisa le informazioni per il gestore dell'interrupt. L'area di memoria è del core0, finché non siamo sicuri che le attività di gestione dell'IPI siano completate, per evitare che altri vi scrivano; si usa quindi un lock per prendere l'IPI.
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/ipi_sequentialization.png}
+\end{figure}
+supponiamo di avere 2 cpu, il core 0 ha deciso di chiamare una API del kernel per far si che una funzione sia chiamata da un altra cpu, deve quindi usare i registri LAPIC per far si che la notifica arrivi. Prima di questo, il gestore dell'interrupt si scrive in un'area di memoria condivisa le informazioni per il gestore l'altro gestore dell'interrupt.\\L'area di memoria è del core0, finché non siamo sicuri che le attività di gestione dell'IPI siano completate, deve evitare che altri vi scrivano; si usa quindi un lock per prendere l'IPI.
 \subsection{Altri aspetti}
-%lisato della smp
-passiamo fra i parametri anche un comando, il wait che è utile per dire se io che sto eseguendo la funzione devo anche aspettare chi avviso o no. C'è poi un warning on che dice che se si entra nel kernel in maniera non interrompibile, se il lock è già stato preso qualcuno mi manda una richiesta di interrompibilità e non la sento.\\ C'è poi l'IPI di reschedule, dove diciamo ad una cpu di rischedulare un thread ad altra priorirà che ho appena risvegliato e messo sulla sua run queue. Quando avvero, il gestore dell'interrupt deve solo marcare il thread come preemptabile e quando passa in safe place chiama la schedule. La correttezza è data da queste istruzioni:
-%istruzioni 
-abbiamo un set di API che permette di gestire la preemption, lavoriamo sul contatore atomico che permette di lavorare sulle richieste di preemption (??).\\Altri aspetti di performance riguardano il fatto che la smp esegue con gli interrupt permessi ma se il kernel è ben strutturato, la funzione non viene ritardata, ma deve comunque essere non-preemptible. In versioni più recenti del kernel la struttura è anche esemplificata per quando si chiama la smp call si ci mette prima non-preemptible e poi preemptible così che passando per un safe palce non si rilascia la cpu.\\Attenzione a come si usano queste API, ci sono dei costi legati alle sezioni critiche ed anche alle attese ed è da considerare in maniera corretta quando si fa l'analisi del codice del kernel per magari progettarne nuovi pezzi.
+Abbiamo quindi un comportamento simile:
+\begin{lstlisting}
+int smp_call_function(void(*_func)(void*info), void*_info, int wait)
+{
+	....
+	/* Can deadlock when called with interrupts disabled */
+	WARN_ON(irqs_disabled());
+	
+	snip_lock_bh(&call_lock);
+	atomic_set(&scf_started, 0);
+	atomic_set(&scf_fnished, 0);
+	func = _func;
+	info = _info;
+	
+	for_eah_online_cpu(i)
+		os_write_file(cpu_data[i], ipi_pipe[1], "C", 1);
+		
+	while(atomic_read(&scf_finished) != cpus)
+		barrier();
+	
+	if(wait)
+		while(atomic_read(&scf_finished) != cpus)
+			barrier();
+	
+	spin_unlock_bh(&call_lock);
+	return 0;
+}
+\end{lstlisting}
+passiamo fra i parametri anche un comando, il wait che è utile per dire se io che sto eseguendo la funzione devo anche aspettare chi avviso o no. C'è poi un warning on che dice che se si entra nel kernel in maniera non interrompibile, se il lock è già stato preso qualcuno mi manda una richiesta di interrompibilità e non la sento.\\ C'è poi l'IPI di reschedule, dove diciamo ad una cpu di rischedulare un thread ad altra priorirà che ho appena risvegliato e messo sulla sua run queue. Quando avverto, il gestore dell'interrupt deve solo marcare il thread come preemptabile e quando passa in un safe place chiama la schedule.\\Abbiamo un set di API che permette di gestire la preemption, lavoriamo sul contatore atomico che permette di lavorare sulle richieste di preemption 
+\begin{itemize}
+	\item \texttt{preempt\_enable()}
+	\item \texttt{preempt\_disable()}
+	\item \texttt{preempt\_enable\_noresched()}
+	\item \texttt{preempt\_check\_reshed()}
+	\item \texttt{preempt\_count()}
+	\item \texttt{put\_cpu()/get\_cpu()}
+\end{itemize}
+Altri aspetti di performance riguardano il fatto che la smp esegue con gli interrupt permessi ma se il kernel è ben strutturato, la funzione non viene ritardata, ma deve comunque essere non-preemptible. In versioni più recenti del kernel la struttura è anche esemplificata in modo tale che quando si chiama la smp call si ci mette prima non-preemptible e poi preemptible così che passando per un safe palce non si rilascia la cpu.\\Attenzione a come si usano queste API, ci sono dei costi legati alle sezioni critiche ed anche alle attese ed è da considerare in maniera corretta quando si fa l'analisi del codice del kernel per magari progettarne nuovi pezzi.
 \subsection*{Esempio di utilizzo della \texttt{smp\_call\_function}}
 Montiamo un modulo, all'atto del montaggio il thread chiama una funzione sugli altri cpu core per
 \begin{itemize}
@@ -3241,17 +3346,17 @@ Anche in questo caso, c'è una vastità di cose da dire, partiamo dal capirne i 
 \item acquisizioni dati da un oggetto di I/O
 \item scrittura di dati su un oggetto di I/O
 \end{itemize}
-quindi uno dei concetti fondamentali è l'oggetto di I/O: questo può essere tante cose, ad esempio un file ma non è l'unica possibilità. La cosa interessante è che se supponiamo che l'oggetto sia un file, per eseguire le operazioni su file dobbiamo girare delle istruzioni macchina e quelle istruzioni non possono che toccare informazioni che sono nella memoria di lavoro. Il che vuol dire che questo oggetto deve essere rappresentato in RAM, quindi ci deve essere una struttura dati in RAM, ma il concetto di file in maniera più ampia  è tale per cui al power off del sistema abbiamo il file su qualche dispositivo di memoria di massa: quindi, il lavoro è tale per cui dobbiamo considerare il tipo di rappresentazione da considerare per l'oggetto di I/O su cui si lavora, quindi anche il file system su cui si lavora. Abbiamo tipicamente più rappresentazioni:
+quindi uno dei concetti fondamentali è l'oggetto di I/O: questo può essere tante cose, ad esempio un file ma non è l'unica possibilità. La cosa interessante è che se supponiamo che l'oggetto sia un file, per eseguire le operazioni su file dobbiamo girare delle istruzioni macchina e quelle istruzioni non possono che toccare informazioni che sono nella memoria di lavoro. Il che vuol dire che questo oggetto deve essere rappresentato in RAM, quindi ci deve essere una struttura dati in RAM, ma il concetto di file in maniera più ampia è tale per cui al power off del sistema abbiamo il file su qualche dispositivo di memoria di massa: quindi, il lavoro è tale per cui dobbiamo considerare il tipo di rappresentazione da considerare per l'oggetto di I/O su cui si lavora, quindi anche il file system su cui si lavora. Abbiamo tipicamente più rappresentazioni:
 \begin{itemize}
 \item in RAM: una rappresentazione piena o parziale del file system. Piena nel senso che il file system può essere mantenuta tutta rappresentata in RAM
-\item on device: i dati possono essere originariamente presenti su memoria di massa e poi caricati in RAM. Qui abbiamo rappresentazione della struttura e del contenuto di un file system, magari non aggiornata. Se consideriamo che l'hard drive è ad un'altra parte rispetto alla RAM può darsi che alcune informazioni non siano ancora stati portati in memoria di massa. Può essere che si abbia un file system non persistente, perché magari vive solo in RAM.
+\item on device: i dati possono essere originariamente presenti su memoria di massa e poi caricati in RAM. Qui abbiamo rappresentazione della struttura e del contenuto di un file system, magari non aggiornata. Se consideriamo che l'hard drive è da un'altra parte rispetto alla RAM può darsi che alcune informazioni non siano ancora state portate in memoria di massa. Può essere che si abbia un file system non persistente, perché magari vive solo in RAM.
 \end{itemize}
 Un'altra cosa importante è discriminare l'accesso e la manipolazione di questi oggetti:
 \begin{itemize}
 \item livello FS independent: invochiamo l'operazione di I/O ad un livello l0 indipendente dal file system
-\item livello FS dependent: può darsi che il layer l0 si appoggi su un layer l1 che dipende daò file system
+\item livello FS dependent: può darsi che il layer l0 si appoggi su un layer l1 che dipende dal file system
 \end{itemize}
-quindi una stessa operazione può essere implementata in maniera diversa, possiamo avere diversi layer fatti in maniera diversa e quindi avere un disaccoppiamento nel come le cose sono fatte dal come vengono invocate. Chi si accorge di dover lavorare in un modo o in un altro: il layer se ne accorge in maniera automatica: per lavorare su un oggetto di I/O, occorre avere aperto una sessione di I/O, lavoriamo in I/O usando un codice di un canale ed è questo che identifica la sezione che ci porta verso lo specifico oggetto di I/O.\\Vediamo le varie connessioni:
+quindi una stessa operazione può essere implementata in maniera diversa, possiamo avere diversi layer fatti in maniera diversa e quindi avere un disaccoppiamento nel come le cose sono fatte dal come vengono invocate. Chi si accorge di dover lavorare in un modo o in un altro: il layer se ne accorge in maniera automatica, infatti per lavorare su un oggetto di I/O, occorre avere aperto una sessione di I/O, lavoriamo in I/O usando un codice di un canale ed è questo che identifica la sessione che ci porta verso lo specifico oggetto di I/O.\\Vediamo le varie connessioni:
 \begin{itemize}
 \item ogni oggetto di I/O è rappresentato in RAM mediante una specifica struttura dati;
 \item ogni oggetto mantiene un reference alle istanze di moduli per le sue operazioni: ogni oggetto referenzia una tabella di function pointer differenti da quella di ogni altro oggetto di I/O per funzioni differenti. Un oggetto referenzia quindi una tabella di function pointer che permette di identificare dove sono posizionate le operazioni per quello specifico oggetto. Quindi, quando tocchiamo lo specifico oggetto, questo è collegato ad una tabella di function pointers e si invoca per l'operazione chiamata uno di quei function pointers;
@@ -3264,23 +3369,25 @@ Il software di primo livello è FS-independent e tutto ciò che è a valle dei f
 \item sockets
 \end{itemize} 
 possiamo chiamare read/write su socket, che sono le stesse che chiamiamo sui file ma i drivers saranno differenti a seconda dell'oggetto di I/O.\\Quando chiamiamo un'operazione su un oggetto, il blocco di codice può essere implementato per interagire con l'hardware: è tipico quando dobbiamo caricare i dati in memoria dall'hard drive, per portarli nella rappresentazione in-memory dell'oggetto.\\Abbiamo il seguente schema per come è strutturato un VFS 
-%immagine
-gli oggetti possono essere disparati, possiamo quindi scrivere i nostri driver per pilotare operazioni su questi oggetti. Il driver può fare solo operazioni in memory, ma anche toccare dei dispositivi fisici. La cosa importante è struttura il tutto in maniera compatibile con il layer di primo livello.
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/vfs_schema.png}
+\end{figure}
+gli oggetti possono essere disparati, possiamo quindi scrivere i nostri driver per pilotare operazioni su questi oggetti. Il driver può fare solo operazioni in memory, ma anche toccare dei dispositivi fisici. La cosa importante è strutturare il tutto in maniera compatibile con il layer di primo livello.
 \subsection{Gestione dei file}
 Quali sono i moduli software necessari per lavorare su un file in un file system? Abbiamo bisogno di 4 cose fondamentali
 \begin{itemize}
-\item una funzione per leggere dei metadati del file, per capire se l'oggetto è presente sull'hard drive. Ma anche questi sono sull'hard drive, quindi servono altri metadati: ad esempio l'inode avrà dei metadati che dicono se l'inode esiste. C'è un superblock, che è l'oggetto che va letto per primo per capire quanti e quali inode sono presenti nel file system. Se non partiamo dalla lettura del superblock non possiamo operare sul file system
-\item Detto questo, servono operazioni per poter leggere blocchi dall'hard drive e portarli in memoria
-\item una funzione per flushare i blocchi aggiornati sul'hard drive visto che è file system vero e proprio
-\item un set di moduli software per lavorare effettivamente sul file quando il file è in memoria. La scrittura di un dato correntemente in buffer cache su fanno su altri moduli.
+\item una funzione per leggere dei metadati del file, per capire se l'oggetto è presente sull'hard drive. Ma anche questi sono sull'hard drive, quindi servono altri metadati: ad esempio l'inode avrà dei metadati che dicono se l'inode esiste. C'è un \textbf{superblock}, che è l'oggetto che va letto per primo per capire quanti e quali inode sono presenti nel file system. Se non partiamo dalla lettura del superblock non possiamo operare sul file system
+\item detto questo, servono operazioni per poter leggere blocchi dall'hard drive e portarli in memoria
+\item una funzione per flushare i blocchi aggiornati sul'hard drive visto che è un file system vero e proprio
+\item un set di moduli software per lavorare effettivamente sul file quando il file è in memoria. La scrittura di un dato correntemente in buffer cache verrò fatta su altri moduli.
 \end{itemize}
-Questa lista permette di introdurre due categorie di driver, quindi serve un driver per un tipo di file system ed uno per un altro. Abbiamo quindi che le prime 3 operazioni sono collegate al concetto di \textbf{block device driver}: questo è l'insieme dei moduli software che ci permette di interagire con un dispositivo a blocchi, quindi dove possiamo caricare/scaricare blocchi di informazioni. Il 4° punto introduce invece il concetto di  reale operazione sul file, che è in memoria e viene toccato con i \textbf{char device driver}.\\All'interno di tutta la struttura del VFS il punto nodale da considerare è quello che ci permette di determinare quale sia l'actual driver da usare a seconda della system call chiamato dal software di livello operativo.
-\section{Tipi di file system in Linux}
-Dobbiamo poter leggere superblocchi di diversi file system, quindi occorrono funzioni diverse in base al tipo di file system su cui lavorare. Linux mette a disposizione funzioni di lettura di super blocco differenti, quando se ne invoca una specifica per il file system, la funzione considera un block device driver che permette alla funzione di acquisire il super blocco presente nel dispositivo. Se il super blocco matcha rispetto a ciò che la funzione si aspetta, il file system è pilotabile da Linux, altrimenti no. È come dire che chiamiamo la lettura di un super-blocco di un file system di tipo A, se non matcha con ciò che ho sull'hard drive tento con un super-blocco di tipo B e così via. Ciò è cosa accade quando si fa il boot del file system, il thread init cerca di montare il root file system applicativo, che è su un dispositivo indicato al boot del kernel.\\La funzione, oltre che usare il driver per acquisire dati dal dispositivo ha anche il compito di rappresentare il super-blocco associato al dispositivo in memoria in modo da poter interagire con i file. In alcuni casi, in Linux, le funzioni per la gestione dello specifico file system sono montate nel kernel come moduli e quindi è possibile che si amplino il numero di file system gestibili.
+Questa lista permette di introdurre due categorie di driver, quindi serve un driver per un tipo di file system ed uno per un altro. Abbiamo quindi che le prime 3 operazioni sono collegate al concetto di \textbf{block device driver}: questo è l'insieme dei moduli software che ci permette di interagire con un dispositivo a blocchi, quindi dove possiamo caricare/scaricare blocchi di informazioni. Il 4° punto introduce invece il concetto di  reale operazione sul file, che è in memoria e viene toccato con i \textbf{char device driver}.\\All'interno di tutta la struttura del VFS il punto nodale da considerare è quello che ci permette di determinare quale sia l'actual driver da usare a seconda della system call chiamata dal software di livello operativo.
+\subsection{Tipi di file system in Linux}
+Dobbiamo poter leggere superblocchi di diversi file system, quindi occorrono funzioni diverse in base al tipo di file system su cui lavorare. Linux mette a disposizione funzioni di lettura di super blocco differenti, quando se ne invoca una specifica per il file system, la funzione considera un block device driver che permette alla funzione di acquisire il super blocco presente nel dispositivo. Se il super blocco matcha rispetto a ciò che la funzione si aspetta, il file system è pilotabile da Linux, altrimenti no. È come dire che chiamiamo la lettura di un super-blocco di un file system di tipo A, se non matcha con ciò che ho sull'hard drive tento con una funzione per la lettura di un super-blocco di tipo B e così via.\\Ciò è cosa accade quando si fa il boot del file system, il thread init cerca di montare il root file system applicativo, che è su un dispositivo indicato al boot del kernel.\\La funzione, oltre che usare il driver per acquisire dati dal dispositivo ha anche il compito di rappresentare il super-blocco associato al dispositivo in memoria in modo da poter interagire con i file. In alcuni casi, in Linux, le funzioni per la gestione dello specifico file system sono montate nel kernel come moduli e quindi è possibile che si amplino il numero di file system gestibili.
 \subsection{Magic number}
-Il magic number è un concetto generale che permette di identificare la forma delle informazioni: anche per i file applicativi si usa, se ad esempio abbiamo un file F che deve contenere delle informazioni con una certa struttura, la sequenza di byte inizia con una certa regola che è il magic number. Questo è presente anche nel file system; il file system è su un hard drive, rappresenta quindi una sequenza di blocchi e quindi considerando l'hard drive l'inseme di blocchi in maniera ordinata rappresenta una sequenza ordinata per cui possiamo avere un magic number all'inizio e che viene quindi controllato dalla funzione che controlla il super-blocco. Possiamo anche fare l'operazione col comando \texttt{file}: possiamo estrarre il magic number di un dispositivo, tutti i device nel VFS sono visti come file e quindi la sequenza di informazioni presenti nel blocco sono identificati in un file che tipicamente sono nella directory \texttt{/dev}; il comando legge quindi il magic number e facendo matching in un file restituisce la struttura del file system presente nel device.
+Il magic number è un concetto generale che permette di identificare la forma delle informazioni: anche per i file applicativi si usa, se ad esempio abbiamo un file F che deve contenere delle informazioni con una certa struttura, la sequenza di byte inizia con una certa regola che è il magic number. Questo è presente anche nel file system; il file system è su un hard drive, rappresenta quindi una sequenza di blocchi e considerando l'hard drive come l'inseme di blocchi in maniera ordinata possiamo avere un magic number all'inizio e che viene quindi controllato dalla funzione che controlla il super-blocco. Possiamo anche fare l'operazione col comando \texttt{file} (flag -s per i file speciali): possiamo estrarre il magic number di un dispositivo, tutti i device nel VFS sono visti come file e quindi la sequenza di informazioni presenti nel blocco sono identificati in un file che tipicamente sono nella directory \texttt{/dev}; il comando legge quindi il magic number e facendo matching in un file restituisce la struttura del file system presente nel device.
 \subsection{RAM file system}
-È un file system senza rappresentazione su un dispositivo di memoria di massa, quindi è una collezione di oggetti che è solo in RAM e quindi i driver interagiscono solo con la memoria. Se il FS deve poter esistere, in memoria devo comunque avere dei meta-dati basici in memoria e quindi serve comunque una funzione di lettura del super-blocco del file system, quindi internamente la funzione non fa altro che istanziare il file system in RAM leggendo il super-blocco, in particolare alla versione iniziale del file system, che ha solo la root a cui agganciare diversi elementi su cui lavorare.\\Su Linux, ne abbiamo alcuni
+È un file system senza rappresentazione su un dispositivo di memoria di massa, quindi è una collezione di oggetti che è solo in RAM e quindi i driver interagiscono solo con la memoria. Se il FS deve poter esistere, in memoria occorre comunque avere dei meta-dati basici in memoria e quindi serve comunque una funzione di lettura del super-blocco del file system, quindi internamente la funzione non fa altro che istanziare il file system in RAM leggendo il super-blocco, in particolare alla versione iniziale del file system, che ha solo la root a cui agganciare diversi elementi su cui lavorare.\\Su Linux, ne abbiamo alcuni
 \begin{itemize}
 \item \texttt{/proc}
 \item \texttt{/sys}
@@ -3291,59 +3398,224 @@ Il rootfs è lo strumento con cui in Linux possiamo creare una directory radice 
 \item \texttt{init\_rootfs()}: il file system è gestibile perché da qualche parte abbiamo identificato la funzione di lettura del suo super-blocco. Qui diciamo a Linux dove la funzione di lettura del superblocco è presente, che verrà poi letta più avanti. 
 \item \texttt{init\_mount\_tree()}
 \end{itemize}
-Possiamo anche configurare Linux evitando di usare la mnt\_init, perché mandato in startup le funzioni del kernel sono già codificate.
+Possiamo anche configurare Linux evitando di usare la \texttt{mnt\_init}, perché mandato in startup le funzioni del kernel sono già codificate.
 \subsection{Strutture dati del file system}
 Abbiamo una struttura che mantiene la descrizione di un file system, che è in una lista. Ci sono diversi campi
-%copia della struttura
-abbiamo il nome del file system, il puntatore a funzione read\_super identifica la funzione per la lettura del super-blocco. Nella lista ci sono tutti i FS gestibili.\\In versioni più recenti la struttura è stata riorganizzata così:
-%altra struttura
-la funzione per identificare il super-blocco si chiama mount, passiamo un const char* che rappresenta il dispositivo dove montare il FS.\\Per gestire la lista, è necessario una API per inserire elementi in lista per cui abbiamo\\ \texttt{register\_file\_system(...)}\\ per quanto riguarda rootfs, la tabella corrispondente è già in memoria anche se non ancora in lista, allo startup si chiama la funzione passando il pointer a tale variabile quindi da quel momento in poi si può usare il root file system.\\Quindi, la \texttt{init\_rootfs} ha la seguente struttura
-%codice dalle slides
+\begin{lstlisting}
+struct file_system_type{
+	const char *name;
+	int fs_flags;
+	.....
+	struct super_block * (*read_super)(struct super_block *, void *, int);
+	struct module *owner;
+	struct file_system_type *next;
+	struct list_head fs_supers;
+	.....
+}
+\end{lstlisting}
+abbiamo il nome del file system, il puntatore a funzione \texttt{read\_super} che identifica la funzione per la lettura del super-blocco. Nella lista ci sono tutti i FS gestibili.\\In versioni più recenti la struttura è stata riorganizzata così:
+\begin{lstlisting}
+struct file_system_type{
+	const char *name;
+	int fs_flags;
+	...
+	...
+	struct dentry * (*mount)(struct file_system_type *, int, const char *, void *);
+	void (*kill_sb) (struct super_block *);
+	struct module *owner;
+	struct file_system_type *next;
+	...
+	...
+}
+\end{lstlisting}
+la funzione per identificare il super-blocco si chiama \texttt{mount}, passiamo un \texttt{const char*} che rappresenta il dispositivo dove montare il FS.\\Per gestire la lista, è necessario una API per inserire elementi in lista per cui abbiamo\\ \texttt{int register\_file\_system(struct file\_system\_type *)}\\ per quanto riguarda rootfs, la tabella corrispondente è già in memoria anche se non ancora in lista, allo startup si chiama la funzione passando il pointer a tale variabile quindi da quel momento in poi si può usare il root file system.\\Quindi, la \texttt{init\_rootfs} ha la seguente struttura
+\begin{lstlisting}
+int __init init_rootfs(void){
+	...
+	register_filesystem(&rootfs\_fs\_type);
+	...
+}
+\end{lstlisting}
 la variabile è già presente nell'immagine del kernel, nelle ultime release di Linux la cosa più importante è sempre registrare l'elemento nella tabella che permette di avere l'uso del file system disponibile.
-%kernel 4.xx
+\begin{lstlisting}
+static struct file_system_type root_fs_type = {
+	.name		= "rootfs",
+	.mount		= rootfs_mount,
+	.kill_sb	= kill_litter_super,
+};
+int __init init_rootfs(void)
+{
+	int err = register_filesystem(&root_fs_type);
+	
+	if(err)
+		return err;
+	
+	if(IS_ENABLED(CONFIG_TMPFS) && !saved_root_name[0] &&
+		(!root_fs_names || strstr(root_fs_names, "tmpfs")){
+		err = shmem_init();
+		is_tmpfs = true;
+	} else{
+		err = init_ramfs_fs();
+	}
+
+	if (err)
+		unregister_filesystem(&root_fs_type);
+	return err;
+}
+\end{lstlisting}
 L'informazione della lista viene esposta dal file system all'interno di uno pseudo-file che è \textbf{/proc/filesystems}: alcuni FS sono marcati come "nodev", quelli non marcati sono quelli che quando montati hanno la loro immagine sul dispositivo e quindi veri e propri mentre gli altri sono volatili.
 \subsection{Creazione e montaggio dell'istanza di Rootfs}
 Le strutture dati per rappresentare in RAM il tutto sono 4, in Linux
 \begin{itemize}
-\item \texttt{vfsmount}: chi è il parent del file system. Questo perché quando lavoriamo su un FS è perché lo abbiamo montato su uno specifico punto
+\item \texttt{vfsmount}: chi è il parent del file system. Questo perché quando lavoriamo su un FS lo abbiamo montato su uno specifico punto
 \item \texttt{super\_block}: mantiene informazioni basiche sul FS, quindi è adeguata per lo specifico FS
 \item \texttt{inode}: metadati basici associati ad un oggetto di I/O su un file system POSIX, abbiamo ad esempio i permessi di accesso. In un inode non abbiamo il nome di un oggetto di I/O, in quanto questo può avere più di un nome (gli hardlinks) ma l'inode è unico e questo è sconveniente quando dobbiamo scegliere il percorso a partire dalla radice.
 \item \texttt{dentry}: dice qual è il nome dell'oggetto di I/O, quindi quale abbiamo usato per arrivare a lavorare sull'oggetto
 \end{itemize}
-I primi due elementi sono mantenute in RAM associate ad un file system in maniera univoca, quindi una coppia per ogni FS su cui effettivamente eseguiamo le operazioni.\\Le altre due sono una coppia per ogni oggetto di I/O di un dato file system su cui stiamo lavorando, quindi nel momento in cui cominciamo a lavorare un oggetto di I/O carichiamo la coppia di struct.
-\subsection{Dettagli sulle strutture dati}
+I primi due elementi sono mantenuti in RAM associati ad un file system in maniera univoca, quindi una coppia per ogni FS su cui effettivamente eseguiamo le operazioni.\\Le altre due sono una coppia per ogni oggetto di I/O di un dato file system su cui stiamo lavorando, quindi nel momento in cui cominciamo a lavorare un oggetto di I/O carichiamo la coppia di struct in memoria.
+\subsubsection{Dettagli sulle strutture dati}
 Questi sono alcuni dettagli delle strutture dati
-%listato della vsfmount
-Abbiamo ad esempio un puntatore ad una stessa tabella, che è il parent ovvero il FS a cui abbiamo agganciato questo stesso FS. C'è poi un puntatore ad una tabella super-blocco, così come anche alle altre due informazioni. C'è poi la lista di tutti gli elementi di cui il FS è parent, in quanto può essere possibile che siano stati montati altri FS sotto quello corrente.\\In versioni più recenti è stata compattata
-%versione recente
-Puntiamo alla dentry dell'elemento radice del file system, abbiamo eliminato tutti i collegamenti perché tali collegamenti sono stati implementati in una struttura dati più flessibile per gestire il concetto di namespace in quanto nel momento in cui si lavora sui file system abbiamo la possibilità di organizzare la vista degli oggetti di I/O con i namespaces, uno dei più interessanti è /mnt in Linux: è uno spazio di nomi dove possiamo confinare le operazioni di montaggio diverse dagli altri. Per sapere cosa è visibile a seconda del namespace le strutture devono essere più articolate.\\ C'è poi \texttt{\_\_randomize\_layout}: permette di aumentare i livello di sicurezza del VFS in quanto permette di dire che la struttura dati è quella, ma la tabella che mantiene i 3 campi non mantiene solo quei 3 ed ordinati come mostrato, ma con randomize possiamo far si che la tabella effettiva in maniera randomica siano state introdotte delle zone blank e le informazioni siano state collocate in zone non-blank che non corrisponde all'ordine visto. Il codice macchina generato si spiazza correttamente sull'informazione da considerare. Importante perché: se l'attacco colpisce strutture del file system per cui si arriva ad una tabella per identificare le funzioni che implementano un driver ma è stato applicato un randomize layout, risulta difficile scendere nel campo giusto per chiamare l'operazione che mi serve nell'attacco. Tale randomizzazione la conosce solo il kernel (c'è la proprio nel codice binario generato del kernel, quindi ha già lì scritto l'offset per la tabella randomizzata), quindi software esterno non la conosce e quindi questo permette di avere un livello di sicurezza più alto in modo da creare una diversità fra kernel operativi diversi.\\Il plugin necessario per la randomizzazione è \texttt{randstruct} ed è usabile 
+\begin{lstlisting}
+struct vfsmount{
+	struct list_head mnt_hash;
+	struct vsfmount *mnt_parent; /* fs we are mounted on */
+	struct dentry *mnt_mountpoint; /* dentry of mountpoint*/
+	struct dentry *mnt_root; /* root of the mounted tree */
+	struct super_block *mnt_sb; /* pointer to superblock */
+	struct list_head mnt_mounts; /* list of children, anchored here */
+	
+	struct list_head mnt_child /* and going throgh thier mnt_child*/
+	
+	atomic_t mnt_count
+	int mnt_flags;
+	char *mnt_devname; /* Name of device e.g /dev/dsk/hda1 */
+	struct list_head mnt_list;
+}
+\end{lstlisting}
+Abbiamo ad esempio un puntatore ad una stessa tabella, che è il parent ovvero il FS a cui abbiamo agganciato questo stesso FS. C'è poi un puntatore ad una tabella superblocco, così come anche alle altre due informazioni. C'è poi la lista di tutti gli elementi di cui il FS è parent, in quanto può essere possibile che siano stati montati altri FS sotto quello corrente.\\In versioni più recenti è stata compattata
+\begin{lstlisting}
+struct vfsmount{
+	struct dentry *mnt_root; /* root of the mounted tree */
+	struct super_block *mnt_sb; /* pointer to superblock */
+	int mnt_flags;
+} __randomize_layout;
+\end{lstlisting}
+Puntiamo alla dentry dell'elemento radice del file system, abbiamo eliminato tutti i collegamenti perché tali collegamenti sono stati implementati in una struttura dati più flessibile per gestire il concetto di namespace in quanto nel momento in cui si lavora sui file system abbiamo la possibilità di organizzare la vista degli oggetti di I/O con i namespaces, uno dei più interessanti è \texttt{/mnt} in Linux: è uno spazio di nomi dove possiamo confinare le operazioni di montaggio diverse dagli altri. Per sapere cosa è visibile a seconda del namespace le strutture devono essere più articolate.\\ C'è poi \texttt{\_\_randomize\_layout}: permette di aumentare i livello di sicurezza del VFS in quanto permette di dire che la struttura dati è quella, ma i 3 campi non sono collocati in memoria nell'ordine dato, inoltre vengono mantenuti anche altre "zone blank" per rendere più difficile accedere in maniera illeggitima alle informazioni.\\Il codice macchina generato si spiazza correttamente sull'informazione da considerare. Importante perché: se l'attacco colpisce strutture del file system per cui si arriva ad una tabella per identificare le funzioni che implementano un driver ma è stato applicato un randomize layout, risulta difficile scendere nel campo giusto per chiamare l'operazione che mi serve nell'attacco. Tale randomizzazione la conosce solo il kernel (c'è la proprio nel codice binario generato del kernel, quindi ha già lì scritto l'offset per la tabella randomizzata), quindi software esterno non la conosce e quindi questo permette di avere un livello di sicurezza più alto in modo da creare una diversità fra kernel operativi diversi.\\Il plugin necessario per la randomizzazione è \texttt{randstruct} ed è usabile 
 \begin{itemize}
 \item o on demand con randomize come visto prima
 \item ogni struttura i cui campi sono solo function pointer, quindi dei driver di fatto, per default sono compilati col randomize
 \end{itemize}
 si può disabilitare con \texttt{\_\_no\_randomize\_layout()}, si paga un tradeoff di storage (la tabella è più grande) quindi si può essere meno locali in cache.\\Vediamo poi il super-blocco
-%struct del superblocco
+\begin{lstlisting}
+struct super_block{
+	struct list_head s_list; /* Keep this first */
+	.....
+	unsigned long s_blocksize;
+	.....
+	unsigned long long s_maxbytes; /* Max file size */
+	struct file_system_type *s_type;
+	struct super_operations *s_op;
+	.....
+	struct dentry *s_root;
+	.....
+	struct list_head s_dirty;	/* dirty inodes */
+	.....
+	union{
+		struct minix_sb_info minix_sb;
+		struct ext2_sb_info ext2_sb;
+		struct ext3_sb_info ext3_sb;
+		struct ntfs_sb_info ntfs_sb;
+		struct msdos_sb_info msdos_sb;
+		......
+		void *generic_sbp;
+	} u;
+	.....
+};
+\end{lstlisting}
 puntiamo una dentry che è il Rootfs, su cui possiamo navigare\\Abbiamo poi la dentry
-%struttura dentry
+\begin{lstlisting}
+struct dentry {
+	atomic_t d_count;
+	.....
+	struct inode *d_inode; /* Where the name belongs to */
+	struct dentry * d_parent; /* parent directory */
+	struct list_head d_hash; /* lookup hash list */
+	.....
+	struct list_head d_child; /* child of parent list */
+	struct list_head d_subdirs; /* out children */
+	.....
+	struct qstr d_name;
+	....
+	struct dentry_operations *d_op;
+	struct super_block *d_sb /* The root of the dentry tree */
+	unsigned long d_vfs_flags;
+	.....
+	unsigned char d_iname[DNAME_INLINE_LEN] /* small names */
+};
+\end{lstlisting}
 Infine, l'inode è strutturato così:
-%inode
-questa viene usata da tutti i FS. Chiaramente identifichiamo il super-blocco dell'inode, abbiamo poi un puntatore alle inode\_operations, ma siamo un un inode perché è un oggetto di I/O e quindi possiamo lavorare su meta dati e dati, per lavorare sui dati abbiamo le file\_operations, quindi abbiamo function pointers per diversi driver.
+\begin{lstlisting}
+struct inode{
+	.....
+	struct list_head i_dentry;
+	.....
+	uid_t i_uid;
+	gid_t i_gid;
+	.....
+	unsigned long  i_blksize;
+	unsigned long  i_blocks;
+	.....
+	struct inode_operations *i_op;
+	struct file_operations *i_fop;
+	struct super_block *i_sb;
+	wait_queue_head_t i_wait;
+	.....
+	union{
+		.....
+		struct ext2_inode_info ext2_i;
+		struct ext3_inode_info ext3_i;
+		.....
+		struct socket socket_i;
+		......
+		void *generic_ip;
+	} u;
+};
+\end{lstlisting}
+questa viene usata da tutti i FS. Chiaramente identifichiamo il super-blocco dell'inode, abbiamo poi un puntatore alle \texttt{inode\_operations}, ma siamo un un inode perché è un oggetto di I/O e quindi possiamo lavorare su meta dati e dati, per lavorare sui dati abbiamo le \texttt{file\_operations}, quindi abbiamo function pointers per diversi driver.
 \subsubsection{Schema di overall}
 Abbiamo la seguente visione di un FS montato
-%schemino di overall
-sulla dentry, potremmo aver montato un altro FS e quindi potremmo avere dei child che sono un un'altra istanza di FS e quindi un collegamento di altre dertny.
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/vfs_schema.png}
+\end{figure}
+sulla dentry, potremmo aver montato un altro FS e quindi potremmo avere dei child che sono un un'altra istanza di FS e quindi un collegamento di altre dentry.
 \subsection{Inizializzazione del Rootsfs}
-La funzione init\_mount\_tree() inizializza l'albero di montaggio che 
+La funzione \texttt{init\_mount\_tree()} inizializza l'albero di montaggio che 
 \begin{itemize}
 \item alloca le 4 strutture dati per rootfs, quindi abbiamo l'ancora per agganciare le altre cose
-\item linkiamo la struttura dati
-\item facciamo il setup della "/" per la root del FS
+\item linka la struttura dati
+\item fa il setup della "/" per la root del FS
 \item linkiamo l'idle process al rootfs, questo avviene settando la pwd del thread
 \end{itemize}
-Ogni thread ha dei metadati che ci permettono di dire che è collegato ad uno specifico punto dell'organizzazione gerarchica, che rappresenta la sua radice per cui si può lavorare da lì in basso, per collegare la pwd alla root directory del thread di init ci sono due API del kernel.\\Quindi questo accade quando si inizializza l'albero di montaggio in Linux (con cambiamenti minori in kernel 4 e 5)
-%snippet
+Ogni thread ha dei metadati che ci permettono di dire che è collegato ad uno specifico punto dell'organizzazione gerarchica, che rappresenta la sua radice per cui si può lavorare da lì in basso, per collegare la pwd alla root directory del thread di init ci sono due API del kernel.\\Quindi questo accade quando si inizializza l'albero di montaggio in Linux (con cambiamenti minori in kernel 4 e 5) è quanto segue:
+\begin{lstlisting}
+static void __init init_mount_tree(void)
+{
+	struct vsfmount *mnt;
+	struct namespace *namespace;
+	struct task_struct *p;
+	
+	mnt = do_kern_mount("rootfs", 0, "rootfs", NULL);
+	if(IS_ERR(mnt))
+		panic("Can't create rootfs");
+	.....
+	
+	set_fs_pwd(current->fs, namespace->root, namespace->root->mnt_root);
+	
+	set_fs_root(current->fs, namespace->root, namespace->root->mnt_root);
+}
+\end{lstlisting}
 \subsection{Concetto di namespace}
-Il concetto di namespace, quando lavoriamo su file system, si lega al concetto di montaggio in quanto abbiamo il mount namespace in Linux: questo è un namespace in cui identifichiamo i punti di montaggio e do che cosa. Possiamo quindi vedere tali punti solo se siamo nello specifico namespace, dove vederemo dei punti di montaggio diversi, questo è ampiamente sfruttato per la costruzione dei container.\\Abbiamo quindi che si ragiona in particolare su SO Linux/POSIX secondo la regola che i punti di montaggio sono relativi al namespace, ed è possibile lavorare all'interno del namesapce in modo che tutti i thread al di fuori non vedano l'informazione. Il concetto di punto di montaggio diventa una astrazione collegata all'interno del kernel al namespace per cui vale. Anche l'eliminazione di un mount point è locale al namespace, quindi caratterizza qualcosa relativa alle informazioni di quel namespace. Per usare il mount namespace possiamo, all'atto della creazione di un thread, passare dei flag alla \texttt{clone}, fra cui ad esempio \texttt{CLONE\_NS} in modo che la vista dell'archivio sia diversa in termini sopratutto di cosa sarà visibile dal thread e da tutti quelli derivati. Abbiamo anche l'\texttt{unshare} per creare un nuovo namespace non condiviso con gli altri.
+Il concetto di namespace, quando lavoriamo su file system, si lega al concetto di montaggio in quanto abbiamo il mount namespace in Linux: questo è un namespace in cui identifichiamo i punti di montaggio e di che cosa. Possiamo quindi vedere tali punti solo se siamo nello specifico namespace, dove vederemo dei punti di montaggio diversi, questo è ampiamente sfruttato per la costruzione dei container.\\Abbiamo quindi che si ragiona in particolare su SO Linux/POSIX secondo la regola che i punti di montaggio sono relativi al namespace, ed è possibile lavorare all'interno del namesapce in modo che tutti i thread al di fuori non vedano l'informazione. Il concetto di punto di montaggio diventa una astrazione collegata all'interno del kernel al namespace per cui vale. Anche l'eliminazione di un mount point è locale al namespace, quindi caratterizza qualcosa relativa alle informazioni di quel namespace. Per usare il mount namespace possiamo, all'atto della creazione di un thread, passare dei flag alla \texttt{clone}, fra cui ad esempio \texttt{CLONE\_NS} in modo che la vista dell'archivio sia diversa in termini sopratutto di cosa sarà visibile dal thread e da tutti quelli derivati. Abbiamo anche l'\texttt{unshare} per creare un nuovo namespace non condiviso con gli altri.
 \subsubsection{Esempio software}
 Esempio di uso dei namespaces. L'esempio usa solo un Makefile, in quanto si può manipolare il namespace anche solo con comandi di shell: il set di comandi è però più articolato:
 \begin{itemize}
@@ -3368,32 +3640,81 @@ Alla fine, abbiamo questo set di driver per gestire il SO:
 tutte le operazioni sono comunque correlate fra di loro e tali funzioni sono indipendenti dal tipo di file system che pilotiamo: l'interfaccia dell'operazione è la stessa ma cambia la funzione chiamata.
 \subsection{VFS e TCBs (2.4 style)}
 Abbiamo fra le cose più interessanti la \texttt{fs\_struct}, collegata al TCB per cui se ci muoviamo nel TCB di un thread abbiamo questa tabella:
-%snippet
+\begin{lstlisting}
+struct fs_struct{
+	atomic_t count;
+	rwlock_t lock;
+	int umask;
+	struct dentry *root, *pwd, *altroot;
+	struct vsfmount *rootmnt, *pwdmnt, *altroomnt;
+};
+\end{lstlisting}
 abbiamo due pointers interessanti, per cui identifichiamo root e pwd all'interno dell'archivio ed inoltre anche quali sono i vfsmount dove sono presenti tali root e pwd.\\Su versioni più recenti abbiamo la seguente cosa:
-%snippet
+\begin{lstlisting}
+struct fs_struct{
+	int users;
+	spinlock_t lock;
+	seqcount_t seq;
+	int umask;
+	int in_exec;
+	struct path root, pwd;
+};
+\end{lstlisting}
 c'è una struttura dati e quindi se ne usano due istanze, una per root ed una per pwd. Andando avanti abbiamo randomize layout
-%snippet
-\subsection{File descriptor table}
-La tabella sopra indica la relazione fra il thread e tutto l'archivio, ma in realtà il  thread attivo potrebbe avere alcuni degli oggetti di I/O su cui sta lavorando, ad esempio i file che sta toccando. Per relazionare il thread con più punti dell'archivio che sono quelli su cui l'applicazione sta lavorando c'è  la file descriptor table, sempre collegata al TCB: è tale per cui c'è un elemento diverso per ogni elemento di I/O che stiamo utilizzando. La cosa interessante è che le entry nella tabella ci portano su una tabella intermedia che porta poi sull'elemento di I/O, la tabella intermedia rappresenta una sessione di I/O. Nella tabella di sessione, ci ricordiamo ad esempio in che punto dell'oggetto di I/O stiamo lavorando ed inoltre ci permette quando chiamiamo syscall per fare delle operazioni ci permette di identificare l'inode mediante indice (il canale di I/O) per identificare così anche i loro driver.\\Abbiamo la seguente struttura:
-%snippet della FDT
-ciascun elemento punta ad una struct file, abbiamo anche dei metadati:
+\begin{lstlisting}
+struct fs_struct{
+	int users;
+	spinlock_t lock;
+	seqcount_t seq;
+	int umask;
+	int in_exec;
+	struct path root, pwd;
+}__randomize_layout;
+\end{lstlisting}
+\section{File descriptor table}
+La tabella sopra indica la relazione fra il thread e tutto l'archivio, ma in realtà il  thread attivo potrebbe avere alcuni degli oggetti di I/O su cui sta lavorando, ad esempio i file che sta toccando. Per relazionare il thread con più punti dell'archivio che sono quelli su cui l'applicazione sta lavorando c'è la \textbf{file descriptor table}, sempre collegata al TCB: è tale per cui c'è un elemento diverso per ogni elemento di I/O che stiamo utilizzando. La cosa interessante è che le entry nella tabella ci portano su una tabella intermedia che porta poi sull'elemento di I/O, la tabella intermedia rappresenta una sessione di I/O. Nella tabella di sessione, ci ricordiamo ad esempio in che punto dell'oggetto di I/O stiamo lavorando ed inoltre ci permette quando chiamiamo syscall per fare delle operazioni di identificare l'inode mediante indice (il canale di I/O) per identificare così anche i loro driver.\\Abbiamo la seguente struttura:
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/fdt_scheme.png}
+\end{figure}
+ciascun elemento punta ad una \texttt{struct file}, abbiamo anche dei metadati:
 \begin{itemize}
-\item nextfd: punto dove cercare il prossimo elemento libero da utilizzare. Sono aggiornati quando ad esempio di esegue una \texttt{open}, per cui il nextfd diventa il successivo, mentre torna al precedente quando si fa \texttt{close}
+\item \texttt{nextfd}: punto dove cercare il prossimo elemento libero da utilizzare. Sono aggiornati quando ad esempio si esegue una \texttt{open}, per cui il \texttt{nextfd} diventa il successivo, mentre torna al precedente quando si fa \texttt{close}
 \item l'array (ultimo campo) può non essere l'unico per fare queste operazioni, in quanto in base all'applicazione si potrebbe usare un numero di oggetti di I/O ampio o basso e quindi siamo flessibili per evitare che ci siano sempre tanti elementi di I/O. Si usa quindi un pointer ad una tabella più ampia (4° campo)
-\item con gli ultimi due pointer si identificano delle bitmap:
+\item con gli ultimi due pointer identificano delle bitmap:
 \begin{itemize}
-\item close\_on\_exec: quali canali vanno chiusi quando si chiama la exec
-\item open\_fds: quali sono gli oggetti aperti
+\item \texttt{close\_on\_exec}: quali canali vanno chiusi quando si chiama la \texttt{exec}
+\item \texttt{open\_fds}: quali sono gli oggetti aperti
 \end{itemize}
 \end{itemize}
 Manca analizzare la struttura dei dati di sessione: questo oggetto è una struct file, fatta in questo modo:
-%snippet
-identifichiamo la dentry a cui l'oggetto di I/O appartiene e quindi qual è l'oggetto di I/O effettivo.\\C'è il solito contatore che identifica quanti sono i pointers in cui abbiamo sharing della sessione di I/O.\\Possiamo poi identificare il puntatore per il driver che identifica il reale driver per l'oggetto di I/O.\\Il campo f\_pos identifica la posizione in cui andremo a lavorare, è scritta esternamente al driver che punta a dei moduli eseguibili che usano quell'informazione e quindi il driver delle reali operazioni prenderà il puntatore alla tabella per accedere all'offset ed eventualmente modificarlo. Salendo di versioni c'è sempre la radnomizzazione (E QUANDO TE SBAGLI).
+\begin{lstlisting}
+struct file {
+	struct list_head f_list;
+	struct dentry *f_dentry;
+	struct vfsmount *f_vfsmnt;
+	struct file_operations *f_op;
+	atomic_t f_count;
+	unsigned int f_flags;
+	mode_t f_mode;
+	loff_t f_pos;
+	unsigned long f_reada, f_ramax, f_raend, f_ralen, r_rawin;
+	struct fown_struct f_owner;
+	unsigned int f_uid, f_gid;
+	int f_error;
+	unsigned long f_version;
+	/* needed for tty driver, and maybe others */
+	void *private_data;
+	/* preallocated helper kiobuf to speedup O_DIRECT */
+	strict kiobuf *f_iobuf;
+	long f_iobuf_lock;
+};
+\end{lstlisting}
+identifichiamo la \texttt{dentry} a cui l'oggetto di I/O appartiene e quindi qual è l'oggetto di I/O effettivo.\\C'è il solito contatore che identifica quanti sono i pointers in cui abbiamo sharing della sessione di I/O.\\Possiamo poi identificare il puntatore per il driver che identifica il reale driver per l'oggetto di I/O.\\Il campo \texttt{f\_pos} identifica la posizione in cui andremo a lavorare, è scritta esternamente al driver che punta a dei moduli eseguibili che usano quell'informazione e quindi il driver delle reali operazioni prenderà il puntatore alla tabella per accedere all'offset ed eventualmente modificarlo. Salendo di versioni c'è sempre la radnomizzazione (E QUANDO TE SBAGLI).
 \subsection{API del VFS per Linux}
 Le API sono layerate, ovvero su diversi livelli di API che rappresentano anche tipologie di API differenti
 \begin{itemize}
 \item Data structure ...: set di API da chiamare per fare operazioni sulle strutture dati prendendo dei pointer alle strutture dati
-\item path-based VFS layer, a cui passiamo un path come parametro principale. Occorre ad esempio quando dobbiamo esplorare il FS per chiederci se il file esiste, in quanto magari la dentry e l'inode del file non sono nemmeno in memoria. Preso l'elemento, abbiamo le strutture dati associate e quindi possiamo chiamare le API per lavorarci sopra
+\item Path-based VFS layer, a cui passiamo un path come parametro principale. Occorre ad esempio quando dobbiamo esplorare il FS per chiederci se il file esiste, in quanto magari la dentry e l'inode del file non sono nemmeno in memoria. Preso l'elemento, abbiamo le strutture dati associate e quindi possiamo chiamare le API per lavorarci sopra
 \end{itemize}
 Tutte le API sono per modo kernel, ma lavorando su VFS le operazioni sono fatte perché si chiama una syscall e quindi abbiamo syscall layer
 \begin{itemize}
@@ -3401,31 +3722,73 @@ Tutte le API sono per modo kernel, ma lavorando su VFS le operazioni sono fatte 
 \item syscall che permettono di arrivare a delle API che usano magari il path name
 \end{itemize}
 Queste sono alcune delle API principali usabili del kernel Linux:
-(slides)
-Questo ci permette di dire che quando scriviamo del codice livello kernel non usiamo tutte le API e quindi il retrieve degli indirizzi delle funzioni è embeddato nel modulo kernel che scriviamo.\\ \texttt{filp\_open()} è molto interessante, viene ad esempio chiamata \texttt{open()}. Abbiamo poi tutte le altre API che sono sulle slides.\\Abbiamo poi vfs read e write a cui passiamo la struttura file, quindi possiamo lavorare sulla sessione di I/O direttamente senza passare per il canale.
+\begin{itemize}
+	\item \texttt{vfs\_create}
+	\item \texttt{vfs\_mkdir}
+	\item \texttt{vfs\_read}
+	\item \texttt{vfs\_write}
+	\item \texttt{dget}
+	\item \texttt{dput}
+	\item \texttt{alloc\_inode}
+	\item ...
+\end{itemize}
+Questo ci permette di dire che quando scriviamo del codice livello kernel non usiamo tutte le API e quindi il retrieve degli indirizzi delle funzioni è embeddato nel modulo kernel che scriviamo.\\La \texttt{struct file *filp\_open(const char *filename, int flags, int mode)}\\ è molto interessante, viene ad esempio chiamata da \texttt{open()}.\\Abbiamo poi vfs read e write a cui passiamo la struttura file, quindi possiamo lavorare sulla sessione di I/O direttamente senza passare per il canale.
 \section{Major e minor numbers}
-Sono codici per identificare oggetti, fin ora abbiamo visto un oggetto di natura fondamentale che è il driver. Il major number è una modalità per cui identifichiamo driver uno rispetto ad un altro: abbiamo un driver D a cui identifichiamo un numero M, tale codice numerico viene usato per identificare una entry di una tabella, dentro cui ci sono le informazioni che ci portano nella struttura dati per identificare il pointer verso il driver. Il driver può essere di natura differenziata, che ad esempio implementa diverse operazioni oppure essere il set di interfacce per fare operazioni su oggetti a blocchi e per distinguere queste due nature fondamentali abbiamo due tabelle diverse:
+Il major e minor number sono codici per identificare oggetti, fin ora abbiamo visto un oggetto di natura fondamentale che è il driver. Il major number è una modalità per cui identifichiamo driver uno rispetto ad un altro: abbiamo un driver D a cui associamo un numero M, tale codice numerico viene usato per identificare una entry di una tabella, dentro cui ci sono le informazioni che ci portano nella struttura dati per identificare il pointer verso il driver. Il driver può essere di natura differenziata, che ad esempio implementa diverse operazioni oppure essere il set di interfacce per fare operazioni su oggetti a blocchi e per distinguere queste due nature fondamentali abbiamo due tabelle diverse:
 \begin{itemize}
 \item per char device driver
 \item per block device driver 
 \end{itemize}
-tutto questo è fondamentale perché per lavorare sugli oggetti del FS dobbiamo poter lavorare anche sui device driver che gestiscono (slides)\\Alla creazione del file, occorre stabilire il driver per fare operazioni su quel file, questo implica che se abbiamo un FS dentro cui creiamo un nuovo file, questo ha le stesse caratteristiche di tutti gli altri oggetti di I/O del FS. Quindi, se creiamo un elemento in una directory, questa è rappresentata in memoria usando dentry ed inode, quindi il driver si può riusare quando si crea un child in quanto due oggetti dello stesso identico FS usano lo stesso driver. Non c'è, necessità di passare per la tabella, l'oggetto è identificato perché c'è un parent in memoria che mi dice dove è il driver, inoltre non è l'unico scenario possibile: se creiamo un file, questo potrebbe non essere un elemento di quel FS ma un nodo di natura diversa. Quindi, il driver D dovrebbe essere diverso, in questo caso è importante conoscere la tabella e sapere quel è il numero per identificare il driver per l'oggetto, che è il major number.\\Quando lavoriamo su inode, il driver che usiamo per identificare che stiamo lavorando su un determinato file e non su un altro userà dei metadati dell'inode specifico del file. Quindi l'isolation è gestita e garantita correttamente, ma questo potrebbe non essere il caso per un oggetto di I/O che non è un file regolare, dobbiamo poter gestire tali elementi che sono identificabili con il minor number: questo permette di dire al driver di fare una cosa piuttosto che un'altra, in quanto il driver può verificare questo minor number per identificare l'oggetto effettivo su cui lavoriamo.
+tutto questo è fondamentale perché per lavorare sugli oggetti del FS dobbiamo poter lavorare anche sui device driver che gestiscono dentry o inode che dipendono da altri nel file system, quindi così facendo andiamo semplicemente ad ereditare lo stesso char-device driver del parent.\\Alla creazione del file, occorre stabilire il driver per fare operazioni su quel file, questo implica che se abbiamo un FS dentro cui creiamo un nuovo file, questo ha le stesse caratteristiche di tutti gli altri oggetti di I/O del FS. Quindi, se creiamo un elemento in una directory, questa è rappresentata in memoria usando dentry ed inode, quindi il driver si può riusare quando si crea un child in quanto due oggetti dello stesso identico FS usano lo stesso driver. Non c'è necessità di passare per la tabella, l'oggetto è identificato perché c'è un parent in memoria che mi dice dove è il driver, inoltre non è l'unico scenario possibile: se creiamo un file, questo potrebbe non essere un elemento di quel FS ma un nodo di natura diversa. Quindi, il driver D dovrebbe essere diverso, in questo caso è importante conoscere la tabella e sapere quel è il numero per identificare il driver per l'oggetto, che è il major number.\\Quando lavoriamo su inode, il driver che usiamo per identificare che stiamo lavorando su un determinato file e non su un altro userà dei metadati dell'inode specifico del file. Quindi l'isolation è gestita e garantita correttamente, ma questo potrebbe non essere il caso per un oggetto di I/O che non è un file regolare, dobbiamo poter gestire tali elementi che sono identificabili con il minor number: questo permette di dire al driver di fare una cosa piuttosto che un'altra, in quanto il driver può verificare questo minor number per identificare l'oggetto effettivo su cui lavoriamo.
 \subsection{Nodi del VFS e device numbers}
 Un nodo I/O può essere cose differenti
 \begin{itemize}
 \item directory o file
 \item char o block device: questo oggetto è tale per cui le operazioni che facciamo su questo oggetto sono codificate in un driver e questo ha un certo minor number
-\item pipe
+\item pipe (named)
 \end{itemize}
-Per creare un nodo possiamo usare la syscall \texttt{sys\_mknod()}, a cui specifichiamo MAJOR e MINOR number, questa è la syscall effettiva:
-%syscall
-possiamo usare anche una macro che compone una maschera di bit dati major e minor number per attribuire i valori all'elemento che consideriamo. L'uso dei numeri è tale per cui se chiamiamo un operazione su un driver, questo passa alla directory entry, ed in base al minor number fare operazioni ad esempio su certi dati. Potremmo avere questo: un archivio, un device driver con un certo majro number. Inseriamo due nodi, associati a quel major ma con due minor diversi, x ed y. Il software del driver è lo stesso, ma potremmo fare operazioni differenti, magari in un array con l'informazione che x = 0 ed y = 1.\\Questa è la tabella per implementare i block device in Linux, con API:
-%snippet
+Per creare un nodo possiamo usare la syscall\\ \texttt{int mknod(const char *pathname, mode\_t mode, dev\_t dev)}, a cui specifichiamo MAJOR e MINOR number, possiamo usare anche una macro che compone una maschera di bit dati major e minor number per attribuire i valori all'elemento che consideriamo. L'uso dei numeri è tale per cui se chiamiamo un operazione su un driver, questo passa alla directory entry, ed in base al minor number fa operazioni ad esempio su certi dati. Potremmo avere questo: un archivio, un device driver con un certo major number. Inseriamo due nodi, associati a quel major ma con due minor diversi, x ed y. Il software del driver è lo stesso, ma potremmo fare operazioni differenti, magari in un array con l'informazione che x = 0 ed y = 1.\\Questa è la tabella per implementare i block device in Linux, con API:
+\begin{lstlisting}
+static struct {
+	const char *name;
+	struct block_device_operations *bdops;
+}blkdevs[MAX_BLKDEV];
+
+struct block_device_operations {
+	int (*open) (struct inode *, struct file *);
+	int (*release) (struct inode *, struct file *);
+	int (*ioctl) (struct inode *, struct file *, unsigned, unsigned long);
+	int (*check_media_change) (kdev_t);
+	int (* revalidate) (kdev_t);
+	struct module *owner;
+};
+
+/* Set of API to work on this */
+int register_blkdev(unsigned int major, const char *name, struct block_device_operations *bdops)
+
+int unregister_blkdev(unsigned int major, const char *name)
+
+
+\end{lstlisting}
 e questo l'equivalente per char device driver e le API:
-%snippet char device driver
+\begin{lstlisting}
+struct device_struct {
+	const char *name;
+	struct file_operations *fops;
+};
+static struct device_struct chrdevs[MAX_CHRDEV];
+	
+/* Set of API to work on this */
+int register_chrdev(unsigned int major, const char *name, struct file_operations *fops)
+	
+int unregister_chrdev(unsigned int major, const char *name)	
+\end{lstlisting}
+(versione vecchia, ci sono cambianti andando avanti col kernel)\\
 il char device driver implementa tutte le operazioni per lavorare sui file.\\In particolare la tabella dei char devices è stata riorganizzata nel kernel in modo che fosse una hash table con conflitti in modo che fosse più scalabile per sistemi grossi ed inoltre in un elemento della tabella abbiamo un puntatore ad una struttura char device, che non è solo il driver:
-%immagine del char device
-ha delle informazioni dove quando installiamo un driver nella tabella, possiamo con una API registrare quali sono i minor numbers realmente pilotabili con questo driver: se il minor number non è listato, viene evitato che ci siano ulteriori attività di controllo nel driver in quanto ci sarà subito un errore in accesso (si confrontano major e minor, vedi slides).\\Abbiamo quindi stabilito la possibilità in Linux di avere una tabella, con taglia scalabile, a cui possiamo agganciare un driver che è fatto da una serie di operazioni per fare operazioni di I/O. Associamo in realtà al driver un indice, che è il suo major number, possiamo creare un nodo N agganciandolo al driver dicendo che ha un certo major number.\\Quando andiamo in I/O su N, a livello di strutture dati viene tirata su una sessione che permette di arrivare sull'inode del nodo N, le funzioni chiamate internamente possono reperire major e minor number del nodo. Col minor number possiamo far si che il driver al suo interno faccia operazioni diverse a seconda del nodo che sta pilotando.
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/chdev_structure.png}
+\end{figure}
+\\ha delle informazioni dove quando installiamo un driver nella tabella, possiamo con una API registrare quali sono i minor numbers realmente pilotabili con questo driver: se il minor number non è listato, viene evitato che ci siano ulteriori attività di controllo nel driver in quanto ci sarà subito un errore in accesso.\\Abbiamo quindi stabilito la possibilità in Linux di avere una tabella, con taglia scalabile, a cui possiamo agganciare un driver che è fatto da una serie di operazioni per fare operazioni di I/O. Associamo in realtà al driver un indice, che è il suo major number, possiamo creare un nodo N agganciandolo al driver dicendo che ha un certo major number.\\Quando andiamo in I/O su N, a livello di strutture dati viene tirata su una sessione che permette di arrivare sull'inode del nodo N, le funzioni chiamate internamente possono reperire major e minor number del nodo. Col minor number possiamo far si che il driver al suo interno faccia operazioni diverse a seconda del nodo che sta pilotando.
 \subsubsection{Esempi eseguibili (PARLA ITALIANO)}
 Il primo esempio è un baseline char device, per cui abbiamo sicuramente l'implementazione della dev\_open, della dev\_write e della dev\_release. Sarà software di livello superiore ad invocare queste operazioni in base alla syscall chiamata. Usiamo un mutex perché possiamo gestirlo durante l'operazione di apertura del file, in modo da avere un device driver ad istanza singola.\\Per poter usare il driver, devo creare un nuovo nodo nel file system che abbia il major number che è quello dato e che abbiamo un minor nubmer compreso fra 0 e 255 altrimenti all'apertura del nodo avrei un errore:
 \begin{itemize}
@@ -3433,57 +3796,132 @@ Il primo esempio è un baseline char device, per cui abbiamo sicuramente l'imple
 \item specifichiamo c per dire che è un char device, passiamo 241 (è dell'esempio) e 0 come major e minor. Il driver vero per questo oggetto quando si va in I/O sull'elemento chiama il driver codificato nel modulo.
 \end{itemize}
 Le operazioni chiamate quando ad esempio si fa un \texttt{echo "qualcosa" $>$ /dev/example} avremo in dmesg le print chiamate, vengono fatte n write perché la echo cerca di scrivere n byte e se ne vede ritornare uno alla volta come risultato della scrittura.\\Potevamo fare qualunque cosa con questo driver, davvero sbizzarritevi provateci anche voi e fate il vostro stupendo driver.
-\subsection{Boot di Linux}
+\subsection{Parte finale del boot di Linux}
 Fare il boot di Linux prevede anche di fare il boot del VFS, una delle operazioni è quella di unlockare il kernel e dire che il thread che sta eseguendo il boot diventa rischedulabile, in versioni 2.4 abbiamo questa situazione:
-%snippet della versione 2.4
+\begin{lstlisting}
+static void rest_init(void)
+{
+	kernel_thread(init, NULL, CLONE_FS | CLONE_FILES | CLONE_SIGNAL);
+	unlock_kernel();
+	current->need_resched = 1;
+	cpu_idle();
+}
+\end{lstlisting}
 Creiamo quindi anche il thread init. In versioni successive andiamo in \texttt{numa\_defualt\_policy}, come mostrato di seguito
-%snippet 3.x e più 
+\begin{lstlisting}
+static noinline void __init_refol rest_init(void)
+{
+		int pid;
+		
+		rcu_rescheduler_starting();
+		/*
+		 * We need to spawn init first so that it obtains pid 1, however
+		 * the init task will end up wanting to create kthreads, which, if
+		 * we schedule it before we create kthread, will OOPS.
+		 */
+		kernel_thread(kernel_init, NULL, CLONE_FS);
+		....
+		numa_default_policy();
+}
+\end{lstlisting}
 vediamo alcune delle funzioni sfruttate da init:\\
-%snippet mount_root 
+\begin{lstlisting}
+static void __init mount_root(void)
+{
+		....
+		create_dev("/dev/root", ROOT_DEV, root_device_name);
+		....
+		mount_block_root("/dev/root", root_mountflags);
+}
+\end{lstlisting}
 stiamo montando il FS root applicativo, al cui interno vengono fatte due cose interessanti:
 \begin{itemize}
 	\item \texttt{create\_dev}, creiamo il percorso che ci porta al nodo root, che è un device che ci permette di arrivare su un driver. Possiamo specificare per quel nodo il major number, sarà un device a blocchi
 	\item \texttt{mount\_block\_root}
 \end{itemize}
 Vediamo cosa fa \texttt{create\_dev}:
-%snippet
+\begin{lstlisting}
+static int __init create_dev(char *name, kdev_t dev, char 	*devfs_name)
+{
+		void *handle;
+		char path[64];
+		int n;
+		
+		sys_unlink(name);
+		if (!do_devfs)
+			return sys_mknod(name, S_IFBLK|0600, kdev_t_to_nr(dev));	
+}
+\end{lstlisting}
 viene creato un nodo, indicando il major number da usare e quindi il driver da usare per leggere i blocchi. Sono due funzioni che permettono di capire come avverrà il montaggio di un FS applicativo.\\Nel kernel thread che esegue init abbiamo più o meno questo tipo di attività:
-%snippet
+\begin{lstlisting}
+static int init(void *unused) {
+	struct files_struct *files;
+	lock_kernel();
+	do_basic_setup();
+	perpare_namespace();
+	....
+	if (execute_command) run_init_process(execute_command);
+	run_init_process("/sbin/init);
+	run_init_process("/etc/init");
+	run_init_process("/bin/init");
+	run_init_process("bin/sh");
+	panic("No init found. Try passing init = option to kernel.");
+}
+\end{lstlisting}
 si cercano di fare diverse \texttt{exec}, che eseguono soltanto se le precedenti falliscono. Nel \texttt{do\_basic\_setup} si espandono le capability del kernel, si fa montando dei moduli che sono nel RAM disk. Avendo espanso le capabilities del kernel si chiama \texttt{prepare\_namespace}, preparando lo spazio dei nomi nel rootfs per montare il file system. Cambieremo quindi la forma del rootfs per montarvi in qualche punto il rootfs applicativo, si farà poi \texttt{exec} del programma specificato, tipicamente sarà l'applicazione init del rootfs appena montato.\\Questo è in base a come sono compilati i kernel tradizionali, ma dipende da cosa si fa col kernel Linux.\\In \texttt{prepare\_namespace} avviene quanto segue:
-%snippet prepare namespace
+\begin{lstlisting}
+void prepare_namespace(void) {
+	....
+	sys_mkdir("/dev", 0700);
+	sys_mkdir("/root", 0700);
+	sys_mknod("/dev//console", S_IFCHR|0600, MKDEV(TTAUX_MAJOR, 1));
+	....
+	mount_root();
+out:
+	....
+	sys_mount(".", "/", NULL, MS_MOVE, NULL);
+	sys_chroot(".");
+	....
+}
+\end{lstlisting}
 creiamo la directory \texttt{/dev}, poi \texttt{/root} e chiamiamo \texttt{mount\_root}, dopo avere la struttura per poter creare un altro nodo in dev che è il root node che permette di arrivare su un driver e poi eseguiamo il montaggio.\\La storia è questa:
-%immagine della storia
-Cerchiamo poi di montare il FS root applicativo con \texttt{mount\_block\_root}:
-%snippet
-non sappiamo che tipo di FS contenga il dispositivo che è stato indicato di montare. Per cercare comunque di montare quel dispositivo, cosa occorre cercare di fare: vedere i FS che si è in grado di gestire e provarli tutti finché non se ne trova uno che è soddisfacente, in termini di cosa ci si aspetta per il super blocco del dispositivo. Si scorre quindi la lista dei FS gestibili dal kernel e si popola un array che indica i FS gestibili (in formato di stringa).\\In seguito, c'è un ciclo for in cui si cerca di montare un FS per ognuna delle stringhe dell'array. Si esegue infatti \texttt{sys\_mount} esattamente nella directory root.\\Il dispositivo dove prendere il roots FS applicativo è indicato per la command line, ma non si sa qual è, il ciclo può essere tale per cui si esce se il risultato del montaggio è 0, per cui si va a lavorare sulla directory root. Se invece il for termina, il blocco di codice ci dice che il device di root che è stato indicato di aprire non può essere aperto e ci si porta al panic. Non finisce qui, in quanto dopo aver montato il FS di root applicativo, si lancia \texttt{init} che può decidere di montare altri FS, si indica dove vanno montati altri eventuali FS nel file \texttt{/etc/fstab}: ad esempio init monta \texttt{proc}.\\Col comando \texttt{df -T} possiamo vedere i file system montati, con i punti di montaggio: una cosa interessante è btrfs (better file system), che viene montato in più punti dello stesso dispositivo in quanto è utile per montare dei volumi.\\A questo punto, spostiamo il punto di montaggio sullo "/", questo serve perché nel momento in cui montiamo abbiamo bisogno di tutti gli oggetti raggiungibili dalla radice.\\Abbiamo poi la syscall \texttt{mount}, che permette di specificare diversi flag:
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/mount_history.png}
+\end{figure}
+Cerchiamo poi di montare il FS root applicativo con \texttt{mount\_block\_root}: non sappiamo che tipo di FS contenga il dispositivo che è stato indicato di montare. Per cercare comunque di montare quel dispositivo, cosa occorre fare: vedere i FS che si è in grado di gestire e provarli tutti finché non se ne trova uno che è soddisfacente, in termini di cosa ci si aspetta per il super blocco del dispositivo. Si scorre quindi la lista dei FS gestibili dal kernel e si popola un array che indica i FS gestibili (in formato di stringa).\\In seguito, c'è un ciclo for in cui si cerca di montare un FS per ognuna delle stringhe dell'array. Si esegue infatti \texttt{sys\_mount} esattamente nella directory root.\\Il dispositivo dove prendere il roots FS applicativo è indicato per la command line, ma non si sa qual è, il ciclo può essere tale per cui si esce se il risultato del montaggio è 0, per cui si va a lavorare sulla directory root. Se invece il for termina, il blocco di codice ci dice che il device di root che è stato indicato di aprire non può essere aperto e ci si porta al panic. Non finisce qui, in quanto dopo aver montato il FS di root applicativo, si lancia \texttt{init} che può decidere di montare altri FS, si indica dove vanno montati altri eventuali FS nel file \texttt{/etc/fstab}: ad esempio init monta \texttt{proc}.\\Col comando \texttt{df -T} possiamo vedere i file system montati, con i punti di montaggio: una cosa interessante è btrfs (better file system), che viene montato in più punti dello stesso dispositivo in quanto è utile per montare dei volumi.\\A questo punto, spostiamo il punto di montaggio sullo "/", questo serve perché nel momento in cui montiamo abbiamo bisogno di tutti gli oggetti raggiungibili dalla radice.\\Abbiamo poi la syscall \texttt{mount}, che permette di specificare diversi flag:
 \begin{itemize}
-	\item possibilità di montare il file system in modlaità read only, per motivi ad esempio di sicurezza
+	\item possibilità di montare il file system in modalità read only, per motivi ad esempio di sicurezza
 	\item etc...
 \end{itemize}
-Bind mount: è un montaggio basato sul concetto di collegamento, a livello delle strutture in RAM per correlare le informazioni in una struttura gerarchica. Permette di collegare uno specifico FS a più punti del FS, quindi possiamo rendere il FS visibile in diversi punti dell'archivio con caratteristiche diverse. Abbiamo poi un puntatore di dati per la syscall, che ad esempio per quanto riguarda il bind mount permette di indicare che l'ID numerico che identifica il proprietario di un file va traslato su un altro. C'è quindi la possibilità di avere più utenti che vedono lo stesso FS.\\\\
+\paragraph{Bind mount}Bind mount è un tipo montaggio basato sul concetto di collegamento, a livello delle strutture in RAM per correlare le informazioni in una struttura gerarchica. Permette di collegare uno specifico FS a più punti del FS, quindi possiamo rendere il FS visibile in diversi punti dell'archivio con caratteristiche diverse. Abbiamo poi un puntatore di dati per la syscall, che ad esempio per quanto riguarda il bind mount permette di indicare che l'ID numerico che identifica il proprietario di un file va traslato su un altro. C'è quindi la possibilità di avere più utenti che vedono lo stesso FS.\\
 Abbiamo il seguente schema:
 \begin{enumerate}
 	\item il device da montare è usato per accedere al driver
-	\item (slides)
+	\item la funzione di lettura del superblocco è identificata tramite il device da montare
+	\item tale funzione di lettura controllerà se il superblocco è compatibile con cosa si aspetta per quel device, ad esempio per il tipo di file system
+	\item in caso di successo, vengono create le 4 strutture dati classiche e linkate con la memoria principale
 \end{enumerate}
 in Linux, la syscall \texttt{mount} si appoggia internamente su \texttt{do\_kernel\_mount}, avendo quindi il seguente schema:
-%immagine dello schema
-i due nodi console e root ci portano su due driver.\\\\Se abbiamo una directory che contiene alcune cose, in memoria possiamo rappresentarla in maniera tale per cui quando vi si fanno le operazioni non si scende sugli elementi della directory, ma si va da qualche altra parte. Si può fare perché nella struttura dentry c'è un campo \texttt{d\_mounted} che dice che il contenuto della directory è una don't care, l'approccio permette di costruire le bind di cui si parlava prima: abbiamo un'archotettura gerarchica, dove ogni punto ridirezione da qualche parte.
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/mount_scheme.png}
+\end{figure}
+\\i due nodi console e root ci portano su due driver.\\\\Se abbiamo una directory che contiene alcune cose, in memoria possiamo rappresentarla in maniera tale per cui quando vi si fanno le operazioni non si scende sugli elementi della directory, ma si va da qualche altra parte. Si può fare perché nella struttura dentry c'è un campo \texttt{d\_mounted} che dice che il contenuto della directory è una don't care, l'approccio permette di costruire le bind di cui si parlava prima: abbiamo un'architettura gerarchica, dove ogni punto ridireziona da qualche parte.
 \subsection{Moduli kernel fondamentali}
 La syscall \texttt{open} è semplice:
 \begin{itemize}
-	\item si prende un file descriptor libero
+	\item si prende un file descriptor libero, accedendo a \texttt{current $\rightarrow$files $\rightarrow$fd}
 	\item si prende la dentry usando \texttt{filp\_open()}
 	\item si linkano le due cose insieme
+	\item si rilascia la dentry (tramite file descriptor) con la \texttt{filp\_close()}
+	\item si rilascia infine il file descriptor, accedendo a \texttt{current $\rightarrow$files $\rightarrow$fd}
 \end{itemize}
-con \texttt{filp\_open()} mandiamo la sessione in setup:
-(slides)\\\\Vedendo \texttt{read} o \texttt{write}:
+Vedendo \texttt{read} o \texttt{write}:
 \begin{itemize}
 	\item prendiamo come parametro il codice di un canale di I/O, da cui possiamo risalire a qual è la sessione e quindi a qual è l'inode e la dentry su cui stiamo lavorando. 
 	\item risaliamo quindi anche alla file operation
 	\item si chiama il function pointer.
 \end{itemize}
-Con questa visione del VFS prevede che, quando si chiamano operazioni di I/O, la chiamata che effettuiamo è tale per cui viene mappata la chiamata sul driver corretto, le operazioni intermedie sono tali per cui si cerca la posizione in memoria del driver.
+Con questa visione del VFS è previsto che, quando si chiamano operazioni di I/O, la chiamata che effettuiamo è tale per cui viene mappata sul driver corretto, le operazioni intermedie sono tali per cui si cerca la posizione in memoria del driver.
 \subsection*{Esempi software}
 Vediamo alcuni esempi di scrittura/lettura di dati, per ora il collegamento dei dati non è automatico all'inode ma c'è questa possibilità
 \subsubsection*{Bind mounts Makefile}
@@ -3498,14 +3936,34 @@ In questo esempio installiamo un driver per pilotare una sorta di pseudo-file, o
 \end{itemize}
 Quindi, le due sessioni simultanee portano sullo stesso file e quindi occorre sincronizzare le due sessioni.\\Possiamo comunque avere concorrenza sullo stesso lavoro se la sessione è acceduta da più thread\\\\Ci sono una serie di operazioni, abbiamo poi delle define che ci dicono che alla compilazione l'oggetto può essere per singola sessione, in modo che se l'oggetto è già aperto in una sessione verrà restituito un errore; oppure il driver è single instance, ovvero una volta aperto il driver per un oggetto questo è aperto in modo esclusivo. Questo accadeva per la scheda audio: quando si chiamava la \texttt{open} per eseguire delle operazioni non era possibile chiamarne altre.\\Se il driver può quindi lavorare in istanza singola si cerca di prendere un lock.\\Se viene chiamata una write oppure una read è perché esiste una sessione valida: qui non serve richiedere il blocco della sezione dati, serve solo usare il mutex per sincronizzare le operazioni. C'è una funzione di \texttt{ioctl}, per cui possiamo fare un'operazione diversa in base al device (??). Abbiamo registrato il driver per gestire devices fino a 8 minor numbers, quindi successivi riporteranno errore. Rispetto ad un file "classico" manca solo che questi dati andrebbero presi da hard drive o riportati su hard drive.
 \section{\texttt{proc} file system}
-Abbiamo usato alcuni pseudofile in \texttt{proc} negli esempi visti. Vediamo le caratteristiche di \texttt{proc}: in questo FS, abbiamo nella directory \texttt{proc} la possibilità di osservare i file, che forniscono informazioni riguardo quello che attualmente il kernel del SO sta facendo e quindi ad esempio su qual è la situazione operativa del kernel. Altra cosa interessante è che ci sono delle directory che permettono di caratterizzare cosa sta accadendo nel kernel del SO qualsiasi cosa sta accadendo nel SO:
+Abbiamo usato alcuni pseudofile in \texttt{/proc} negli esempi visti. Vediamo le caratteristiche di \texttt{/proc}: in questo FS, abbiamo nella directory \texttt{/proc} la possibilità di osservare i file, che forniscono informazioni riguardo quello che attualmente il kernel del SO sta facendo e quindi ad esempio su qual è la situazione operativa del kernel.\\Altra cosa interessante è che ci sono delle directory che permettono di caratterizzare cosa sta accadendo nel kernel del SO:
 \begin{itemize}
 	\item \texttt{pid/}
 	\item \texttt{pid/cmdline}
 	\item altri
 \end{itemize}
-lo pseudo file system viene mandato in attivo nel kernel mediante la funzione \texttt{proc\_root\_init}, che fa il lavoro di creare \texttt{proc} e creare le istanze di alcune strutture dati. Questo non implica che il file system è montato, vediamo le strutture dati per gestire gli oggetti nel VFS \texttt{proc}: se ci sono dei nodi di I/O gestibili dall'archivio, questi devono essere rappresentati da apposite strutture dati, una di queste è \texttt{proc\_dir\_entyt}:
-%versione classica
+lo pseudo file system viene mandato in attivo nel kernel mediante la funzione \texttt{proc\_root\_init}, che fa il lavoro di creare \texttt{/proc}, come anche le istanze di alcune strutture dati. Questo non implica che il file system è montato, vediamo le strutture dati per gestire gli oggetti nel VFS \texttt{/proc}: se ci sono dei nodi di I/O gestibili dall'archivio, questi devono essere rappresentati da apposite strutture dati, una di queste è \texttt{proc\_dir\_entyt}:
+\begin{lstlisting}
+struct proc_dir_entry {
+	unsigned short low_ino;
+	unsigned short namelen;
+	const char *name;
+	mode_t mode;
+	nlink_t nlink; uid_t uid; gid_t gid;
+	unsigned long size;
+	struct inode_operations *proc_iops;
+	struct file_operations *proc_fops;
+	get_info_t *get_info;
+	struct module *owner;
+	struct proc_dir_entry *next, *parent, *subdir;
+	void *data;
+	read_proc_t *read_proc;
+	write_proc_t *write_proc;
+	atomic_t count; /* use count */
+	int deleted; /* delete flag */
+	kdev_t rdev;
+};
+\end{lstlisting}
 considerando questa struttura, vediamo quali campi interessanti ci sono:
 \begin{itemize}
 	\item \texttt{name}
@@ -3515,56 +3973,117 @@ considerando questa struttura, vediamo quali campi interessanti ci sono:
 	\item \texttt{read\_proc}
 	\item \texttt{write\_proc}
 \end{itemize}
-Con gli ultimi due puntatori possiamo identificare specifici driver ed in particolare specifici dati. \texttt{proc} è stato progettato e realizzato per prendere informazioni dal kernel o comunicarle al kernel in maniera semplice: magari ci basta un set ridotto di operazioni e non tutto un driver, quindi quando istanziamo un oggetto di I/O per \texttt{proc}, nella tabella mettiamo solo i due pointers di read e write, ritroviamo questa cosa anche in alcune API a livello kernel per creare oggetti nel VFS: passiamo un numero di parametri limitato per usare alcune delle cose che vengono messe a disposizione. In realtà, le due funzioni non sono esattamente identiche in termini di interfaccia di accesso alle due funzioni \texttt{read} e \texttt{write} identificate con un drvier, in termini del set di parametri che vengono passati.\\Abbiamo anche una versione più recente:
-%modifica più recente
-abbiamo l'utilizzo di una \texttt{union} per puntare a \texttt{file\_operations} o \texttt{proc\_ops}. Non c'è più la read procedure, quindi alcune delle API per creare dei nodi di lettura in \texttt{proc} non sono più supportate, possiamo eventualmente creare nodi di scrittura per creare oggetti; c'è sempre la solita randomizzazione per la gestione di tabelle che rappresentano i driver piuttosto che tabelle generiche.\\Per montare \texttt{proc}, questo può essere eseguito come
+Con gli ultimi due puntatori possiamo identificare specifici driver ed in particolare specifici dati. \texttt{/proc} è stato progettato e realizzato per prendere informazioni dal kernel o comunicarle al kernel in maniera semplice: magari ci basta un set ridotto di operazioni e non tutto un driver, quindi quando istanziamo un oggetto di I/O per \texttt{/proc}, nella tabella mettiamo solo i due pointers di read e write, ritroviamo questa cosa anche in alcune API a livello kernel per creare oggetti nel VFS: passiamo un numero di parametri limitato per usare alcune delle cose che vengono messe a disposizione. In realtà, le due funzioni non sono esattamente identiche in termini di interfaccia di accesso alle due funzioni \texttt{read} e \texttt{write} identificate con un drvier, in termini del set di parametri che vengono passati.\\Abbiamo anche una versione più recente:
+\begin{lstlisting}
+struct proc_dir_entry {
+	...
+	const struct inode_operations *proc_iops;
+	union{
+		const struct proc_ops *proc_ops;
+		const struct file_operations *proc_dir_ops;
+	};
+	const struct dentry_operations *proc_dops;
+	...
+	proc_write_t write;
+	void *data;
+	...
+}__randomize_layout;
+\end{lstlisting}
+abbiamo l'utilizzo di una \texttt{union} per puntare a \texttt{file\_operations} o \texttt{proc\_ops}. Non c'è più la read procedure, quindi alcune delle API per creare dei nodi di lettura in \texttt{/proc} non sono più supportate, possiamo eventualmente creare nodi di scrittura per creare oggetti; c'è sempre la solita randomizzazione per la gestione di tabelle che rappresentano i driver piuttosto che tabelle generiche.\\Per montare \texttt{/proc}, questo può essere eseguito come
 \begin{itemize}
 	\item come oggetto per default configurato per il montaggio
-	\item in \texttt{fstab} si indica ad \texttt{init} che bisogna montare \texttt{proc}, quindi serve la directory applicativa \texttt{proc} nella root per poterla agganciare
+	\item in \texttt{fstab} si indica ad \texttt{init} che bisogna montare \texttt{/proc}, quindi serve la directory applicativa \texttt{/proc} nella root per poterla agganciare
 \end{itemize}
-si tende  ad usare \texttt{proc} come oggetto di default nel sistema, anche perché classicamente diversi servizi attivi nel SO vanno ad utilizzarlo.\\Il montaggio di \texttt{proc} è tale per cui non occorre specificare il device.
+si tende ad usare \texttt{/proc} come oggetto di default nel sistema, anche perché classicamente diversi servizi attivi nel SO vanno ad utilizzarlo.\\Il montaggio di \texttt{/proc} è tale per cui non occorre specificare il device.
 \subsection{Alcune API per \texttt{proc}}
-Per creare un nodo di I/O in \texttt{proc} che sia una directory usiamo la API interna al kernel %nome API
-la cosa interessante è che possiamo indicare qual è il parent, avendo il puntatore alla tabella che lo rappresenta, il nome e basta. La directory è di \texttt{proc}, quindi la tabella in memory che la rappresenta viene riempita di informazioni automaticamente.\\Viene ritornato un puntatore se la creazione riesce.\\\\Abbiamo un altra API che è\\ \texttt{static inline struct proc\_create()}: creiamo un oggetto di \texttt{proc}, quindi occorre specificare più informazioni. Possiamo specificare ad esempio le \texttt{file\_operations}, quindi un pointer ad una tabella che specifica quali saranno le funzioni chiamate quando si andrà in I/O su quell'oggetto.\\\\Esiste un'altra API che prede un parametro in più, a differenza della precedente, stiamo anche specificando dove sono i dati di quell'oggetto di I/O, è un puntatore arbitrario e quindi possiamo identificare un qualunque oggetto. Chiamando questa API, nella rappresentazione in memoria abbiamo sicuramente quella basata sulla \texttt{proc\_dir\_entry}, ma usiamo anche altre tabelle fra qui l'\texttt{inode}, che ci permette quindi poi di arrivare ai dati mediante un pointer.
+Per creare un nodo di I/O in \texttt{/proc} che sia una directory usiamo la API interna al kernel, la \texttt{proc\_mkdir}, la cosa interessante è che possiamo indicare qual è il parent, avendo il puntatore alla tabella che lo rappresenta, il nome e basta.\\La directory è di \texttt{/proc}, quindi la tabella in memory che la rappresenta viene riempita di informazioni automaticamente.\\Viene ritornato un puntatore se la creazione riesce.\\\\Abbiamo un altra API che è\\ \texttt{static inline struct proc\_create()}: creiamo un oggetto di \texttt{/proc}, quindi occorre specificare più informazioni. Possiamo specificare ad esempio le \texttt{file\_operations}, quindi un pointer ad una tabella che specifica quali saranno le funzioni chiamate quando si andrà in I/O su quell'oggetto.\\\\Esiste un'altra API che prede un parametro in più, a differenza della precedente, stiamo anche specificando dove sono i dati di quell'oggetto di I/O, è un puntatore arbitrario e quindi possiamo identificare un qualunque oggetto. Chiamando questa API, nella rappresentazione in memoria abbiamo sicuramente quella basata sulla \texttt{proc\_dir\_entry}, ma usiamo anche altre tabelle fra qui l'\texttt{inode}, che ci permette quindi poi di arrivare ai dati mediante un pointer.
 \subsection{Operazioni di lettura/scrittura}
 Abbiamo una differenza fra le operazioni di lettura e scrittura del driver tradizionale e quelle puntate dalla \texttt{proc\_dir\_entry}: le funzioni di \texttt{read} e \texttt{write} classiche hanno la seguente forma:\\
-%forma
+\begin{itemize}
+	\item \texttt{ssize\_t (*read) (struct file *, char *, size\_t, loff\_t *)};
+	\item \texttt{ssize\_t (*write) (struct file *, char *, size\_t, loff\_t *)};
+\end{itemize}
 le due operazioni invece sono diverse:
-%forma delle altre
+\begin{itemize}
+	\item \texttt{typedef int (read\_proc\_t) (char *page, char **start, off\_t off, int count, int *eof, void *data)};
+	\item \texttt{typedef int (write\_proc\_t) (struct file *file, const char *buffer, unsigned long count, void *data)};
+\end{itemize}
 nella API ci sono parametri aggiuntivi, che ci dicono qual è l'area di dati e se realmente quell'area è stata utilizzata. La seconda variabile serve per indicare dove abbiamo impacchettati i dati, che possono non essere nell'area indicata nel parametro: questo ci permette di avere flessibilità nel driver, in quanto se i dati sono già impacchettati, non serve metterli nella page. Inoltre, le operazioni del driver classico sono user mode, mentre nel caso di queste operazioni abbiamo un'area che eventualmente può essere usata per impacchettare dei dati, questa viene data dal layer superiore del SO. Col secondo parametro si capisce se i dati sono stati impacchettati nell'area data dall'utente o nel primo parametro.\\Il seguente è un esempio di utilizzo:
-%esempio con scritto cosa si fa
+\begin{lstlisting}
+int MyReadProc(char *page, char **start, off_t off, int count, int *eof, void *data)
+{
+	int n;
+	if (off >= N) {
+		*eof = 1;
+		return 0;
+	}
+	n = N -off;
+	*eof = n>count ? 0 : 1;
+	if (n>count)
+		n = count;
+	memcpy(page, pContent+off, n);
+	*start = page;
+	return n;
+}
+\end{lstlisting}
 sfruttiamo quindi il fatto di copiare alcune parti dei dati in un'area di memoria consegnata dal SO.
 \subsection*{Esempio software}
 Quando scendiamo nelle informazioni dello pseudofile, ci chiediamo dove è il puntatore all'area dati da usare: usiamo una macro apposita del kernel, che risale nell'inode e lo mette di \texttt{data}. Proviamo a fare il \texttt{cat} di \texttt{/dev/zero} sul nuovo pseudofile: \texttt{/dev/zero} ha una sequenza indeterminata di zeri, il nostro pseudofile può acquisire una taglia di zeri pari al limite e pian piano ci porteremo sempre più vicini a tale limite. Quindi l'applicazione riceverà un errore in scrittura.
 \section{File system \texttt{sys}}
-Altro pseudofile interessante nel FS Linux. Se guardiamo da una shell il contenuto di \texttt{sys} e di \texttt{proc} sono del tutto omologhi: sono tutti pseudo file che ci danno indicazioni sull'oporeatività del kernel. Ma \texttt{sys} nasce come idea di progettazione più moderna, in termini del fatto che abbiamo strutture dati più semplici che però ci permettono di rappresentare cose complesse, inoltre le strutture dati di \texttt{sys} permettono al kernel di lavorare anche in altre parti oltre al FS.\\Abbiamo la seguente associazione:
+Altro pseudofile interessante nel FS Linux. Se guardiamo da una shell il contenuto di \texttt{/sys} e di \texttt{/proc} sono del tutto omologhi: sono tutti pseudo file che ci danno indicazioni sull'oporeatività del kernel. Ma \texttt{/sys} nasce come idea di progettazione più moderna, in termini del fatto che abbiamo strutture dati più semplici che però ci permettono di rappresentare cose complesse, inoltre le strutture dati di \texttt{/sys} permettono al kernel di lavorare anche in altre parti oltre al FS.\\Abbiamo la seguente associazione:
 \begin{table}[!h]
 	\begin{tabular}{|c | c|}
 		\hline
-		Kernel object & Directories\\
+		Kernel Object & Directories\\
 		\hline
-		Object attributes & Files\\
+		Object Attributes & Regular Files\\
 		\hline
-		Object relationships & Symbolic Links\\
+		Object Relationships & Symbolic Links\\
 		\hline
 	\end{tabular}
 \end{table}
 \\la prima struttura è stata introdotta per avere delle caratteristiche che si hanno in OO programming: possiamo costruire oggetti software fatti in modo che, come avviene in OO, possiamo identificare i metodi. Ma questo si può avere anche con dei drivers, la cosa interessante è che logicamente si possa espandere il set di attributi e metodi, quindi avere quello che è l'ereditarietà dell'OO programming.
 \subsection{Kernel object}
 Le strutture dati associate ai kernel objects possono permetterci di identificare diverse cose:
-(slides)
-possiamo dire che due oggetti sono della stessa tipologia, quindi a livello di sistema dire che i due oggetti vengono gestiti nello stesso modo.\\Il kernel object ha la seguente struttura dati:
-%struct del kobject
-abbiamo una \texttt{list\_head}, la fatidica lista doppiamente collegata (vista prima). Abbiamo poi il \texttt{kset}, quindi la possibilità di identificare alcune attività di gestione sullo specifico set, abbiamo poi la possibilità di fare reference counting, in quanto possiamo avere altri oggetti che fanno riferimento a questo oggetto.\\Vediamo altri campi:
-%kobject type
-la struttura che identifica il tipo di kobject esprime anche qual è il driver per lavorare su quell'oggetto. Abbiamo poi un pinter di pointer ad una struttura attributo: se l'oggetto è usato per rappresentare una directory, se mettiamo dei file nella directory, ognuno dei file è rappresentato come un attributo, quindi abbiamo un array di attributi. Stiamo quindi rappresentando i file di una directory, abbiamo poi la \texttt{release}, function pointer che punta ad un modulo usato quando il reference counter arriva a 0, quindi l'oggetto può essere eliminato.\\\\Abbiamo poi le \texttt{sysfs\_ops}, driver minimali per lavorare sull'oggetto kernel:
 \begin{itemize}
-	\item \texttt{(*show)}: è l'API di lettura di qualcosa, ad esempio di un file. Quindi chiamando una \texttt{read} su un file di \texttt{sys} si scende e si chiama questa. Non abbiamo il numero di byte che vanno consegnati, quindi l'oggetto di cui stiamo cercando di leggere i dati è tale per cui l'oggetto può impacchettare i dati nella pagina, non di più. L'architettura è tale per cui tutto è pensato per avere file di piccole dimensioni
+	\item oggetti individuali
+	\item raggruppamenti di oggetti
+	\item tipologia degli oggetti
+	\item associare la stessa tipologia a diversi oggetti
+	\item identificare gerarchie
+\end{itemize}
+possiamo dire che due oggetti sono della stessa tipologia, quindi a livello di sistema dire che i due oggetti vengono gestiti nello stesso modo.\\Il kernel object ha la seguente struttura dati:
+\begin{lstlisting}
+struct kobject {
+	const char *name;
+	struct list_head entry;
+	struct kobject *parent;
+	struct kset *kset;
+	struct kobj_type *ktype;
+	sutrct kernfs_node *sd;
+	
+	/* sysfs directroy entry */
+	struct kref kref;
+}
+\end{lstlisting}
+abbiamo una \texttt{list\_head}, la fatidica lista doppiamente collegata (vista prima). Abbiamo poi il \texttt{kset}, quindi la possibilità di identificare alcune attività di gestione sullo specifico set, abbiamo poi la possibilità di fare reference counting, in quanto possiamo avere altri oggetti che fanno riferimento a questo oggetto.\\Vediamo altri campi:
+\begin{lstlisting}
+struct kobj_type {
+	void (*release)(structkobject*);
+	struct sysfs_ops *sysfs_ops;
+	struct attribute **default_attrs;
+}
+\end{lstlisting}
+la struttura che identifica il tipo di kobject esprime anche qual è il driver per lavorare su quell'oggetto. Abbiamo poi un pointer di pointer ad una struttura attributo: se l'oggetto è usato per rappresentare una directory, se mettiamo dei file nella directory, ognuno dei file è rappresentato come un attributo, quindi abbiamo un array di attributi. Stiamo quindi rappresentando i file di una directory, abbiamo poi la \texttt{release}, function pointer che punta ad un modulo usato quando il reference counter arriva a 0, quindi l'oggetto può essere eliminato.\\\\Abbiamo poi le \texttt{sysfs\_ops}, driver minimali per lavorare sull'oggetto kernel:
+\begin{itemize}
+	\item \texttt{(*show)}: è l'API di lettura di qualcosa, ad esempio di un file. Quindi chiamando una \texttt{read} su un file di \texttt{/sys} si scende e si chiama questa. Non abbiamo il numero di byte che vanno consegnati, quindi l'oggetto di cui stiamo cercando di leggere i dati è tale per cui l'oggetto può impacchettare i dati nella pagina, non di più. L'architettura è tale per cui tutto è pensato per avere file di piccole dimensioni
 	\item \texttt{(*store)}: questa deve poter prendere i dati da un'area e sapere quanti prenderne
 \end{itemize}
 Uno dei classici utilizzi dei kernel object è quello di rappresentare dei set, ad esempio di tutti i device usb su un sottosistema usb etc... e questo ci permette di poter targare tutti gli oggetti dello stesso set con dei metadati di gestione. Il metadato tipicamente usato è il \texttt{kset}, la cosa particolare è questa:
-%imamgine del kset
-il \texttt{kset} all'interno ha un kernel object, si può usare la tabella del \texttt{kset} per riferire la stessa tabella, quindi che i kobjects hanno le stesse feature del parent.\\Un elemento \texttt{kset} è associato con un elemento I/O del file system \texttt{sys}, quindi troviamo dei metadati basici per la loro gestione, ovviamente possiamo usare i kobject in maniera indipendente dai set.
+\begin{figure}
+	\includegraphics[scale=0.7]{immagini/kset.png}
+\end{figure}
+il \texttt{kset} all'interno ha un kernel object, si può usare la tabella del \texttt{kset} per riferire la stessa tabella, quindi dire che i kobjects hanno le stesse feature del parent.\\Un elemento \texttt{kset} è associato con un elemento I/O del file system \texttt{/sys}, quindi troviamo dei metadati basici per la loro gestione, ovviamente possiamo usare i kobject in maniera indipendente dai set.
 \subsubsection{API basiche}
 Abbiamo alcune API basiche per lavorare con i kobjects:
 \begin{itemize}
@@ -3582,23 +4101,48 @@ Abbiamo anche API per i \texttt{kset}, dove possiamo embeddare i kobject. Ci sti
 	\item put
 	\item set\_name
 \end{itemize}
-All'interno della struttura dati \texttt{kset} è presente l'\textbf{event to user}: quando abbiamo la struttura \texttt{kset} abbiamo una serie di campi che sono metadati di gestione per il set di kobject, fra le informazioni c'è il campo \texttt{kobject\_uevent}, che identifica un blocco di codice da attivare quando avviene un evento su quel \texttt{kset}: quando avviene l'evento, se è registrato un uevent parte un thread che tipicamente fa l'exec dell'applicazione, si chiede all'utente di fare delle cose, ad esempio chiedere se un device inserito nell'architettura deve essere accessibile e come deve esserlo.\\Ad esempio per la gestione dell'aggiunta di un device USB al gruppo. 
+All'interno della struttura dati \texttt{kset} è presente l'\textbf{event to user}: quando abbiamo la struttura \texttt{kset} abbiamo una serie di campi che sono metadati di gestione per il set di kobject, fra le informazioni c'è il campo \texttt{kobject\_uevent}, che identifica un blocco di codice da attivare quando avviene un evento su quel \texttt{kset}.\\Quando avviene l'evento, se è registrato un uevent parte un thread che tipicamente fa l'exec dell'applicazione, si chiede all'utente di fare delle cose, ad esempio chiedere se un device inserito nell'architettura deve essere accessibile e come deve esserlo.\\Ad esempio per la gestione dell'aggiunta di un device USB al gruppo. 
 \subsection{\texttt{sysfs} core API}
 Abbiamo poi le API principali per creare directory nel FS \texttt{sys}:
-%api dalle slides
+\begin{itemize}
+	\item \texttt{int sysfs\_create\_dir(struct kobject *k);}
+	\item \texttt{void sysfs\_remove\_dir(struct kobject *k);}
+	\item \texttt{int sysfs\_rename\_dir(struct kobject *k, const char *new\_name);}
+\end{itemize}
 Abbiamo anche API interessanti per la creazione dei file
-%API dalle slides
-per cui specifichiamo un puntatore ad un kobject ma anche ad un attributo, con cui possiamo collegarla tramite array di pointers alla directory.\\La struttura attributo è molto semplice ed è come segue:
-%slides
+\begin{itemize}
+	\item \texttt{int sysfs\_create\_file(struct kobject *, const struct attribute *);}
+	\item \texttt{void sysfs\_remove\_file(struct kobject *, const struct attribute *);}
+	\item \texttt{int sysfs\_update\_file(struct kobject *k, const struct attribute *);}
+\end{itemize}
+per cui specifichiamo un puntatore ad un \texttt{kobject} ma anche ad un attributo, con cui possiamo collegarla tramite array di pointers alla directory.\\La struttura attributo è molto semplice ed è come segue:
+\begin{lstlisting}
+struct attribute {
+	char *name;
+	struct module *owner;
+	mode_t mode;
+};
+\end{lstlisting}
 le operazioni per lavorare sullo specifico file non sono specificate, quindi l'attributo è embedded in una tabella più ampia, che è la seguente:
-%kobject attribute
-abbiamo l'attributo dove ci sono poi la \texttt{show} e la \texttt{store}. Qui non c'è l'indicazione dove sono i dati del file, quindi come costruiamo un file per \texttt{sys} dove in O(1) si arriva sui dati: quando viene creato un file si usa una delle API, abbiamo visto che la struttura è embeddata, è possibile che le \textbf{read} o \textbf{write} vadano su zone di memoria differenti? Possiamo far si che la tabella sia embeddata in un'altra, dove possiamo scrivere dati e metadati su cui le due funzioni devono operare, mediante \texttt{container\_of} e quindi lavorando su zone differenti.
+\begin{lstlisting}
+struct kobj_attribute {
+	struct attribute attr;
+	ssize_t (*show)(struct kobject *kobj, struct kobj_attribute *attr, char *buf);
+	ssize_t (*store) (struct kobject *kobj, struct kobj_attribute *attr, const char *buf, size_t count);
+};
+\end{lstlisting}
+abbiamo l'attributo dove ci sono poi la \texttt{show} e la \texttt{store}. Qui non c'è l'indicazione dove sono i dati del file, quindi come costruiamo un file per \texttt{/sys} dove in O(1) si arriva sui dati: quando viene creato un file si usa una delle API, abbiamo visto che la struttura è embeddata, è possibile che le \textbf{read} o \textbf{write} vadano su zone di memoria differenti? Possiamo far si che la tabella sia embeddata in un'altra, dove possiamo scrivere dati e metadati su cui le due funzioni devono operare, mediante \texttt{container\_of} e quindi lavorando su zone differenti.
 \subsection{Architettura di overall}
 Questa è quindi l'architettura di overall
-%immagine
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/sys_overall.png}
+\end{figure}
 \subsection{Devices in \texttt{sys}}
 Abbiamo \texttt{/sys/class} che è un device che internamente contiene altri device files: abbiamo una API apposita
-%API dalle slides
+\begin{itemize}
+	\item \texttt{static struct class * class\_create(struct module *owner, char *class	\_name)};
+	\item \texttt{static struct class * device\_create(static struct class *the\_class, ..., kdev\_t i\_rdev, ..., char *name)};
+\end{itemize}
 \chapter{Aspetti di sicurezza del software}
 \section{Classiche vulnerabilità del software}
 Affrontiamo qualche ulteriore aspetto riguardo la sicurezza: abbiamo analizzato varie cose per quanto riguarda i bugs dei processori, dovuti alla presenza dei side channels. Questi side channels hanno previsto una patch anche dal punto di vista software, in realtà quel tipo di problemi di sicurezza non sono gli unici a cui dover stare attenti in quanto c'è un livello di sicurezza che guarda solo alle vulnerabilità delle applicazioni software.\\Il concetto di sicurezza in un sistema IT è tale per cui possiamo dire che un sistema sia sicuro se il software possa essere usato solo da utenti legittimi, l'accesso è garantito a questi utenti in base a delle regole ben precise stabilite da un \textbf{amministratore di sistema}. Questo concetto di amministratore viene ad essere agganciato al root di sistema, quindi si dice che una persona può lavorare in ambito sistema perché si hanno delle credenziali valide, ma ragionando così non si riesce ad ottenere un sistema sicuro quindi questo concetto di amministrazione va cambiato.\\Questo comunque ci dice che se abbiamo un sistema non utilizzabile allora il sistema è inutile, sappiamo però che in certi scenari di attacco l'inusabilità è l'obiettivo dell'attacco, quindi qualcuno attacca per rendere il sistema non utilizzabile agli utenti legittimi, sono i così detti DoS nella letteratura.

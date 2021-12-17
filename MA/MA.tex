@@ -1444,25 +1444,156 @@ un processo che lavora a livello di sistema o viene lanciato dal sistema stesso 
 	\item \texttt{AdjustTokenPrivileges(\&tokenHandle, 0, \&Newstate, ...)}, il nuovo stato si costruisce dal precedente.
 \end{itemize}
 quindi queste 3 API trasformano un processo in uno da livello utente ad uno con privilegi di sistema.
-
-
-
-
-
-
-
-
-
-
-
-
+\chapter{Lezione 25}
+\section{Restanti obiettivi classici del malware}
+Vediamo i restanti meccanismi utilizzati dal malware per realizzare degli obiettivi specifici, i 4 fondamentali sono
+\begin{itemize}
+	\item persistenza, ossia la possibilità per il malware di essere avviato in successivi bootstrap
+	\item elevare i privilegi, per poter modificare il sistema
+\end{itemize}
+Vediamo tecniche per conseguire obiettivi
+\begin{itemize}
+	\item di segretezza, per sfuggire all'occhio degli utenti
+	\item evasione, in termini di bypassare i controlli di firewall, IDS o monitor di sistema. Qualche programma tenta di riconoscere se il malware sta effettuando strane operazioni, tipo accedere alla porta 80 pur non essendo uno dei browser riconosciuti.
+\end{itemize}
+\subsection{Segretezza}
+Volendo realizzare la segretezza, quindi cercando di nascondersi, lo strumento principale per il malware è quello di installare un così detto \textbf{rootkit}, che è fondamentalmente uno strumento che falsifica e nasconde informazioni. Per poter capire se nel sistema sta avvenendo qualcosa di strano, si può fare quindi 
+\begin{itemize}
+	\item la lista dei task nel sistema e verificare se questo è stato lanciato dall'utente o se fa qualcosa di noto
+	\item si può anche tentare di ottenere la lista di tutti i servizi attivi, fra cui poi occorre riconoscere il malware
+	\item si possono listare le connessioni di rete
+	\item controllare i file, se il malware deve essere persistente deve essere memorizzato sul disco
+\end{itemize}
+un rootkit è un componente del malware che serve a falsare le riposte che il SO da per quelle liste dette sopra: il rootkit intercetta le domande del programma al SO e le modifica, ad esempio togliendo il suo processo dalla lista restituita al monitor.\\Il rootkit si pone quindi fra il SO e l'applicazione, così che quando quest'ultima fa una certa richiesta mediante API, tipicamente il rootkit interviene e da una risposta "aggiustata".\\Ricordiamo che si possono avere due tipologie di rootkit:
+\subsubsection{Rootkit user mode}
+Il suo scopo è cercare, quando ad esempio il monitor fa la richiesta al SO, di intervenire a livello della API in modo che la richiesta non venga fatta direttamente al SO ma al suo codice. A questo punto, sarà lui a fare la richiesta al SO, filtrare il risultato e mandarlo all'applicazione utente.\\Sono basati sul meccanismo di collegamento delle DLL: in tutti i SO general purpose si passa per una libreria per fare una richiesta al SO, e al 99.9\% delle volte è linkata dinamicamente, in Windows si passa per le DLL. In Linux è possibile fare tutto staticamente, mentre in Windows è impossibile, per cui si usa il meccanismo di collegamento delle librerie dinamiche alle applicazioni: abbiamo visto che nella testata PE di un eseguibile c'è una sezione chiamata IAT, che
+\begin{itemize}
+	\item stabilisce quali librerie dinamiche ed API di esse l'applicazione sta usando
+	\item mentre il processo esegue, memorizza gli indirizzi di quelle API
+\end{itemize}
+Ad un certo punto l'applicazione fa una CALL a \texttt{ShowMessageBox}, ma nel codice macchina c'è tipicamente una CALL ad una piccola helper function che contiene una JUMP ad un certo indirizzo. Quest'altro indirizzo è quello nello spazio allocato per la DLL della funzione target \texttt{ShowMessageBox}.\\Quindi, ogni CALL è verso un'altra \textbf{\textsf{funzioncina}} di help, che contiene una JUMP verso un indirizzo che è quello della API. Ci sono sempre due visioni:
+\begin{itemize}
+	\item su disco, la CALL alla JUMP non è risolta, la JUMP non sa dove andare
+	\item a run time, la IAT conosce le DLL e quindi alloca nello spazio di memoria il codice della DLL e dove capita la CALL alla funzione, ovvero agli indirizzi, si risolvono tali JUMP agli indirizzi in memoria e si fanno sulle API nelle DLL
+\end{itemize}
+in sintesi è questo che la IAT fa, il rootkit a livello user mode si inserisce in questo meccanismo, per cui si dice di saltare al proprio codice:
+\begin{itemize}
+	\item farà la CALL x all'indirizzo della DLL
+	\item prima di finire la CALL, aggiusta il risultato
+\end{itemize}
+Il metodo, chiamato \textbf{IAT hooking} sta scomparendo perché prevede la modifica del file, quindi basta controllare se il file è stato modificato per scoprire subito che c'è qualcosa che non va.\\Si usa invece la tecnica dell'\textbf{inline hooking} che lavora direttamente in memoria ed abbiamo almeno due varianti
+\begin{itemize}
+	\item una è più o meno come abbiamo detto sopra, ma anche questa può essere scoperta. Ad esempio, il programma può fare dei controlli di consistenza per verificare che gli indirizzi delle IAT non cambino o che si salti verso quello che è stato caricato per la DLL
+	\item si fa una CALL x che fa una JUMP verso la funzione x della DLL. Con l'inline hooking si sovrascrivono i byte iniziali della DLL, quindi si opera facendo il classico detour visto sopra. Ci sarà quindi la jump al codice del rootkit, che fa la call ad x e se vuole può eseguire il resto della DLL rifacendo le istruzioni sostituite e saltando al punto corretto. È comunque lui in controllo e deciderà cosa restituisce la funzione x. Potrebbe ad esempio fare una CALL x che restituisce prima il controllo al rootkit che poi ridarà il controllo alla API
+\end{itemize}
+Tipicamente, per fare il lavoro dell'inline hooking serve poco:
+\begin{itemize}
+	\item \texttt{LoadLibraryA}
+	\item \texttt{GetProcAddress} per modificare gli indirizzi delle funzioni di interesse
+\end{itemize}
+Si possono scoprire le tecniche, ad esempio il monitor può fare un controllo di consistenza sul codice della DLL in memoria con quello sul file, se non corrisponde forse c'è un detour. In user mode quindi si può ancora accorgere che qualcosa non va, l'unico modo per evadere il controllo è usare un rootkit kernel mode.
+\subsection{Meccanismi per evasione}
+Anche detti "covert loading", ovvero caricare l'eseguibile in maniera nascosta fingendo di essere qualcun altro. Ci sono varie tecniche per ottenerlo
+\begin{itemize}
+	\item una serie di tecniche si chiamano Process Injection, fa cui abbiamo a loro volta
+	\begin{itemize}
+		\item DLL Injection
+		\item Direct Injection
+	\end{itemize}
+	\item Process Replacement
+	\item Hook Injection
+	\item APC Injection
+	\item ...
+\end{itemize}
+ci sono tanti modi con cui il malware può eseguire codice nel contesto di altri processi
+\subsubsection{DLL Injection}
+Tenta di far eseguire ad un processo una DLL che contiene codice malevolo, tipicamente è nel DLL Main della DLL. Lo schema è sempre lo stesso
+\begin{enumerate}
+	\item ottenere il PID del processo vittima. Per cercare il PID del processo, si possono usare delle API
+	\begin{itemize}
+		\item \texttt{CreateToolHelp32Snapshot}: fa una "fotografia" dei processi nel sistema in quel momento
+		\item \texttt{Process32First} e \texttt{Process32Next} si itera sulla lista ottenuta con la prima API. Di ciascuno il malware si chiede chi è e decide quale prendere, \textbf{\textsf{SCELGO TE!}}
+	\end{itemize}
+	\item ottiene l'handle del processo: il PID è un identificatore, mentre l'handle è un oggetto passabile alle altre syscall di Windows per manipolare il processo. L'API per ottenere tale handle è \texttt{OpenProcess}, si potrebbe dover fare una escalation di privilegi
+	\item alloca memoria per il processo vittima, non è banale in quanto la memoria va appunto allocata per un altro processo. Windows ha una API per farlo: \texttt{VirtualAllocEx}, mette la memoria nello spazio di indirizzamento dell'altro processo. Il codice del processo vittima non è consapevole della nuova memoria allocata
+	\item scrivi nella memoria allocata il percorso della DLL. Per farlo, c'è nuovamente l'API \texttt{WriteProcessMemory}
+	\item crea un thread nel processo vittima per caricare la DLL, anche qui nuova API: \texttt{CreateRemoteThread(LoadLibrary, "DLL name")}. La API viene eseguita dal processo malware, ma come effetto viene creato un thread nel processo vittima che come unica funzione eseguirà la \texttt{LoadLibraryA} per far caricare la nuova DLL al SO
+	\item il SO eseguirà quindi la \texttt{DDLMain} della DLL caricata sopra. Il processo originale continua ad essere funzionale
+\end{enumerate}
+\subsubsection{Direct Injection}
+Molto simile all DLL Injection ma per cercare di nascondersi di più, invece di iniettare la DLL di inietta direttamente il codice dopo aver allocato memoria. Si usa quindi la \texttt{WriteProcessMemory} per scrivere il codice, che funziona bene quando si scrivono pochi KB di codice.\\A questo punto, al nuovo thread si passa direttamente l'indirizzo dell'area allocata, ma c'è qualche problema da superare:
+\begin{itemize}
+	\item il codice iniettato non è nel contesto di una DLL e quindi è rilocato dal SO. Quindi, non possiamo usare la CALL ad una API perché quell'API ha un indirizzo che ogni volta cambia e quindi occorrono dei modi per trovare gli indirizzi necessari a partire da quelli risolti
+\end{itemize}
+Si usa questo tipo di cosa per initerra il così detto \textbf{shell code}
+\subsubsection{Process Replacement}
+Altra tecnica non documentata da Windows, che permette di lanciare un processo per poi sostituirlo con un altro. Il classico target di questa tecnica è il processo di sistema \texttt{svchost.exe}: lavora a livello sistema e tipicamente non ha limiti su quello che può fare. Come funziona la tecnica:
+\begin{enumerate}
+	\item si crea il processo in stato sospeso, quindi creandolo ma non eseguendolo. Per farlo, usando la API \texttt{CreateProcess(..., "svchost.exe", ..., CREATE\_SUSPENDED)}
+	\item buttare via tutto ciò che il SO ha fatto per creare il processo, usando la \texttt{ZwUnmapViewOfSection}: l'API sta nella DLL \texttt{NTDLL}, che contiene le syscall vere e proprie verso i servizi del kernel quindi è l'ultima invocata prima di entrare kernel mode. Il malware ha interesse ad usare tale DLL perché ci sono diverse API non esportate all'utente che permettono di fare diverse cose.\\La "Zw" è una sigla, contrapposta ad "Nt", che indica che l'API è richiamabile anche da dentro il kernel, quindi la validazione degli input è semplificata rispetto a quello che fa la versione NT.\\L'eseguibile in memoria è composto da un certo numero di sezioni, che vengono buttate, si svuota la memoria
+	\item a questo punto, il malware fa a mano ciò che fa il SO: \texttt{VirtualAllocEx} tante volte per ricreare le varie sezioni nel processo.
+	\item fa poi una serie di \texttt{WriteProcessMemory} per scrivere il contenuto delle sezioni, quindi rifà a mano tutto quello che faceva il SO
+	\item a questo punto, si invoca la \texttt{SetThreadContext} che rimette l'entry point del processo, che era relativo al processo originale, per farlo saltare al codice del malware
+	\item infine, si fa \texttt{ResumeThread}
+\end{enumerate}
+\subsubsection{Hook injection}
+Windows, come se non bastasse, permette anche di definire una serie di funzioni da eseguire arbitrariamente quando accadono certi eventi nel sistema.\\L'idea è questa:
+\begin{itemize}
+	\item l'utente fa qualcosa
+	\item questo qualcosa è tradotto in un evento
+	\item l'evento passa dal SO e viene mandato all'applicazione in forma di messaggio
+\end{itemize}
+Windows permette, fra il messaggio e la ricezione nel Message Loop, il passaggio per un hook definita dentro DLL per manipolare il messaggio prima di passarlo all'applicazione.\\Si può fare per tanti motivi differenti:
+\begin{itemize}
+	\item associo un hook all'evento di ridisegno della finestra
+	\item il messaggio, prima di arrivare al Message Loop, viene rielaborato dall'hook
+\end{itemize}
+Ci sono i seguenti tipi di hooks:
+\begin{itemize}
+	\item local hooks
+	\item remote hooks, che si dividono in:
+	\begin{itemize}
+		\item remote hook di livello alto, che usano il meccanismo delle DLL, quindi quando lo installo devo anche passargli il nome di una API nella DLL. Quella DLL viene automaticamente associata al processo per cui si verifica l'evento.
+		\item remote hook di livello basso: il codice è nel processo che mette in piedi l'hook. Gli hook vanno messi in piedi da un processo che chiama una API, nel caso di quelli di basso livello il codice sta nel processo che ha creato l'hook, ci sarà un meccanismo tale per cui il SO, quando deve gestire un messaggio legato ad un hook, risveglierà il processo che ha creato quell'hook.
+	\end{itemize}
+\end{itemize}
+Nel remote hook di alto livello il meccanismo è più semplice: se il processo a cui è legata la DLL non ce l'ha, viene collegata e poi il SO non si interessa di altro.\\È una variante della DLL injection, riusciamo a caricare la DLL nel contesto di un altro processo, quindi la DLL può avere codice malevolo. È usato tipicamente nei keylogger: gli hook di eventi sono \texttt{WH\_KEYBOARD} e \texttt{WH\_KEYBOARD\_LL}, che sono macro per identificare l'evento della pressione del tasto; l'API per impostare gli hook è \texttt{SetWindowsHookEx(idHook, lpfn, hMod, dwThreadId)}, primo parametro è il tipo di hook (ad esempio uno dei due messaggi sopra), poi il puntatore alla funzione, ..., poi quali thread devono essere associati a tale hook e si può dire che tutte le applicazioni siano collegate alla DLL.\\\\Per iniettare una DLL, di solito il malware usa un altro evento più generico, se invece vediamo quelli sopra siamo sicuri che il malware, fra le altre cose, è un keylogger.
+\subsubsection{APC Injection}
+APC sta per Asynchronous Procedure Call, è un meccanismo per invocare una funzione in un thread in un altro processo: non serve nemmeno crearlo, basta solo eseguirlo.\\Il meccanismo ha dei limiti: non si può interrompere un thread in qualsiasi momento, è possibile farlo ad esempio se:
+\begin{itemize}
+	\item è stata chiamata la \texttt{WaitForSingleObjectEx} o la variante \texttt{WaitForMultipleObjectEx}: sono meccanismi di sincronizzazione di Windows simili ai semafori. Quando un processo deve quindi aspettare un evento legato all'esecuzione di altri processi usa queste API, sono equivalenti alle primitive di sync di Linux. Anche in questi casi il thread va a dormire e quindi anche qui il thread può eseguire altro codice in maniera sicura
+	\item chiamata la \texttt{Sleep}: se si mette il thread a dormire, nell'immediato il thread non farà nulla e quindi si può riutilizzare il thread per fare altro
+\end{itemize}
+Questo vuol dire che un processo può sottomettere altro lavoro da fare ad un certo thread remoto, sa però che prima o poi verrà eseguito. Di fatto quindi, ogni thread ha una coda di procedure in attesa di essere eseguire e che verranno eseguite non appena quel thread invocherà una delle 3 API. Il malware sottopone quindi, al thread di un processo già evaso dai controlli del sistema, le funzioni che vorrà eseguire. Ci sono anche qui due varianti:
+\begin{itemize}
+	\item kernel mode APC, meccanismo dedicato tipicamente ai driver di sistema
+	\item c'è il meccanismo user mode dedicato alle applicazioni. L'API per user mode APC è \texttt{QueueUserAPC(pfn, hThread, data)}
+\end{itemize}
+Basta quindi, per la user mode APC, chiamare \texttt{QueueUserAPC(LoadLibrary, hT, "Mal DLL")}, si mette il nome della DLL da eseguire ed abbiamo ottenuto che l'applicazione ha eseguito la DLL.\\Lo scopo è sempre lo stesso, ovvero eseguire codice all'interno di altri processi che auspicabilmente avranno più libertà nel fare operazioni che invece non sono permesse al malware.
+\section{Cifratura automatica del malware}
+Il malware cerca di cifrare il proprio contenuto, sempre per non farsi analizzare, una delle prime cose che cifra sono le stringhe.\\Ci sono tantissimi sistemi per cifrare i dati:
+\begin{itemize}
+	\item XOR: si prende una sequenza di byte e si applicano in sequenza al contenuto da cifrare. È banale ma facilmente riconoscibile, se abbiamo una struttura di dati lunga e si cifra con un solo byte, come 0xAB, il risultato è che in tutti i punti dove ci sono "0" esce fuori 0xAB e quindi insospettisce chi analizza che scopre anche qual è il byte
+	\item fare un XOR su tutti i byte eccetto gli "0", quanto meno il malware usa questa variante, dove 0 rimane 0 mentre tutti gli altri byte tranne 1 vengono mescolati con la chiave. Quello che può andare storto è che se becchiamo gli stessi byte della chiave nel testo, otteniamo "00" quindi il malware non riesce più a distinguere dei veri zeri
+	\item quindi si fa XOR meno che zeri ed "AB". Questo è quello che usa la maggior parte dei malware per fare scrumbling veloce.
+\end{itemize}
+Abbiamo raccolto tanti file, abbiamo il sospetto che alcuni di questi siano modificati con questa tecnica. Pe verificare velocemente:
+\begin{enumerate}
+	\item ad esempio, la prima stringa è nota: "This program..." quindi si prende una certa chiave e si fanno tutti i possibili xor col primo byte e si vede per tutte le sequenze quali sono i file scrumblati con quella chiave. È un approccio a tabella molto usato, in generale quanto occorre fare brute forcing sulle chiavi (NB: stiamo proprio usando una chiave di un byte perché usarne di più può comunque essere scoperto)
+\end{enumerate}
+Altre tecniche per fare scrumbling sono
+\begin{itemize}
+	\item ROR
+	\item ADD,SUB
+	\item varianti di base64: si considera la sequenza di byte come sequenze di bit e si associa ad ogni sequenza da 6 bit un carattere leggibile
+\end{itemize}
 
 
 
 
 \newpage
 \chapter*{Appendice}
-\subsubsection*{Comandi utili per Ghidra}
+\section*{Comandi utili per Ghidra}
 \begin{itemize}
 \item con il tasto "G" si apre il box per saltare in un certo punto del file, dando un'etichetta o un indirizzo esadecimale;
 \item passando su un valore esadecimale, è possibile passarvi sopra per vedere il valore. Col tasto destro si può convertire il valore;
