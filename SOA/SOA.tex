@@ -53,10 +53,6 @@ Ci piacerebbe capire il dettaglio di tutto.\\ Possiamo sfruttare soluzioni già 
 Vediamo l'esempio del bakery algorithm proposto da Lamport per risolvere il problema dell'accesso condiviso in una sezione critica.
 \begin{lstlisting}
 var choosing: array[1,n] of boolean;
-	number: array[1,n] of int;
-
-
-var choosing: array[1,n] of boolean;
 number: array[1,n] of int;
 repeat {
 	choosing[i] := TRUE;
@@ -64,7 +60,7 @@ repeat {
 	choosing[i] := FALSE;
 	for j = 1 to n do {
 		while choosing[j] do no-op;
-		while number[j] =/= and (number [j],j)< (number [i],i)
+		while number[j] != 0 and (number [j],j)< (number [i],i)
 		do no-op;
 	}
 	<critical region>;
@@ -75,7 +71,7 @@ posso avere concorrenza reale fra thread, oppure una concorrenza logica. Affront
 \begin{enumerate}
 \item in un primo ciclo, si aspetta che tutti quanti gli altri abbiamo messo il loro flag a false
 \item in un secondo ciclo, si verifica che sia il proprio turno, sia verificando che chi viene prima abbiamo rimesso a posto il numero e sia confrontando la propria coppia (numero, indice) con quella degli altri
-\end{enumerate} L'attesa è attiva: è a livello utente, non c'è nessuna chiamata al SO, ed è basata sui numeri ed anche sugli ID dei processi. Facendo girare l'algoritmo sulla propria macchina, ci sono dei problemi dati dall'aver utilizzato un linguaggio come il C senza sapere quale sarà l'hw dove girerà il sw. \\ L'idea è quella di verificare, tramite logging, se il valore del token \textit{tokens\_to\_distribute} viene preso doppio o viene saltato qualche decremento.\\ Se si prova a far girare il codice in locale, si nota che il logging riporta un problema per il valore -3229289: difatti, due letture consecutive leggono questo stesso valore, mentre il secondo doveva essere -3229288.\\ Il motivo del non funzionamento sta nel fatto che nessuna macchina off the shelf è \textbf{sequentially consitence}. Quello che succede non è relativo alla compilazione, quindi va in esercizio un programma scorretto, ma l'hardware a run time fa delle cose che non conosco, quindi se questo non viene evitato non è possibile eseguire sw di sistema.\\ Quindi. cominciamo a muoverci per capire cosa accade in hw, ovvero le differenze fra un modello di hw ed il vero hw. Il modello di macchina a cui siamo abituati a pensare presenta le seguenti caratteristiche (macchina di von Newman):
+\end{enumerate} L'attesa è attiva: è a livello utente, non c'è nessuna chiamata al SO, ed è basata sui numeri ed anche sugli ID dei processi. Facendo girare l'algoritmo sulla propria macchina, ci sono dei problemi dati dall'aver utilizzato un linguaggio come il C senza sapere quale sarà l'hw dove girerà il sw. \\ L'idea è quella di verificare, tramite logging, se il valore del token \textit{tokens\_to\_distribute} viene preso doppio o viene saltato qualche decremento.\\ Se si prova a far girare il codice in locale, si nota che il logging riporta un problema per uno dei valori: difatti, due letture consecutive leggono questo stesso valore, mentre il secondo doveva essere dato dal precedente +1.\\ Il motivo del non funzionamento sta nel fatto che nessuna macchina off the shelf è \textbf{sequentially consitent}. Quello che succede non è relativo alla compilazione, quindi va in esercizio un programma scorretto, ma l'hardware a run time fa delle cose che non conosco, quindi se questo non viene evitato non è possibile eseguire sw di sistema.\\ Quindi cominciamo a muoverci per capire cosa accade in hw, ovvero le differenze fra un modello di hw ed il vero hw. Il modello di macchina a cui siamo abituati a pensare presenta le seguenti caratteristiche (macchina di von Newman):
 \begin{itemize}
 \item astrazione di una single CPU
 \item astrazione di una single memory
@@ -83,7 +79,7 @@ posso avere concorrenza reale fra thread, oppure una concorrenza logica. Affront
 \item transizioni di stato nell'hw che sono separate nel tempo: c'è una sola istruzione in flight per ogni istante di tempo
 \item immagine definita della memoria allo startup di ogni istruzione
 \end{itemize}
-Vedendo il processore così, è come se non si eseguisse in parallelo. L'approccio moderno di pensare l'architettura è differente, difatti si considera il concetto di \textbf{scheduling}, cercando di pianificare come fare le cose affinché quello che realmente si fa è \textit{equivalente} ad un program flow va a specificare che debba succedere.
+Vedendo il processore così, è come se non si eseguisse in parallelo. L'approccio moderno di pensare l'architettura è differente, difatti si considera il concetto di \textbf{scheduling}, cercando di pianificare come fare le cose affinché quello che realmente si fa è \textit{equivalente} ad un program flow.
 \subsection{Scheduling e parallelismo}
 Abbiamo quindi un program flow, ma non è più vero che quando viene eseguita una istruzione le precedenti hanno impresso l'output come side effect nell'hw, quello che si cerca di fare è mettere in scheduling l'istruzione come se tutto fosse sequenziale, ovvero come se si stesse eseguendo ciò che è dettato nell'execution flow.\\ Quando poi si astrae dall'hw, si recupera lo scheduling anche a livello sw: un conto è decidere cosa fare del flusso nell'engine, un conto è decidere quali dei molteplici flussi paralleli associare all'engine.\\ È possibile seguire una regola parallela, basta che il program flow non vada diversamente da quanto scritto nel software e quindi c'è la \textbf{propagation of values}, quindi il valore va propagato in avanti per istruzioni successive. 
 Quindi, a livello hardware, lo scheduling definisce:
@@ -4248,6 +4244,118 @@ la rappresentazione binaria delle istruzioni chiama \texttt{syscall} per lanciar
 	\item pushamo due volte il parametro, che quindi sono il nome del programma da lanciare e la stringa col nome
 \end{itemize}
 quello shellcode può essere anche iniettato dall'esterno.
+\subsection{Stack protector}
+Le stringhe con cui attacchiamo prevedono che se abbiamo un blocco di codice formato da un certo numero di istruzioni, dobbiamo puntare al primo indirizzo di quel blocco nell'address space, che può essere randomizzato e quindi possono essere necessari più tentativi.\\L'idea è quella di avere delle NOP iniziali, che sono interessanti perché se si riesce a puntare ad una di queste il processore le esegue tutte e quindi si riesce a cadere poi dentro il blocco del reale attacco con meno tentativi.\\Una delle protezioni classiche per i buffer overflow, in particolare per quello mirati a cambiare il PC, è lo stack protector, inizializzato per default dai compilatori: lo stack è fatto da una testa e da una coda, le istruzioni di queste due cose gestiscono la protezione dello stack:
+\begin{itemize}
+	\item non appena entriamo in una funzione, non appena ne chiamiamo un'altra abbiamo la possibilità di avere nello stack il return address, prendono poi il controllo le funzioni dette prima che mettono un valore di controllo dopo il return address, 
+	\item quindi se qualcuno tenta di sovrascrivere il return address, sovrascriverà anche il \textbf{\textsf{tag canarino}} e se questo avviene l'applicazione termina
+\end{itemize}
+Non è un metodo assoluto per proteggere il return address, sappiamo che c'è comunque la problematica dei bugs sui pointers, quindi se portiamo il pointer altrove lo stack protector non se ne accorgerà.\\Uno schema di esempio è mostrato in seguito:
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/stack_canaries.png}
+\end{figure}
+\subsubsection{Zone di memoria eseguibile}
+Nell'address space ora, è possibile distinguere pagine eseguibili da non eseguibili: nel primo caso, le pagine possono contenere istruzioni macchina che il processore può prelevare ed eseguire, il controllo va fatto dal sottosistema di controllo del processore ed ad esempio in x86\_64 abbiamo il flag XD che ci dice questo. È interessante perché questo bit permette di prendere la stack area e proteggerla con questo bit, indicando tra i metadati nell'ELF che verranno usati per setuppare l'address space così che se il client TCP scrive delle istruzioni e cambia il valore del PC per eseguirle andando in fetch su quelle pagine abbiamo SEGFAULT.\\Prima del bit XD, gli attacchi vuffer overflow sono stati una importante vulnerabilità delle applicazioni, in particolare il codice si può iniettare dall'esterno ed in base all'utente per cui il thread è attivo, ad esempio se il thread è root e esegue per conto di root, possiamo avere risultati gravi.
+\subsubsection*{Altri esempi software}
+Abbiamo un app client/server TCP, dove inviamo una stringa e riceviamo echo. C'è una problematica di BO dove non viene controllata la taglia della stringa inviata.\\Abbiamo un client malevolo, strutturato in questo modo:
+\begin{itemize}
+	\item il client possiede una sequenza di byte che sono questa sequenza di istruzioni, che vengono mantenute in diversi array.
+	\item nel caso in cui all'inizio di si inseriscano le NOP, cerchiamo di partire da un indirizzo di una di queste per poi cadere ad eseguire il codice.
+\end{itemize}
+iniettiamo, nel payload "effettivo" il setup per chiamare \texttt{syscall}, in modo da chiamare \texttt{exec} e questa syscall potrebbe non ritornare, altrimenti abbiamo le NOP. Il resto usa le classiche API per la connessione ad un server, in fondo al payload inseriamo il valore che vorremmo sovrascrivesse il PC.\\Si cerca di fare un attacco bruteforce, possiamo prendere dei dati da stdin che possiamo scrivere sulla connessione: si lancia una shell lato server, che condivide i canali aperti del e quindi possiamo iniettare i comandi.\\Si tenta poi di prendere dell'output trasmesso lungo questa stessa connessione.\\\\Compilando, notiamo che sono state disabilitate diverse protezioni, si potrebbe evitare questo tipo di compilazione, ma siamo sicuri che le librerie usate, quando prelevano aree di memoria, verificano le protezioni attive?
+\subsubsection{Attacco basato su ROP}
+Tutte le tecniche di protezione viste fin ora hanno funzionato in parte: si è cercato di evitare l'immissione di istruzioni dall'esterno, ma le istruzioni potrebbero già essere in address space, quindi possiamo averle sparse ed eseguendole globalmente riusciamo a portare avanti l'attacco.\\Quindi le protezioni viste fin ora non bastano, si poteva fare patch work di istruzioni già presenti nell'adress space e l'unica cosa da fare era quindi cambiare il return address per l'execution flow. Usiamo quindi la return oriented programming, per cui si hanno N pezzi che sono N return che compongono quello che è il nostro attacco.\\L'assunzione è di avere dei \textbf{gadget} nell'address space, in cui ognuno restituisce il controllo la gadget successivo e così via, fino ad arrivare al return address dove abbiamo sovrascritto l'indirizzo che ci interessa.\\Abbiamo quindi la seguente organizzazione:
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/rop_scheme.png}
+\end{figure}
+L'attacco si può fare tornando col flusso di esecuzione nel primo punto (primo blocco verde) per poi saltare sotto e così via, sempre sovrascrivendo i vari return address, questa è la così detta ROP chain.
+\subsubsection*{Esempio con ROP}
+Stavolta il malicious client non deve iniettare il payload. Il TPC generic server ha nell'address space una certa sequenza di caratteri che rappresentano generiche istruzioni macchina. Eseguite tutte globalmente, sono le istruzioni per creare la shell, nell'address space possiamo farlo con un attacco ROP.\\Nell'array del client non c'è nella, quando immettiamo la sequenza nel server questo va in buffer overflow in modo da far usare i return address multipli alle varie return presenti nel codice.\\Scriviamo all'interno del codice del client diversi return address, tutti 64 byte più avanti del precedente, per via della struttura dell'server.\\Stavolta compiliamo il server con stack eseguibile, abbiamo la \texttt{-no-stack-protector} per semplicità ma proteggendo lo stack non proteggiamo in maniera assoluta il server.
+\subsubsection{Contromisure per ROP}
+Abbiamo che la stack area in realtà è composta da zone multiple: non è più vero che la stack area è un'unica area dove inseriamo le zone delle varie funzioni, ma in realtà gli stack frames delle funzioni, quando facciamo shadowing della stack area sono organizzate in modo che quando chiamiamo una funzione il suo stack non va subito sopra quello del chiamante, ma da un'altra parte dello stack frame.\\Facendo buffer overflow non riusciamo ad ottenere lo stesso risultato di prima, prima del return c'è questo tipo di protezione, è però complicato:
+\begin{itemize}
+	\item f chiama una funzione g che vive in un altro stack frame e questo prevede che si cambi lo stack frame
+	\item va fatto lato software, quindi sono istruzioni macchina in più
+\end{itemize}
+Un'altra misura prevede il controllo del matching del branch predictor per catturare mismatch, questo però ha comunque un costo ragionevole e non risolve il problema di una variazione di flusso di esecuzione asincrona, ad esempio all'arrivo di un segnale verso quel thread.
+\subsection{Heap overflow}
+È un buffer overflow ma che non cambia il program counter: nelle applicazioni software abbiamo il concetto di function pointer che settato verso una certa zona di memoria va ed esegue quel codice.\\Possiamo cambiarlo con buffer overflow, in modo che quando si utilizza quel function pointer si va su un altro blocco di codice e quindi in maniera non compatibile con il control flow graph.\\È stata quindi proposta la soluzione del memory sanitize: ciascuna area di memoria che mantiene informazioni ha delle zone precedenti e successive che devono mantenere delle informazioni immutabili (come nelle canaries) che sono le informazioni di controllo per quella zona. Ci accorgiamo di un buffer overflow quando quelle zone immutabili cambiano, ovviamente serve anche il software che controlli queste informazioni, quindi sullo stesso flusso di esecuzione vanno controllate se si fa un aggiornamento di un'area di memoria.\\Il software è quindi istrumentato per fare questo tipo di controlli, ma abbiamo ancora il problema dei bug sui pointer in quanto è possibile colpire un'altra surrounding area e c'è comunque un costo legato a questo tipo di soluzione e non è fattibile per operazioni real time.
+\subsection{Reali rischi dei buffer overflow}
+Un buffer overflow può causare dei danni relativi ai privilegi dell'applicazione: se i privilegi sono elevati, allora anche le applicazioni eseguite con buffer overflow saranno ad alto privilegio.\\In particolare, se il thread gira con setuid-root, otteniamo che il comando di shell lanciato con il buffer overflow di prima ha privilegi di root.
+\section{Identificatori in Unix}
+Quando lavoriamo con un thread nel sistema, questo esegue per conto di uno specifico utente u, che è un codice numerico all'interno di sistemi Unix. Il codice numerico è lo user id per quel thread, abbiamo anche il group id per quel thread, lavorando su Linux associamo ulteriori di questi codici, in particolare in totale sono 3:
+\begin{itemize}
+	\item Real: l'utente per conto di cui il thread fa le sue attività
+	\item Effective: l'utente del cui il thread ha le \textbf{capabilities}, se l'utente Real è 7 e l'Effective è 0, il thread correntemente può operare nel sistema come 0
+	\item Saved: utenza salvata perché sostituiamo qualche informazione e vorremmo riusare questo codice in futuro. È interessante quando eseguiamo un thread in cui real = effective = 0, il thread di root è tale per cui chiamiamo exec, di un programma non di root ma è setuid, quindi quel thread può fare conto di comparire in esercizio per conto di un utente che supponiamo sia x. Il thread è quindi che si diventa root, ma con Effective ad x, quindi può tornare root mettendo lo 0 sovrascritto nel saved.\\In generale, quando si cambia l'euid, questo viene sempre salvato, è anche possibile quando siamo eudi a 0 e decidiamo di diventare qualcun altro, sovrascriviamo tutte e 3 le informazioni.
+\end{itemize}
+Le syscall classiche le dovresti conoscere, sono sempre set/get uid/euid/gid, con queste syscall possiamo costruire dei flussi di esecuzione molto articolati. Abbiamo il seguente esempio:
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/id_examples.png}
+\end{figure}
+possiamo cambiare la capacità effettiva del thread mentre è in esecuzione. Diventiamo y, ma possiamo ridiventare root, così come possiamo ridiventare x, ma possiamo riacquistare e ritargarci solo con cose presenti nella tripla.
+(esempietto running veloce, veditelo)\\Questo è alla base di \texttt{sudo/su}: sudo è un programma che è setuidroot, quindi cambia lo uid e ci permette di eseguire comandi con le stesse capabilities di root.\\Per prevenire l'uso non legittimo dei thread che girino per conto dell'utenza root, è stato proposto di prendere il SO e far si che il root user sia un utente regolare: i thread girano per conto di root come se fosse un utente regolare, non è banale da implementare in quanto in diversi posti ci sono checks del valore degli user id, quindi poi chi fa amministrazione delle utente di sistema?
+\section{Sistemi Operativi sicuri}
+Parliamo proprio di SO sicuri, ad esempio abbiamo SELinux, che permette di implementare dei meccanismi che evitano ad esempio la seguente situazione: un thread gira con dei permessi superiori come root.\\Ci sono delle basi con cui costruiamo un SO sicuro:
+\begin{itemize}
+	\item grana fine nella protezione degli oggetti
+	\item dominio di protezione
+\end{itemize}
+\subsection{Dominio di protezione}
+Per definizione, un dominio di protezione è la coppia $<$risorsa, modalità di accesso$>$.\\È quindi un insieme di regole che stabiliscono se una risorsa è utilizzabile e come è possibile accedervi.\\La risorsa può essere qualsiasi cosa: file, struttura dati etc... La cosa interessante è che i domini di protezione possono essere associati ad entità che sono di natura diversa:
+\begin{itemize}
+	\item possiamo associare un dominio di protezione ad uno user, quindi ai codici visti prima
+	\item possiamo poi avere associazione ad un program, quindi per una certa utenza ci può essere un thread che può eseguire delle cose, ma magari per la stessa utenza un altro thread, che vive in un program diverso, non può farlo. Inoltre, ciò che possiamo fare nel sistema è che il dominio di protezione può essere mutabile nel tempo, quindi al lancio del programma è D$_0$, ma poi in seguito alle chiamate di determinate syscall diventa D$_1$, D$_2$, etc... e tipicamente questo implica cancellare delle risorse, che magari non vengono più usate
+\end{itemize}
+Questo tipo di organizzazione è orientata al principio del Minimum Level Privilege (altro nome ma la sostanza è quella), quindi avere il livello di privilegi minimali ma necessari affinché l'utente possa fare tutto ciò che deve nel sistema.\\Possiamo quindi avere lo stesso programma che parte più volte e le diverse istanze avranno diverse istanze di domini a seconda della timeline dell'esecuzione.\\Come vantaggio, se un attaccante che ha accesso al sistema, i danni sono limitati a ciò che il dominio di protezione permette, che tipicamente possono essere ridotti.
+\subsubsection{Capabilities}
+I domini di protezione hanno avuto una sola implementazione in Linux attraverso il concetto di \textbf{capability}: un thread può lavorare secondo una regola "nel mezzo" fra root ed un utente normale, quindi potrà fare alcune delle cose permesse a root.\\L'idea è che se un thread deve fare qualcosa non permesso ad utenti non-root non deve per forza essere un thread di root, stiamo in qualche modo mettendo in piedi un approccio per cui abbiamo il dominio di protezione, paragonabile in qualche modo a root-based Access Control, vediamo lo schema di separazione:
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/capabilities_scheme.png}
+\end{figure}
+per il caso centrale quindi, alcuni check del kernel vengono bypassati in base alle capabilities che quel thread ha.\\Abbiamo su Linux che le capabilities sono separate in 3 gruppi:
+\begin{itemize}
+	\item Permitted capabilities, ovvero ciò che l'utente può fare
+	\item Effective capabilities, ovvero quelle che una risorsa ha in quel momento
+	\item Inheritable capabilities, ovvero quelle ereditate se facciamo \texttt{ecex}
+\end{itemize}
+abbiamo poi
+\begin{itemize}
+	\item Bounding capabilities, che impostano dei limiti per gli insiemi permitted/inherit
+	\item Ambient capabilities, ovvero ciò che viene permesso a dei programmi non-SUID, in ogni caso già limitate da inherit\&permitted capabilities
+\end{itemize}
+e tali capabilities sono registrate in delle bitmask a 32/64 bit.\\Possiamo permettere ad altri thread di acquisire le capabilities che root ha facendole ereditare, se ad esempio per informazione di controllo abbiamo un bit settato ad 1, che si può ottenere con una syscall \texttt{prclt()}.\\Ci sono poi le syscall per fare query sulle capabilities, possiamo anche fare get e set delle capabilities di un file, con delle apposite API.
+\subsection{Security policies}
+Quando parliamo di SO sicuro, è importante la politica con cui definiamo la protezione delle entità, altrimenti il sistema non è orientato alla sicurezza. Sono solo due:
+\begin{itemize}
+	\item discrezionaria: in un sistema, l'admin può cambiare i domini di protezione.\\Quindi, gli attributi di sicurezza prevedono anche la partecipazione di utenti ordinari del sistema;
+	\item mandatoria: la definizione della sicurezza e quindi di ciò che si include, non è fatta dagli utenti di sistema e quindi anche non da root. Vi è quindi un amministratore delle politiche di sicurezza che non è un utente del sistema.
+\end{itemize}
+Le API implementano un oggetto discrezionario, le capabilities possono essere aggiunte o rimosse da root e quindi non abbiamo un livello di sicurezza così elevato.
+\subsubsection{Reference monitor}
+Per portare un sistema a diventare mandatorio, occorre che l'utente che decide chi fa cosa non sia un utente di sistema, per farlo abbiamo la necessità di introdurre nei sistemi il concetto di reference monitor: è un sistema autonomo, esso stesso rappresenta l'utente per gestire la sicurezza ma l'utente amministratore non può loggarsi. Decide lui chi fa cosa, incluso l'utente di root:
+\begin{itemize}
+	\item  nell'architettura di sistema, ci deve essere un AC database, che definisce i domini
+	\item l'AC database non può essere modificabile, va in startup all'avvio del sistema
+\end{itemize}
+Potremmo vedere il DB come un insieme di ACL, ma in questo caso sono immodificabili, quando i thread girano per conto degli utenti sono regolati da queste ACL.\\Abbiamo il seguente schema classico:
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/reference_monitor_schema.png}
+\end{figure}
+il controllo per il passaggio dell'attività viene fatto dal reference monitor: non basta solo capire se si è root o no, occorre comunque verificare il DB che può avere delle regole configurate dall'admin delle politiche di sicurezza, che può aver deciso che anche root viene rifiutato.\\Il reference monitor può avere anche dei layer più bassi all'interno del software, possiamo avere una serie di esempi di utilizzo interessanti:
+\begin{itemize}
+	\item un'applicazione setuid può essere vulnerabile a buffer overflow, possiamo far si che non possa eseguire determinate cose
+	\item possiamo capire se delle applicazioni sono dei demoni che lanciamo in background piuttosto che non. Se un app che gira fuori da un terminale cerca di fare operazioni di applicazioni che sono proprie di un terminale possibilmente è stata bucata
+\end{itemize}
+\subsubsection*{Ultimo esempio software del corso di Sistemi Operativi Avanzati =,(}
+Abbiamo un reference monitor che ha delle blacklist di comandi per root, oppure possiamo avere un meccanismo più forte per cui si accede a current. Targhiamo la sysexec\_ve (kernel 4.12 $<$) per cui abbiamo un wrapper: rigettiamo una exec per un programma, abbiamo installato con kprobe un preambolo a valle del quale partirà una exec e per evitare che parta possiamo resettare il command name\\La funzione non ha smontaggio, non è root che stabilisce cosa accade, quindi se proviamo a diventare root lo diveniamo, ma ora nella shell non possiamo più fare nulla. Tutto ciò che gira per conto di root funziona, ma tutto ciò che si può permettere di fare a root è incluso nel dominio che viene controllato dal reference monitor quindi questo utente esterno non può modificare nulla. \textbf{\textsf{IL GOAT SE NE FOTTE ED IL MODULO LO INSTALLA COMUNQUE, ED ORA FARÀ POWER OFF DEL PC DAL BOTTONE. G O A T}}.
+
+\Huge
+\textbf{\textsf{AND THAT'S ALL FOLKS}}.
+
+
+
+
 
 
 \newpage
@@ -4293,9 +4401,18 @@ Un driver che scrive in aree di memoria di un certo processo.\\Scrivere un devic
 	\item quando viene chiamata la syscall di write, si colpisce l'oggetto e questo prevede che il thread che sta eseguendo l'operazione vada a scrivere nell'address space di qualcun altro. Quindi, il thread tal dei tali deve osservare l'address space di un altro thread. Deve quindi diventare un thread di un altra applicazione, almeno per quanto riguarda la memory view.
 \end{itemize}
 Supponiamo che ci sia un certo thread, abbiamo il TCB che ci porta su una tabella di MM, quindi il thread può andare sul TCB per farlo puntare alla MM dell'altro thread, in modo che tutte le scritture avvengano su quell'area. Non basta, la memoria viene vista con la page table del processo corrente, quindi va cambiato anche CR3 per cambiare la vista della page table. Inoltre, i metadati per gestire l'address space target devono poter esistere finché non finisce l'operazione: il thread nell address space target può subire lo shutdown in maniera concorrente alla scrittura del thread, altrimenti si rischia di andare in crash: per farlo, sappiamo che i metadati sono sottoposti ad un meccanismo di sincronizzazione che prevede RCU, quindi possono essere cancellati se non ci sono più readers associati. Quindi il thread deve registrarsi a sua volta come reader RCU per dire di esserci anche lui per poi de-registrarsi.\\\\Nel codice, salviamo la memory view del thread corrente per poterla poi rimettere a posto, facciamo poi una \texttt{rcu\_read\_lock()} per ritardare le strutture del kernel. Prendiamo quindi la TCB di un certo processo e ci prendiamo la mm del thread che si cerca di colpire.
-
-
-
+\section*{Traccia di progetto}
+Implementazione di un multi-flow device driver: un file fatto da più stream, che hanno due priorità diverse, una low ed una high che rappresenterà la modalità con cui lavorare.\\Tutti e due gli stream sono FIFO, ma nei due flussi si lavora secondo degli schemi differenti:
+\begin{itemize}
+	\item sull'high, le scritture sono sincrone: se un thread chiama la write, l'operaizone deve mettere i dati lì ed ora
+	\item low: l'esecuzione è asincrona, ovvero delayed. I dati vengono presi ma verranno messi più avanti nello stream, quindi vanno in una staging area ed è mia discrezione decidere cosa e quale usare.\\La notifica della scrittura è comunque sincrona, altrimenti si andrebbe contro la specifica delle read/write di Linux
+\end{itemize}
+Il drive è singolo, i minor numbers sono 128, inoltre con una ioctl nel driver possiamo settare l'operatività della sessione di I/O verso il file: settiamo se andare high o low priority, possiamo anche settare se le operazioni siano bloccanti o non, inoltre un timeout per sbloccare le operazioni bloccate. Ci sono dei parametri del modulo per vedere se:
+\begin{itemize}
+	\item il device driver è abilitato / disabilitato
+	\item il numero di bytes correntemente presente nei due flussi (alta e bassa priorità)
+	\item numero dei thread correntemente in wait per i dati
+\end{itemize}
 
 
 

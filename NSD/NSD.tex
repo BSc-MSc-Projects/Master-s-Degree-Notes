@@ -2126,10 +2126,60 @@ le scritture sono peggiori, in quanto vanno aggiornati due blocchi ma siccome ab
 Si creano due livelli di array ridondati: abbiamo due RAID-1, uniti insieme in uno RAID-10
 %immagine
 questa è l'idea tipica per DBMS relazionali che fanno diverse letture/scritture quindi sono avvantaggiati dei RAID-1 sottostanti ma hanno anche ridondanza.
-
-
-
-
+\section{Backups}
+Abbiamo visto il concetto di array ridondanti di dischi, alla fine abbiamo detto che una delle organizzazioni migliori è la RAID-10.\\Molta della reliability è legata al backup: in ogni data storage doverebbe essere possibile avere dei modi per recuperare i dati anche se si è perso l'accesso.\\L'idea di un backup è che si può avere uno snapshot periodico di tutti i dati salvati da qualche parte ma c'è un problema di autorizzazione: un utente non legittimo non dovrebbe potere vedere tutti i dati, ma un backup contiene tutti i dati, quindi questo allarga la superficie di attacco.\\Si potrebbero usare dischi che sono economici, ma chi ha accesso alla stanza fisica dove sono i cassetti? Quindi sia logico che fisico, il backup del sistema nell'infrastruttura ha problemi sulle policies, che vanno ben definite.
+\subsection{Distater recovery}
+Vogliamo far si che il sistema sia più sicuro anche contro eventi catastrofici:
+\begin{itemize}
+	\item possiamo salvare i dati in qualche disco messo in qualche stanza con qualcuno che può entrare. Ma se l'edificio va a fuoco, si perde sia il main site che il backup.
+	\item copie geograficamente distribuiti, pensando ad esempio a Banca d'Italia, questi hanno 3 siti differenti per tutta la nazione.
+\end{itemize}
+La disaster recovery andrebbe quindi realizzata tenendo presente la dislocazione geografica, servizi cloud permettono di realizzare questo tipo di DR: ad esempio le Availiability Zones e le regioni di AWS, per implementare correttamente la DR.\\Dobbiamo quindi considerare tutti i possibili avvenimenti: un ransomware ha poca probabilità di colpire le copie dei dati localizzate in punti geografici distanti.\\Avere quindi un piano di DR prevede di copiare i dati in almeno 3 zone differenti, le copie devono avere le loro policy di accesso e verranno usate solo in caso di attacchi/perdita di dati per avere continuità di business.\\Consideriamo 2 misure classiche, per capire quanto è buono il piano di DR:
+\begin{itemize}
+	\item RPO: qual è l'ammotare di dati che ci si può permettere di perdere. Ad esempio quindi, ogni quanto facciamo lo snapshot del DB. Ovviamente, più si fanno snapshot più costa
+	\item RTO: quanto ci vuole a tornare up\&running. Ad esempio quindi, abbiamo una copia del codice, quindi delle VM da poter ripristinare. Possiamo ad esempio avere una VM già operazionale che non fa nulla e che nel momento in cui la principale fallisce è pronta per essere attaccata al DB e per ricevere il traffico utenti.
+\end{itemize}
+Tipicamente, le aziende non fanno ingegnerizzazione appropriata della DR, l'idea è che ogni volta che si progetta un sistema complesso bisogna farsi queste domande e progettare anche la DR.
+\section{Encryption}
+Abbiamo comunque un problema: il DR è ok, le policy anche, ma abbiamo un data breach ad un certo punto. Può essere colpa di un bug o altro ed i dati sono compromessi da qualcuno.\\Nei DB i dati sono tipicamente non cifrati, tranne per eccezioni come le password, ma in un modo ideale vorremmo avere tutti i dati cifrati quindi si potrebbe permettere solo agli utenti autorizzati di accede ai dati.\\Il problema è che il costo di processare i dati aumenta, ma si aumenta il livello di sicurezza inoltre il problema riguarda anche il canale che si usa per trasmettere i dati, che dovrebbe essere cifrato a sua volta (possibile usando ssl).\\Non basta comunque: siamo in uno scenario distribuito, abbiamo due DB che usano cifratura ma sono do due aziende diverse e questo può creare dei problemi. L'approccio più semplice sarebbe avere delle chiavi per ogni azienda, ma se non c'è fiducia? In ogni caso si vuole cercare di poter scambiare per leggere i dati
+\subsection{Cifratura omeomorfa}
+Si possono fare delle operazioni sui dati cifrati senza dover per forza leggere i dati de-cifrati. È un modo per far scambiare i dati fra delle aziende che non si fidano l'una delle altre.\\Tipicamente, abbiamo 3 operazioni:
+\begin{itemize}
+	\item key generation
+	\item data encryption
+	\item (slides)
+\end{itemize}
+si usano delle funzioni che hanno una "trapdoor", quindi la chiave permette di fare operazioni computazionalmente fattibili.\\In uno schema di entryption, c'è un algoritmo di \textbf{Evaluate} che accetta una chiave pubblica \textbf{pk}, una funzione f ed un insieme di testi cifrati e fa : (slides)\\La prima proprietà per lo schema omeomorfo è la correttezza: se abbiamo la chiave condivisa e guardiamo a qualche funzione che produce il cipher text, decifrandola otteniamo lo stesso risultato che otterremmo computando la funzione sui dati in chiaro. (slides per le formule)\\Non basta, perché se lo schema fosse solo così la funzione di \textbf{Evaluate} potrebbe anche essere la semplice funzione identità. Dobbiamo poter avere un modo per dire che la f non sia qualcosa che è l'identità
+\subsubsection{Somewhat Homomorphic Crypto}
+Lo schema lavora così:
+\begin{itemize}
+	\item la chiave sk diventa un intero scelto da questo intervallo (slides)
+	\item la pubk è il prodotto di due numeri, dove q (slides)
+	\item se cifriamo dei dati, facciamo (slides), dove r è chiamato "noise", quindi prima di fare l'operazione si aggiunge del rumore ai dati. In questo modo non si può fare l'operazione troppe volte altrimenti la noise diventerebbe troppa
+	\item la decifratura (slides)
+	\item (slides)
+\end{itemize}
+Per quanto riguarda il funzionamento, se semplicemente si sommano due ciphertext si raddoppia il fattore r, mentre se si moltiplicano i due ciphertext otteniamo che l'ultimo membro diventa quadratico rispetto alla noise e quindi ancora peggio, si raggiunge facilmente il punto in cui non si riesce più a decifrare.\\Se il polinomio quindi ha un grado troppo alto, il fattore gioca un ruolo fondamentale e rende il ciphertext non decifrabile, quindi non si possono fare molte addizioni o moltiplicazioni.
+\subsubsection{Leveld fully Homomorphic Crypto}
+Trasformiamo lo schema di prima, questo schema è organizzato in livelli ed ogni livello computa una delle parti della \textbf{Evaluate}.\\Ogni KeyGen genera una coppia di chiavi pubbliche e private, più delle chiavi segrete e si fa quanto
+\begin{itemize}
+	\item si cifrano le chiavi segrete usando le chiavi pubbliche. On the fly, si possono anche decifrare. 
+	\item stiamo quindi implementando la \textbf{Evaluate} come una funzione a livelli ed ogni passo stiamo decifrando i dati e ri-valutandoli, il che fa si che l'operaizoni divenga molto lenta
+	\item possiamo quindi ad ogni passo rimuovere la noise
+\end{itemize}
+(SLIDES)
+\subsubsection{Private Set Intersection}
+È una primitiva di computazione, molto usata nelle applicazioni odierne, che è una sorta di Secure Multiparty Computation: abbiamo due aziende, ad esempio l'agenzia delle tasse e la polizia che vogliono fare un controllo incrociato e vogliamo che sia garantita la privacy, vogliamo solo computare l'intersezione dei dataset senza decifrare i dati, così che ognuno dei due party sappia quali parti del dataset è anche nell'altro.\\In generale
+\begin{itemize}
+	\item abbiamo un sender ed un receiver
+	\item il sender ha un dataset S, il receiver ha S' e supponiamo che siano fatti di stringhe di bit di taglia fissa, $\sigma$.
+	\item i valori (slides) sono pubblici
+	\item abbiamo una fase di setup: entrambe i party devono concordare su uno schema di cifratura omeomorfa. Il receiver genera un keypair, mandando i dati cifrati al sender.\\Ogni ciphertext ricevuto dal sender può essere decifrato come segue: (slides), il ciphertext ricevuto è sottratto omeomorficamente da un elemento dell'insieme.\\Facendolo per ogni elemento, solo se il cipher è lo stesso dell'insieme del sender, il risultato è 0, questo non implica che nel mondo dell'encryption il risultato sia 0, quindi il sender non conosce i valori che sono nell'intersezione. Il valore della sottrazione sarà 0 se e solo se i due valori sono uguali. Si moltiplica per un valore random in quanto se i due elementi non sono uguali, si aggiunge della noise che solo il sender conosce e quindi anche lui non può conoscere nulla sugli elementi del dataset del sender se gli elementi non sono uguali
+	\item si manda il risultato al receiver, che a questo punto può calcolare l'intersezione, tramite (slides) e quindi ottiene tutti gli elementi per cui il valore della sottrazione è 0.
+\end{itemize}
+Nessuno dei due conosce l'intersezione, siamo quindi in grado di forzare la privacy permettendo a dei parties di scambiarsi pezzi di dati.\\Ci sono delle tecniche ni cui si può diminuire la privacy, ad esempio aggiungendo ad S più elementi, così da far si che l'intersezione con S' prima tutto S', ma occorre conoscere qualcosa dell'altro party oppure si può far girare l'algoritmo più volte e poi fare una analisi di tutte le intersezioni.\\Lo schema si chiama tipicamente "honest but curious", quindi non è un infame bastardo che vuole fregarti ma se gira più volte l'algoritmo può scoprire qualcosa.\\\\
+\Huge
+\textbf{\textsf{AND THAT'S ALL FOLKS !!}}
 
 
 
