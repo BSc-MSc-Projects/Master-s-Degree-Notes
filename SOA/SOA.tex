@@ -109,7 +109,7 @@ Una pipeline è il modo basilare di fare ILP, in quanto c'è overlap in processi
 \item WB - Write Back
 \end{itemize}
 La figura sottostante mostra un caso di esecuzione senza pipelining:
-\begin{figure}[ht!]
+\begin{figure}[!h]
 \includegraphics[scale=0.3]{immagini/no-pipeline}
 \caption{Istruzioni senza pipeline}
 \end{figure}
@@ -135,7 +135,7 @@ Gli stage di pipeline non sono molti (ordine delle decine), quindi vediamo cosa 
 \end{itemize}
 \section{La pipeline nell'x86}
 Il processore x86 a 64 bit moderno ha più o meno lo stesso set di registri di un processore di un processore come l'8086 (ed altri), la differenza è che sono un po' di più e sono più grandi.\\ I cambiamenti sono interni, ovvero nel come vengono eseguite le istruzioni: i486 è stato il primo ad adottare una architettura pipeline, che viene riportata in seguito
-\begin{figure}[ht!]
+\begin{figure}[!h]
 \includegraphics[scale=0.4]{immagini/pipeline-i486}
 \caption{Pipeline di i468}
 \end{figure}
@@ -144,15 +144,11 @@ L'architettura non è "piaciuta" molto, ad esempio se si esegue lo lo XOR fra du
 \item a = *++p
 \item a = *p++
 \end{itemize}
-c'è una differenza in performance evidente fra i due statement. Il file \textit{PIPELINE-TEST/backward-propagation.c}, che gira per 20000 iterazioni, permette di specificare con una macro di compilazione DEPENDENCY se:
+c'è una differenza in performance evidente fra i due statement
+\paragraph*{Esempio software} Il file \texttt{backward-propagation.c}, che gira per 20000 iterazioni, permette di specificare con una macro di compilazione DEPENDENCY se:
 \begin{itemize}
 \item accedere al puntatore dopo averlo incrementato (e quindi dover dipendere dall'istruzione precedente
 \item oppure, se disabilitato, accedere e poi incrementare il puntatore
-\end{itemize} 
-Se si esegue il programma, si ottengono i seguenti tempi (dipendenti dalla macchina di esecuzione):
-\begin{itemize}
-\item con dipendenza, si ottiene un tempo di 5.25 secondi
-\item senza invece, il tempo è di 5.31 secondi
 \end{itemize}
 C'è inoltre il problema di istruzioni che causano lo squash della pipeline, ovvero la cancellazione di tutto ciò che vi è contenuto in quel momento. Tali istruzioni possono essere denotate come danno nel nostro programma, in quanto è possibile che vada rifatto tutto il lavoro perso delle successive istruzioni. Se consideriamo x86, una istruzione di questo tipo è \textsf{CPUID}, che prende l'ID numerico del processore su cui si sta lavorando. Questo è fondamentale quando si scrive del sw per il kernel, specialmente quando si sta scrivendo del sw che tocca delle strutture dati per lo specifico processore: bisogna conoscere quale è il processore su cui si lavora.\\ Tali istruzioni sono dette \textbf{serializing}, se però leggiamo il manuale dell'istruzione CPUID ci dice che è garantito che tutto ciò che viene è stato fatto da istruzioni precedenti è stato completato prima che la prossima istruzione sia fetchata ed eseguta.
 \subsection{Intel x86 superscalar pipeline}
@@ -185,10 +181,10 @@ come mostrato nell'esempio, può accadere che l'istruzione gialla arrivi a commi
 \subsubsection{Eccezioni imprecise}
 Su una architettura pipeline OOO (ma anche generale) in cui le istruzioni si superano l'un l'altra con un ILP molto elevato, consideriamo che una istruzione A è dopo una B nel program flow e B che causa una eccezione. Quindi, B $\rightarrow$ A (B precede A) ed A entra in pipeline prima di B, ma se B ha una eccezione, possono esserci tante altre istruzioni successive che l'hanno superata dopo A in pipeline e queste possono aver cambiato molto nello stato della CPU, tutte le relazioni di dipendenza possono essere state portate avanti in maniera speculativa senza toccare i registri di CPU, ma toccando altri elementi. Può accadere che ci siano anche altre relazioni, ad esempio B genera dei valori che poi verranno usati da A e che A poi passi il risultato basato su tali valori ad altre istruzioni dopo di lei etc... \\ Si toccano componenti nella CPU in funzione del fatto che vengono anche passate informazioni in maniera speculativa e non a livello dell'ISA. Questa è stata la base dell'attacco \textbf{meltdown}, in cui è stata necessaria la patch di tutti i kernel esistenti: è possibile usare i processori OOO per leggere dati del kernel, è possibile leggere buffer cache e quindi leggere i file o i meta-dati per proteggere i dati (ad esempio dati di cifratura).
 \\ Quindi, se siamo in pipeline occorre stare attenti, altrimenti si scrive software di sistema non corretto. Può accadere che viene passato un output in maniera speculativa e che ci siano effetti su altri componenti della CPU. \\ Considerando lo schema seguente:
-\begin{figure}[!ht]
+\begin{figure}[!h]
 \includegraphics[scale=0.15]{immagini/not_valid_instr}
 \end{figure}
-Se l'istruzione accede a delle risorse non valide, come locazioni di memoria o componenti della CPU non accessibili temporaneamente, il flusso di programma non è più valido e quindi anche le altre istruzioni non sono valide, ma possono esserci dei side effect nell'hardware dovuti al fatto che tali istruzioni sono già state processate
+\\Se l'istruzione accede a delle risorse non valide, come locazioni di memoria o componenti della CPU non accessibili temporaneamente, il flusso di programma non è più valido e quindi anche le altre istruzioni non sono valide, ma possono esserci dei side effect nell'hardware dovuti al fatto che tali istruzioni sono già state processate
 \subsection{Algoritmo di Robert Tomaluso}
 Le architetture moderne hanno delle varianti rispetto a questi algoritmi. Consideriamo come avviene il passaggio fra due istruzioni A e B per cui A$\rightarrow$B nel program flow, le possibili dipendenze sono:
 \begin{itemize}
@@ -201,9 +197,11 @@ Come risolviamo queste dipendenze sui dati: Tomasulo propone delle idee algoritm
 \item RAW: per ciascuna lettura, bisogna tenere conto se il valore da leggere è già stato prodotto, l'attesa del dato va quindi inserita nella OOO e quindi nel caso sia necessario bisogna considerare il buffering dell'operazione;
 \item WAR e WAW: la soluzione adottata è quella dei \textbf{renamed registers}. 
 \subsubsection{Renamed registers}
-Supponiamo di avere un registro R, per gestire WAW facciamo si che i due valori siano scritti ma sue due registri diversi. R non è un singolo registro, bensì è un \textbf{multi-registro}, dove ci sono varie versioni del dato. Qualsiasi istruzione che deve scrivere un valore in un registro ed entra in pipeline va sul componente, preleva uno slot utilizzabile fra i molti che compongono il multi-registro e scrive il valore in quello slot. Quindi, nel program flow può accadere che i valori possono essere scritti in tempi differenti sullo stesso registro, ma grazie alla presenza degli slot si risolve WAW, in quanto in termini di commit del valore verrà ristabilito l'ordine corretto. Il valore non può sovrascrivere, perché viene scritto su uno slot, quando viene mandata in commit l'istruzione si avrà il valore effettivo associato al registro R, nel controller del registro c'è anche quale è la versione attuale del valore del registro.\\ Un solo valore alla volta è quello attivo, alcune versioni saranno del passato ed altre del futuro, nella storia dei commit che poi verrà realizzata.\\\\
-\includegraphics[scale=0.25]{immagini/multi-registri}\\
-Quindi, quando mandiamo in pipeline una istruzione che deve leggere R, la marchiamo con il valore che quella deve leggere e finché il registro non è pronto l'istruzione rimane bloccata. Tutto questo è invisibile al programmatore in termini di risorsa ISA, ma visibile in termini del fatto che è possibile far si che il software faccia cambiare stato a tutti i registri in modo da creare problematiche.\\ In maniera indiretta è stato risolto anche WAR: per WAW è stato risolto il problema utilizzando i tag, ma anche per WAR finché il tag da leggere non è pronto, l'istruzione rimane ferma
+Supponiamo di avere un registro R, per gestire WAW facciamo si che i due valori siano scritti ma sue due registri diversi. R non è un singolo registro, bensì è un \textbf{multi-registro}, dove ci sono varie versioni del dato. Qualsiasi istruzione che deve scrivere un valore in un registro ed entra in pipeline va sul componente, preleva uno slot utilizzabile fra i molti che compongono il multi-registro e scrive il valore in quello slot. Quindi, nel program flow può accadere che i valori possono essere scritti in tempi differenti sullo stesso registro, ma grazie alla presenza degli slot si risolve WAW, in quanto in termini di commit del valore verrà ristabilito l'ordine corretto. Il valore non può sovrascrivere, perché viene scritto su uno slot, quando viene mandata in commit l'istruzione si avrà il valore effettivo associato al registro R, nel controller del registro c'è anche quale è la versione attuale del valore del registro.\\ Un solo valore alla volta è quello attivo, alcune versioni saranno del passato ed altre del futuro, nella storia dei commit che poi verrà realizzata.\\\\Una rappresentazione del multi-registro è mostrato in seguito:
+\begin{figure}[!h]
+	\includegraphics[scale=0.25]{immagini/multi-registri}
+\end{figure}
+\\Quindi, quando mandiamo in pipeline una istruzione che deve leggere R, la marchiamo con il valore che quella deve leggere e finché il registro non è pronto l'istruzione rimane bloccata. Tutto questo è invisibile al programmatore in termini di risorsa ISA, ma visibile in termini del fatto che è possibile far si che il software faccia cambiare stato a tutti i registri in modo da creare problematiche.\\ In maniera indiretta è stato risolto anche WAR: per WAW è stato risolto il problema utilizzando i tag, ma anche per WAR finché il tag da leggere non è pronto, l'istruzione rimane ferma
 \end{itemize}
 \subsubsection{Reservation stations}
 Ogni istruzione ha un codice operativo, che va bufferizzato da qualche parte e poi va relazionato al componente che deve eseguire l'operazione. La reservation station è una zona del processore che svolge tale funzionalità di buffer, in cui viene registrata una operazione in input all'oggetto (elemento operativo dell'hardware) che può eseguire quella operazione, ad esempio somme etc...\\  Non è detto che l'operazione venga processata immediatamente, perché può essere coinvolta in una dipendenza e dover attendere dei dati non ancora prodotti, questo viene dettato dallo stato del renamed register. La reservation station permette la possibilità di riservare il componente per l'istruzione, finché quest'ultima non è pronta ad essere eseguita.\\ Le reseravtion stations contengono:
@@ -312,8 +310,8 @@ l'array è fatto di pagine di 4096 byte, quindi lo shift del contatore letto all
 Per cercare di ovviare a queste problematiche di sicurezza dovute a meltdown:
 \begin{itemize}
 \item KASRL: Kernel Address Space Randomization, fa si che quando gira un applicazione, questa non sappia dove il kernel mantiene informazioni nella zona dell'address space. Se non sappiamo dove è mantenuta la chiave nell'address space del kernel bisogna andare verso attacchi bruteforce.\\ Il kernel, quando viene compilato, è pensato per avere le strutture dati e gli indirizzo a partire da una base nota. Con la randomizzazione, il kernel ad ogni statup si ricolloca a partire dalla zona nota, quindi è shiftata di un numero di posizioni che non conosciamo. Questo è possibile solo se gli accessi ai dati ed alle istruzioni in base al displacement avviene in base alla posizione relativa dall'istruction pointer.
-\item KAISER, Kernel Isolation
-\item Explicity cache flush ad ogni ritorno dal kernel mode: quindi se un flusso riprende il controllo dopo essere stato in kernel mode, si manda la cache in flushing. Ma possiamo avere una applicazione che, nell'asse temporale esegue come user, poi come kernel, poi di nuovo user etc... Se si fa questo la cache sta venendo buttata, quindi è come non averla in quanto viene sprecata in maniera sostanziale. Inoltre, ci sono anche attacchi che non passano per karnel.\\ La protezione può essere utile anche in un altro scenario: user eseguite in maniera malevola, quindi ci sono dei side effects che verranno osservati dopo. È possibile avere un percorso di questo tipo: eseguo, passo al kernel, il kernel esegue e mi rida il controllo. Se non valesse questa cosa, io saprei che le sys call che chiama il kernel durante quella esecuzione porta in cache dei dati che voglio attaccare. Quindi, potrei avere un attacco subito dopo la syscall.
+\item KAISER, Kernel Isolation. Espone ancora la superficie per gli interrupt ma è molto efficace
+\item Explicity cache flush ad ogni ritorno dal kernel mode: quindi se un flusso riprende il controllo dopo essere stato in kernel mode, si manda la cache in flushing. Ma possiamo avere una applicazione che, nell'asse temporale esegue come user, poi come kernel, poi di nuovo user etc... Se si fa questo la cache sta venendo buttata, quindi è come non averla in quanto viene sprecata in maniera sostanziale. Inoltre, ci sono anche attacchi che non passano per karnel.\\ La protezione può essere utile anche in un altro scenario: abbiamo operazioni user eseguite in maniera malevola, quindi ci sono dei side effects che verranno osservati dopo. È possibile avere un percorso di questo tipo: eseguo, passo al kernel, il kernel esegue e mi rida il controllo. Se non valesse questa cosa, io saprei che le sys call che chiama il kernel durante quella esecuzione porta in cache dei dati che voglio attaccare. Quindi, potrei avere un attacco subito dopo la syscall.
 \end{itemize}
 La soluzione utilizzata ad oggi è KAISER, che sfrutta questa cosa: abbiamo analizzato le trap che possono capitare all'interno dell'attacco meltdown ovvero le memory protection violation. KAISER è tale per cui non è possibile generare quella trap per accedere a delle informazioni di zona kernel. In particolare, la page table per il programma ha le entry che afferiscono alla zona di address space user settate, mentre quelle che afferiscono alla zona kernel non sono settate e quindi generano trap di tipo page fault.\\ Ma è possibile avere una applicazione che quando esegue ha solo come pagine valide nella PT relative allo user space? No, è ideale: nell'address space, il kernel è visibile tramite la PT, il kernel non è reso tutto invisibile ma sono una zona. La zona visibile è l'unica usabile per entrare ed eseguire in modo kernel, una volta entrati si cambia la visibilità anche sul resto della zona. Quindi, in user space non si può accedere alle zone invisibili. L'implementazione attuale è la seguente: \\
 \includegraphics[scale=0.3]{immagini/KAISER}\\\\
@@ -373,7 +371,7 @@ L'idea è che c'è una importante correlazione nel flusso di esecuzione, quindi 
 Nella pipeline c'è quindi una maschera che registra se è avvenuto o no il salto, la maschera può essere fatta comunque da istruzioni che possono essere committed oppure speculari, quindi una zona più recente sarà committed ed una non committed. Se la storia è fatta da due bit, possiamo discriminare 4 valori differenti, collegandoli alla history sono flussi di esecuzione completamente differenti, quindi per ciascuna di queste possibilità associamo uno specifico predittore a ciascuna combinazione dei 2 bit. I predittori indicano per l'istruzione, dato cosa è accaduto nel passato per i salti, cosa fare, ovvero se saltare o meno. In generale quindi, i predittori sono tipicamente marcati con la notazione di (m,n) dove m sono gli elementi (i branch passati) mantenuti nella history ed n i bit mantenuti da ogni predittore.\\ Il predittore per la predizione corrente viene scelto sulla base dei risultati degli ultimi m branches, come è codificato nella $2^m$ bitmask.\\ Una figura riassuntiva è mostrata in seguito:\\
 \includegraphics[scale=0.4]{immagini/corr_pred}
 \subsubsection{Tournament predictor}
-Il predittore di un branch tiene conto del fatto che per una istruzione di salto, a seconda di come è scritto il programma, ha senso eseguire il salto in funzione di quali sono le istruzioni passate in pipeline prima di questa. Non è detto che il predittore correlato sia sempre il migliore, perché per la singola istruzione la storia globale può essere una penalità in base alla struttura del codice.\\ Questo predittore mantiene per ogni istruzione le informazioni di un (m,n) ed anche 2 bit per avere 4 stati:
+Il predittore di un branch tiene conto del fatto che per una istruzione di salto, a seconda di come è scritto il programma, ha senso eseguire il salto in funzione di quali sono le istruzioni passate in pipeline prima di questa. Non è detto che il predittore correlato sia sempre il migliore, perché per la singola istruzione la storia globale può essere una penalità in base alla struttura del codice.\\ Questo predittore prende la decisione sul saltare o meno confrontando un predittore locale (per branch) ed un predittore correlato.\\Quale dei due usare per ogni predizione individuale è codificato in una macchina a 4 stati, basato su due bit, della storia di successi/fallimenti.
 \begin{enumerate}
 \item quando si predice per una istruzione di interesse, conviene guardare tutte le cose;
 \item quando passa una istruzione, non guardare la history bensì solo un predittore locale;
@@ -474,7 +472,7 @@ Le famiglie classiche di protocolli sono due, che risolvono il problema di quand
 I primi sono quelli usati in architetture moderne, per cui ci focalizziamo su quelli per capire come avviene l'invalidazione
 \subsubsection{Snooping cache}
 Come lavorano effettivamente i vari componenti dell'architettura hardware per implementare l'invalidate protocol: tutti i componenti sono connessi fra loro tramite un mezzo broadcast, anche detto rete, quindi tutte le cache possono parlare con tutte. È un modo semplice per poter prendere il mezzo, comunicare a tutti ad esempio un cambio di stato per far si che tutti lo cambino. C'è la serializzazione di tutte le transazioni: quando la CPU va sull'interfaccia verso la cache, l'interazione deve usare il broadcast medium, ma se non è necessario che ci sia la transazione distribuita non si parla. Se quando si manda l'interazione verso l'architettura di cache e questo genera un evento tale per cui qualcun altro deve parlare c'è la serializzazione, quindi nella time line i cambi di stato avvengono quando quello precedente è completato. I componenti di caching sono connessi a dei controller che è in grado di capire i messaggi di broadcast per poter effettuare i cambi di stato. Finché il controller non ha preso il mezzo di comunicazione il cambiamento di stato non può avvenire. Di seguito, viene mostrato uno schema architetturale:\\\\
-\includegraphics[scale=0.5]{immagini/cache_conn}\\\\
+\includegraphics[scale=0.7]{immagini/cache_conn}\\\\
 Le azioni trattano le singole linee di cache, per cui quando qualcuno parla lo fa per quella linea di cache.
 \subsubsection{MSI protocol}
 Tipicamente, si tiene traccia dei seguenti stati per un blocco in cache:
@@ -4349,9 +4347,9 @@ il controllo per il passaggio dell'attività viene fatto dal reference monitor: 
 \end{itemize}
 \subsubsection*{Ultimo esempio software del corso di Sistemi Operativi Avanzati =,(}
 Abbiamo un reference monitor che ha delle blacklist di comandi per root, oppure possiamo avere un meccanismo più forte per cui si accede a current. Targhiamo la sysexec\_ve (kernel 4.12 $<$) per cui abbiamo un wrapper: rigettiamo una exec per un programma, abbiamo installato con kprobe un preambolo a valle del quale partirà una exec e per evitare che parta possiamo resettare il command name\\La funzione non ha smontaggio, non è root che stabilisce cosa accade, quindi se proviamo a diventare root lo diveniamo, ma ora nella shell non possiamo più fare nulla. Tutto ciò che gira per conto di root funziona, ma tutto ciò che si può permettere di fare a root è incluso nel dominio che viene controllato dal reference monitor quindi questo utente esterno non può modificare nulla. \textbf{\textsf{IL GOAT SE NE FOTTE ED IL MODULO LO INSTALLA COMUNQUE, ED ORA FARÀ POWER OFF DEL PC DAL BOTTONE. G O A T}}.
-
-\Huge
-\textbf{\textsf{AND THAT'S ALL FOLKS}}.
+\\\\
+{\Huge
+\textbf{\textsf{AND THAT'S ALL FOLKS}}}.
 
 
 

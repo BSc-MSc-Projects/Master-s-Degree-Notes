@@ -1033,6 +1033,58 @@ Abbiamo visto solo strict filtering, quindi si accetta solo cosa si suppone di d
 va comunque usato quando non possiamo usare il filtering strict.\\RPKI non è obbligatorio, quindi non possiamo solo buttare via i ROA non trovati, possiamo usare route-map, come mostrato in seguito:
 %immagine
 con queste poche linee filtriamo in base alla ROA RPKI.
+\chapter{DNS Security}
+\section{Introduzione}
+DNS è uno dei più vecchi e fondamentali componenti dell'Internet, ovviamente anche questo non è stato progettato con la sicurezza in mente. La rete si è evoluta, quindi è cominciata una discussione per renderlo più sicuro, mediante DNSSEC.\\Sappiamo che se un client vuole connettersi ad un sito, deve conoscere l'IP del sito e quindi manda una richiesta UDP, dove la chiave è tipicamente un nome, si ottengono uno o più record in base ai tipi di risorsa. Una delle risorse più importanti è A, che è proprio un indirizzo IP.\\Se scendiamo nel dettaglio, abbiamo una richiesta ed una risposta, DNS è un protocollo binario, dove si richiede ad esempio il record A di un nome associato ad una chiave "sito.com", ma questo dipende appunto dalla richiesta che si fa, anche la risposta quindi dipenderà dal record. DNS è un protocollo ed un DB chiave:valore distribuito, le chiavi consistono in nome, chiave e classe.\\Lo spazio dei nomi è gerarchico, avremo quindi delle zone per cui c'è un server autoritativo che ha mantiene i record DNS per quella zona.\\Un DNS resolver chiederà ad un server autoritativo apposito per ottenere l'informazione richiesta, tipicamente il mio DNS resolver non è ricorsivo, ma fa una richiesta che viene risolta in maniera ricorsiva chiedendo ai diversi server autoritativi. Si segue la gerarchia, mostrata come segue:
+%immagine
+possiamo anche avere sotto-domini, e questo processo può essere ripetuto, avendo quindi dei sotto-domini per i sotto-domini.\\Quando si fa una query ad un resolver, se questa è già in cache si manda direttamente in risposta, ci sono 13 server di root e per ogni tol level domain c'è almeno un authoritative nameserver.\\Partendo dalla root, vogliamo risolvere "example.com":
+\begin{itemize}
+	\item il root server da l'IP del TLD per example.com
+	\item si prosegue così finché non si arriva al server che può rispondere alla query richiesta
+\end{itemize}
+Ci sono 4 server contattati durante una query:
+\begin{itemize}
+	\item name server autoritativo che fa il lookup ricorsivo
+	\item Root name server, ha tutti i name server per i TLD
+	\item TLD nameserver 
+	\item authoritative nameserver
+\end{itemize}
+Quindi, per poter ottenere un dominio, facciamo una query con un certo livello di ricorsione. Si parte quindi al root server, che non conosce l'IP associato al nome, quindi si va dall'autoritativo che rimanda al nameserver associato al sito richiesto.\\\\È sciocco cercare di risolvere sempre lo stesso nome ogni volta che si richiede sempre lo stesso nome, quindi i server DNS possono salvare in cache le risposte per gli stessi nomi: può farlo il browser oppure l'OS dei server DNS. C'è un TTL nei record DNS, per cui una volta scaduto va richiesto il record.
+\section{DNS vulnerabilities}
+Ci sono diverse vulnerabilità legate a DNS, la prima e peggiore è DNS spoofing o cache poisoning: l'obiettivo è di introdurre in una cache di un DNS resolver un IP address falso o incorretto (es www.google.com = 10.0.0.1). L'attacco visto nelle prime lezioni è un caso particolare di questo, in quanto si potrebbe usare TLS per proteggere DNS.\\L'effetto è quindi che si finisce su un altro server, c'è TLS che protegge il traffico ma se si vuole andare su un certo sito non è detto che si riesca a vedere ad occhio che il sito è diverso. Fare poisoning della cache non è così facile, in quanto non è sempre possibile fare MiTM, il problema è che DNS accetta solo risposte a delle query in attesa.\\Un nameserver può sapere che un pacchetto è atteso se:
+\begin{itemize}
+	\item la porta UDP di risposta è la stessa dell'invio
+	\item la question section (duplicata nel )
+	\item slides
+\end{itemize}
+Prima, il query ID era incrementale e deterministico, non possiamo chiedere ad un server il suo query ID ma possiamo farne una e vedere l'ID. In questo modo, possiamo conoscere l'ID e fare dei guess sui successivi query ID in breve tempo.\\Possiamo quindi fare l'attacco:
+\begin{itemize}
+	\item si manda al NS vittima, che si assume sia ricorsivo, una query DNS.
+	\item sapendo che la vittima riceverà una richiesta nel breve tempo, l'attaccante comincia a fare flooding sul NS in modo da dire che l'IP da risolvere è il suo
+	\item slides
+\end{itemize}
+Se si riesce a prevedere il corretto ID prima della risposta dal server autoritativo, si riuscirà a convincere il NS vittima.\\La risoluzione è permettere la randomizzazione del query ID.\\Dopo l'attacco di Kominsky, è stata apportata come patch anche la randomizzazione della porta. Siamo quindi vittima di qualcosa che non possiamo nemmeno controllare, perché il problema è nella cache del server ISP.\\DNSSEC ha l'obiettivo di evitare questo problema, proteggendo i record in se: se è possibile includere una prova crittografica dell'autenticità del record DNS si risolve il problema.\\\\DNS tunneling: la seconda vulnerabilità, che usa DNS per fare tunnel di altri protocolli mediante query DNS.\\Si usa uno schema di encoding base-64 che trasmette il payload dati come una query DNS al server. Il payload può essere qualsiasi cosa, sono semplicemente encodati ed accettati dal DNS server, la risposta può essere qualunque cosa sia una stringa\\\\Ad esempio (oltre cercare di bypassare firewalls di hotels ed aeroporti) possiamo creare una botnet command and control: dobbiamo poter controllare il bot da un canale, che deve essere nascosto e difficile da rilevare. L'attaccante infetta un PC utente, c'è un firewall per poter controllare il traffico ma DNS è permesso, per evitare di restringere le connessioni di utenti legittime.\\È difficile riuscire a discriminare DNS in tunnel mode da un utilizzo normale di DNS (esempio sulle slides)\\\\Abbiamo poi DNS hijacking: per fare l'attacco, occorre installare malware sul computer della vittima oppure cerchiamo di ottenere l'accesso al server DNS (no forse viene tolta).\\Può accadere ad esempio che un malware cambi i file hosts del FS oppure (slides). Se facciamo cache poisoning, alla fine otteniamo un dns hijacking, ma è diverso.\\\\Abbiamo poi NXDOMAIN, dove un attaccante fa flooding verso un server DNS\\\\Phantom domain attack: l'attaccante mette su un insieme di server phantom per cui il resolver non otterrà mai risposta o la otterrà dopo molto tempo. (SLIDES PER VEDERE TUTTI GLI ALTRI, COMUNQUE I PRIMI DUE SONO IMPORTANTI)
+L'ultima vulnerabilità riguarda il fatto che DNS è in chiaro, quindi chiunque vuole può vedere i siti che cerco di risolvere, PROBLEMA.
+\subsection{Rendere sicuro DNS}
+Per rendere sicuro DNS, dipende da cosa vogliamo risolvere:
+\begin{itemize}
+	\item possiamo autenticare crittograficamente DNS, DNSSEC ma non risolve il problema 9 ad esempio
+	\item possiamo avere DNS over TLS o https, ma non risolviamo il tunneling
+	\item firewall DNS, che deve fare dell'analisi statefull per capire cosa sta succedendo
+\end{itemize}
+\section{DNSSEC}
+Crea un DNS sicuro aggiungendo firme crittografiche a dei record esistenti. Lo standard non cambia, vengono aggiunti altri record col ruolo di autenticare quelli legacy.\\Quindi, le tipologie di record nuove sono
+\begin{itemize}
+	\item RRSIG, contiene la firma crittografica
+	\item DNSKEY, che contiene la chiave pubblica 
+	\item slides
+\end{itemize}
+Per rendere sicura una zona con DNSSEC, quindi ogni server autoritativo ha il compito di firmare i record per la sua zona, è di creare il record set per un dato record: se ad esempio abbiamo 3 record di tipo A per load balancing, si firma l'intero insieme. Quindi un RRset è associato alla stessa chiave e per lo stesso nome.\\Ogni zona DNSSEC ha una chiave detta zone signing key (ZSK): è crittografia pubblica, la chiave privata si usa per firmare e quella pubblica per verificare.\\L'operatore della zona, amministratore del name server autoritativo, deve far si che la chiave pubblica sia disponibile.\\Quando si fa una query si ottiene quindi il record, la firma e la chiave pubblica, quindi ora dobbiamo validare la chiave pubblica in quanto non può finire qui il meccanismo.\\C'è quindi la key-signing key: un DNSSEC NS ha anche una KSK, usata per validare la chiave, quindi viene mandata la firma anche della ZSK.\\Quando facciamo una query quindi,abbiamo anche bisogno del record DNS associato alla chiave usata per firmare la ZSK, ora serve la chiave che ha firmato la chiave usata per firmare.\\C'è un problema: qualcuno sta delegando il processo di validazione, c'è il TLD che dice qual è il name server per una zona e quindi serve rendere sicuro anche questa delegazione.\\Stiamo separando ZSK e KSK perché cambiare la ZSK deve essere facile, quindi sono chiavi piccole, mentre la KSK deve essere più grande.\\\\Dunque, l'ultimo pezzo di informazione: la KSK è auto-firmata, che aggiunge ancora un problema, lo fa chi ha la delegazione e questo non è sicuro. Abbiamo quindi il DS record, Delegation Signer: è usato per passare la fiducia da un nodo parent ad uno figlio.\\Occorre quindi anche questo record, salvato nella zona parent, quindi dal name server autoritativo del parent e questo è l'hash del KSK, anche il DS record ha un RRSIG record ma questa volta è firmato con la chiave privata del parent. Il root non ha quindi nessuno sopra, quindi la KSK della zona root è firmata in quella che viene detta "cerimonia".\\Il DS è firmato come ogni altro RRset, che vuol dire che ha un RRSIG parent corrispondente, la cerimonia produce il record RRSIG che può essere usato per verificare KSK e SZK del name server root. Siamo quindi sicuri che sia tutto valido in quanto ci fidiamo del processo in quanto la chiave viene messa in cassaforte etc... (un po' come il ground truth)
+\subsection{Explicit denial of Existence}
+Se richiediamo un dominio non esistente, viene restituito un record vuoto "NX". È un problema autenticare questi messaggi di risposta, DNSSEC risolve aggiungendo NSEC ed NSEC3 record: se un abbiamo un nameserver che definisce un AAAA record, riceviamo un NSEC record che dice che non c'è un record fra (slides)\\Il problema è quindi che abbiamo bisogno di un modo esplicito per dire che un record non esiste, questo specifica che non c'è un nome di dominio fra due nomi di domino(?), il problema è che si può fare "logging" di una intera zona facendo query a caso, ma c'è comunque un modo per risolvere anche questo problema.
+\section{Esempio reale}
+ 
+
 
 
 

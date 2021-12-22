@@ -1587,6 +1587,113 @@ Altre tecniche per fare scrumbling sono
 	\item ADD,SUB
 	\item varianti di base64: si considera la sequenza di byte come sequenze di bit e si associa ad ogni sequenza da 6 bit un carattere leggibile
 \end{itemize}
+\chapter{Lezione 26}
+\section{Offuscamento dei dati}
+\subsection{Codifica base-64}
+Per ottenere la protezione dei dati del malware, banalmente, si può usare il semplice XOR che usi il singolo byte come chiave con le varianti del caso che abbiamo visto. C'è un sistema che diverso malware usa, perché ripreso da librerie che già esistono e che è la codifica base\_64:
+\begin{enumerate}
+	\item la codifica prende un flusso di byte
+	\item considera il flusso come uno di bit
+	\item costruisce una nuova codifica composta da soli caratteri stampabili
+	\item lo standard nasce per trasmettere file arbitrari su posta elettronica, quindi la codifica trasforma una codifica basata su byte arbitrari su una dove ogni elemento ha solo 64 valori
+\end{enumerate}
+Consideriamo quindi la sequenza d'ingresso come suddivisa in blocchetti di 6 bit (e non da 8), quindi il primo byte arrivava nel mezzo di due blocchi, si considera quindi il flusso di bit.\\Possiamo quindi codificare fino a $2^6$ = 64 valori, associamo da 0 a 63 un carattere stampabile, da 'A' fino a '/', abbiamo quindi i seguenti caratteri usati: A...Z a...z 0...9 +/.\\Può accadere che la lunghezza del flusso non sia multipla di 64 bit, quindi il byte inizia da un certo punto e non trova in fondo i bit necessari a completare un carattere per base-64, quindi si aggiungono degli elementi di padding, ovvero si codifica il fatto che ci possono essere 1 o 2 caratteri a 64 bit che sono da aggiungere per arrivare ad un multiplo. Il carattere per indicare questo è "=", si mettono quindi "=" o "==" alla fine della sequenza per avere padding.\\Anche cambiando di poco la stringa da codificare, il risultato ottenuto cambia radicalmente in fondo alla stringa. Il malware potrebbe usare direttamente base-64 per offuscare, a sarebbe facile capire che è stato usato poiché i caratteri sono sempre gli stessi e si ripetono, l'analisi tramite entropia funzionerebbe bene per capire se qualcosa è codificato con base-64. Il malware usa quindi delle variazioni:
+\begin{itemize}
+	\item buttare i caratteri di padding, una decodifica può anche stabilire che se arriva in fondo e non riesce a completare una sequenza di byte aggiunge dei bit a 0. Questo vuol dire che, prendendo una sequenza e decodificandola, se va bene parte la procedura e magari decodifica solo in parte, altrimenti fallisce e basta. Sarebbe possibile aggiungere a mano i caratteri di padding;
+	\item per evitare di fare solo rimozione, il malware cambia la sequenza di caratteri stampabili, ad esempio: a0A...Zb...z1...9\;\\Così, è chiaro che nessuna routine per decodificare base-64 funziona, in quanto cambia il processo di codifica, l'alfabeto è stato cambiato in ordine o nei caratteri.\\Per cavarsela,a vendo stringhe abbastanza lunghe si riesce a capire quali caratteri si ripetono, per risalire all'ordine esatto occorre fare reversing della routine di decodifica del malware, dove troveremo la risposta;
+\end{itemize}
+Ottenere un flusso di byte che rappresenta caratteri stampabili è utile perché spesso negli shellcode si vuole iniettare del codice per sfruttare funzioni che manipolano stringhe, che spesso si aspettano dei caratteri stampabili, oppure che controllano se i caratteri siano stampabili, oppure magari si aspettano input utente etc...
+\subsection{Algoritmi crittografici standard}
+Possiamo usare algoritmi come AES (cifrario a blocchi) che tramite una chiave segreta codifica un flusso, ci sono una serie di algoritmi per costruire delle firme come MD5 SHA256 che prendono un flusso e derivano una piccola sequenza di bit o byte che in qualche modo identifica e firma quella sequenza grande. È possibile avere collisioni, ma in pratica testi anche molto simili fra loro producono firme completamente diverse.\\Ammettiamo che il malware abbia un payload cifrato con AES: per usarlo serve la chiave segreta, non è detto che la chiave di decifratura sia contenuta nel codice, altrimenti l'analista potrebbe trovarla, quindi 
+\begin{itemize}
+	\item il malware si installa, contatta un server remoto
+	\item verifica se la macchina è come si aspetta (in caso fosse un analista)
+	\item manda qualcosa che il malware userà per costruire la chiave segreta
+\end{itemize}
+ci sono anche protocolli a chiave pubblica/privata, anche qui l'idea è che il malware cifri qualcosa con la chiave pubblica, per poi ottenere la privata per decifrare.\\Ormai la maggior parte del malware è ransomware, il cui obiettivo è cifrare tutti i file ed usa algoritmi come AES, la chiave di cifratura è generata a caso sul momento. Dopo di che, il ransomware cifra la chiave segreta usando la chiave pubblica, per pi cancellare la chiave segreta.\\A questo punto non c'è modo, non si tira fuori nulla dal PC, la chiave segreta cifrata si salva sul PC della vittima e di fatti avvisa di cancellare dati dalla macchina. Chi paga, manda poi il file a chi deve (\textbf{\textsf{PROBABILMENTE IN CHINA}}) e quello sblocca tutto.\\L'uso della crittografia ha degli svantaggi:
+\begin{itemize}
+	\item richiede molto codice, e tipicamente il malware vuole essere piccolo
+	\item siccome generalmente chi scrive i malware non si re-implementa da solo l'algoritmo ed usa librerie, ci sono problemi di portabilità, magari è legato a certe versioni di SO
+	\item è facilmente rilevabile
+	\item se si usa crittografia simmetrica, se non c'è un meccanismo per cui la chiave arriva da un'altra parte, questa va salvata col file quindi chi fa analisi può recuperare la chiave
+\end{itemize}
+Per capire se del malware usa la crittografia, ci sono dei metodi classici:
+\begin{itemize}
+	\item consultando le stringhe del malware, se ci sono cose come "OpenSSL 1.0.0a" il malware è stato collegato ad una libreria standard
+	\item si guardano le API importate, perché le API che servono per re-implementare la crittografia sono riconoscibili, in Windows iniziano tutte con
+	\begin{itemize}
+		\item Crypt*
+		\item CP*
+		\item Cert*
+	\end{itemize}
+	\item ci sono poi tool appositi per rilevare se nell'eseguibile esistono funzioni crittografiche: 'è un plugin per PEiD, che è \textbf{\textsf{KANAL}}, che sta per Krypto \textbf{\textsf{ANAL}}yzer che guarda a quale algoritmo e funzioni crittografiche sono state usate.\\Questo plugin non è perfetto, tende a dare falsi positivi ma in generale fa un ottimo lavoro, così come plugin che si possono trovare.
+\end{itemize}
+\subsection{Varianti della crittografia standard}
+Se chi scrive malware ha tempo soldi etc... può fare varianti agli algoritmi di crittografia standard, che complica la vita a chi deve decodificare.\\Si possono poi mettere in cascata più algoritmi, per cui c'è poco da fare se non il reversing del codice macchina. Ci sono due approcci quando si è obbligati a decodificare il codice macchina
+\begin{itemize}
+	\item auto-decodifica: fare in modo che il malware faccia il lavoro per noi. Sappiamo che una certa procedura fa una decodifica di una certa struttura dati, quindi metto un brekpoint per vedere in memoria i dati decodificati alla fine della procedura di decodifica.\\L'approccio ha un limite: posso tenere in chiaro solo i dati che il malware usa nel momento in cui esegue
+	\item scrivere a mano la procedura di decodifica, facendo reversing del codice che fa la decodifica. Si possono usare linguaggi di alto livello, ma è comunque un lavoro lungo
+	\item la strada più "da smanettone", che consiste nel cercare di modificare il malware in modo che faccia la decodifica per noi. Ad un certo punto, vediamo che il malware decodifica dei dati che non ci interessano, quindi si mette un breakpoint e si modificano i registri sullo stack, facendoli puntare ai dati di interesse, così che la procedura di decodifica applichi su quei dati.\\Tutto ciò è automatizzabile con degli script, ma è più complesso di così in quanto i dati potrebbero non essere ancora in memoria ma su file, quindi nel debugger vanno portati in memoria. Si riesce tipicamente a fare bene usando le facilities di scripting del debugger, ad esempio con Python.\\OllyDbg non può usare script in Python ma c'è un evoluzione che è ImmunityDebugger che è molto simile ad OllyDbg che supporta Python.
+\end{itemize}
+\section{Offuscamento del codice}
+\subsection{Analisi di shellcode}
+Il nome deriva da codice macchina che si poteva iniettare in una shell di comandi, oggi indica qualunque codice che può essere usato per sostituire un processo in esecuzione oppure per sostituire un processo in esecuzione.\\Abbiamo un processo P, costruito dal SO, che ha creato una serie di aree negli spazio di indirizzi di P in cui mette:
+\begin{itemize}
+	\item testo dell'eseguibile. Se si usa un simbolo di una DLL esterna, non è risolto a livello di file eseguibile, lo sa il SO: l'API sta in una DLL caricata in un certo indirizzo iniziale, dove ad un certo punto inizia la API chiamata. Si sostituisce quindi la CALL con una CALL di una funzione unica che è una jump che contiene l'indirizzo vero che va rilocato, per motivi di efficienza si riloca una volta sola.\\La rilocazione è compito del SO
+	\item dati
+	\item kernel32 text, se ad esempio si usa la DLL
+	\item magari kernel32 data (ripetuto per tutte le DLL del processo)
+\end{itemize}
+quando si inetta codice in un programma, non si può fare nulla di ciò che fa il SO automaticamente
+\begin{itemize}
+	\item non si possono caricare DLL
+	\item non si possono trovare gli indirizzi di base delle DLL
+	\item non si possono risolvere i simboli
+\end{itemize}
+all'inizio quindi, lo shellcode non può usare indirizzi che dovrebbero essere stabiliti dal SO, deve poter scavalcare questo problema.\\Inoltre, c'è dell'altro:
+\begin{lstlisting}
+call func
+jump funcz
+mov eax, var
+\end{lstlisting}
+tipicamente tutte queste istruzioni usano delle aree di memoria. Di ogni funzione esistono due versioni:
+\begin{itemize}
+	\item relativa, l'operando  è l'offset dell'EIP.
+	\item assoluta, l'operando è l'indirizzo della funzione
+\end{itemize}
+e la stessa cosa vale per la jump. Questo non ha a che fare solo con la dimensione degli operandi, l'offset può essere anche di 4 byte, ma in intel ci sono due versioni di CALL o JUMP. Un compilatore in genere usa la versione relativa, ma si può forzare l'uso di istruzioni assolute. Nelle variabili, l'indirizzo è sempre assoluto, questo è un problema in quanto gli indirizzi assoluti non sono mai noti a priori: quando il compilatore genera il codice, lo fa come se il codice venisse sempre caricato ad un indirizzo preferito (di base), ma il SO non è obbligato a caricare l'eseguibile a quell'indirizzo di base.\\Quando il SO carica l'eseguibile in un altro indirizzo ha una lunga tabella in cui può aggiustare i preferred address originali in base al nuovo punto scelto.\\Tutti i compilatori hanno modo per generare codice PIC, ovvero Position Independent Code: il compilatore genera istruzioni macchina che sono valide e possono essere eseguite in qualunque indirizzo vengano caricate, è codice valido in maniera indipendente della posizione.\\In Unix/Linux si usa codice PIC sopratutto per le librerie dinamiche, perché il problema è dovuto al fatto che non so quante e quali ne userà l'eseguibile.\\Lo shellcode ha quindi dei problemi:
+\begin{enumerate}
+	\item dove viene caricato? Se ad esempio inietto del codice in un processo creando un nuovo thread, ma non sappiamo a priori quale altra memoria userà il processo. Quindi, lo shellcode non deve dipendere dall'indirizzo di base, ma deve anche essere in grado di stabilirlo
+	\item il malware fa in modo che tutti gli accessi siano PIC
+	\item deve caricare una DLL che il processo dove si innesta non ha, risolvere poi gli indirizzi di questa DLL per invocarne le API. Si potrebbero usare delle API di sistema, ma non possiamo sapere dove sono in memoria: l'API sta nella DLL, all'atto della creazione del processo non sappiamo a priori dove è stata caricata, può dipendere da quanto è lungo il processo.
+\end{enumerate}
+\subsubsection{Riconoscere codice PIC}
+Il codice PIC è simile a quello normale, ma non può usare indirizzi assoluti e quindi deve convertirli in equivalenti relativi: supponiamo di avere uno shellcode, le cui istruzioni iniziali sono caricate ad un certo indirizzo. Lo shellcode vuole capire dove è stato caricato, può farlo in diversi modi:
+\begin{itemize}
+	\item CALL + POP: uso una call relativa, facendo call l0 + 0, dico come offset di invocare esattamente la funzione ad l0, quindi subito sotto.\\Il processore come effetto mette sulla cima dello stack l'indirizzo assoluto di ritorno, ovvero dove tornare una volta che la CALL è conclusa. Con pop ebx otteniamo l'indirizzo a cui è stato caricato lo shellcode.
+	\item uso delle istruzioni \texttt{fstenv} oppure \texttt{fnstenv}: son istruzioni macchina che salvano il contesto del co-processore matematico, ovvero la floating point unit è conisderata un co-processore affiancato a quello normale. Per questo, il contesto e quindi i registri della FPU vanno salvate con istruzioni fatte a posta.\\Supponiamo che un processo stia usando la FPU, se il SO lo interrompe ed esegue un handler che non usa la FPU, al ripristino del processo questo si ritrova il contesto corretto, il SO salva il contesto della FPU solo quando ci si accinge ad eseguire un flusso che sporca il contesto di qualcun altro.\\Per farlo, si usano queste due istruzioni, che hanno diverse informazioni:
+	\begin{itemize}
+		\item ad offset 12 (0x0c), c'è un campo \texttt{istruction\_pointer} che contiene l'indirizzo dell'ultima istruzione di floating point eseguita dal core
+		\item la variante che cerca di capire dove è posizionata in memori esegue una qualunque istruzione FP
+		\item fa una delle due istruzioni per salvare il contesto: l'operando è l'indirizzo di un'area di memoria dove salvare il contesto. Possiamo passargli, con indirizzamento indiretto tramite ESP, la cima dello stack -12 (andiamo verso stack vuoto)
+		\item facendo pop ebx, ci troviamo dentro EBX proprio l'IP, ovvero l'ultima istruzione eseguita dalla FPU. Abbiamo ancora una volta ottenuto in un registro della macchina l'indirizzo assoluto dello shellcode.
+	\end{itemize}
+\end{itemize}
+Ottenuto questo valore di base, possiamo calcolare tutti gli altri indirizzi dello shellcode basandosi su quelli: lo shellcode, avrà una certa parte di istruzioni macchina e vede fare mov eax, string oppure push string, al posto delle istruzioni che usano indirizzi assoluti non fa altro che dire lea eax, [ebx + 0xconst], dove const è una costante che è la distanza fra l'indirizzo iniziale e l'inizio della stringa (calcolati dallo shellcode)
+\subsubsection{Invocazione di API}
+Vogliamo invocare una API, ad esempio la \texttt{MessageBoxA}: lo shellcode non sa dove questa API è caricata, ci sono 2 approcci:
+\begin{itemize}
+	\item approccio ottimistico, spero che il SO carichi le DLL agli indirizzi preferred. Anche le DLL hanno indirizzi preferiti, ad esempio la \texttt{MessageBoxA} sta in User32 e quando è stata compilata è stato definito un indirizzo preferito. Se il SO non ha motivo per non farlo, la caricherà lì e tipicamente questi indirizzi sono molto più alti di quelli assegnati, quindi raramente è necessario rilocare.\\Uno dei problemi è che SO Windows differenti usano indirizzi di base differenti, per determinarlo, possiamo usare un debugger che è in grado di determinare gli indirizzi di base.\\Attaccandosi ad un file (UpdateEdge, \textbf{\textsf{ORRORE}}), possiamo cercare la API e trovare l'indirizzo. L'approccio non funziona sempre
+	\item tipicamente, c'è il problema di risolvere gli indirizzi dalle DLL. Il modo consiste nell'usare \texttt{LoadLibraryA} per ottenere l'handle ed usare \texttt{GetProcAddress} per ottenere gli indirizzi, ma questi stanno dentro Kernel32.dll quindi come fa a sapere dove si trova l'indirizzo? Ci si vede a lezione 27.
+\end{itemize}
+
+
+
+
+
+
+
+
 
 
 
