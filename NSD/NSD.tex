@@ -1083,8 +1083,44 @@ Per rendere sicura una zona con DNSSEC, quindi ogni server autoritativo ha il co
 \subsection{Explicit denial of Existence}
 Se richiediamo un dominio non esistente, viene restituito un record vuoto "NX". È un problema autenticare questi messaggi di risposta, DNSSEC risolve aggiungendo NSEC ed NSEC3 record: se un abbiamo un nameserver che definisce un AAAA record, riceviamo un NSEC record che dice che non c'è un record fra (slides)\\Il problema è quindi che abbiamo bisogno di un modo esplicito per dire che un record non esiste, questo specifica che non c'è un nome di dominio fra due nomi di domino(?), il problema è che si può fare "logging" di una intera zona facendo query a caso, ma c'è comunque un modo per risolvere anche questo problema.
 \section{Esempio reale}
- 
-
+Cerchiamo di capire meglio come funziona DNSSEC, vediamo il dominio "example.com", registrato realmente per fare esempi e che è autenticato con DNSSEC.\\Useremo dei tool:
+\begin{itemize}
+	\item DNSviz
+	\item \texttt{dig}, risolutore di query dns
+\end{itemize}
+Ad alto livello, questa è la situazione:
+%immagine
+tutti i record che vediamo firmati alla fine, guardando la situazione in DNSviz, sono set di record.\\Vediamo poi con \texttt{dig} come è fatto un record DSNSEC, usato in questo modo: \texttt{dig +qr +dnssec @1.1.1.1 example.com A}, c'è un key tag value che è usato per calcolare la firma.\\Abbiamo il record, ma abbiamo anche bisogno del record della chiave DNS per verificare che sia tutto corretto: \texttt{dig +qr +dnssec @1.1.1.1 example.com DNSKEY}: otteniamo 3 chiavi, di cui una però non è usata ed infatti abbiamo 2 RRKEY.\\Ora dobbiamo validare il DS record, per essere sicuri che questo record venga dalla zona corretta, usiamo nuovamente dig: \texttt{dig +qr +dnssec @1.1.1.1 example.com DS}. nuovamente, abbiamo 6 DS record ma una singola firma perché appunto si firma l'intero set.
+\section{Zone content exposure}
+In legacy DNS, se facciamo una query per un dominio che non esiste otteniamo un record DNS vuoto come risposta, ma abbiamo comunque bisogno di firmarlo in DNSSEC e quindi c'è la non esistenza esplicita con i record NSEC.\\Il record NSEC dice non esistono sottodomini fra il sottodominio x ed y, ma il problema è che siccome ogni record NSEC punta al successivo è possibile camminare su una zona finché non ha conosciuto tutta la zona, magari esponendo delle informazioni importanti.\\È possibile nuovamente vedere questo sia con dig che con DSNviz.\\Ci viene quindi in mente che i record DNS non dovrebbero essere segreti, ma anche fare il reveal di contenuti delle subzone non è il massimo.\\Introduciamo quindi alcuni modi per evitare questo
+\subsection{NSEC3}
+Record type cheè una estensione di NSEC, non vengono riportati in chiaro le distanze fra i due sottodomini, ma in formato salted hashed, abbiamo quindi 2 NSEC3 record, mostrati in 
+%immagine
+sono salted hashed, non cifrati, quindi si può ancora tentare con degli attacchi a dizionario. Si può mitigare la vulnerabilità inserendo DNSSEC white lies: mentiamo sui nomi, se richiedo per "computer.bits", non rispondiamo che non ci sono nomi fra x ed y ma usiamo dei nomi random che è fra il nome che richiedo ed il prossimo valore reale. Il problema è che per firmare questi nomi falsi va fatto on-the-fly, con RSA è abbastanza pesante, per cui  si potrebbe pensare di applicare crittografia su curve ellittiche.\\Abbiamo comunque dei problemi: 
+\begin{itemize}
+	\item (slides)
+	\item possiamo fare flooding sul server, serve calcolare una firma ogni volta che qualcuno ne ha bisogno
+\end{itemize}
+\subsection{Cosa risolve DNSSEC e cosa No}
+NDSSEC può risolvere diversi problemi, ma ci sono comunque delle cose che non si possono risolvere: (slides)\\Di sicuro, non si risolve la privacy di un client in quanto con DNS legacy i messaggi sono mandati in chiaro.\\Inoltre, DNSSEC non è deployato ovunque
+\subsection{DNS over HTTPS o TLS}
+Siccome DSNSEC non copre la privacy, abbiamo due ragioni per avere questa architettura:
+\begin{itemize}
+	\item privacy, così da avere le query cifrate
+	\item sicurezza, in quanto gli stub resolver sono minimali ed usano solitamente query ricorsive. Non è detto che vadano a validare i record DNSSEC, quindi dobbiamo fidarci del nostro nameserver, ma se il canale di comunicazione non è protetto c'è un problema
+\end{itemize}
+Abbiamo quindi due soluzioni:
+\begin{itemize}
+	\item dns over tls vuole fornire privacy ed autenticazione per TLS. Un server che supporta DNS over TLS accetta connessioni TCP sulla 853. A questo punto, si procede con l'handshake dopo cui tutti i messaggi DNS sono mandati sul canale TLS autenticato e cifrato. Sarebbe utile mantenere attivo lo stesso canale TLS per incapsulare diverse richieste DNS
+	\item con TLS over HTTPS dobbiamo poter embeddare una richiesta DNS in un pacchetto HTTP. Si può fare col metodo GET e POST:
+	\begin{itemize}
+		\item get: incluso in base-64 nel url
+		\item in post viene messo nel corpo, il content type sarà quello corretto
+	\end{itemize}
+\end{itemize}
+I due approcci sono simili, da un punto di vista di sicurezza della rete è meglio DoT, ma da un punto di vista della privacy è meglio DoH, qui le query sono nascoste in un traffico di rete HTTP più ampio.
+\section{Lab 14: FINALE}
+Laboratorio DNSSEC dove il prof si è comparto un dominio\\Come prima cosa, occorre configurare il file di \texttt{bind}.\\Per firmare la zona, basta lanciare un comando e si fa tutto.\\Accade che la ZSK è anche usata per firmare il DSKEY set, il che è strano: vale anche per "example.com", verificando altri 2 domini non si trova quindi o dipende dalla configurazione oppure da qualche implementazione.
 
 
 
