@@ -2,6 +2,7 @@
 
 \usepackage{geometry}
 \usepackage{listings}
+\usepackage{graphicx}
 
 \geometry{
 	a4paper,
@@ -1686,17 +1687,94 @@ Vogliamo invocare una API, ad esempio la \texttt{MessageBoxA}: lo shellcode non 
 	\item approccio ottimistico, spero che il SO carichi le DLL agli indirizzi preferred. Anche le DLL hanno indirizzi preferiti, ad esempio la \texttt{MessageBoxA} sta in User32 e quando è stata compilata è stato definito un indirizzo preferito. Se il SO non ha motivo per non farlo, la caricherà lì e tipicamente questi indirizzi sono molto più alti di quelli assegnati, quindi raramente è necessario rilocare.\\Uno dei problemi è che SO Windows differenti usano indirizzi di base differenti, per determinarlo, possiamo usare un debugger che è in grado di determinare gli indirizzi di base.\\Attaccandosi ad un file (UpdateEdge, \textbf{\textsf{ORRORE}}), possiamo cercare la API e trovare l'indirizzo. L'approccio non funziona sempre
 	\item tipicamente, c'è il problema di risolvere gli indirizzi dalle DLL. Il modo consiste nell'usare \texttt{LoadLibraryA} per ottenere l'handle ed usare \texttt{GetProcAddress} per ottenere gli indirizzi, ma questi stanno dentro Kernel32.dll quindi come fa a sapere dove si trova l'indirizzo? Ci si vede a lezione 27.
 \end{itemize}
-
-
-
-
-
-
-
-
-
-
-
+\chapter{Lezione 27}
+\section{Esercizio su shellcode}
+Analizziamo uno shellcode, l'estensione di tale file non è quella di un eseguibile, quindi la prima cosa che si può provare a fare è analisi statica.
+\subsection{Analisi statica dello shellcode}
+Aprendolo con Ghidra, il programma non sa che tipo di file sia: non c'è una testata che dice come si costruisce il processo iniziale, occorre quindi dirlo manualmente: in una ipotesi "temeraria" possiamo supporre che il codice sia Intel x86 a 32 bit, ci sono le varianti poi dedicate al compilatore usato per crearlo, etc...\\Generalmente lo shellcode è piccolo, quindi è scritto a mano in Assembler, scegliamo perciò gcc come compilatore.\\Aprendo il programma, lanciamo l'analisi ma questa si conclude con praticamente 0 codice: Ghidra partiva dall'entrypoint a discriminare quale è codice e quale no, ma l'entrypoint stava nella testata PE, che non possiamo conoscere.\\Ci mettiamo quindi sul primo byte e dissassembliamo a mano: troviamo, dopo una JUMP, una istruzione floating point e non ci importa nemmeno sapere cosa fa, perché sappiamo che l'istruzione dopo è la FNSTENV che salva il contesto dell'unità di floating point, ad offset 12 dove sappiamo esserci l'indirizzo dell'ultima istruzione floating point eseguita, quindi di quella prima.\\Tutto nasce dal fatto che lo shellcode non sa a quale indirizzo verrà caricato, quindi con questa tecnica riesce a capirlo, possiamo poi mettere il riferimento in memoria all'indirizzo appena caricato (per Ghidra parte tutto da 0, quindi mettiamo come offset 0x1c)\\Abbiamo poi la push dei parametri, dopo di che viene pushato un certo indirizzo nello stack: dopo aver detto a Ghidra che la variabile globale è di tipo dword, abbiamo che viene risolto il suo valore che è 76573750h, poi abbiamo un altra CALL all'indirizzo 76AC4E10h, sempre variabile globale.\\Abbiamo finito, Ghidra non può dirci più nulla e quindi procediamo con analisi dinamica
+\subsection{Analisi dinamica dello shellcode}
+Ci manca la parte in cui il malware viene iniettato dentro un altro processo, ma potremmo anche avere un nostro programma che alloca memoria, ci mette dentro i byte dello shellcode e ci salta dentro.\\Possiamo però usare un altro programma, "shellcode\_launcher": passiamo con -i il nome dello shellcode e lui fa tutto ciò che deve fare.\\A questo punto, possiamo provare a fare debuggin con OllyDbg: non possiamo aprire lo shellcode, ma apriamo lo shellcode\_launcher e poi mettere come argomenti del processo quelli di prima (-i \textit{il nome del file})\\Lanciando il debug, lui si ferma all'inizio del launcher, ma non ci importa debuggare questo: il launcher ha un opzione -bp che mette un breakpoint nel momento in cui sta per lanciare lo shellcode caricato.\\Attenzione: il breakpoint viene aggiunto manualmente dal launcher e non dal debugger, che quindi non ne è a conoscenza e quindi occorre non passare INT3 al programma, deselezionando tra le debugging options le "INT3 breaks". Ora, possiamo fare f9 che arriva fino al breakpoint del launcher: abbiamo il JMP all'inizio dello shellcode e quindi con f7 possiamo saltare alla prima istruzione per fare analisi dinamica.\\La cosa importante per la nostra analisi è capire quali API vengono invocate:
+\begin{itemize}
+	\item in EAX, piazziamo l'API \texttt{MessageBoxA} della DLL \texttt{User32}: come sappiamo, le API hanno un indirizzo predefinito dove vengono collocate se possibile per evitare di dover rilocare
+	\item stesso meccanismo vale per \texttt{ExitProcessA}, della DLL \texttt{Kernel32}
+\end{itemize}
+\section{Problema dell'indirizzo a priori}
+Anche usando \texttt{LoadLibrary} e \texttt{GetProcAddress} occorre conoscere i loro indirizzi.\\C'è un sito: \textbf{undocumented.ntinternals.net} dedicato a documentare tutto ciò che la Microsoft non dice, è un riferimento prezioso per chi scrive malware e per chi fa analisi. In particolare, qui si trova come un processo registra al suo interno la lista delle DLL usate ed è importantissimo perché quasi tutti i processi usano \texttt{kernel32.dll} che nelle versioni moderne è in realtà \texttt{kernelbase.dll}.\\L'idea è quindi quella di ottenere proprio questa DLL, che contiene le due API di nostro interesse, avendo le quali abbiamo \textsf{\textbf{TOMBOLA}}.\\Tutto parte dalla struttura TEB: ogni processo ci arriva tramite il registro segmento fs:0, ad offset 30h c'è un puntatore alla struttura dati PEB. A sua volta, all'offset 0ch della PEB c'è un altro puntatore alla PEB\_LDR\_data che contiene una serie di campi che servono a descrivere la lista delle DLL caricate.\\Ciascuna DLL è inserita in 3 liste differenti:
+\begin{itemize}
+	\item \texttt{InLoadOrderLinks}, offset 0ch
+	\item \texttt{InMemoryOrderLinks}, offset 14h
+	\item \texttt{InInitializationOrderLinks}, offset 1ch
+\end{itemize}
+ciascuna di queste liste è ordinata secondo l'ordine di
+\begin{itemize}
+	\item caricamento
+	\item indirizzo di base in memoria
+	\item inizializzazione
+\end{itemize}
+che non sono necessariamente coincidenti.\\Vogliamo scandire le liste per trovare le DLL di interesse: ogni campo è a loro volta una struttura equivalente ad una list\_head di una lista doppiamente collegata circolare. Ognuna delle liste contiene a loro volta un'altra struttura che è la LDR\_DATA\_TABLE\_ENTRY: ciascuna di esse rappresenta una DLL ed è contenuta in 3 liste differenti e quindi deve avere 3 campi differenti sempre di tipo list\_head come detto prima, che collega l'elemento al successivo ed al precedente:
+\begin{itemize}
+	\item ad offset 0h c'è quello per la load
+	\item offset 8h la memory
+	\item offset 10h initialization
+\end{itemize}
+(2 puntatori ciascuno)\\All'offet 18h c'è finalmente DLLBase, cioè l'indirizzo di base a cui è stato caricata la DLL: la Dll è un programma vero e proprio con una sua MemoryMap e la sua testata PE, quindi la ritroviamo così anche in memoria.\\Lo shellcode deve anche decidere se è la DLL di interesse, ad offset 24h c'è il campo FullDllName, puntatore a stringa UNICODE col nome della DLL.\\\\Una delle particolarità delle liste circolari è che i puntatori in avanti ed indietro non puntano all'inizio della struttura, come illustrato in seguito:
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/ldr_struct.png}
+\end{figure}
+e questo vale per tutte e 3 le strutture dati.\\Il motivo fondamentale per questa cosa è efficienza: non conoscendo a priori la dimensione della struttura, andando ogni volta all'inizio sporcherei più linee di cache, facendo così invece si dimezzano le linee di cache usate. Quindi, sommerò gli offset in base alla posizione del campo, che è a 10h e non sapendolo il codice risulterebbe "misterioso".
+\subsection{Trovare l'indirizzo della DLL}
+Lo shellcode ora ha trovato l'indirizzo di base della DLL e quindi può cercare l'indirizzo della API, che si trova nella testata PE della DLL, che ha la sezione "Exports", dobbiamo rifare a mano il lavoro della \texttt{GetProcAddress}. Per farlo, dobbiamo capire come è organizzata la sezione "Exports": proviamo ad aprire con PE-Bear un qualunque eseguibile, cerchiamo poi la dll \texttt{kernelbase}:
+\begin{itemize}
+	\item all'inizio, abbiamo una serie di testa non importanti, ma all'offset 3ch c'è l'RVA (Relative Virtual Address) dell'inizio della testata successiva, che è l'offset rispetto all'indirizzo dove è stata caricata la DLL.\\L'RVA in linea di principio è diverso volta per volta, quindi lo shellcode deve come prima cosa trovare l'RVA ed aggiungerlo alla DLL base
+	\item quindi, da [[Base + c3] + Base] otteniamo l'indirizzo di base delle testate PE.\\Arrivato qui, ci sono
+	\begin{itemize}
+		\item 2 byte di signature
+		\item una IMAGE\_FILE\_HEADER, lunga 18-22 byte
+		\item abbiamo poi la OPTIONAL\_HEADER, di cui ci importa l'RVA della Export Directory.
+	\end{itemize}
+	Quindi, preso questo RVA e sommato all'indirizzo di base in cui è caricata la DLL si ottiene la tabella degli exports della DLL
+	\item A questo punto, lo shellcode deve interpretare a mano la tabella degli Exports
+\end{itemize}
+Sommando quindi IMAGE\_FILE\_HEADER + OPTIONAL = Export Directory, la somma di tutti i byte è 120. Quindi [[Base + c3] + Base] + 120 ci da l'RVA della Export Directory, ma ora occorre l'indirizzo della Export Directory.
+\subsubsection{Export Directory}
+La Export Directory è fatta da diversi campi: innanzitutto c'è una struttura di dati dove:
+\begin{itemize}
+	\item ad offset 18h c'è il campo \texttt{NumberOfNames}
+	\item ad offset 1ch c'è \texttt{NumberOfFunction}
+	\item a 20h \texttt{AddressOfFunctions}
+	\item a 20h \texttt{AddressOfNames}, l'RVA di un vettore di puntatori a stringhe. Queste stringhe, descrivono le varie API esportate. Il vettore è ordinato alfabeticamente, quindi tipicamente sapendo il numero di nomi, l'ordine e sapendo cosa cercare si fa una ricerca binaria, ma nessuno shellcode lo fa;
+	\item a 24h \texttt{AddressOfNamesOrdinals}, ordinata per numero d'ordine. Sono comunque valori a 16 bit e serve perché \texttt{AddressOfFunctions} elenca gli RVA delle funzioni per ordinale, quindi comincia dall'ordinale 1 e va avanti.\\Dopo di che, è \texttt{AddressOfNamesOrdinals} a fare il collegamento fra nome e numero d'ordine: se ad indice 100 trovo un nome, trovo in questo vettore l'ordinale da usare nel vettore \texttt{AddressOfFunctions}
+\end{itemize}
+Arriviamo quindi ad avere idealmente \texttt{LoadLibraryA} e \texttt{GetProcAddress} ma in realtà non serve: una delle cose non documentate di Microsoft è che la \texttt{LoadLibraryA} restituisce un handle che coincide con la DLLbase a cui è caricata la dll, quindi non serve usare la \texttt{GetProcAddress} in quanto possiamo usare questa base e navigare verso quello che serve.
+\subsection{Ottimizzazioni degli shellcode}
+Quando si cerca effettivamente la DLL, come si fa? E stesso vale per la API da cercare, si dovrebbe usare una stringa nel codice ed usare strcmp, ma questo non va bene perché:
+\begin{enumerate}
+	\item le stringhe occupano spazio
+	\item le stringhe sono trovabili
+\end{enumerate}
+quindi lo shellcode piuttosto usa un hash: abbiamo una funzione \textbf{hashString:} gli passiamo la stringa della API voluta e questa tira fuori un hash di 32 bit. Si mette quindi l'hash corrispondente alla stringa, verifica il matching con il nome e se trova quello che cerca si ferma. Questo viene fatto per offuscare il codice ed inoltre la funzione di hash non deve essere molto complessa, basta che non produca collisioni fra le API usate dallo shellcode.\\Tipicamente, molti shellcode usano funzioni di hash tirate fuori da metasploit, che è basato su una rotazione dei bit di un carattere di 13 posizioni, per poi sommare il risultato ad un accumulatore.\\\\Seconda ottimizzazione: spesso lo shellcode non si preoccupa di cercare esplicitamente di cercare la kernel32.dll, perché assumono spesso che sia la 2° dll caricata, in quanto la prima è ntdll.dll. Nelle ultime versioni di Windows non è sempre garantito, ma molto spesso funziona, altrimenti si usa l'hash come sopra.
+\section{Esempio}
+L'esempio, visto dall'ASM, invoca findKernel32Base che fa esattamente ciò che abbiamo detto prima:
+\begin{itemize}
+	\item parte da fs + 0x30 per trovare la TEB
+	\item testa il risultato, perché la TEB nelle vecchie versioni di Windows stava in memoria alta (oltre il 3° GB), mentre ora sta in memoria bassa. Quindi lo shellcode non vuole funzionare su Windows non recenti
+	\item eax punta la TEB, si dereferenzia per arrivare alla 3° lista
+	\item la lodsb prende l'indirizzo  a cui punta esi e lo carica in eax: esi punta alla struttura degli Init stessi e quindi ora eax punta alla locazione successiva, ovvero al 2° elemento della lista
+	\item somma quindi 8 a cosa ha ottenuto per arrivare a DllBase
+	\item cerca poi, con la findSymbolByHash, il simbolo nella DLL confrontando con l'hash appena caricato sullo stack
+	\item dalla base +3c ottiene l'RVA della testata, somma poi 120 alla base ed arriva all'indirizzo che contiene l'indirizzo della Export Directory.
+	\item sommiamo alla base per trovare l'indirizzo, dereferenziamo e troviamo i numeri \texttt{NumberOfNames} ed \texttt{AddressOfNames}
+	\item in un loop, dereferenzia il puntatore, calcola l'hash e confronta con l'hash della funzione da cercare
+	\item ora fa tutti i passaggi rimanenti per poi restituire l'indirizzo della funzione cercata
+\end{itemize}
+A questo punto, costruisce i parametri ed invoca la funzione.
+\section{Operazioni sugli shellcode}
+Ci sono due operazioni che si fanno sugli shellcode:
+\begin{enumerate}
+	\item avere shellcode codificati con caratteri stampabili, \textbf{shellcode encoding}: questo perché si vorrebbero usare funzioni come \texttt{strcat}, \texttt{strcmp} etc... così magari da sfruttare vulnerabilità di buffer overflow.\\È importante che sia fatto da caratteri stampabili in quanto spesso ci sono delle funzioni che verificano la stampabilità dei caratteri prima di passarli alle funzioni.\\Abbiamo quindi una piccola parte dello shellcode che è il decoder e poi una lunga parte che è lo shellcode encoded: la codifica prevede che ogni byte dello shellcode sia fatto in realtà da 2 byte: abbiamo la base della lettera 'A' + un valore da 0 a 15, quindi ogni carattere è sempre stampabile.\\La sequenza AB rappresenta quindi 0x01, mentre BA rappresenta 0x10. Il decoder prende la lista di caratteri stampabili e costruisce il vero shellcode, per poi saltarci dentro.\\Il decoder stesso non deve contenere caratteri non stampabili, ma essendo piccolo è fattibile
+	\item \textbf{NOP sleds}: lo shellcode è fatto di 3 parti: shellcode, decoder e byte di padding che rappresentano NOP. Spesso si usa 0x90 ma non è stampabile (perché maggiore di 128), quindi si usano delle istruzioni NOP nel range sotto 128, magari non tutte uguali per non essere scoperti. Si possono magari usare byte nel range 0x40 - 0x4f, che magari fanno inc eax inutili.\\Si usa perché spesso le tecniche che iniettano shellcode non hanno modo di controllare il punto in cui il processore salterà, perché vanno riscritti fondamentalmente degli indirizzi di ritorno dello stack. IN questo modo, saltando in un qualunque punto del padding si arriverà sul decoder e si salterà dentro allo shellcode decodificato
+\end{enumerate}
+L'obiettivo è sempre quello di riconoscere cosa analizziamo.
 
 \newpage
 \chapter*{Appendice}
