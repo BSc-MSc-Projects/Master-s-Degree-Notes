@@ -3060,7 +3060,7 @@ quello che si fa in un SO usando gli IPI è implementare dei protocolli per coor
 \item basso: possono essere di più e vengono processate sequenzializzate.
 \end{itemize} 
 \subsection{Supporto su x86}
-Su x86 abbiamo un componente che è l'APIC, un oggetto che ha componenti logicamente associati ai vari CPU core (ed ai vari hyperthreads) e componenti centralizzati. Fra questi è interessante il LAPIC, che è il componente locale e questo al suo interno a un timer, il LAPIC timer che abbiamo visto nella gestione dell'avanzamento del tempo.\\Lo scenario è che quindi ogni CPU core\footnote{che equivale a dire hyperthread fisico} ha un componente locale che segnala il passaggio del tempo, quindi un CPU core scrivendo su un particolare registro, può richiedere di inoltrare una richiesta di interrupt ad altri CPU-core. La reale architettura è rappresentata in questo schema
+Su x86 abbiamo un componente che è l'APIC, un oggetto che ha componenti logicamente associati ai vari CPU core (ed ai vari hyperthreads) e componenti centralizzati. Fra questi è interessante il LAPIC, che è il componente locale e questo al suo interno ha un timer, il LAPIC timer che abbiamo visto nella gestione dell'avanzamento del tempo.\\Lo scenario è che quindi ogni CPU core\footnote{che equivale a dire hyperthread fisico} ha un componente locale che segnala il passaggio del tempo, quindi un CPU core scrivendo su un particolare registro, può richiedere di inoltrare una richiesta di interrupt ad altri CPU-core. La reale architettura è rappresentata in questo schema
 \begin{figure}[!h]
 	\includegraphics[scale=0.4]{immagini/APIC_architecture.png}
 \end{figure}

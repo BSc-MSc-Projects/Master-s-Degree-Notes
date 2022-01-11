@@ -1776,6 +1776,112 @@ Ci sono due operazioni che si fanno sugli shellcode:
 \end{enumerate}
 L'obiettivo è sempre quello di riconoscere cosa analizziamo.
 
+\chapter{Lezione 28}
+\section{Azioni del malware contro il networking}
+Proviamo a dire qualche parola in più in generale su come è fatto il malware moderno. Tipicamente tale malware usa delle tecniche per tentare di sfuggire al riconoscimento. Possiamo avere diverso software di controllo:
+\begin{itemize}
+    \item Antivirus
+    \item Firewall
+    \item IDS: raccoglie informazioni tipicamente sul traffico di rete, per cercare tracce di possibili attacchi o infezioni che arrivano dall'esterno, qui l'operatore deve avere un ruolo attivo.
+    \item IPS: ha un ruolo attivo, quindi quando si accorge di un possibile attacco dalla rete non fa progredire la comunicazione. L'operatore e quindi l'operatore sarà notificato 
+\end{itemize}
+La differenza fra gli ultimi due si sta affievolendo nel tempo. Per poter bypassare questi controlli, il malware si appoggia su protocolli di comunicazione come HTTP/HTTPS, DNS. Prima, c'erano dei protocolli specifici come IRC etc... che però non sono più usati. Il primo vantaggio dell'uso di questi protocolli è che tipicamente non vengono bloccati dai firewall, ad esempio sarebbe impossibile per un dipendente di un'azienda usare il PC. Inoltre, la mole di traffico prodotta da questi protocolli è enorme, quindi il malware può nascondersi in questo traffico elevato: c'è un problema di efficienza: possiamo usare algoritmi di analisi intelligenti sui pacchetti in entrata, ma più sono intelligenti e più costano tempo per cui si rallenta il flusso dei dati e non ci si può permettere di rallentare il flusso più di tanto. Il malware ha due modi per sfruttare questi protocolli:
+\begin{enumerate}
+    \item quando un browser fa una richiesta HTTP ad un server, compone una serie di campi fra cui c'è lo UserAgent. Il server non fa cose critiche con questa stringa, quindi un malware può codificarci un proprio comando, così che se il server web sia controllato da chi ha scritto il malware possa decodificarlo. Questo meccanismo era in voga qualche anno fa ma sta scomparendo: un IDS/IPS guarda il pacchetto, vede nello UserAgent e se la stringa non matcha con quelle solite per i pacchetti uscenti dalla macchina capisce che c'è qualcosa che non va. Diamo quindi facile mondo ai software di controllo per costruire una regola facile, è ancora usato ma i malware più sofisticati lo evitano
+    \item codificare il payload nel contenuto, quindi dentro le pagine web nel caso HTTP.\\Se il client vuole mandare una richiesta al server, può faro col comando GET/POST, quindi è facile per il client fare una richiesta di questo tipo ed è molto difficile per un IDS discriminare una richiesta legittima o no. Anche le risposte si possono nascondere bene, ad esempio realizzando una risposta che è una pagina HTML legittima: inseriamo un commento nella pagina HTML che è ad esempio: $<$ !-- QU1XMJE $>$ che è una stringa base64 ed essendo in un commento non avrà effetto nel rendering della pagina ma il malware può decodificare il comando dall'altra parte.\\Lo stesso vale per DNS, anche questo si presta bene: abbiamo sempre un rapporto client / server, dove il server è sempre controllato da chi ha scritto il malware mentre il client è infettato. Chiede quindi di risolvere un indirizzo "www.qualcosa.com" ed il server quando manda la riposta può inserire dei campi liberi, ovvero nel protocollo DNS è permesso di inserire qualsiasi cosa si voglia nella risposta. Anche la stringa di comando è generalmente codificata, perché DNS viaggia in chiaro, ad esempio si può usare base64.
+\end{enumerate}
+Un altro problema che il malware moderno deve affrontare è che le macchine sono dietro NAT: abbiamo quindi dei server/firewall NAT che traslano con i numeri di porta per riassegnare il traffico. Se la macchina infetta è dietro NAT, il server di controllo vede arrivare tutto il traffico da un solo IP e quindi non può distinguerle se sono molteplici dietro la NAT.\\Da quindi un identificatore univoco ad ognuna delle macchine infette dietro NAT per poterle riconoscere.\\Capendo le regole per come funziona un IDS, riusciamo a costruire delle regole di matching per un IOC, ovvero un Indicator Of Compromise. (cap 14 del libro di testo)
+\section{Tecniche avanzate anti-disassembling}
+Ciò che riguarda le misure anti-debugging ed anti-disassembling possono cambiare, quindi è utile tenersi aggiornati. Periodicamente escono delle survey, che riassumono le tecniche conosciute fino a quel momento. Anche se non si fa ricerca ma si lavora come analista del malware, occorre tenersi aggiornati per capire come evolvono le cose.\\ L'idea di base delle tecniche anti-disassembling è sempre di usare i packer, ma in maniera ancora più spinta:
+\begin{itemize}
+    \item si sta tentando di realizzare dei packer che scoraggiano l'analisi. Abbiamo l'eseguibile diviso in sezioni, che possono anche essere le singole procedure o i blocchi di programma, codifichiamo con algoritmi come AES che non è stato mai realmente attaccato (se la chiave è molto lunga) ed ha diverse implementazioni. Possiamo costruire un eseguibile corrispondente in cui le varie parti del codice sono cifrate tramite AES, per poterlo eseguire va decodificato, quindi serve la chiave.\\Qui abbiamo due vantaggi che il malware può sfruttare:
+        \begin{enumerate}
+            \item non inserire la chiave nell'eseguibile. Per eseguire, la chiave si cerca con una modalità brute force, il vantaggio è che se l'analista scopre che il sistema è questo, può fare la stessa cosa ma così possiamo avere migliaia di versioni differenti in base alle diverse chiavi così che le firme crittografiche usate da moltissimi antivirus siano sempre diverse.
+            \item gli altri vantaggi sono quelli classici dei packer: nascondo stringhe, IAT etc...
+        \end{enumerate}
+    Un'altra possibilità, sempre legato alla chiave di decodifica è costruire il malware appositamente per una macchina. Abbiamo ad esempio "spoofnet??": malware sofisticato che attaccava i calcolatori che controllavano le centrifughe SIEMENES.\\ Per riuscire a rompere questo meccanismo dovremmo rompere AES, ma magari la chiave è data da una combinazione della versione di CPU + GPU + BIOS.\\Ora, tutte le tecniche di analisi automatica del malware non sono più usabili: la sandbox non può più avere le stesse configurazioni che sono specifiche per la macchina target
+\item si può anche pensare di decodificare l'eseguibile non tutto insieme ma procedura per procedura, così che tecniche di analisi forense non funzionino, perché ci sarà sempre una certa parte del malware cifrata.
+\end{itemize}
+Riusciamo ancora con analisi statica avanzata a fare qualcosa, ma c'è ancora qualcosa che chi scrive il malware può fare: usare tutte le misure viste prima per anti-*, l'analista comincia a cercare di scavalcare queste misure, ma quando ci riesce arriva a del codice che non è il vero malware, ma magari è un packer che ha un meccanismo di decifratura del codice.\\L'analista scavalca anche questo e può trovare alto codice che ad esempio implementa una macchina virtuale, di nessuna architettura conosciuta, ma creata apposta da chi ha scritto il malware, che ha un ISA arbitrario, con magari poche istruzioni macchina ma necessarie. Il malware vero e proprio è nell'Assembler della macchina virtuale, quindi deve fare reversing della VM, capire come funziona e costruire un disassembler apposta per quella VM. In termini di tempo e risorse è costosissimo, sono anni/uomo di lavoro, ma oggi si è in grado di farlo e la tendenza è quella di muoversi verso questa direzione.\\Nella guerra fra gli analisti e chi scrive il malware, le risorse sono dalla parte da chi scrive il malware, ci sono grandi introiti economici per farlo. Ci sonk nuovi strumenti per fare analisi del malware, come usare algoritmi di IA ma sono ancora livello di ricerca, inoltre si ipotizza che sia possibile costruire malware con l'AI che quindi rende impossibile farne l'analisi.
+\section{Proposta di metodologia per analisi del malware}
+Mentre ci sono delle prassi ben diffuse su come ad esempio si scrive il software, non ci sono regole su come fare in generale RCE (è una disciplina giovane).\\L'analisi del malware è una disciplina che rientra nell'ambito della Cybersecurity, quindi ci sono anche altre che devono essere conosciute e fatte.\\Costruiamo delle figure professionali differenti, che sanno qualcosa come conoscenza di base su tutto ma hanno poi una conoscienza specializzata su un determinato ambito.\\Si fa analisi del malware perché aiuta se c'è un'infezione a recuperare dall'incidente, ad esempio capire come è possibile recuperare i dati. Oggi, le infezioni da malware sono un numero enorme: ne avvengono milioni al mondo e serve quindi un contributo che può dare un analista per capire quale malware è più grave e va quindi trattato per primo.\\Può aiutare a costruire un IOC (Indicator of Compromise) (recupera)\\Possiamo quindi cercare di tirare fuori una metodologia per fare analisi del malware: è tratta da un articolo del 2010, mentre un survey descrive cose esiste, una metodologia proposta è opinabile
+\begin{enumerate}
+    \item[0] si parte da una fase iniziale, quella in cui il malware arriva in qualche modo. Quindi, l'infezione è già avvenuta
+    \item[1] \textbf{detection del malware}
+    \item[2] \textbf{isolamento ed estrazione del malware}
+    \item[3] \textbf{basic static code analysis}
+    \item[4] \textbf{analisi dinamica di base}
+    \item[5] \textbf{analisi avanazata, sia statica che dinamica}. Non ha molto senso avere due passi differenti, perché le due analisi funzionano meglio quando vengono portate avanti insieme, in modo da sfruttare i vantaggi di entrambe a favore dell'altro.\\Questo ed il passo 4 potrebbe portarci a dover rifare analisi dinamica di base, quindi possiamo iterare questi due aspetti
+    \item[6] \textbf{Pattern recognition}. Cerchiamo di sintetizzare cosa abbiamo capito dell'analisi fatta 
+    \item[7] \textbf{malware inoculation e remedy}. Costruiamo quindi tool per rimediare al malware, ad esempio aggiungendo regole all'IDS 
+\end{enumerate}
+Ad ogni passo, occorre formalizzare:
+\begin{itemize}
+    \item gli obiettivi
+    \item gli input
+    \item il processo
+    \item gli output
+\end{itemize}
+\subsection{Fase 1}
+Lo scopo della fase è cercare di capire dove e come il malware ha infettato la macchina: sopratutto avere una certezza che c'è l'infezione. L'input è free, ovvero potremmo avere un utente che dice che la macchina ha un "comportamento strano", oppure un allarme da un IDS quindi ha una forma libera, ma qui parte il lavoro dell'analista.\\Si usano tool come antivirus, sia locali che online e lo scopo è trovare i file che compongono il malware, quindi l'output è la locazione dei file sulla macchina sospetta oppure il numero di antivirus che riconoscono quel file come sospetto, oppure gli hash che identificano quel particolare malware, potremmo anche ottenere la categoria del malware, ad esempio perché riconosciuto da VirusTotal.\\Un'altra cosa cruciale da fare è l'analisi ambientale: abbiamo trovato una macchina infetta, quindi il virus lavora come lì e portandolo nella mia sandbox lo togliamo dall'ambiente dove lavorava e non è detto che si comporti allo stesso modo. Può aver ad esempio ricevuto dei comandi dall'esterno che magari hanno modificato l'ambiente, quindi una fotografia dello stato del sistema nel momento in cui sospettiamo che sia infetto è necessario, così che se ad esempio vediamo una modifica di una chiave e non riusciamo a replicarla, almeno possiamo avere uno snapshot della macchina.\\C'è quindi questa sotto-fase che è cruciale
+\subsection{Fase 2}
+Abbiamo la macchina infettata e sappiamo dove è il virus, dobbiamo quindi estrarlo e portarlo sull'ambiente di analisi:
+\begin{itemize}
+    \item obiettivo: portare un malware su una macchina, per farlo si mette in un archivio protetto da password per evitare che nel processo di trasferimento il malware infetti qualche altra cosa
+    \item input: location del malware
+    \item processo: strumento di archiviazione che permetta di proteggere con una password
+    \item output: l'archivio protetto che ha il malware
+\end{itemize}
+Abbiamo il caso particolare del rootkit: estrarlo è complicato, ci sono dei tool appositi fra cui IceSword per estrarre rootkit dal sistema.
+\subsection{Fase 3}
+Abbiamo la fase di analisi statica di base
+\begin{itemize}
+    \item obiettivo: ottenere rapidamente informazioni su cosa deve fare il malware
+    \item input: il malware stesso
+    \item processo: tutti i tool già visti, possiamo guardare stinghe, testate PE, data di creazione del file ed anche eventuali risorse embedded nel malware stesso
+    \item output: l'insieme di informazioni sul malware
+\end{itemize}
+Ovviamente, va tutto documentato
+\subsection{Fase 4}
+Le fasi non sono in ordine casuale, facciamo quelle più rapide prima di quelle più onerose, così che se riusciamo a capire già cosa ci interessa, possiamo chiudere l'analisi
+\begin{itemize}
+    \item obiettivi: capire e documentare il comportamento del malware
+    \item input: il malware
+    \item processo: ci sono due modi per farlo
+        \begin{enumerate}
+            \item usare delle sandbox in rete, fra cui ThreatExpert e CWSandbox, abbiamo anche Cuckoo. Vi eseguiamo il malware, sono veloci e sicuri e ci dicono cosa il malware fa. IL contro è che le informazioni sono a discrezione del sistema ed inoltre sono facilmente sgamabili dal malware 
+            \item tool usati (reg shot, process monitor etc...)
+        \end{enumerate}
+    \item output: informazioni sul comportamento del malware
+\end{itemize}
+\subsection{Fase 5}
+Andiamo nell'analisi avanzata sia statica che dinamica
+\begin{itemize}
+    \item obiettivi: trovare le informazioni che ci servono mediante reversing, che sono probabilmente specifiche, perché il lavoro di reversing è specifico
+    \item input: le informazioni ottenute prima + malware
+    \item processo: disassembler interattivo, debugger generalmente usati insieme
+    \item output: informazioni su cosa il malware fa, come funziona, quali vulnerabilità sfrutta etc..,
+\end{itemize}
+richiede molto tempo e persone capaci, \textbf{\textsf{PERSONE SKILLATE COME SI DICE}}
+\subsection{Fase 6}
+\begin{itemize}
+    \item obiettivi: ottenere una visione d'insieme del malware
+    \item input: tutte le informazioni raccolte nei livelli precedenti
+    \item processo
+    \item output: meta-informazioni sul malware, ad esempio indicatori di compromissione del malware ovvero che ci dicono se il malware ha infettato o no la macchina.\\Un altro possono essere le vulnerabilità sfruttate dal malware, magari è uno 0-day.
+\end{itemize}
+\subsection{Fase 7}
+Fase finale, il rimedio: la conoscenza dei pattern d'attacco permette di costruire sistemi che disinfettano il malware dalla macchina o creare nuove contro-misure come un'insieme di regole per un IDS. È lo scopo finale dell'analisi del malware.
+
+
+
+
+
+
+
+
+
+
 \newpage
 \chapter*{Appendice}
 \section*{Comandi utili per Ghidra}
