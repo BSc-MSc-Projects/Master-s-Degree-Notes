@@ -1,0 +1,100 @@
+\documentclass[12pt, oneside]{extbook}
+
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage[dvipsnames]{xcolor}
+\usepackage[italian]{babel}
+
+\geometry{
+	a4paper, 
+	top = 2cm,
+	left = 1.5cm,
+	right = 1.5cm,
+	bottom=2cm
+}
+\lstset{
+	language=Python, 
+	%frame=shadowbox,
+	%rulesepcolor=\color{gray!50},
+	basicstyle=\ttfamily\small,
+	keywordstyle=\color{purple}\bfseries\small,
+	stringstyle=\color{ForestGreen}\small,
+	commentstyle=\color{blue}\small,
+	numbers=left,
+	numberstyle=\small\color{black},
+	numbersep=5pt,
+	tabsize=2,
+	showtabs=false,
+	showspaces=false,
+	showstringspaces=false,
+	%escapechar=|,
+	%captionpos=b,
+	breaklines=true,
+	keepspaces=true
+}
+
+\title{Machine Learning}
+\author{Pierciro Caliandro}
+
+\begin{document}
+\maketitle
+\tableofcontents
+\chapter{Introduzione del corso}
+\section{Introduzione}
+Per il progetto: sviluppare	un notebook in cui la parte espositiva sia presente, quindi intercalare markdown + codice, dove il markdown deve esserci e deve essere eloquente.\\NON solo codice, esporre i ragionamenti, le limitazioni etc...\\
+\section{Presentazione del ML}
+L'informatica è risolvere problemi da un punto di vista algoritmico, risolvere un problema attraverso algoritmi si può dividere in fasi:
+\begin{itemize}
+	\item analizzare il problema
+	\item vederlo in modo matematico
+	\item pensare ad un algoritmo
+	\item implementarlo in un linguaggio
+	\item verificare la correttezza (attività di testing) e valutarne l'efficienza
+\end{itemize}
+Il caso elementare può essere un testo dove si richiede di trovare i caratteri i nel testo: l'algoritmo può scorrere un carattere alla volta e contare ogni i. L'algoritmo funziona sulla base di un assunto, ovvero che sappiamo riconoscere la i, quindi che l'algoritmo sappia cosa è una i o cosa non lo sia, quindi abbiamo bisogno di una definizione del carattere che permetta alle persone di riconoscere il carattere.\\Possiamo dare varie definizioni:
+\begin{itemize}
+	\item riconoscere la i come na' sbarretta co' un puntino sopra
+	\item sequenza ASCII, UNICODE, ovvero una sequenza di bit
+\end{itemize}
+A volte non è facile: il problema può essere simile ma in un contesto diverso, ovvero ad esempio se occorre riconoscere quante volte in una sequenza di foto compaia una certa persona (NDR: Emma Stone, bello sticchio).\\Il metodo che si applica può essere triviale e non può essere codificato, come ad esempio riconoscere una faccia o capire un testo parlato.\\Non abbiamo quindi una chiara definizione di cosa cerchiamo di identificare, quindi come facciamo a definirla: una caratterizzazione di una persona per attributi è un po' complicata e non esaustiva. Se non possiamo fare così, possiamo farlo per esempi: forniamo una serie di foto di quella persona, non siamo in grado di definirla formalmente, possiamo poi dare degli esempi di foto che non ritraggono quella persona. Ci si muove quindi in modo induttivo, caratterizzando sulla base di singoli specifici esempi, in ML si cerca di fare questo: problemi per cui non si riesce a fornire una soluzione in quanto troppo complessi si prova a risolverli a partire da esempi.\\Entra in gioco l'induzione, quindi non so riconoscere la persona ma posso mostrare solo degli esempi e quindi potrò avere un algoritmo derivato dall'insieme di esempi, tale per cui sottoponendo una foto questo ci dice se è della persona o meno con una certa precisione.\\Quindi, nel ML, \textbf{a partire dai dati vogliamo derivare un algoritmo che ci dia delle perdizioni}, per poter derivare un algoritmo serve un altro algoritmo.\\Abbiamo quindi:
+\begin{itemize}
+	\item i dati
+	\item l'algoritmo da derivare
+	\item l'altro algoritmo, che è un \textbf{sistema o modello di ML}
+\end{itemize}
+Vorremmo quindi un algoritmo che \textbf{apprenda} come fare una cosa, che è un modo accorciato perché in realtà l'algoritmo sulla base dei dati, ne produce un altro per rispondere ad una domanda ben precisa.\\Un esempio classico è considerare il problema in contesti più complessi come ad esempio riconoscere un carattere scritto a mano: è l'"Hello World" del ML, dove abbiamo dei caratteri scritti a mano (delle immagini), da cui voglio ottenere un algoritmo che sia in grado di riconoscere la cifra corrispondente, sulla base di esempi che sono la coppia $<$ immagine, cifra corrispondente $>$, come nel caso precedente della classificazione di persone.\\È in questo caso una classificazione \textbf{multiclasse}, ma come prima abbiamo un elemento per cui abbiamo la risposta corretta, da cui vogliamo realizzare un sistema per cui la risposta corretta non c'è ma deve essere probabilmente corretta.\\Normalmente a grandi linee, un sistema di ML cosa fa:
+\begin{itemize}
+	\item costruisce un modello, l'informazione va trattata da algoritmi e quindi va formalizzata matematicamente.\\Si costruisce ad esempio un range 0-9, abbiamo per esempio immagini 28x28 in scale di grigi, abbiamo quindi un vettore di 28x28 = 784 valori, ognuno è un intero compreso fra 0, 255. Un elemento è quindi un punto in uno spazio di 784 dimensioni
+	\item geometricamente, l'insieme di tutti i caratteri è un insieme di punti in uno spazio a 784 dimensioni, vorremmo ottenere un modo per tagliare lo spazio in modo che da una parte ci siano solo 0, da una solo 1 e così via... generando così delle zone associata ad un singolo valore così che qualunque punto che cade in una zona è associato ad un certo valore
+	\item in altro modo, vogliamo una funzione f da \{0,1,...,255\}$^{784}$ in \{0,1,2...,9\}
+	\item in realtà definiamo un funzione per ogni carattere, ognuna di esse data un'immagine che è un vettore, restituisce un valore che è una probabilità che l'elemento sia 0,1.... così da poter associare tale elemento al valore in base a quale ha la probabilità più alta.\\Devono ovviamente valere tutte le ipotesi per le funzioni di densità
+\end{itemize}
+A partire dai dati cerchiamo quindi delle funzioni, ma la cerchiamo in un insieme di funzioni e tale funzione cercata deve essere tale per cui va dal dominio di interesse al codominio di interesse. Ci saranno un infinità di funzioni di questo tipo, ma ne devo determinare una: prendo la funzione che, se le faccio fare le previsioni per gli elementi di cui so già la risposta, vorrei che questa faccia il minor numero di errori possibile.\\So la risposta giusta, cerco fra un campione della popolazione delle funzioni per cercare la migliore, quindi occorre avere intanto un \textbf{costo}, ovvero quanto sta sbagliando la funzione:
+\begin{itemize}
+	\item potrei vedere quante volte sbaglia
+	\item ci possono essere metodi diversi, ma c'è sempre un'idea di costo
+\end{itemize}
+Fra tutte le funzioni, si prende quella il cui costo sui dati è il più piccolo possibile.\\Tutte le possibili funzioni? Sono infinite, quindi quello che si fa è considerare tutte le funzioni che hanno la stessa struttura, ad esempio che sono lineari o quadratiche: se ad esempio sono tutte lineari, la funzione farà una combinazione lineare dei valori e produrrà l'output. Avrò quindi una \textbf{struttura} che definirà delle funzioni che differiscono in base ai parametri, quindi cerchiamo la migliore funzioni e quindi il miglior vettore di parametri che corrisponde alla funzione che si comporta meglio.\\Passiamo quindi da una ricerca di funzioni ad una in uno spazio di parametri, quindi minimizziamo qui.\\Le funzioni nella classe saranno quindi caratterizzati dai valori dei parametri, similmente avviene in statistica: se abbiamo un insieme di elementi e vogliamo dargli una rappresentazione statistica, consideriamo magari una distribuzione Gaussiana cercando quella che rappresenta meglio l'insieme, quindi cambieranno media e varianza.\\Passiamo da ottimizzazione su funzioni ad ottimizzazione su parametri.\\Stiamo facendo un'ipotesi, che può comunque essere sbagliata, ma nel momento in cui facciamo un'ipotesi cerchiamo la funzione migliore che sarà quella che "farà meno errori", in relazione al come io caratterizzo gli errori.\\Un concetto importante è la \textbf{funzione di costo}, ovvero il modo in cui conto gli errori, che sarà quella che devo minimizzare.\\Questa è l'impostazione del \textbf{supervised learning}: prediciamo un valore per un elemento sulla base di un insieme di elementi dati. A sua volta, si dividerà in varie classi (non le riporto ora perché tanto le riprendiamo più avanti).
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+\end{document}
