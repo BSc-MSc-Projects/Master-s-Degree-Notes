@@ -413,7 +413,7 @@ Il progetto del dispositivo deve essere safety by design, quindi devo progettare
 		\item alle correnti di contatto
 		\item accoppiamento del campo EM con dispositivi impiantati, interazione con un dispositivo impiantato nel corpo. I primi pacemaker erano sensibili al telefono cellulare, sono stati poi protetti con dei filtri
 	\end{itemize}
-\end{itemize{enumerate}
+\end{enumerate}
 Sull'analisi e la ricondizione degli effetti sono stati individuati dei limiti: inizialmente sono stati individuati i limiti di base, ovvero quelli legati alle grandezze EM che producono direttamente l'effetto, ovvero campo E nel corpo, al SAR ed in alcuni casi alla densità di potenza ovvero a grandezze direttamente generate nel corpo e che sono direttamente correlabili agli effetti diretti.\\Chiaramente cambiano in base alla frequenza, aumentandola, diminuisce la permettività sulla pelle.\\Misurarle è difficile, quindi sono stati introdotti degli \textbf{insiemi di livelli di riferimento o derivati}: sono delle grandezze che si possono valutare in assenza del corpo umano: se abbiamo un cellulare a contatto con la testa, leviamo la testa e calcoliamo le grandezze in un volume che sarebbe stato occupato dalla testa.\\Se scelti bene, rispettando i livelli di riferimento allora questi implicheranno che tali valori verranno rispettati anche quando sarà presente il corpo umano, MA NON vale il viceversa: se vengono rispettati i requisiti di base, non è detto che vengano rispettati quelli di riferimento.\\Le restrizioni di base sono quindi legate alla misurazione "in situ", mentre invece le restrizioni derivate sono misurate in assenza del corpo umano e quindi il loro rispetto implica i primi.\\Abbiamo ad esempio quelli per l'ELF fra 1-100 Khz
 \begin{figure}[!h]
 	\includegraphics[scale=0.5]{immagini/elf_effetti.png}
@@ -451,7 +451,6 @@ Ci si muove su tre livelli a complessità crescente:
 	\item Se 1 da valori più elevati, occorre salire di complessità. Qui va fatta una simulazione EM, in cui si introduce il corpo umano, ma può andare bene un fantoccio di forme standard (cubi, cilindri), spesso di materiale omogeneo.\\Con un simulatore si simula il dispositivo e si calcolano campi e SAR nel fantoccio
 	\item Se ancora i valori sono elevati, si fa una nuova simulazione con un modello antropomorfo, ovvero con tutti i tessuti del corpo umano con la sua permettività e conducibilità  e si valuta il SAR iterando ciascun componente del corpo umano.\\Se non si è conformi, tocca tornare alla progettazione.\\Esistono dei fantocci, il più famoso è visible human (progetto HUGO), un ergastolano che venne messo sotto gelatina, ghiacciato e fatto a fette e dopo la sedia elettrica venne "fotografato". È un fantoccio dove ci sono tutti i tessuti.
 \end{enumerate}
-
 
 \chapter{Lezione 4}
 \section{Link bodycentrici - generalità}
@@ -576,75 +575,155 @@ Quando si fa un collegamento, una delle cose più preziose è l'energia, in quan
 Negli anni di fine 800 (1831) vengono fatti i primi studi da Faraday sulla induzione EM: gli studi avevano a che fare con due coil, in modo che questi potessero trasferirsi energia senza che questi si toccassero. L'accoppiamento veniva fatto mediante l'uso di materiale ferromagnetico, per molti anni venne usato ad esempio nei trasformatori ma non per la comunicazione.\\Agli inizi del 1900 ci sono gli esperimenti di Hertz e di Tesla, dove si parla proprio di trasmissione di informazione a distanza, Telsa introdusse anche i concetti di risonanza in quanto la sua ambizione era rifornire l'energia nelle città tramite una torre che mandava energia sulle case della città.\\Sono applicate nelle comunicazioni a bassa frequenza e piccola distanza, in ambito medico abbiamo dispositivi IMD (Implanted Medical Device) che possono essere pacemaker, defibrillatori, neurostimolatori etc... la comunicazione viene stabilita con un altro coil messo sulla superficie del body stabilendo un link a bassa frequenza. Sono link di tipo quasi statico, basati o su accoppiamento induttivo, o su accoppiamento induttivo risonante o accoppiamento capacitivo. Le frequenze di lavoro sono le HF ed LF, anche attorno ai KHz: in queste condizioni la capacità di conduzione del corpo è bassa, quindi basse perdite che permettono di avere PTE elevata, inoltre la permettività è elevata.\\I dispositivi non sono vere e proprie antenne, sono una specie di elettrodi in quanto lavorano in campo vicino.
 \chapter{Lezione 5}
 \section{Inductive (Magnetic) coupling}
-Nell'accoppiamento siamo nel regime delle LF (125 KHz)
-- HF
-e possiamo usarlo per dispositivi medici impinati ma anche per la ricarica wireless.\\Tipicamente vengono usati due coil, di cui uno fa da trasmettitore ed uno raccoglie il campo vicino, siamo in campo vicino e non si può parlare di antenne: abbiamo due spire (copia disegno), ai capi della seconda spira vogliamo raccogliere la tensione.Parliamo di link induttivo perché avviene per induzione di Farady o magnetico perché avviene per il passaggio del campo da un coil all'altro, a noi interessa anche come sistema di comunicazione: questo sistema funzionerà come un trasformatore (copia disegno) (Mè il coefficiente di mutuo accoppiamento) ed abbiamo 
+Nell'accoppiamento siamo nel regime delle LF (125 KHz) e delle HF(13-56 MHz)
+e possiamo usarlo per dispositivi medici impianti ma anche per la ricarica wireless.\\Tipicamente vengono usati due coil, di cui uno fa da trasmettitore ed uno raccoglie il campo vicino, siamo in campo vicino e non si può parlare di antenne:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.7]{immagini/spire.png}
+	\caption{Coil usati per l'accoppiamento magnetico}
+\end{figure}\\\\
+abbiamo due spire ai capi della seconda spira vogliamo raccogliere la tensione.Parliamo di link induttivo perché avviene per induzione di Farady o magnetico perché avviene per il passaggio del campo da un coil all'altro, a noi interessa anche come sistema di comunicazione: questo sistema funzionerà come un trasformatore
+ \\
+ \begin{figure}[!h]
+ 	\includegraphics[scale=0.7]{immagini/trasf.png}
+ 	\caption{Sistema di comunicazione}
+ \end{figure}\\\\
+(M è il coefficiente di mutuo accoppiamento) ed abbiamo 
 \begin{equation}
 	\frac{V_1}{V_2} = \frac{N_1}{N_2}
 \end{equation}
 \begin{equation}
 	\frac{I_1}{I_2} = \frac{N_2}{N_1}
 \end{equation}
-e
+ed inoltre
 \begin{equation}
-	V_2 = copia
+	V_2 = -M \frac{dI_1}{dt}
 \end{equation}
 nel caso ideale abbiamo che tutto il flusso del primario è raccolto dal secondario e quindi vale:
-(copia)
-nel caso reale invece abbiamo: (copia), dove k è il \textbf{coefficiente di accoppiamento} quindi facendo delle misure k è dato da (copia).\\\\Vogliamo vedere come esprimere M per il sistema di due coil che sarà poi quello che legherà la tensione nel device rispetto alla tensione accesa nel primario:\\se c'è un filo lineare percorso da una corrente i, viene generato un campo magnetico e dalla \textbf{legge di induzione di Ampere} abbiamo
 \begin{equation}
-	\underline{B} = \frac{\mu_0 I}{2 \pi r}\phi
+	M = \sqrt{L-1 \cdot L_2}
 \end{equation}
-se "curviamo" questo filo otteniamo questa configurazione (copia immagine), mettiamo un generatore in modo che scorra una corrente nel verso mostrato, allora verrà generato un campo magnetico le cui linee di forza sono come mostrate, considerando la $B_z$ che sarà
+nel caso reale invece abbiamo:
 \begin{equation}
-	\underline{B_z} = \frac{\mu_0 I a^2}{2(a^2 + r^2)^{\frac{3}{2}}}
+	M = k \sqrt{L-1 \cdot L_2}
 \end{equation}
-se supponiamo di avere N spire, l'espressione precedente viene moltiplicata per N.\\Si vede intanto che $B_z$, se la distanza è r $>>$ a, allora $(a^2 + r^2) \approx r^2$, quindi avremo un andamento come $\frac{1}{r^3}$ e quindi il campo più forte si avrà nelle vicinanze ed avremo che $B_z$ si può approssimare (copia).\\\\Consideriamo ora due coil, uno che trasmette ed uno che riceve (copia disegno): avremo che $R_x$ concatenerà alcune delle linee del campo magnetico e quindi vale la legge di Faraday, che dice che un campo magnetico B variabile nel tempo che concatena una spira chiusa andrà ad indurre una ELF (Forza Elettromotrice Indotta) (vedi bene).\\Se consideriamo il flusso $\phi$ del campo magnetico:
+dove k è il \textbf{coefficiente di accoppiamento}, e vale k $\in [0,1]$.\\
+Vogliamo vedere come esprimere M per il sistema di due coil che sarà poi quello che legherà la tensione nel device rispetto alla tensione accesa nel primario:\\se c'è un filo lineare percorso da una corrente I\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.6]{immagini/corrente_filo.png}
+	\caption{Campo magnetico generato da un filo lineare}
+\end{figure}\\\\
+viene generato un campo magnetico e dalla \textbf{legge di induzione di Ampere} abbiamo
 \begin{equation}
-	\psi(t) = \int\int \underline{B}(t) \cdot d\underline{s}
+	\underline{B} = \frac{\mu_0 I}{2 \pi r}\Phi
+\end{equation}
+se "curviamo" questo filo otteniamo questa configurazione
+\begin{figure}[!h]
+	\includegraphics[scale=0.6]{immagini/solen.png}
+	\caption{Campo magnetico generato da un filo lineare curvato}
+\end{figure}
+mettiamo un generatore in modo che scorra una corrente nel verso mostrato, allora verrà generato un campo magnetico le cui linee di forza sono come mostrate, considerando la $B_z$ che sarà
+\begin{equation}
+	B_z = \frac{\mu_0 I a^2}{2(a^2 + r^2)^{\frac{3}{2}}}
+\end{equation}
+se supponiamo di avere N spire, l'espressione precedente viene moltiplicata per N.\\Si vede intanto che se la distanza è r $>>$ a, allora $(a^2 + r^2) \approx r^2$, quindi avremo un andamento come $\frac{1}{r^3}$ e quindi il campo più forte si avrà nelle vicinanze ed avremo che $B_z$ si può approssimare con
+\begin{equation}
+	B_z = \frac{\mu_0 NI a^2}{2}\frac{1}{r^3}
+\end{equation}
+\\\\Consideriamo ora due coil, uno che trasmette ed uno che riceve \\
+\begin{figure}
+	\includegraphics[scale=0.6]{immagini/coils.png}
+	\caption{Sistema di due coil (tx ed rx)}
+\end{figure}
+\\\\avremo che RX concatenerà alcune delle linee del campo magnetico e quindi vale la \textbf{legge di Faraday}, che dice che un campo magnetico B variabile nel tempo che concatena una spira chiusa andrà ad indurre una ELF (Forza Elettromotrice Indotta) (vedi bene).\\Se consideriamo il flusso $\phi$ del campo magnetico:
+\begin{equation}
+	\phi(t) = \int\int \underline{B}(t) \cdot d\underline{s}
 \end{equation}
 allora la EMF sarà 
 \begin{equation}
-	V_2 = -N\frac{d\psi}{dt}
+	V_2 = -N\frac{d\phi}{dt}
 \end{equation}
-C'è un meno perché la tensione che viene indotta ai capi nel secondario a sua volta tende a muovere degli elettroni che genera un campo magnetico che si oppone al primo (altrimenti si violerebbe il principio di conservazione).\\La applichiamo al nostro caso: (disegnino)
+c'è un meno perché la tensione che viene indotta ai capi nel secondario a sua volta tende a muovere degli elettroni che genera un campo magnetico che si oppone al primo (altrimenti si violerebbe il principio di conservazione).\\La applichiamo al nostro caso:
 \begin{equation}
 	V_2 = -N_2 \frac{d}{dt} \psi_{2,1} = -N_2 \frac{d}{dt} \int\int\limits_{S_2} \underline{B_1} da
 \end{equation}
-dove il pedice a destra è la causa, quello a sinistra è l'effetto (coil 2, coil 1), sostiuiamo poi l'espressione per B (supponendo che i due coil siano colinerari, quindi allineati rispetto a z) ottenendo:
+dove il pedice a destra è la causa, quello a sinistra è l'effetto (coil 2, coil 1), sostituiamo poi l'espressione per B (supponendo che i due coil siano colinerari, quindi allineati rispetto a z) ottenendo:
 \begin{equation}
-	V_2 = -N_2 \frac{d}{dt} \int\int\limits_{S_2} \frac{\mu_0 I a^2 N_1}{2(a^2 + r^2)^{\frac{3}{2}}} da
+	V_2 = -N_2 \frac{d}{dt} \int\int\limits_{S_2} \frac{\mu_0 I_1 a^2 N_1}{2(a^2 + r^2)^{\frac{3}{2}}} da
 \end{equation}
 supponendo che i coil siano piccoli, possiamo considerare che il campo sia costante sul coil, possiamo integrare e moltiplicare per l'area:
 \begin{equation}
-	V_2 = -[\frac{\mu_0 I a^2 N_1}{2(a^2 + r^2)^{\frac{3}{2}}} \pi b^2] \frac{dI}{dt}
+	V_2 = -[] \frac{dI}{dt}
 \end{equation}
-e la confrontiamo con la $V_2$ ottenuta dalla precedente (copia da sopra) quindi M è $f(N_1\cdot N_2, b^2, \frac{1}{r^3})$.\\\\Cosa succede invece se il tx e l'rx non sono allineati: supponiamo di avere un angolo $\alpha$ fra i due assi, il secondario raccoglierà meno flusso e quindi possiamo tenere conto della mutua rotazione con un cos($\alpha$), ottenendo un'espressione più completa di M aggiungendo il cos($\alpha$) (copia).\\\\Per incrementare il trasferimento di potenza fra un coil e l'altro possiamo:
+e la confrontiamo con la $V_2$ ottenuta dalla precedente, quindi M è $f(N_1\cdot N_2, b^2, \frac{1}{r^3})$.\\\\Cosa succede invece se il TX e l'RX non sono allineati: supponiamo di avere un angolo $\alpha$ fra i due assi, il secondario raccoglierà meno flusso e quindi possiamo tenere conto della mutua rotazione con un cos($\alpha$), ottenendo un'espressione più completa di M aggiungendo il cos($\alpha$)
+\begin{equation}
+M = 	\dfrac{\mu_0 I a^2 N_1}{2(a^2 + r^2)^{\frac{3}{2}}} \pi b^2 cos\alpha
+\end{equation}
+\\\\Per incrementare il trasferimento di potenza fra un coil e l'altro possiamo:
 \begin{enumerate}
 	\item aumentare l'intensità del campo \underline{B}, ma viene limitato dai limiti del campo a basse frequenze
 	\item possiamo diminuire la distanza fra tx ed rx, ma non è una cosa che si può fare sempre, ad esempio per un dispositivo medico impiantato
 	\item aumentare la frequenza del campo \underline{B}, in modo che l'attenuazione sia meno evidente. La derivata nel dominio armonico è un -j$\omega$ ma l'aumento della corrente ha delle contro-indicazioni. Abbiamo $\frac{dI}{dt}$ $\rightarrow$ -j$\omega$I (quindi $V_2$ aumenta) ma questo fa si che ci siano più perdite e si dissipi di più (più potenza)
-	\item aumentare il flusso concatenato, ovvero fare in modo che il 2ndario raccolga più possibile del primario che tipicamente si ottiene facendo in modo che il primario ed il secondario abbiano le stesse dimensioni oppure facendoli lavorare per \textbf{risonanza}.\\Anche qui occorre fare i conti con le normative di esposizione
+	\item aumentare il flusso concatenato, ovvero fare in modo che il secondario raccolga più possibile del primario che tipicamente si ottiene facendo in modo che il primario ed il secondario abbiano le stesse dimensioni oppure facendoli lavorare per \textbf{risonanza}.\\Anche qui occorre fare i conti con le normative di esposizione
 \end{enumerate}
 \subsection{Accoppiamento induttivo risonante}
-Uno dei modi è quindi fare un'accoppiamento induttivo risonante: si deve a Telsa, alla risonanza si ha tipicamente un massimo trasferimento di potenza (o quanto meno di stimolo).\\Per far risonare i due sistemi occorre, innanzi tutto fare in modo che il tx sia risonante: occorre agire sulle dimensioni in modo che la parte immaginaria x sia pari a 0.\\Sull'rx c'è poco margine, se abbiamo un loop piccolo e ne vediamo la reattanza in ingresso $X_{in}$ se 2$pi$B << x allora la reattanza sarà induttiva, ovvero $>$ 0 e si comporterà come un circuito.\\Ci sarà poi il carico del dispositivo, ovvero qualcosa che gli permetta di utilizzare l'energia, occorre aggiungere un condensatore che può essere messo sia in serie che in parallelo.\\Avremo quindi il coil trasmittente e possiamo mettere in risonanza sia tramite un condensatore in serie oppure con un condensatore in parallelo (copia disegni?): entrambe danno la stessa potenza sul carico ma cambiano i valori mutui di corrente e di tensione:
-- lo schema in parallelo darà corrente bassa e tensione elevata
-- lo schema in serie il contrario
-tipicamente si sceglie il parallelo: dopo il carico, c'è tipicamente un rettificatore AC$\rightarrow$DC e poi deve esserci un convertitore da corrente alternata a corrente continua per alimentare la circuiteria digitale (l'elettronica).\\Questo tipo di dispositivo lavora meglio con alte tensioni, quindi si preferisce usare uno schema parallelo.\\\\Abbiamo quindi il nostro modello circuitale tx ed rx:
-\begin{itemize}
-	\item trasmettitore: (copia disegnino)
-	\item ricevitore (C$_T$ è il condensatore di tuning). La $C_T$ va scelta in modo tale che 
-	\begin{equation}
-		f_0 = \frac{1}{2\pi\sqrt{L_{R_x} \cdot C_T}}
-	\end{equation}
-\end{itemize}
+Uno dei modi è quindi fare un'accoppiamento induttivo risonante: si deve a Telsa, alla risonanza si ha tipicamente un massimo trasferimento di potenza (o quanto meno di stimolo).\\Per far risonare i due sistemi occorre, innanzi tutto fare in modo che il tx sia risonante: occorre agire sulle dimensioni in modo che la parte immaginaria x sia pari a 0.\\Sull'RX c'è poco margine, se abbiamo un loop piccolo e ne vediamo la reattanza in ingresso $X_{in}$ se 2$pi$B << x allora la reattanza sarà induttiva, ovvero $>$ 0 e si comporterà come un circuito.\\Ci sarà poi il carico del dispositivo, ovvero qualcosa che gli permetta di utilizzare l'energia, occorre aggiungere un condensatore che può essere messo sia in serie che in parallelo.\\Avremo quindi il coil trasmittente e possiamo mettere in risonanza sia tramite un condensatore in serie oppure con un condensatore in parallelo 
+\begin{figure}[!h]
+	\includegraphics[scale=1]{immagini/cond_ser_parall.png}
+	\caption{Condensatore in parallelo o in serie per il ricevente}
+\end{figure}
+ entrambe danno la stessa potenza sul carico ma cambiano i valori mutui di corrente e di tensione:
+ \begin{itemize}
+ 	\item lo schema in parallelo darà corrente bassa e tensione elevata
+ 	\item lo schema in serie il contrario
+ 	tipicamente si sceglie il parallelo: dopo il carico, c'è tipicamente un rettificatore AC$\rightarrow$DC e poi deve esserci un convertitore da corrente alternata a corrente continua per alimentare la circuiteria digitale (l'elettronica).
+ \end{itemize}
+Questo tipo di dispositivo lavora meglio con alte tensioni, quindi si preferisce usare uno schema parallelo.\\\\Abbiamo quindi il nostro modello circuitale TX ed RX:
+\begin{figure}
+	\includegraphics[scale=1]{immagini/schema_circuitale.png}
+	\caption{Schema circuitale di TX ed RX}
+\end{figure}
+dove nel ricevitore C$_T$ è il condensatore di tuning. La $C_T$ va scelta in modo tale che 
+\begin{equation}
+	f_0 = \frac{1}{2\pi\sqrt{L_{R_x} \cdot C_T}}
+\end{equation}
 Abbiamo trovato che
 \begin{equation}
 	V_2 = -N_2 \frac{d}{dt} \int\int\limits_{R} \underline{B} ds
 \end{equation}
-passando al dominio dei fasori, sappiamo che $\frac{d}{dt} = j\omega$ ed abbiamo quindi (copia), in più compare il fattore di qualità Q del ricevitore, dove è definito come (copia). Più Q è elevato e meno potenza dissipata ci sarà e quindi più quella che viene immagazzinata.\\Per fare quindi in modo che aumenti $V_2$ occorre avere un fattore di qualità elevato che si ha quando il sistema è risonante, ancora di più se in parallelo.\\Avere un Q elevato comporta una criticità operativa, ovvero la banda è stretta in quanto la larghezza di banda è proporzionale ad 1 sulla Q (quanto più è alto il fattore di qualità tanto più è sensibile a spostamenti dalla frequenza di lavoro).\\\\Con la $V_2$, quando questa è maggiore di una tensione di threashold che è connesso al coil primario il secondario si accende e comincia a funzionare, quindi $V_2$ deve essere $> V_{th}$ e fissata la distanza sappiamo quali sono il fattore di qualità da avere etc... che sono valori minimi.\\Un parametro di performance che ci interessa è la PTE, definita come $\frac{P_L}{P_{in}}$, quindi la (1-PTE)$P_{in}$ è quella persa.\\È stato trovato che la PTE è data da: (copia formula. \textbf{IMPORTANTE: QUESTO GROSSO GOAT DI MARROCCO TI FA PORTARE IL FORMULARIO (KING)}), dove q è dato da:\\
+passando al dominio dei fasori, sappiamo che $\frac{d}{dt} = j\omega$ ed abbiamo quindi 
+\begin{equation}
+	V_2 = -N_2 j\omega B_0 S_{RX} cos\alpha Q_{RX}
+\end{equation}
+in più compare il fattore di qualità Q del ricevitore, dove è definito come 
+\begin{equation}
+	Q_{RX} = \omega \frac{\Xi_{RX}}{P_{j, RX}}
+\end{equation}
+Più Q è elevato e meno potenza dissipata ci sarà e quindi più quella che viene immagazzinata.\\Per fare quindi in modo che aumenti $V_2$ occorre avere un fattore di qualità elevato che si ha quando il sistema è risonante, ancora di più se in parallelo.\\Avere un Q elevato comporta una criticità operativa, ovvero la banda è stretta in quanto la larghezza di banda è 
+\begin{equation}
+	B \propto \frac{1}{Q}
+\end{equation}
+(quanto più è alto il fattore di qualità tanto più c'è sensibilità a spostamenti dalla frequenza di lavoro).\\\\Con la $V_2$, quando questa è maggiore di una tensione di threashold che è connesso al coil primario, il secondario si accende e comincia a funzionare, quindi $V_2$ deve essere $> V_{th}$ e fissata la distanza sappiamo quali sono il fattore di qualità da avere etc... che sono valori minimi.\\Un parametro di performance che ci interessa è la \textbf{PTE (Power Trnasfer Efficiency)}, definita come 
+\begin{equation}
+PTE = \frac{P_L}{P_{in}}	
+\end{equation}
+quindi la 
+\begin{equation}
+	(1-PTE)P_{in}	
+\end{equation}
+è quella persa.\\È stato trovato che la PTE è data da:
+\begin{equation}
+	PTE = [1 + \frac{1}{q} + \dfrac{1}{M^2 Q_{TX} + Q_{RX}}(2 + q + \frac{1}{q})]^{-1}
+\end{equation}
+ \textbf{IMPORTANTE: QUESTO GROSSO GOAT DI MARROCCO TI FA PORTARE IL FORMULARIO (KING)}), dove q è dato da:
+\begin{equation}
+	q = \sqrt{\dfrac{1 + M^2\cdot Q_{TX}\cdot Q_{RX}}{1 + M^2 \cdot Q_{TX} Q_{RX}^{-1}}}
+\end{equation}
 e vale per un circuito risonante parallelo.\\Nota importante: a frequenza basse (dove siamo) le perdite dei tessuti sono basse, cioè la conducibilità $\sigma$ (legata alle perdite) è piccola. Siamo nell'ordine dei 100KHz e contano quasi più le perdite sui conduttori che sul tessuto.\\Tipicamente quindi i due coil conviene farli di dimensioni simili in modo che buona parte del campo B prodotto dal primario viene raccolto dal secondario, in alcuni casi però non è possibile farli simili perché magari un coil ricevente deve poter raccogliere più coil tx, quindi è possibile usare un coil booster:\\
-(disegnino)
+\begin{figure}
+	\includegraphics[scale=1]{immagini/booster_coil.png}
+	\caption{Sistema con coil booster}
+\end{figure}
+\\\\
 il booster ha dimensioni intermedie fra i due, è a corto circuito ed ha l'effetto di ridirezionare il flusso verso coil più piccoli.\\Funziona come un \textbf{direttore di antenna}, in modo che se il coil è piccolo ed in un posto difficilmente raggiungibile possiamo usare un coil intermedio in modo che venga ridirezionato il flusso fino a dove serve.
 \subsection{Criticità}
 Principalmente legata la disallineamento: immaginiamo di avere la classica stratificazione, col dispositivo IMD (copia disegno)\\l'ideale sarebbe avere il coil che trasmette in un certo punto, ma una volta impiantato non posso più vederlo, per cui se abbiamo un disallineamento non concateno più il massimo del campo e quindi avremo un notevole decadimento delle prestazioni.\\Una soluzione è porre dei magneti con opportune polarità in modo che il campo prodotto di polarizzazione fra i due magneti vada a far allineare i coil, quindi si possono impiantare dei micromagneti sotto pelle sia sul tx che sull'rx\\Altra criticità è la flessibilità: in molte applicazioni, soprattutto quando il dispositivo deve aderire a delle protesi o a degli organi, viene realizzato con un'elettronica flessibile, si può realizzare su delle membrane.\\Immaginiamo di avere il coil "spalmato" su qualcosa che può flettersi, ma questo provoca un cambiante nella forma che provoca un detuning: cambia il fattore di qualità e si abbassa la tensione raccolta.\\L'oggetto va quindi progettato a priori per quelle condizioni.\\Ultimo punto, riguarda i materiali.Essendo a frequenze basse, le perdite sui conduttori pesano e quindi servono conduttori con perdite basse come il rame, che però non è biocompatibile. Oggetti biocompatibili sono il titanio, che non è però un buon conduttore (1.5 ordini in meno del rame) e quindi tende ad avere perdite maggiori.\\Si può usare il rame andando a fare un coating, ovvero un rivestimento del conduttore di rame con materiale biocompatibile, come ad esempio
@@ -654,35 +733,98 @@ Principalmente legata la disallineamento: immaginiamo di avere la classica strat
 	\item poliammide (PEEK il più usato, polimero semi cristallino), sono polimeri ovvero materiali fatti da tanti monomi agglomerati che formano una matrice molto solida
 	\item zirconia
 \end{itemize}
-\subsection{Comunicazione del ricevitore col trasmettitore}
-Per la comunicazione inversa si può usare un link simmetrico, quindi si invertono le parti oppure si usa un link asimmetrico (come si tende a fare sempre di più) cioè il ricevitore va a modificare l'accoppiamento col trasmettitore ovvero fa quella che si chiama una \textbf{modulazione capacitiva}: si fa in modo che il sensore vada con una logica binaria a modificare l'accoppiamento col primario così che questo si renda conto che qualcosa sta irradiando dall'altro lato.\\Consideriamo il circuito di prima: (disegnino)
+
+
+\subsection{Comunicazione del ricevitore col trasmettitore (modulazione capacitiva)}
+Per la comunicazione inversa si può usare un link simmetrico, quindi si invertono le parti oppure si usa un link asimmetrico (come si tende a fare sempre di più) cioè il ricevitore va a modificare l'accoppiamento col trasmettitore ovvero fa quella che si chiama una \textbf{modulazione capacitiva}: si fa in modo che il sensore vada con una logica binaria a modificare l'accoppiamento col primario così che questo si renda conto che qualcosa sta irradiando dall'altro lato.\\Consideriamo il circuito di prima:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/schema_mod_cap.png}
+	\caption{Schema per la modulazione capacitiva}
+\end{figure}
+\\\\
 abbiamo poi un altro pezzo, una scatola dove troviamo un altro condensatore che si può connettere / sconnettere con interruttore (sarà il condensatore di modulazione) e quindi sarà il blocco che esegue tale modulazione, sarà un circuito integrato.\\Lo switch ha due stati, 0 o 1 (chiuso aperto) ed in base a questo il $V_1$ vedrà una cosa o un'altra:
 \begin{itemize}
-	\item switch open: bit '0', $V_1$ sarà dato (risolvendo il circuito) nel dominio dei fasori (copia formula), abbiamo poi che il circuito è risonante e quindi il valore visto è alto, perché l'accoppiamento è forte.\\Ripuliamo quindi i termini reattivi in quanto siamo in risonanza
-	\item switch close: bit '1', abbiamo la somma dei due condensatori, di tuning e di modulazione e quindi avremo una $f_1$ diverso dalla frequenza di risonanza. I due coil quindi non si parlano bene perché non sono in risonanza e quindi la $V_1$ vista dal primario sarà bassa
+	\item switch open: bit '0', $V_1$ sarà dato (risolvendo il circuito) nel dominio dei fasori 
+	\begin{equation}
+		V_1 = \frac{1}{j \omega G_X} I_1 + j \omega L_{TX}I_1 + R_{TX}I_1 - j\omega M I_2^{(0)}
+	\end{equation}
+	e dove la frequenza è pari alla frequenza di risonanza
+	\begin{equation}
+		f_0 = \frac{1}{2\pi \sqrt{L_{RX} \cdot C_T}}
+	\end{equation}
+	abbiamo poi che il circuito è risonante e quindi il valore visto è alto, perché l'accoppiamento è forte.\\Ripuliamo quindi i termini reattivi in quanto siamo in risonanza
+	ottenendo
+	\begin{equation}
+		V_1^{(0)} = R_{TX}I_1 - j\omega M I_2^{(0)}
+	\end{equation}
+	\item switch close: bit '1', abbiamo la somma dei due condensatori, di tuning e di modulazione e quindi avremo una $f_1$ diverso dalla frequenza di risonanza:
+	\begin{equation}
+		f_1 = \frac{1}{2\pi \sqrt{L_{RX}(C_T + C_M)}} \neq f_0
+	\end{equation}
+	 I due coil quindi non si parlano bene perché non sono in risonanza e quindi la $V_1$ vista dal primario sarà bassa
+	 \begin{equation}
+	 	V_1^{(1)} = R_{TX}I_1 -j\omega MI_2^{(1)}
+	 \end{equation}
 \end{itemize}
-governando lo switch secondo elettronica digitale (apri/chiudi) facciamo in modo che $V_1$ sia modulato in ampiezza in quindi ottenere una situazione di questo tipo: (immagine) voglio mandare questa stringa, sul writer si vedrà un qualcosa del genere:(altra immagine) dove abbiamo il segnale modulato in ampiezza.\\Questo è il sistema con cui funzionano i sistemi NFC.\\È il primo collegamento in campo vicino visto, usato sia in ambito medico che anche in campo logistico, basato su coil:
+governando lo switch secondo elettronica digitale (apri/chiudi) facciamo in modo che $V_1$ sia modulato in ampiezza in quindi ottenere una situazione di questo tipo: vogliamo mandare questa stringa, sul writer si vedrà un qualcosa del genere:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/rx_verso_tx.png}
+	\caption{Segnale di risposta del ricevente}
+\end{figure}\\\\
+dove abbiamo il segnale modulato in ampiezza.\\Questo è il sistema con cui funzionano i sistemi NFC.\\È il primo collegamento in campo vicino visto, usato sia in ambito medico che anche in campo logistico, basato su coil:
 \begin{itemize}
 	\item patenti
 	\item codice fiscale
 \end{itemize}
 tutto funziona esattamente così.
+
+
 \chapter{Lezione 6}
+
+
 \section{Near-field: link capacitivi}
-Sono dei link meno usati delgi altri ma hanno dei risvolti interessanti. Lavorano a frequenze un po' più alte, sui pochi MHz, ma se le dimensioni sono piccole si può anche arrivare al GHz.\\Immaginiamo un condensatore a facce piane e parallele, immaginiamo che sia alimentato da un generatore (immagine): la corrente gira sul filo, il circuito ha un interruzione ma la corrente circola poiché viene generata una corrente di spostamento fra le facce del condensatore (legata al campo che si propaga e che carica il condensatore).\\La $I_d = \epsilon_0 \epsilon_r A \frac{\partial\underline{E}}{\partial t}$ oppure nel dominio dei fasori (copia).\\Possiamo immaginare di avere il condensatore a cavallo del corpo umano, così, da poter mandare un'informazione alla piastra dentro.\\Si divide il condensatore a metà, su ogni faccia di esso, collegandola come segue (copia immagine)\\le correnti faranno lo stesso giro di prima, abbiamo quindi due oggetti separati:
+Sono dei link meno usati degli altri ma hanno dei risvolti interessanti. Lavorano a frequenze un po' più alte, sui pochi MHz, ma se le dimensioni sono piccole si può anche arrivare al GHz.\\Immaginiamo un condensatore a facce piane e parallele, immaginiamo che sia alimentato da un generatore \\
+\begin{figure}[!h]
+	\includegraphics[scale=0.7]{immagini/circ_cap_link.png}
+	\caption{Esempio di circuito}
+\end{figure}\\\\
+la corrente gira sul filo, il circuito ha un interruzione ma la corrente circola poiché viene generata una corrente di spostamento fra le facce del condensatore (legata al campo che si propaga e che carica il condensatore).\\La $I_d$ sarà
+\begin{equation}
+	\epsilon_0 \epsilon_r A \frac{\partial\underline{E}}{\partial t}
+\end{equation}
+oppure nel dominio dei fasori
+\begin{equation}
+	j\omega \epsilon_0\epsilon_rA\underline{E}
+\end{equation}
+Possiamo immaginare di avere il condensatore a cavallo del corpo umano, così, da poter mandare un'informazione alla piastra dentro.\\Si divide il condensatore a metà, su ogni faccia di esso, collegandola come segue
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/divisione_circ.png}
+	\caption{Divisione del circuito}
+\end{figure}
+le correnti faranno lo stesso giro di prima, abbiamo quindi due oggetti separati:
 \begin{itemize}
 	\item il primo è fatto con le due metà della prima faccia, sarà il tx
 	\item il secondo è fatto dalle due metà dell'altra, sarà per noi il rx
 \end{itemize}
-il dispositivo deve quindi avere due elettrodi belli larghi che userà per accoppiarsi elettrostaticamente con i due elettrodi del ricevente.\\L'accoppiamento come detto è principalmente elettrostatico, quindi domina il campo E.\\Occorre però fare attenzione : (ricopia immagine che fa sempre bene) fra le due coppie di armature non abbiamo solo la corrente di spostamento, il mezzo corporeo ha una conducibilità $\neq 0$, quindi ci saranno anche delle correnti di conduzione che sono legarte al fatto che il materiale permette di spostare anche elettroni.\\Nuovamente ci sono due fenomei contrastanti:
+il dispositivo deve quindi avere due elettrodi belli larghi che userà per accoppiarsi elettrostaticamente con i due elettrodi del ricevente.\\L'accoppiamento come detto è principalmente elettrostatico, quindi domina il campo E.\\Occorre però fare attenzione:
+\begin{figure}[!h]
+	\includegraphics[scale=0.6]{immagini/circ_divis_corpo.png}
+	\caption{}
+\end{figure}
+fra le due coppie di armature non abbiamo solo la corrente di spostamento, il mezzo corporeo ha una conducibilità $\neq 0$, quindi ci saranno anche delle correnti di conduzione che sono legate al fatto che il materiale permette di spostare anche elettroni.\\Nuovamente ci sono due fenomeni contrastanti:
 \begin{itemize}
-	\item propagazione, legato alle correnti di spostamento
-	\item dissipazione, legato alle correnti di conduzione
+	\item propagazione, legato alle correnti di spostamento;
+	\item dissipazione, legato alle correnti di conduzione.
 \end{itemize}
 Cerchiamo di caratterizzare le due entità:
 \begin{itemize}
 	\item $I_d = \epsilon_0 \epsilon_r A \frac{\partial\underline{E}}{\partial t}$
-	\item la corrente di conduzione è data dalla legge di Ohm: abbiamo il body (metti immagine), la resistena del blocchetto è $R = \frac{1}{\sigma} \frac{d}{A}$, quindi $I_c = \frac{V\sigma(\omega)A}{d}$
+	\item la corrente di conduzione è data dalla legge di Ohm: abbiamo il body \\
+	\begin{figure}[!h]
+		\includegraphics[scale=0.7]{immagini/rapp_body.png}
+		\caption{Rappresentazione di un blocchetto di corpo}
+	\end{figure}\\\\
+	la resistenza del blocchetto è $R = \frac{1}{\sigma} \frac{d}{A}$, quindi $I_c = \frac{V\sigma(\omega)A}{d}$
 \end{itemize}
 come facciamo ad enfatizzare la corrente di spostamento:
 \begin{itemize}
@@ -701,17 +843,42 @@ Per ridurre la $I_c$ occorre fare l'opposto di quello che si faceva prima:
 \end{itemize}
 come sempre va trovato il compromesso in base all'applicazione, occorre effettuare una trade off analysis delle cose.
 \subsection{PTE (Power Transfer Efficiency) e SAR}
-Per analizzare la PTE si fa un circuito equivalente tenendo conto che ora le perdite nei tessuti non sono così trascurabili (verso i MHz le perdite sui tessuti sono più importanti di quelle sui conduttori). Facciamo quindi questo circuitino equivalente (immagine, ogni resistenza fa riferimento alle perdite!!):\\
-il filo è approssimabile bene con l'induttanza in genere, possiamo assumere che le $R_C <<R_T$. C'è una formula che dice che la PTE (rapporto fra la potenza rilasciata sul carico e la potenza in ingresso) è $PTE = \frac{R_L}{R_L + R_T} (1 - \abs{\gamma}^2)$ e stesso vale per $R_T = R_L [\dfrac{d}{A \epsilon_0 \epsilon_r}]$. Quindi la PTE complessivamente aumenta se:
+Per analizzare la PTE si fa un circuito equivalente tenendo conto che ora le perdite nei tessuti non sono così trascurabili (verso i MHz le perdite sui tessuti sono più importanti di quelle sui conduttori). Facciamo quindi questo circuitino equivalente\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/circ_equiv.png}
+	\caption{Circuito equivalente}
+\end{figure}\\\\
+(ogni resistenza fa riferimento alle perdite!!): il filo è approssimabile bene con l'induttanza in genere, possiamo assumere che le $R_C <<R_T$. C'è una formula che dice che la PTE (rapporto fra la potenza rilasciata sul carico e la potenza in ingresso) è 
+\begin{equation}
+	PTE = \frac{R_L}{R_L + R_T} (1 - \abs{\gamma}^2)
+\end{equation}
+e stesso vale per 
+\begin{equation}
+	R_T = R_L [\dfrac{d}{A \epsilon_0 \epsilon_r}]
+\end{equation}
+Quindi la PTE complessivamente aumenta se:
 \begin{itemize}
 	\item  aumenta la A
 	\item diminuisce la d
 \end{itemize}
-quindi elettrodi larghi e dispositivi molto vicini.\\Vediamo come è correlata la massima potenza di tx immissibile nel dispositivo rispetto al SAR: sappiamo che il SAR è limitato: $SAR_{max} = $
-- 2W/kg per testa e addome
-- 4 W/kg negli altri
-(fai la graffona).\\Per legare il SAR alla potenza massima:
-$PTE = \frac{P_L}{P_{TX}}$, considerano $P_{TX}1-PTE$ questa è la potenza che viene dissipata nel corpo, ovvero la $P_j$, quindi PTE*P$_{TX}$ è proprio la potenza ceduta al corpo mentre quella dissipata è l'altra.\\Consideriamo 10g di tessuto: $P_j(10g) = \int\int\limits_{10gr} SAR dm$, ammetendo il SAR costante perché il volume è piccolo, possiamo ottenere $SAR * 10^{-2}$ W, quindi $P_jmax (10gr) = SAR_{max}10?{-2}$ che è la massima potenza che si può rilasciare in una massa di 10g.\\Facciamo un ipotesi brutale: immaginiamo che tutta la potenza venga rilasciata in un paio di cubetti di 10gr, quindi la max potenza rilasciabile in 20g è : $2*10^{-2}SAR_{max}$ che è molto conservativa come ipotesi perché la potenza viene distribuita su un volume maggiore.\\Allora la $P_jmax(20g) = P_{TX}(1-PTE)$ da cui la $P_{TX_{max}} = 2*10^{-2}SAR_{max}/1 - PTE$, quindi se il SAR è 2 $\frac{W}{kg}$ otteniamo un $P_{j_{max}} = \frac{0.04}{1-PTE} W$, nella testa ed addome, mentre negli altri avremmo $\frac{0.08}{1-PTE} W$.\\Quindi se la PTE fosse il 50\%, ma in realtà tipicamente è molto più bassa, avremmo circa 0.1W di P$_{TX}$ che può suonare bene (da quindi un'ordine di grandezza di riferimento).
+quindi elettrodi larghi e dispositivi molto vicini.\\Vediamo come è correlata la massima potenza di tx immissibile nel dispositivo rispetto al SAR: sappiamo che il SAR è limitato: 
+$
+SAR_{max} =
+\begin{cases}
+	2 \dfrac{W}{kg} & \text{per testa e addome}\\
+	4 \dfrac{W}{kg} & \text{per testa e addome} negli arti
+\end{cases}$
+Per legare il SAR alla potenza massima:
+\begin{equation}
+	PTE = \frac{P_L}{P_{TX}}	
+\end{equation}
+considerando 
+\begin{equation}
+	P_{TX}(1-PTE)	
+\end{equation}
+questa è la potenza che viene dissipata nel corpo, ovvero la $P_j$, quindi PTE*P$_{TX}$ è proprio la potenza ceduta al corpo mentre quella dissipata è l'altra.\\Consideriamo 10g di tessuto:
+
+$P_j(10g) = \int\int\limits_{10gr} SAR dm$, ammettendo il SAR costante perché il volume è piccolo, possiamo ottenere $SAR * 10^{-2}$ W, quindi $P_jmax (10gr) = SAR_{max}10?{-2}$ che è la massima potenza che si può rilasciare in una massa di 10g.\\Facciamo un ipotesi brutale: immaginiamo che tutta la potenza venga rilasciata in un paio di cubetti di 10gr, quindi la max potenza rilasciabile in 20g è : $2*10^{-2}SAR_{max}$ che è molto conservativa come ipotesi perché la potenza viene distribuita su un volume maggiore.\\Allora la $P_jmax(20g) = P_{TX}(1-PTE)$ da cui la $P_{TX_{max}} = 2*10^{-2}SAR_{max}/1 - PTE$, quindi se il SAR è 2 $\frac{W}{kg}$ otteniamo un $P_{j_{max}} = \frac{0.04}{1-PTE} W$, nella testa ed addome, mentre negli altri avremmo $\frac{0.08}{1-PTE} W$.\\Quindi se la PTE fosse il 50\%, ma in realtà tipicamente è molto più bassa, avremmo circa 0.1W di P$_{TX}$ che può suonare bene (da quindi un'ordine di grandezza di riferimento).
 \subsection{Criticità}
 La criticità è simile a quella dell'accoppiamento induttivo ovvero i disaccoppiamenti, i due condensatori tendono a chiudere meno bene le correnti è c'è una perdita di efficienza di trasferimento.\\Il campo lavora su delle discontinuità, quindi nel grasso come ricordiamo (è poco vascolarizzato) c'è maggiore (vedi sopra).\\
 
