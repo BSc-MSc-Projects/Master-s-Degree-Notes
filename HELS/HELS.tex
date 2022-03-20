@@ -9,6 +9,7 @@
 \usepackage[italian]{babel}
 \usepackage{amsmath}
 \usepackage{mathtools}
+\usepackage{amssymb}
 
 \DeclarePairedDelimiter{\abs}{\lvert}{\rvert}
 
@@ -879,6 +880,7 @@ considerando
 questa è la potenza che viene dissipata nel corpo, ovvero la $P_j$, quindi PTE*P$_{TX}$ è proprio la potenza ceduta al corpo mentre quella dissipata è l'altra.\\Consideriamo 10g di tessuto:
 
 $P_j(10g) = \int\int\limits_{10gr} SAR dm$, ammettendo il SAR costante perché il volume è piccolo, possiamo ottenere $SAR * 10^{-2}$ W, quindi $P_jmax (10gr) = SAR_{max}10?{-2}$ che è la massima potenza che si può rilasciare in una massa di 10g.\\Facciamo un ipotesi brutale: immaginiamo che tutta la potenza venga rilasciata in un paio di cubetti di 10gr, quindi la max potenza rilasciabile in 20g è : $2*10^{-2}SAR_{max}$ che è molto conservativa come ipotesi perché la potenza viene distribuita su un volume maggiore.\\Allora la $P_jmax(20g) = P_{TX}(1-PTE)$ da cui la $P_{TX_{max}} = 2*10^{-2}SAR_{max}/1 - PTE$, quindi se il SAR è 2 $\frac{W}{kg}$ otteniamo un $P_{j_{max}} = \frac{0.04}{1-PTE} W$, nella testa ed addome, mentre negli altri avremmo $\frac{0.08}{1-PTE} W$.\\Quindi se la PTE fosse il 50\%, ma in realtà tipicamente è molto più bassa, avremmo circa 0.1W di P$_{TX}$ che può suonare bene (da quindi un'ordine di grandezza di riferimento).
+
 \subsection{Criticità}
 La criticità è simile a quella dell'accoppiamento induttivo ovvero i disaccoppiamenti, i due condensatori tendono a chiudere meno bene le correnti è c'è una perdita di efficienza di trasferimento.\\Il campo lavora su delle discontinuità, quindi nel grasso come ricordiamo (è poco vascolarizzato) c'è maggiore (vedi sopra).\\
 
@@ -889,20 +891,194 @@ Fin ora abbiamo visto link a frequenze molto basse, aumentandola i dispositivi s
 	\item c'è un vantaggio nel bitrate, posso trasmettere informazioni più velocemente
 	\item gli oggetti possono diventare elettricamente più grandi e quindi possiamo usare anche più oggetti contemporaneamente e quindi usare degli array di trasmettitori nel corpo
 \end{itemize}
-RICHIAMO: ciò che comanda nel mondo delle antenne non è la lunghezza l del dispositivo ma la sua dimensione elettrica che è $\frac{l}{\lambda}$ e la lunghezza d'onda nel vuoto è $\lambda_0$ ma in un mezzo con perdite è $\lambda_0/\sqrt{\epsilon_r}$ e quindi se abbiamo aria e sotto un mezzo biologico, se arriva un onda con una certa $\lambda_0$, quando entra nel mezzo la lunghezza d'onda diminuisce perché viene divisa per il valore di permettività del mezzo.\\Quindi all'aumentare della frequenza, siccome $\lambda_0 = \frac{\lambda}{f}$ la lunghezza fisica del dispositivo è $L_e = \frac{L}{C}f \sqrt{\epsilon_r}$ quindi abbiamo un dispositivo elettricamente più grande pur rimanendo piccolo, quindi abbiamo un maggiore controllo sul campo EM irradiato.\\La lunghezza EM è $L_e$ proporz. $f\sqrt{\epsilon_r}$ e la frequenza migliore si ha per 1GHz, ovvero l'efficienza di un'antennina impiantata anche tenendo conto delle perdite è quella ottimale e vale nell'ipotesi in cui $D_{IMD} > 1cm$ e si ottiene la frequenza alla quale l'oggetto impiantato risulta efficiente come antenna.\\\\Abbiamo come altro vantaggio di poter usare più di un dispositivo: (copia immagine del corpo)\\possiamo usare vari tipi di trasmettitori all'esterno ch, siccome la frequenza è elevata, sono geometricamente piccoli ma elettricamente più grandi.\\Possiamo quindi collegarli con una rete di fascio, mandano un segnale in ingresso posso far si che ciascuno irradi un campo solo nel punto dove serve, quindi per focalizzare l'interrogazione in una piccola regione e si può fare perché gli oggetti sono piccoli geometricamente ma grandi (e quindi posso farli risonanti) elettricamente.\\IL vantaggio è che ognuno produrrà un SAR più basso.\\I conti sono complicati, non possiamo usare i concetti di guadagno delle antenne etc... quindi si introduce un modo di lavorare che non necessita approssimazione ma si rinuncia al rappresentare tutti i fenomeni: introduciamo il \textbf{guadagno di trasduzione}
+\textbf{RICHIAMO}: ciò che comanda nel mondo delle antenne non è la lunghezza l del dispositivo ma la sua dimensione elettrica che è $\frac{l}{\lambda}$ e la lunghezza d'onda nel vuoto è $\lambda_0$ ma in un mezzo con perdite è $\lambda_0/\sqrt{\epsilon_r}$ e quindi se abbiamo aria e sotto un mezzo biologico, se arriva un onda con una certa $\lambda_0$, quando entra nel mezzo la lunghezza d'onda diminuisce perché viene divisa per il valore di permettività del mezzo.\\Quindi all'aumentare della frequenza, siccome $\lambda_0 = \frac{\lambda}{f}$ la lunghezza fisica del dispositivo è 
+\begin{equation}
+	L_e = \frac{L}{C}f \sqrt{\epsilon_r}	
+\end{equation}
+quindi abbiamo un dispositivo elettricamente più grande pur rimanendo piccolo, quindi abbiamo un maggiore controllo sul campo EM irradiato.\\La lunghezza EM è 
+\begin{equation}
+	L_e \propto f\sqrt{\epsilon_r}
+\end{equation}
+e la frequenza migliore si ha per 1GHz, ovvero l'efficienza di un'antennina impiantata anche tenendo conto delle perdite è quella ottimale e vale nell'ipotesi in cui $D_{IMD} > 1cm$ e si ottiene la frequenza alla quale l'oggetto impiantato risulta efficiente come antenna.\\\\Abbiamo come altro vantaggio di poter usare più di un dispositivo:\\
+\begin{figure}
+	\includegraphics[scale=0.5]{immagini/disp_imp.png}
+	\caption{Disposizione di vari dispositivi impiantati sul corpo}
+\end{figure}
+\\\\possiamo usare vari tipi di trasmettitori all'esterno che, siccome la frequenza è elevata, sono geometricamente piccoli ma elettricamente più grandi.\\Possiamo quindi collegarli con una rete di fascio, mandano un segnale in ingresso posso far si che ciascuno irradi un campo solo nel punto dove serve, quindi per focalizzare l'interrogazione in una piccola regione e si può fare perché gli oggetti sono piccoli geometricamente ma grandi (e quindi posso farli risonanti) elettricamente.\\Il vantaggio è che ognuno produrrà un SAR più basso, riuscendo quindi a rimanere entro i limiti delle normative.\\I conti sono complicati, non possiamo usare i concetti di guadagno delle antenne etc... quindi si introduce un modo di lavorare che non necessita approssimazione ma si rinuncia al rappresentare tutti i fenomeni: introduciamo il \textbf{guadagno di trasduzione}
+
 \subsection{Guadagno di trasduzione (Transducer Power Gain)}
-Il guadagno di trasduzione tiene conto di vari fatti ed è specifico per una configurazione particolare.\\Per ottenerlo, dobbiamo rappresentare l'antenna come una rete a due porte: immaginiamo di avere due antenne una che tx ed una che rx (copia disegnino)\\le antenne sono vicine, la distanza d non è più grande di $\lambda$ e quindi c'è disturbo.\\Occorrerebbe fare un calcolo del campo e della tensione raccolta, ma ci interessa analizzare il link di comunicazione, quindi che succede sul carico del ricevitore quando alimentiamo il trasmettitore, immaginiamo di rappresentare tutto come una scatola che verrà analizzata solo ai morsetti (copia immagine), guardando quindi tensione $V_1$ e corrente, che consideriamo entrante nella rete $I_1$ e le $V_2$ ed $I_2$; non perdo nulla perché dipendono dalle interazioni EM che stanno "dentro la scatola", che sono le osservabili.\\Consideriamo che il sistema sia lineare, possiamo immaginare che la tensione che vediamo ad una porta sia $V_1 = I_1$, guarderemo ad $V_1 I_1(0) Z_{11} + Z_{12}I_2$ come la corrente sono il 0 ovvero sul punto di alimentazione (ma la corrente tipicamente scorre ovunque) ed anche $V_2 = I_1(0) Z_{21} + Z_{22}I_2$ dove i coefficienti Z sono la \textbf{matrice di impedenza} (copiala) dovei coefficienti sulla diagonale corrispondono al caso in cui si misura la corrente sulla porta 1 quando la porta 2 è circuito aperto e viceversa.\\Gli altri due sono uguali se la rete è \textbf{reciproca} e sono \textbf{l'impedenza mutua} ed è il termine che da l'accoppiamento fra le due porte.\\L'impedenza in ingresso alla porta 1, la $Z_{in}^{(1)} = \frac{V_1}{I_1} = Z_{11} + Z_{12}\frac{I_2}{I_1}$ quindi la dipendenza è mediante il termine di impedenza mutua che da l'accoppiamento, e vale anche il viceversa (invertendo i pedici).\\Immaginiamo alcuni casi
+Il guadagno di trasduzione tiene conto di vari fatti ed è specifico per una configurazione particolare.\\Per ottenerlo, dobbiamo rappresentare l'antenna come una rete a due porte: immaginiamo di avere due antenne una che tx ed una che rx\\
+\begin{figure}
+	\includegraphics[scale=0.5]{immagini/rete_dp.png}
+	\caption{Rappresentazione di un'antenna come rete a due porte}
+\end{figure}
+\\\\le antenne sono vicine, la distanza d non è più grande di $\lambda$ e quindi c'è disturbo.\\Occorrerebbe fare un calcolo del campo e della tensione raccolta, ma ci interessa analizzare il link di comunicazione, quindi che succede sul carico del ricevitore quando alimentiamo il trasmettitore: immaginiamo di rappresentare tutto come una scatola che verrà analizzata solo ai morsetti\\
+\begin{figure}
+	\includegraphics[scale=0.5]{immagini/antenna_scatola.png}
+	\caption{Rappresentazione dell'antenna come una "scatola chiusa"}
+\end{figure}
+\\\\guardando quindi tensione $V_1$ e corrente, che consideriamo entrante nella rete $I_1$ e le $V_2$ ed $I_2$. Non perdiamo nulla perché dipendono dalle interazioni EM che stanno "dentro la scatola", che sono le osservabili.\\Consideriamo che il sistema sia lineare, possiamo immaginare che la tensione che vediamo ad una porta sia $V_1 = I_1$, guarderemo il seguente sistema:
+$
+\begin{cases}
+	V_1 = I_1(0) Z_{11} + Z_{12}I_2\\
+	V_2 = I_1(0) Z_{21} + Z_{22}I_2\\
+\end{cases}
+$
+la corrente viene considerata sul punto di alimentazione, da cui la valutazione in 0 (ma la corrente tipicamente scorre ovunque).\\I coefficienti Z sono la \textbf{matrice di impedenza}\\\\
+$
+\begin{bmatrix}
+	Z_{11} & Z_{12}\\
+	Z_{21} & Z_{22}\\
+\end{bmatrix}
+= [Z]
+$
+\\\\dove i coefficienti sulla diagonale corrispondono al caso in cui si misura la corrente sulla porta 1 quando la porta 2 è in circuito aperto e viceversa, ovvero:
+\begin{equation}
+	Z_{ii} = \frac{V_i}{I_i}\bigg\rvert_{I_j = 0}
+\end{equation}
+\\Gli altri due coefficienti sono uguali se la rete è \textbf{reciproca}:
+\begin{equation}
+	Z_{ij} = Z_{ji} = \frac{V_i}{I_j}\bigg\rvert_{I_i = 0}
+\end{equation}
+ed sono \textbf{l'impedenza mutua} ed è il termine che da l'accoppiamento fra le due porte.\\L'impedenza in ingresso alla porta 1si esprime come 
+\begin{equation}
+	Z_{in}^{(1)} = \frac{V_1}{I_1} = Z_{11} + Z_{12}\frac{I_2}{I_1}	
+\end{equation}
+quindi la dipendenza è mediante il termine di impedenza mutua che da l'accoppiamento, e vale anche il viceversa 
+\begin{equation}
+	Z_{in}^{(2)} = \frac{V_2}{I_2} = Z_{22} + Z_{21}\frac{I_1}{I_2}
+\end{equation}
+\\Immaginiamo alcuni casi
 \begin{itemize}
-	\item[1)] L'antenna rx è chiusa in corto circuito.(immagine)\\L'impedenza che vedo è $Z_{in}^{(1)}$, se $V_2 = 0$ possiamo calcolare $\frac{I_2}{I_1} = \frac{Z_{21}}{Z_{22}}$ e quindi avere  $Z_{in}^{(1)} = Z_{11} -\frac{Z_{21}^2}{Z_{22}}$. Quando questo avviene l'oggetto alimentato è fortemente infastidito dalla presenza dell'oggetto non alimentato
-	\item[2)] L'antenna rx è in circuito aperto: la configurazione è la seguente (immagine)\\avremo $I_2 = 0$ e vediamo la $Z_{in}^{(1)}$, dall'espressione di prima viene cancellato un termine e quindi $Z_{in}^{(1)} = Z_{11}$, normalmente in queste condizioni l'antenna tx risente poco della rx (a meno che questa non siamo molto grande).\textbf{IMPORTANTE: la $Z_{11}$ NON rappresenta l'impedenza dell'antenna isolata, ma è molto simile sopratutto se l'antenna ricevente è piccola.}
-	\item Il caso più generale è quando RX è collegato ad un carico $Z_L$, $Z_{in}^{(1)}$ si ricava in quanto esistono diverse rappresentazioni (a $\pi$, a t) che hanno le stesse relazioni di grandezze in uscita di una rete a due porte, è dimostrabile (ma io credo al prof sulla parola).\\La rete più semplice è quella a T, una rete a T che ha la stessa matrice di impedenza di una rete a due porte ha questi valori:(copia immagine)\\calcolando l'impedenza in ingresso $Z_{in}^{(1)}$ corrisponde a quella di una rete a due porte.\\Si può fare risolvendo il circuito (che viene lasciato per esercizio?) ottenendo $Z_{in}^{(1)} = Z_{11} - \dfrac{Z_{12}^2}{Z_{22} - Z_L}$.\\Se nell'antenna da sola bastava la Z in ingresso qui serve la matrice Z, e questo si chiama impedenza passiva, tiene conto dell'altro oggetto ma non alimentato (se fosse alimentato ci vorrebbe l'impedenza attiva e sarebbe più complesso).
+	\item[1)] L'antenna rx è chiusa in corto circuito\\
+	\begin{figure}
+		\includegraphics[scale=0.7]{immagini/rx_cortoc.png}
+		\caption{Ricevente chiuso in corto circuito}
+	\end{figure}
+	\\\\L'impedenza che vedo è $Z_{in}^{(1)}$, se $V_2 = 0$ possiamo calcolare 
+	\begin{equation}
+		\frac{I_2}{I_1} = - \frac{Z_{21}}{Z_{22}}	
+	\end{equation}
+	e quindi avere  
+	\begin{equation}
+		Z_{in}^{(1)} = Z_{11} -\frac{Z_{12} \cdot Z_{21}}{Z_{22}} = Z_{11} -\frac{Z_{12}^2}{Z_{22}}	
+	\end{equation}
+	Quando questo avviene l'oggetto alimentato è fortemente infastidito dalla presenza dell'oggetto non alimentato
+	\item[2)] L'antenna rx è in circuito aperto: la configurazione è la seguente\\
+	\begin{figure}
+		\includegraphics[scale=0.7]{immagini/ric_aperto.png}
+		\caption{Antenna ricevente in circuito aperto}
+	\end{figure}
+	\\\\avremo $I_2 = 0$ e vediamo la $Z_{in}^{(1)}$, dall'espressione di prima viene cancellato un termine e quindi 
+	\begin{equation}
+		Z_{in}^{(1)} = Z_{11}	
+	\end{equation}
+	e possiamo dire che l'impedenza in ingresso sia simile a quella dell'antenna se fosse isolata.\\Normalmente in queste condizioni l'antenna tx risente poco della rx (a meno che questa non siamo molto grande).\textbf{IMPORTANTE: la $Z_{11}$ NON rappresenta l'impedenza dell'antenna isolata, ma è molto simile sopratutto se l'antenna ricevente è piccola.}
+	\item[3)] Il caso più generale è quando RX è collegato ad un carico $Z_L$, $Z_{in}^{(1)}$ si ricava in quanto esistono diverse rappresentazioni circuitali:
+	\begin{itemize}
+		\item a $\pi$;
+		\item a T
+	\end{itemize}
+	che hanno le stesse relazioni di grandezze in uscita di una rete a due porte, è dimostrabile (\textsf{\textbf{ma io credo al prof sulla parola}}).\\La rete più semplice è quella a T, una rete a T che ha la stessa matrice di impedenza di una rete a due porte ha questi valori:\\
+	\begin{figure}
+		\includegraphics[scale=0.5]{immagini/rete_t_equiv.png}
+		\caption{Rete "a T" equivalente alla rete a due porte}
+	\end{figure}
+	\\\\calcolando l'impedenza in ingresso $Z_{in}^{(1)}$ corrisponde a quella di una rete a due porte.\\Si può fare risolvendo il circuito (che viene lasciato per esercizio?) ottenendo 
+	\begin{equation}
+	Z_{in}^{(1)} = Z_{11} - \dfrac{Z_{12}^2}{Z_{22} - Z_L}	
+	\end{equation}
+	\\Se nell'antenna da sola bastava la Z in ingresso qui serve la matrice Z, e questo si chiama impedenza passiva, tiene conto dell'altro oggetto ma non alimentato (se fosse alimentato ci vorrebbe l'impedenza attiva e sarebbe più complesso).
 \end{itemize}
-Vogliamo esprimere la potenza che viene raccolta dal carico del rx rispetto a quella che viene mandata in ingresso ed (altro) ed introdurremmo in guadagno di trasduzione.\\Ripartiamo dalla rete a due porte, che rappresentiamo con la matrice di impedenza (metti immagine)\\possiamo quindi vedere le impedenze in ingresso alle diverse porte del tx e dell'rx, sappiamo che sono date da: $Z_{11}^{(1)} = Z_{11} - \frac{Z_{12}^2}{Z_{22}+Z_L}$ e $Z_{22}^{(2)} = Z_{11} - \frac{Z_{12}^2}{Z_{11}+Z_G}$.\\Vediamo l'equivalenza di Theven...: (immagine)\\guardando da sinistra, un'osservatore vedrà tutto quello che accade dentro dal valore di $Z_{11}^{(1)}$ e questo è per il tx, mentre per l'rx (altra immagine): ci saranno impedenza di Thev e generatore di Thev che vanno calcolate.\\Possiamo quindi studiarli separatamente, nel secondo valuteremo la potenza che verrà distribuita sul carico.\\Partiamo dalla $Z_{Thev}$ che è l'impedenza passiva che vediamo verso l'interno avendo staccato il generatore, quindi è uguale all'impedenza di ingresso che avremmo calcolato con il circuito attivo $Z_{Thev} = Z_{in}^{(2)}$.\\La tensione del generatore è data dal fatto che il circuito è aperto, riprendiamo l'espressione di $V_2$ circuitale $V_2 = Z_{21}I_1$, in quanto il termine con $I_2$ È 0 perché i circuiti sono staccati.\\Esplicitiamo $V_1 = V_{C1} - Z_G I_1$ ma è anche uguale dall'espressione per la rete a due porte a $Z_{11}I_1 + Z_{12}I_2$ sapendo che $I_2$ = 0 avremo $I_1 = \dfrac{Z_G}{Z_{11} + Z_G}$.\\Inseriamo l'espressione trovata per trovare la $V_{Thev} = V_2 = \dfrac{Z_{21}}{Z_{11} + Z_G} V_G$.\\Ora possiamo usare i due circuiti per fare delle considerazioni di potenza: consideriamo 2 potenze
+Vogliamo esprimere la potenza che viene raccolta dal carico del rx rispetto a quella che viene mandata in ingresso ed (altro) ed introdurremmo il guadagno di trasduzione.\\Ripartiamo dalla rete a due porte, che rappresentiamo con la matrice di impedenza\\
+\begin{figure}
+	\includegraphics[scale=0.5]{immagini/rete_dp_matr.png}
+	\caption{Rete a due porte con matrice d'impedenza}
+\end{figure}
+\\\\possiamo quindi vedere le impedenze in ingresso alle diverse porte del tx e dell'rx, sappiamo che sono date da:
+\begin{equation}
+	Z_{11}^{(1)} = Z_{11} - \frac{Z_{12}^2}{Z_{22}+Z_L}	
+\end{equation}
+e 
+\begin{equation}
+	Z_{22}^{(2)} = Z_{11} - \frac{Z_{12}^2}{Z_{11}+Z_G}	
+\end{equation}
+Vediamo l'equivalenza di Thevenhin:\\
+\begin{figure}
+	\includegraphics[scale=0.6]{immagini/equiv_thev_rx_tx.png}
+	\caption{Equivalenza di Thevenhin per rx e tx}
+\end{figure}
+\\\\guardando da sinistra, un'osservatore vedrà tutto quello che accade dentro dal valore di $Z_{11}^{(1)}$ e questo è per il tx, mentre per l'rx: ci saranno impedenza di Thevenhin e generatore di Thevenhin che vanno calcolate.\\Possiamo quindi studiarli separatamente, nel secondo valuteremo la potenza che verrà distribuita sul carico.\\Partiamo dalla $Z_{Th}$ che è l'impedenza passiva che vediamo verso l'interno avendo staccato il generatore, quindi è uguale all'impedenza di ingresso che avremmo calcolato con il circuito attivo 
+\begin{equation}
+	Z_{Th} = Z_{in}^{(2)}	
+\end{equation}
+\\La tensione del generatore è data dal fatto che il circuito è aperto, riprendiamo l'espressione di $V_2$ circuitale 
+\begin{equation}
+	V_2 = Z_{21}I_1	
+\end{equation}
+in quanto il termine con $I_2$ È 0 perché i circuiti sono staccati.\\Esplicitiamo
+\begin{equation}
+	V_1 = V_{C1} - Z_G I_1 \equiv Z_{11}I_1 + Z_{12}I_2\bigg\rvert_{I_2 = 0}
+\end{equation}
+sapendo che $I_2$ = 0 avremo 
+\begin{equation}
+	I_1 = \dfrac{Z_G}{Z_{11} + Z_G}	
+\end{equation}
+Inseriamo l'espressione trovata per trovare la 
+\begin{equation}
+	V_{Th} = V_2 = \dfrac{Z_{21}}{Z_{11} + Z_G} V_G	
+\end{equation}
+Ora possiamo usare i due circuiti per fare delle considerazioni di potenza: consideriamo 2 potenze
 \begin{itemize}
-	\item $P_L$, che il trasmettitore rilascia al carico del ricevitore.\\È $\frac{1}{2} R_{L}|I_2|^2$, è quella che serve al dispositivo impiantato per farlo funzionare. La $I_2$ si ricava da $\dfrac{V_{Thiev}}{Z_{in} + Z_L}$.\\è $\frac{1}{2} R_{L} \dfrac{\abs{Z_{21}}^2 \abs{V_G}^2}{\abs{Z_{11} + Z_G}^2} $ (copia a seguito dei passaggi...)
-	\item $P_{in}^{(1)}$ che è quella che entra nell'antenna trasmittente data da $\frac{1}{2}R_{in}^{(1)} |I_1|^2$.\\In particolare $P_{in}^{(1)} = \frac{1}{2}R_{in}^{(1)} \dfrac{\abs{V_G}^2}{\abs{Z_{11} + Z_G}^2}$
+	\item $P_L$, che il trasmettitore rilascia al carico del ricevitore.\\È data da 
+	\begin{equation}
+		P_L = \frac{1}{2} R_{L}|I_2|^2	
+	\end{equation}
+	è quella che serve al dispositivo impiantato per farlo funzionare. La $I_2$ si ricava da
+	\begin{equation}
+	I_2 = \dfrac{V_{Th}}{Z_{in} + Z_L}	
+	\end{equation}
+	quindi
+	\begin{equation}
+		P_L = 
+		\frac{1}{2} \dfrac{\abs{Z_{21}}^2 \abs{V_G}^2 R_L}{\abs{Z_{11} + Z_G}^2} \dfrac{1}{\abs{Z_{22} - \frac{(Z_{21}^2)}{Z_{11 + Z_G}} + Z_L}^2}
+		= \frac{1}{2} \dfrac{\abs{Z_{12}}^2 \abs{V_G}^2 R_L}{\abs{(Z_{11} + Z_G)(Z_{22}+Z_L) - Z_{12}^2}^2}
+	\end{equation}
+	\item $P_{in}^{(1)}$ che è quella che entra nell'antenna trasmittente data da 
+	\begin{equation}
+		P_{in}^{(1)} = \frac{1}{2}R_{in}^{(1)} |I_1|^2 
+	\end{equation}
+	In particolare 
+	\begin{equation}
+		P_{in}^{(1)} = \frac{1}{2}R_{in}^{(1)} \dfrac{\abs{V_G}^2}{\abs{Z_{11} + Z_G}^2}
+	\end{equation}
 \end{itemize}
-Definiamo ora la \textbf{potenza disponibile} in ingresso (available power) che è la $P_{AV,G}$ che è la massima potenza che il generatore può erogare verso la rete, che eroga nelle condizioni in cui l'impedenza delle rete è il complesso coniugato dell'impedenza del condensatore $Z_{in}^{(G)} = Z_G^*$, quindi la $P_{AV,G} = \dfrac{\abs{V_G}^2}{8R_G}$.\\\\Qualcosa del genere si fa in uscita ed è la network available power, che è la massima potenza che la rete è in grado di rilasciare al carico e si ha la massima quando l'impedenza in ingresso in 2 è uguale al complesso coniugato della $Z_L$.\\Vale $P_{AV,N} = max{PL} = \dfrac{\abs{V_{Thev}}^2}{8 R_{Th}}$.\\Definiamo finalmente il $G_T$ (transd power gain ) uguale per def a $\frac{P_L}{P_{AV,G}}$ ed è importantissima perché dipende dal fatto che rx non è adtatto al carico, che c'è un mezzo con perdita etc... e la dobbiamo ottimizzare perché sappiamo che la $P_L = P_{AV,G} G_T$, sostituendo nella precedente viene fuori la relazione: $G_T = \dfrac{4R_G R_L \abs{Z_{12}}}{\abs{ (Z_{11} + Z_G) (Z_{22} + Z_L) - Z_{12}^2}^2}$ (che è adimensionale essendo un guadagno). (N.B: la X è la reattanza).
+Definiamo ora la \textbf{potenza disponibile} in ingresso (available power) che è la $P_{AV,G}$ che è la massima potenza che il generatore può erogare verso la rete e che viene erogata nelle condizioni in cui l'impedenza delle rete è il complesso coniugato dell'impedenza del condensatore 
+\begin{equation}
+	Z_{in}^{(G)} = Z_G^*	
+\end{equation}
+(adattamento coniugato, $R_{in}^{(1)} = R_G$ e $X_{in}^{(1)} = -X_G$)
+quindi 
+\begin{equation}
+	P_{AV,G} = \dfrac{\abs{V_G}^2}{8R_G}	
+\end{equation}
+Qualcosa del genere si fa in uscita ed è la \textbf{network available power}, che è la massima potenza che la rete è in grado di rilasciare al carico e si ha la massima quando l'impedenza in ingresso in 2 è uguale al complesso coniugato della $Z_L$.\\Vale 
+\begin{equation}
+	P_{AV,N} = max{PL} = \dfrac{\abs{V_{Thev}}^2}{8 R_{Th}}	
+\end{equation}
+Definiamo finalmente il $G_T$ (transducer power gain) uguale per definizione a
+\begin{equation}
+	G_T \triangleq \frac{P_L}{P_{AV,G}} 	
+\end{equation}
+ed è importantissima perché dipende dal fatto che rx non è adattato al carico, che c'è un mezzo con perdita etc... e la dobbiamo ottimizzare perché sappiamo che
+\begin{equation}
+	P_L = P_{AV,G} G_T	
+\end{equation}
+sostituendo nella precedente viene fuori la relazione
+\begin{equation}
+	G_T = \dfrac{4R_G R_L \abs{Z_{12}}}{\abs{ (Z_{11} + Z_G) (Z_{22} + Z_L) - Z_{12}^2}^2}
+\end{equation} 
+(che è adimensionale essendo un guadagno). (N.B: la X è la reattanza).
 
 
 
