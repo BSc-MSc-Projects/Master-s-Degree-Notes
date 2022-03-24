@@ -2,12 +2,31 @@
 \usepackage{geometry}
 \usepackage{listings}
 \usepackage{graphicx}
+\usepackage[dvipsnames]{xcolor}
+\usepackage[italian]{babel}
 
 \geometry{
 	a4paper,
 	left = 1.5 cm,
 	right = 1.5 cm,
 	top = 2cm,
+}
+
+\lstset{
+	language=C, 
+	basicstyle=\ttfamily\small,
+	keywordstyle=\color{purple}\bfseries\small,
+	stringstyle=\color{ForestGreen}\small,
+	commentstyle=\color{blue}\small,
+	numbers=left,
+	numberstyle=\small\color{black},
+	numbersep=5pt,
+	tabsize=2,
+	showtabs=false,
+	showspaces=false,
+	showstringspaces=false,
+	breaklines=true,
+	keepspaces=true
 }
 
 \title{Network and System Defense}
@@ -1219,6 +1238,7 @@ Ci sono gli stessi indirizzi di default nei diversi VTEP, serve per semplificare
 
 \newpage
 \part{Parte software}
+
 \chapter{Introduzione}
 Approccio bottom up a partire dall'hardware fino al software. Imparare i componenti interni di ogni livello dello stack prima di imparare l'attacco, in modo da capire meglio come funzionano. A questo punto, capire come e se è possibile incrementare il livello di sicurezza. Perché non dire che renderemo il sistema sicuro? È impossibile rendere un sistema sicuro, \textbf{un computer sicuro è scollegato dalla rete, con l'hw che prende fuoco.}
 Argomenti che vedremo:
@@ -1229,8 +1249,9 @@ Argomenti che vedremo:
 \item malware detection
 \item DB security
 \end{itemize}
+
 \chapter{Hardware based attacks e contromisure}
-Perché sono interessanti gli attacchi all'hardware: perché ogni sistema IT si basa sull'hardware, quindi compromettendo questo si riesce a compromettere tutto lo stack IT. Quando scrivo sw, mi aspetto qualcosa dall'hw e quindi se lo altero per il software è molto difficile capire che è compromesso.\\ I blocchi fondamentali per costruire degli attacchi hw based di successo:
+Perché siamo interessanti gli attacchi all'hardware: perché ogni sistema IT si basa sull'hardware, quindi compromettendo questo si riesce a compromettere tutto lo stack IT. Quando scrivo sw, mi aspetto qualcosa dall'hw e quindi se lo altero per il software è molto difficile capire che è compromesso.\\ I blocchi fondamentali per costruire degli attacchi hw based di successo:
 \begin{itemize}
 \item leggere primitive, per circumnavigare la sicurezza del sw
 \item scrivere primitive
@@ -1252,6 +1273,7 @@ else
 \end{lstlisting}
 fetcho un'istruzione prima di avere conoscenza del fatto che devo fare un salto piuttosto che un altro. Quindi ci sono una serie di bolle necessarie anche per un codice semplice, c'è una penalità per gli stalli enorme ed il codice fa molti salti.\\ Quindi, serve cambiare le cose: branch prediction. 
 \end{enumerate}
+
 \section{Branch prediction}
 Se la predizione è sbagliata, si scarta il risultato, quindi si flusha una serie di stadi della pipeline perché incorretti, altrimenti si continua con l'esecuzione delle istruzioni. Ci sono delle parti dedicate nel chip del processore apposite per il branch prediction, migliore sarà la predizione e meno stalli si osserveranno e quindi migliori prestazioni. Le performance dipendono da due fattori: quanto presto si può controllare se la predizione è corretta e se la predizione è corretta.\\ Ci sono due tipi di predizione:
 \begin{itemize}
@@ -1264,9 +1286,12 @@ La branch prediction table è una piccola memoria nella CPU utilizzabile per cap
 \item aggiornare la tabella
 \item flushare la pipeline, la penalità è la stessa che si avrebbe se non ci fosse la branch prediction, perché ci sarebbero gli stalli.
 \end{itemize}
-L'automa a stati che rappresenta i cambi di stato in base alla predizione è il seguente:\\\\
-\includegraphics[scale=0.7]{immagini/2bit_pred}\\\\
-si possono usare due bit per decidere come spostarsi in base alla predizione. Come si comporta con dei cicli annidati? 
+L'automa a stati che rappresenta i cambi di stato in base alla predizione è il seguente:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.7]{immagini/2bit_pred}
+	\caption{Predittore a due bit}
+\end{figure}\\\\
+si possono usare due bit per decidere come spostarsi in base alla predizione. Come si comporta con dei cicli annidati?
 \begin{lstlisting}
 	mov $0, %ecx
 .outerLoop:
@@ -1289,30 +1314,44 @@ L'unità per la branch prediction continuerà a dire branch taken finché non si
 \item determinare il target prima
 \item ridurre la penalità per predizioni errate
 \end{itemize}
+
 \subsection{Correlated prediction}
-L'idea è che alcuni outcome dei branch sono correlati fra loro, quindi serve poter corralre due branch condizionali in assembly. In un correlated predictor si usa una storia degli m branch passati e si può usare la storia per correlare i branch. Si usa la path history table:
+L'idea è che alcuni outcome dei branch sono correlati fra loro, quindi serve poter correlare due branch condizionali in assembly. In un correlated predictor si usa una storia degli m branch passati e si può usare la storia per correlare i branch. Si usa la path history table:
 \begin{itemize}
 \item si mette la storia globale in un registro globale della storia
 \item si usa il valore per accedere ad una pht di 2-bit saturing 
 \end{itemize}
-\includegraphics[scale=0.5]{immagini/corr_pred}
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/corr_pred}
+	\caption{Predittore correlato}
+\end{figure}
+
 \subsection{Tournament predictor}
 Si usano due tipi di predittori:
 \begin{itemize}
 \item correlated predictor, basato sugli ultimi m branches, acceduto dalla storia locale
 \item local predictor, che viene selezionato usando l'indirizzo del branch
 \end{itemize}
-Si usa poi un indicatore di quale è stato il miglior predittore per lo specifico branch in esecuzione, che è un contatore a 2 bit, incrementato per uno dei predittori e decrementato per l'altro. Di seguito, uno schema dell'architettura del tournament predictor DEC Alpha 21264\\\\
-\includegraphics[scale=1]{immagini/tourn_pred}
+Si usa poi un indicatore di quale è stato il miglior predittore per lo specifico branch in esecuzione, che è un contatore a 2 bit, incrementato per uno dei predittori e decrementato per l'altro. Di seguito, uno schema dell'architettura del tournament predictor DEC Alpha 21264\\
+\begin{figure}
+	\includegraphics[scale=1]{immagini/tourn_pred}
+	\caption{Tournament predictor}
+\end{figure}
+
 \subsubsection{Branch target buffer}
-È relazionato ai jump indiretti, che sono difficili da predirre. esempio: la ret è l'istruzione di ritorno da una sub routine. Il problema è capire dove si ritorna: qual è l'istruzione che si mette in pipeline, dovrebbe essere la prossima del chiamante ma è ancora più complicato. Si può fare il jump nell'indirizzo contenuto in un registro, l'output dipende da cosa è scritto nel registro che si vuole usare per il salto.\\ Il BTB è una picccola cache che viene acceduta col program counter 
-%immagine dell'architettura
+È relazionato ai jump indiretti, che sono difficili da predirre. esempio: la ret è l'istruzione di ritorno da una sub routine. Il problema è capire dove si ritorna: qual è l'istruzione che si mette in pipeline, dovrebbe essere la prossima del chiamante ma è ancora più complicato. Si può fare il jump nell'indirizzo contenuto in un registro, l'output dipende da cosa è scritto nel registro che si vuole usare per il salto.\\ Il BTB è una picccola cache che viene acceduta col program counter:\\
+\begin{figure}
+	\includegraphics[scale=0.5]{immagini/btb.png}
+	\caption{Architettura del branch target buffer}
+\end{figure}\\\\
 troviamo il prefetched target ed il prediction bit, che dice se conviene prendere il trarget oppure mettere uno stallo. È una cache, quindi ci può essere miss o hit, si può imparare se il prefetched target dovrebbe essere quello e più tardi si saprà se quel target è corretto o meno.
+
 \subsubsection{Return address stack}
 L'istruzione di ret legge l'indrizzo dallo stack, quindi se possiamo leggerlo subito possiamo sapere il target del ritorno.\\ Possiamo mettere uno stack nella CPU che manitene gli indirizzi di ritorno, ogni volta che c'è una chiamata, si salva in questo stack l'indirizzo di ritorno. In questo modo, ogni volta che si torna si conosce l'indirizzo di ritorno e questo è utilissimo perché l'85\% delle istruzioni è di ritorno.
+
 \subsubsection{Fetch Both Target}
-Tecnica che costa molto perché riempi la pipeline con tutte le istruzioni, ma la metà verranno scaratate e non aiuta in casi di fetch multipli come lo \textsf{switch}, non viene usato nell'hardware off the shelf.
-%slides
+Tecnica che costa molto perché riempi la pipeline con tutte le istruzioni, ma la metà verranno scaratate e non aiuta in casi di fetch multipli come lo \texttt{switch}, non viene usato nell'hardware off the shelf.
+
 \subsection{Simultaneus multi-threading}
 C'è una CPU fisica ma è esposta al software come una coppia di CPU virtuali. L'idea è che mentre runni istruzioni nella pipeline usi un sotto-insieme delle risorse hardware, in questo caso nel simultaneous MT si puà tenere traccia di che hw stanno usando le istruzioni, quindi si duplica lo stato dell'architettura, quindi ad esempio il PC in modo che il processore usi un algoritmo di scheduling in modo da dare il controllo ai differenti thread che girano. Quindi è richiesto meno hw per far girare più processi ma servono dei controlli per evitare l'interferenza.
 \subsubsection{Caso Intel: Hyperthreading}
@@ -1327,14 +1366,31 @@ Oggi, anche l'archiettura Inter mostra delle istruzioni assembly al programmator
 \item un front-end
 \item un engine di esecuzione out-of-order: se puoi eseguire una micro operazione va eseguita immediatamente.
 \end{itemize}
-\paragraph{Xeon frontend:}il ruolo è quello di tradurre istruzioni CISC in istruzioni RISC usando una microcode ROM. C'è una cache di micro operazioni che mantiene le traduzione già fatte.\\ Nella trace cache, sappiamo se una micro operazione è associata ad uno o all'altro execution program, grazie ai due program counter differenti. Ci sono quindi due code diverse di micro operation. Nel caso di hit: %slides
-\\ Nel caso di miss nella TC, serve fare la traduzione: bisogna accedere all'instruction TLB che permette di tradurre la corrispondenza fra indirizzi logici e fisici. Ovviamente, ci sono due TLB associati alla cache L2, quindi si può pagare anche un miss dovuto alla L2. Quindi, si mette la CISC instruction in coda, c'è poi il decoder ROM che mette le istruzioni in una coda usata per fillare la TC e quindi ora si può mettere la micro operation nella $\mu$op queue.
-%slides
+\paragraph{Xeon frontend:}il ruolo è quello di tradurre istruzioni CISC in istruzioni RISC usando una microcode ROM. C'è una cache di micro operazioni ($\mu$-ops) che mantiene le traduzione già fatte.\\ Nella trace cache, sappiamo se una micro operazione è associata ad uno o all'altro execution program, grazie ai due program counter differenti.\\Ci sono quindi due code diverse di micro operation.\\L'accesso alla trace cache è regolato dei processori logici ad ogni ciclo di clock e nel caso di una contesa l'accesso è alternato.\\Nel caso di hit avviene quanto segue:\\
+\begin{figure}
+	\includegraphics[scale=0.5]{immagini/trace_cache_hit.png}
+	\caption{Trace cache hit}
+\end{figure}
+\\\\
+Nel caso di miss nella TC, serve fare la traduzione:\\
+\begin{figure}
+	\includegraphics[scale=0.3]{immagini/trace_cache_miss.png}
+	\caption{Trace cache miss}
+\end{figure}
+\\\\
+bisogna accedere all'instruction TLB (ITLB) che permette di tradurre la corrispondenza fra indirizzi logici e fisici. Ovviamente, ci sono due TLB associati alla cache L2, quindi si può pagare anche un miss dovuto alla L2. Quindi, si mette la CISC instruction in coda, c'è poi il decoder ROM che mette le istruzioni in una coda usata per fillare la TC e quindi ora si può mettere la micro operation nella $\mu$op queue.\\Quindi: l'ITLB riceve una richiesta dalla trace cache per consegnare delle nuove istruzioni.\\Il next-instruction pointer viene tradotto in indirizzo fisico, mandando una richiesta alla cache L2, l'accesso è per processore logico ed è gestito su una base FIFO, con almeno uno slot per processore.\\I byte delle istruzioni sono salvati in dei buffer da 64 byte.
+
 \paragraph{Xeon Out-of-order pipeline:}
-%immagine
-vogliamo eseguire le micro operazioni in ogni ordine quando è possibile farlo. Nel primo stadio, vogliamo schedulare i registri fisici della CPU: una $\mu$op cerca di accedere il registro icx, non è uno solo ma sono molteplici, i multi-registri e quindi icx viene mappato su uno di questi. Servono quindi un register rename ed un Allocate per tenere traccia di tutto.\\ Ora ci sono code multiple, per discriminare la semantica della $\mu$op in base al fatto che si acceda alla memoria etc...\\ Lo stadio di execute ha diverse ALU, quindi l'Allocation unit dice anche quale componente usare per eseguire l'istruzione. Lo scheduler prende l'istruzione dalla coda nel momento esatto in cui il componente è disponibile. L'ordine è qualsiasi, le $\mu$op appartengono a diversi program flow, quindi data una CISC operation, le macro istruzioni saranno invertite nell'ordine. \\ Alla fine, non vogliamo che le istruzioni siano materializzate all'esterno in ordine casuale, quindi c'è un reorder buffer per riordinare le istruzioni CISC nell'ordine in cui sono entrare e far credere all'utente siano state processate così.\\ Non abbiamo quindi una idea di come siano state eseguite le istruzioni internamente, quindi ci può essere uno stato di inconsitenza per un tempo illimitato ma non è un problema perché questo non viene esposto a livello ISA. Il problema è che stiamo interagendo con la memoria e questo è sfruttabile, possiamo ad esempio far si che la CPU carichi delle istruzioni che non doverebbe e quindi dei dati in cache che non dovrebbe: l'istruzione non verrà committata, ma la traccia sarà comunque esposta e sfruttabile.
+L'architettura  la seguente:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/xeon_ooo.png}
+	\caption{Pipeline dei processori Xeon}
+\end{figure}\\\\
+vogliamo eseguire le micro operazioni in ogni ordine quando è possibile farlo. Nel primo stadio, vogliamo schedulare i registri fisici della CPU: una $\mu$op cerca di accedere il registro icx, non è uno solo ma sono molteplici ovvero un multi-registri e quindi icx viene mappato su uno di questi. Servono quindi un register rename ed un Allocate per tenere traccia di tutto.\\ Ora ci sono code multiple, per discriminare la semantica della $\mu$op in base al fatto che si acceda alla memoria etc...\\ Lo stadio di execute ha diverse ALU, quindi l'Allocation unit dice anche quale componente usare per eseguire l'istruzione. Lo scheduler prende l'istruzione dalla coda nel momento esatto in cui il componente è disponibile. L'ordine è qualsiasi, le $\mu$op appartengono a diversi program flow, quindi data una CISC operation, le macro istruzioni saranno invertite nell'ordine. \\ Alla fine, non vogliamo che le istruzioni siano materializzate all'esterno in ordine casuale, quindi c'è un reorder buffer per riordinare le istruzioni CISC nell'ordine in cui sono entrare e far credere all'utente siano state processate così.\\ Non abbiamo quindi una idea di come siano state eseguite le istruzioni internamente, quindi ci può essere uno stato di inconsistenza per un tempo illimitato ma non è un problema perché questo non viene esposto a livello ISA. Il problema è che stiamo interagendo con la memoria e questo è sfruttabile, possiamo ad esempio far si che la CPU carichi delle istruzioni che non doverebbe e quindi dei dati in cache che non dovrebbe: l'istruzione non verrà committata, ma la traccia sarà comunque esposta e sfruttabile.
+
 \subsection{Multicores (2000s)}
-I vendor cominiano ad usare i molteplici tansistor per creare delle CPU multicore, il primo CPU è l'IBM power4, 2 core con una architettura interessante: una cache privata per ciascun core, interconnessione di un certo tipo fra i core e una cache di L2 ed L3, dove la L3 fa anche da memory controller. I core interagiscono con la L1 e così a salire, quindi per caricare dati dalla memoria. Ma sei i cores hanno una cache privata, come fanno ad essere sincronizzati con i dati contenuti in L1 e quindi visibili al core 2? Serve un protocollo apposito per garantire la consistenza dei dati.
+I vendor cominciano ad usare i molteplici transistor per creare delle CPU multicore, la prima CPU è l'IBM power4, 2 core con una architettura interessante: una cache privata per ciascun core, interconnessione di un certo tipo fra i core e una cache di L2 ed L3, dove la L3 fa anche da memory controller. I core interagiscono con la L1 e così a salire, quindi per caricare dati dalla memoria. Ma se i cores hanno una cache privata, come fanno ad essere sincronizzati con i dati contenuti in L1 e quindi visibili al core 2? Serve un protocollo apposito per garantire la consistenza dei dati.
+
 \subsubsection{Cache coherence}
 Comportamento della cache da un punto di vista di utilizzo. La CC definisce la coerenza della cache con dei protocolli: quando scrivo codice, non mi rendo conto di interagire con la cache, ma i processori vi interagiscono di conitnuo. Abbiamo ad esempio 2 cores, con due cache private ed una serie di operazioni:
 %carica la tabellina
