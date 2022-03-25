@@ -8,6 +8,7 @@
 \usepackage{amssymb}
 \usepackage{mathrsfs}
 \usepackage{amsmath}
+\usepackage{amsthm}
 
 \geometry{
 	a4paper, 
@@ -36,6 +37,7 @@
 	breaklines=true,
 	keepspaces=true
 }
+
 
 \title{Machine Learning}
 \author{Pierciro Caliandro}
@@ -306,8 +308,13 @@ Abbiamo diverse misure che ci permette di determinare la qualità della predizio
 	\item F-score class $i$: $\dfrac{\text{Precision classe i} \times \text{Recall classe i}}{\text{Precision classe i}+\text{Recall classe i}}$. Mette insieme Precision e Recall, utilizzando la media armonica: $\frac{a\cdot b}{a + b}$ (se consideriamo a e b)
 \end{itemize}
 Il caso in cui il modello che otteniamo ha valori per le metriche relative a training set e testing set simili  vuol dire che non siamo né in underfitting né in overfitting.
+
 \subsection{Loss function e training set}
-La funzione di loss è tale per cui data una coppia di valori del codominio (uno corretto e l'altro predetto) ci restituisce un valore reale, che misura il costo che noi associamo al fatto di usare y al posto del valore corretto t.\\Nel supervised learning, ci fornisce una misura delle qualità di predizione effettuata dalla funzione $h$, quindi il rischio che associamo alla coppia x,y non è che il valore della loss function.\\Il rischio empirico è (vedi sopra) questo è quello che prendiamo come misura della qualità predittiva della funzione h.\\A questo punto nella fase di apprendimento il rischio empirico è minimizzato rispetto alle predizioni che effettua la funzione h, consideriamo la h parametrizzata, quindi la funzione loss complessiva è la somma delle loss applicate ai vari elementi: (copia), per ogni elemento ho una diversa loss function, vista come funzione di $\theta$. Come facciamo a minimizzare: ci piacerebbe trovare un minimo globale, usando l'analisi matematica e trovare il valore che ponga tutte le derivate a 0 (con la garanzia che i punti siano di minimo, quindi guardando la derivata '' oppure l'hessiano ma \textbf{GRAZIE A DIO NON SI RIESCE AD APPLICARE}). In linea di principio facciamo la derivata parziale rispetto ad uno dei coefficienti ed azzeriamo. Ci sono almeno due problemi:
+La funzione di loss è tale per cui data una coppia di valori del codominio (uno corretto e l'altro predetto) ci restituisce un valore reale, che misura il costo che noi associamo al fatto di usare y al posto del valore corretto t.\\Nel supervised learning, ci fornisce una misura delle qualità di predizione effettuata dalla funzione $h$, quindi il rischio che associamo alla coppia x,y non è che il valore della loss function.\\Il rischio empirico è (vedi sopra) questo è quello che prendiamo come misura della qualità predittiva della funzione $h$.\\A questo punto nella fase di apprendimento il rischio empirico è minimizzato rispetto alle predizioni che effettua la funzione $h$, consideriamo la $h$ parametrizzata, quindi la funzione loss complessiva è la somma delle loss applicate ai vari elementi:
+\begin{equation}
+	\mathscr{L}(\theta, \mathscr{T}) = \sum\limits_{i = n}^{n} L_i(\theta)
+\end{equation}
+per ogni elemento ho una diversa loss function, vista come funzione di $\theta$. Come facciamo a minimizzare: ci piacerebbe trovare un minimo globale, usando l'analisi matematica e trovare il valore che ponga tutte le derivate a 0 (con la garanzia che i punti siano di minimo, quindi guardando la derivata '' oppure l'Hessiano (ma \textsf{\textbf{GRAZIE A DIO NON SI RIESCE AD APPLICARE}}).\\In linea di principio facciamo la derivata parziale rispetto ad uno dei coefficienti ed azzeriamo. Ci sono almeno due problemi:
 \begin{itemize}
 	\item possiamo avere diverse soluzioni per il sistema di equazioni
 	\item possono essere difficili o impossibili da calcolare analiticamente
@@ -315,13 +322,80 @@ La funzione di loss è tale per cui data una coppia di valori del codominio (uno
 quindi possiamo introdurre metodi numerici iterativi mediante la \textbf{discesa del gradiente}: mi muovo nello spazio dei coefficienti $\Theta$ ed applico un aggiornamento che deriva dalla valutazione del gradiente nel punto precedente, guardo alla derivata parziale del rischio empirico nel punto e modifico il valore attuale.\\L'approccio rende in linea di principio possibile trovare il minimo globale, abbiamo però problemi di:
 \begin{itemize}
 	\item[1] punti di sella e punti di flesso
-	\item[2] quanto rapidamente di converge
+	\item[2] quanto rapidamente si converge
 \end{itemize}
 possiamo dire che, alla fine, questo dipende dalla funzione di loss e quindi scelta tale per cui che l'unico punto a derivata nulla sia unico ed un minimo ho risolto il punto 1, non avrò nemmeno minimi locali che non sono globali.\\Se non possiamo scegliere questa funzione, allora si vede che in molti casi se abbiamo anche una sella il metodo ne viene fuori, o anche se si prende un minimo locale tipicamente quel minimo locale non è lontano da quello globale, usando dei modelli con un certo livello di complicazione.
+
 \subsection{Funzione di loss}
-La funzione di loss prende origine dal concetto di convessità: qualunque coppia di punti di un insieme, tutti quelli che stanno sulla retta appartengono all'insieme. (copia immagine, insieme non convesso ha ad esempio un "buco" sulla destra). Diciamo che una funzione è convessa se l'insieme dei punti che sono sopra è convesso. Questo vuol dire che presi due punti sulla funzione e collegandoli, tutti i punti sono al di sopra della funzione. (copia immagine e definizione, è quella che diremmo a derivata '' positiva).\\Assumendo che la funzione $f(x)$ sia convessa, si può mostrare che c'è un solo minimo globale (ad esempio nella parabola). Se è strettamente convessa, ovvero i punti spora sono la funzione sono sempre strettamente maggiori, allora esiste solo un minimo locale che è globale e risolvere (copia) ci da questo minimo.\\Vogliamo questo tipo di funzioni loss, ovvero che siano strettamente convesse, se sono convesse la situazione è più debole perché ci possono essere più minimi locali che però sono tutti globali in quanto hanno lo stesso valore (?).\\Caso semplice ma rilevante è se la $f(x)$ è una funzione quadratica.\\In molti modelli semplici usiamo una funzione loss quadratica, ma ora dire questo vuol dire che $L(\theta, x_i, y_i)$ è quadratica ed il rischio empirico è la somma di queste funzioni. Esiste un teorema che dice che la somma di funzioni convesse è una funzione convessa.\\Quindi stiamo dicendo che usando questo tipo di funzioni, il rischio empirico sarà a sua volta convessa e quindi avrà un solo minimo locale che è globale e quindi applicando il metodo della discesa del gradiente, quando si arriva sul minimo locale si arriva anche sul globale.\\Ora quindi si possono scegliere le funzioni di loss con vari criteri
+La funzione di loss prende origine dal concetto di convessità:\\
+\paragraph{Definizione} un insieme di punti $S \subset \mathbb{R}^d$ è convesso se per ogni \textbf{x}$_1$, \textbf{x}$_2$ $\in S$ e $\lambda \in (0,1)$ vale:
+\begin{equation}
+	\lambda\textbf{x}_1 + (1- \lambda)\textbf{x}_2 \in S
+\end{equation}
+\\\\
+qualunque coppia di punti di un insieme, tutti quelli che stanno sulla retta appartengono all'insieme:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/insieme_convex.png}
+	\caption{Insieme di punti convesso}
+\end{figure}\\\\
+(un insieme non convesso ha ad esempio un "buco" sulla destra).\\Diciamo che una funzione è convessa se l'insieme dei punti che sono sopra è convesso. Questo vuol dire che presi due punti sulla funzione e collegandoli, tutti i punti sono al di sopra della funzione.\\Quindi
+\paragraph{Definzione:}una funzione $f(x)$ è convessa se l'insieme dei punti giacenti sopra la funzione è convesso, ovvero se per ogni \textbf{x}$_1$, \textbf{x}$_2$ e $\lambda \in (0,1)$,
+\begin{equation}
+	f(\lambda\textbf{x}_1 + (1-\lambda)\textbf{x}_2) \leq \lambda f(\textbf{x}_1) + (1-\lambda)f(\textbf{x}_2)
+\end{equation}
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/fun_conv.png}
+	\caption{Funzione convessa}
+\end{figure}\\
+(è quella che diremmo a derivata '' positiva).\\\\Assumendo che la funzione $f(x)$ sia convessa, si può mostrare che c'è un solo minimo globale (ad esempio nella parabola). Se è strettamente convessa, ovvero i punti spora sono la funzione sono sempre strettamente maggiori, allora esiste solo un minimo locale che è globale.\\Vogliamo questo tipo di funzioni loss, ovvero che siano strettamente convesse, se sono convesse la situazione è più debole perché ci possono essere più minimi locali che però sono tutti globali in quanto hanno lo stesso valore (?).\\Caso semplice ma rilevante è se la $f(x)$ è una funzione quadratica.\\In molti modelli semplici usiamo una funzione loss quadratica, ma ora dire questo vuol dire che $L(\theta, x_i, y_i)$ è quadratica ed il rischio empirico è la somma di queste funzioni. Esiste un teorema che dice che la somma di funzioni convesse è una funzione convessa.\\Quindi stiamo dicendo che usando questo tipo di funzioni, il rischio empirico sarà a sua volta convessa e quindi avrà un solo minimo locale che è globale e quindi applicando il metodo della discesa del gradiente, quando si arriva sul minimo locale si arriva anche sul globale.\\Ora quindi si possono scegliere le funzioni di loss con vari criteri
 \subsubsection{Alcune funzioni di loss comuni}
-Il primo caso è quello delle regressioni: una funzione loss tipicamente usata è il quadrato dell'errore (copia) che è un modo per stimare la distanza. Il quadrato ci dice che possiamo non tenere conto del segno.\\Abbiamo quindi il seguente rischio empirico (copia).\\Se facciamo in particolare regressione lineare, allora $h(x)$ è combinazione lineare dei valori delle feature (copia), dove w è il vettore dei coefficienti ed otteniamo la funzione di costo (che voglio minimizzare) quindi (copia).\\Vogliamo trovare fra tutti i valori dei coefficienti w e b quelli per cui l'espressione è minima. N.B: l'espressione ha come variabili w e b, mentre x e t sono dati.\\Per trovare il minimo possiamo cercare di calcolare il gradiente, (copia)\\\\Un'altra funzione loss è la differenza in modulo (copia), sempre convessa.\\Serve che la funzione gradiente sia definita per ogni punto, altrimenti non saprei come muovermi per avanzare (derivata definita in ogni punto ?).\\\\Abbiamo poi la Huber loss, che dentro è quadratica e poi fuori diventa lineare. La funzione quadratica tende a penalizzare molto più di questa funzione una differenza significativa, quindi se si sbaglia il costo assegnato all'errore cresce molto di più rispetto alla funzione valore assoluto, quindi la scelta è quanto penalizzare gli errori se diventano grandi.
+Il primo caso è quello delle regressioni: una funzione loss tipicamente usata è il quadrato dell'errore che è un modo per stimare la distanza.\\
+\paragraph{Quadratic loss:} Il quadrato ci dice che possiamo non tenere conto del segno.\\Definita come:
+\begin{equation}
+	L(y,t) = (y-t)^2
+\end{equation}
+\begin{figure}
+	\includegraphics[scale=0.5]{immagini/quad_loss.png}
+\end{figure}\\\\
+Abbiamo quindi il seguente rischio empirico:
+\begin{equation}
+	\overline{\mathscr{R}}_{\mathscr{T}}(h) = \frac{1}{|\mathscr{T}|} \sum\limits_{(\textbf{x},t) \in \mathscr{T}} (h(\textbf{x})-t)^2
+\end{equation}
+Se facciamo in particolare regressione lineare, allora $h(x)$ è combinazione lineare dei valori delle feature $h(\textbf{x}) = \textbf{w}^T \textbf{x} + b$, dove w è il vettore dei coefficienti ed otteniamo la funzione di costo (che voglio minimizzare) quindi
+\begin{equation}
+	\mathscr{L}(\textbf{w}, b; \mathscr{T}) = \sum\limits_{(\textbf{x},t) \in \mathscr{T}} (\textbf{w}^T \textbf{x} +b -t)^2
+\end{equation}
+Vogliamo trovare fra tutti i valori dei coefficienti w e b quelli per cui l'espressione è minima. N.B: l'espressione ha come variabili w e b, mentre x e t sono dati.\\Per trovare il minimo possiamo cercare di calcolare il gradiente
+\begin{equation}
+	\frac{\partial}{\partial w_i}\mathscr{L}(\textbf{w},b;\mathscr{T}) = \sum\limits_{(\textbf{x},t) \in \mathscr{T}} (\textbf{w}^T \textbf{x}+b -t)w_i
+\end{equation}
+e
+\begin{equation}
+	\frac{\partial}{\partial b}\mathscr{L}(\textbf{w},b;\mathscr{T}) = \sum\limits_{(\textbf{x},t) \in \mathscr{T}} (\textbf{w}^T \textbf{x}+b -t)
+\end{equation}
+Un'altra funzione loss è la differenza in modulo, sempre convessa.
+\paragraph{Absolute loss} Definita come:
+\begin{equation}
+	L(t,y) = |t-y|
+\end{equation}
+\begin{figure}
+	\includegraphics[scale=0.5]{immagini/abs_loss.png}
+\end{figure}\\\\
+Serve che la funzione gradiente sia definita per ogni punto, altrimenti non saprei come muovermi per avanzare (derivata definita in ogni punto ?).\\\\Abbiamo poi la Huber loss che dentro è quadratica e poi fuori diventa lineare. 
+\paragraph{Huber loss} Definita come:
+\begin{equation}
+	L(t,y) = 
+	\begin{cases}
+		\frac{1}{2} (t-y)^2 & |t-y| \leq \delta \\
+		\delta(|t-y|) - \frac{\delta}{2} & |t-y| > \delta
+	\end{cases}
+\end{equation}
+\begin{figure}
+	\includegraphics[scale=0.5]{immagini/huber_loss.png}
+\end{figure}\\\\
+La funzione quadratica tende a penalizzare molto più di questa funzione una differenza significativa, quindi se si sbaglia il costo assegnato all'errore cresce molto di più rispetto alla funzione valore assoluto, quindi la scelta è quanto penalizzare gli errori se diventano grandi.
+
+
 \subsubsection{Funzioni di loss per la classificazione}
 In questo caso, possiamo avere diversi casi (predizioni di valore, distribuzione etc...) assumiamo di considerare classificazione binaria, che dirà quale dei due valori è corretto per le due classi ed il valore predetto è la probabilità assegnata di appartenenza ad una delle classi.\\Una prima funzione di loss è la così detta loss-01, ovvero (copia): il valore predetto è t e quello corretto è y, assumiamo che y sia 1 o -1 e vediamo il segno del valore predetto: se positivo, allora è 1 e se il valore corretto è 1 allora non abbiamo errori.\\Prendiamo quindi il valore corretto e ne facciamo il segno, per poi vedere il valore della funzione segno. Se t = .3, allora sng(t) è 1, se quindi la classe vera è 1 (y=1) allora non ho errori (0), altrimenti ho un errore (1). Sto quindi contando gli errori, la rappresentazione è la seguente: (copia).\\La funzione ha dei problemi:
 \begin{itemize}
