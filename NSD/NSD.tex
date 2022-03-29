@@ -2506,7 +2506,7 @@ si può poi creare un istogramma per raccogliere i dati e mantenere i bin dell'i
 \subsubsection{Engine di euristiche}
 Gli engine per le euristiche sono dovuti al fatto che i samples ricevuti sono troppi e non riescono ad essere analizzati velocemente, quindi implementano dei classificatori e tecniche di ML per capire se un file è malevolo o no.\\La prima versione era basata su le sequenze di API chiamate come una feature del malware. Un'altra feature usata è l'opcode delle istruzione, quindi si guarda alle sequenze o sotto-sequenze di opcodes. È possibile però avere un ammontare grande di sequenze, ad esempio architetture CISC come Intel usano un grande ammontare di NOP che quindi non serve salvare, si possono anche costruire dei pattern per riconoscere NOP più complesse come quelle nell'immagine sopra per fare filtering sulle feature del dataset (TIÈ, COME SE VEDE CHE CONOSCO IL ML).\\Un'altra tecnica è quella di usare un call function graph, spesso generato dai compilatori per ottimizzare lì dove la funzione viene eseguita spesso, come mostrato in figura:\\
 \begin{figure}[!h]
-	\includegraphics[scale=0.3]{immagini/flow_graph-png}
+	\includegraphics[scale=0.3]{immagini/flow_graph.png}
 \end{figure}\\\\
 nell'analisi del malware gli antivirus li usano costruendoli guardando solo specifiche istruzioni
 \begin{itemize}
@@ -2714,13 +2714,13 @@ mentre se si moltiplicano i due ciphertext
 otteniamo che l'ultimo membro diventa quadratico rispetto alla noise e quindi ancora peggio, si raggiunge facilmente il punto in cui non si riesce più a decifrare.\\Se il polinomio quindi ha un grado troppo alto, il fattore gioca un ruolo fondamentale e rende il ciphertext non decifrabile, quindi non si possono fare molte addizioni o moltiplicazioni.
 
 \subsubsection{Leveld fully Homomorphic Crypto}
-Trasformiamo lo schema di prima, questo schema è organizzato in livelli ed ogni livello computa una delle parti della \textbf{Evaluate}.\\Ogni KeyGen genera una sequenza di coppie di chiavi pubbliche e private: $< \textbf{pk_1},...\textbf{pk_{k+1}} >$ e $< \textbf{sk_1},...\textbf{sk_{k+1}} >$ e poi:
+Trasformiamo lo schema di prima, questo schema è organizzato in livelli ed ogni livello computa una delle parti della \textbf{Evaluate}.\\Ogni KeyGen genera una sequenza di coppie di chiavi pubbliche e private: $< \textbf{pk}_1,...\textbf{pk}_{k+1} >$ e $< \textbf{sk}_1,...\textbf{sk}_{k+1} >$ e poi:
 \begin{itemize}
 	\item si cifrano le chiavi segrete usando le chiavi pubbliche:
-	si ottiene $< \bar{\textbf{sk_1}},...\bar{\textbf{sk_{k+1}}} >$ dove $\bar{\textbf{sk_i}}$ = \textbf{Encryption(\textbf{$pk_{i+1}$, \textbf{$sk_i$}). On the fly, si possono anche decifrare.
-	\item stiamo quindi implementando la \textbf{Evaluate} come una funzione a livelli ed ogni passo stiamo decifrando i dati e ri-valutandoli, il che fa si che l'operazione divenga molto lenta:
+	si ottiene $< \bar{\textbf{sk}_1},...\bar{\textbf{sk}}_{k+1} >$ dove $\bar{\textbf{sk}_i} = \textbf{Encryption}(\textbf{pk}_{i+1}, \textbf{sk}_i)$. On the fly, si possono anche decifrare.
+	\item stiamo quindi implementando la \textbf{Evaluate} come una funzione a livelli ed ogni passo stiamo decifrando i dati e ri-valutandoli, il che fa si che l'operazione divenga molto lenta:\\
 	\begin{equation}
-		c_{i+1} \leftarrow \textbf{Evaluate}(\textbf{pk}_{i+1}, \textbf{Decrypt}, \bar{\textbf{sk_i}}, c_i)
+		c_{i+1} \leftarrow \textbf{Evaluate}(\textbf{pk}_{i+1}, \textbf{Decrypt}, \bar{\textbf{sk}_i}, c_i)
 	\end{equation}
 	\item possiamo quindi ad ogni passo rimuovere la noise
 \end{itemize}
