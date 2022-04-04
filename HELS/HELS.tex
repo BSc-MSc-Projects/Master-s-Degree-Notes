@@ -1288,29 +1288,151 @@ dove abbiamo:
 
 \chapter{Lezione 8}
 \section{Far field - link simmetrici}
-Abbiamo considerato il link diretto, dove abbiamo che i due dispositivi sono posti a distanza grande rispetto alla distanza di (fonofer scopri come se scrive).\\Continuiamo con link diretti, ricaviamo dalla formula di fris la distanza massima del collegamento: introduciamo una p del ricevitore che è la power sensitivity del ricevitore: se $P_{rx} \geq p_{rx}$ allora li link sarà attivo altrimenti non si stabilisce.\\Considerando l'uguaglianza, possiamo trovare la distanza massima con cui tale collegamento si stabilisce: $P_{rx} = p_{rx}$. facciamo Fris$^{-1}$ e trviamo che $d_{max} = \frac{\lambda}{4\pi} \sqrt{\dfrac{G_{TX} P_{TX}G_{RX}\tau_{TX} \tau_{RX}}{p_{rx}} \eta}$. Se abbiamo adattato il tx, abbiamo una proporzionalità (copia) e se anche il ricevitore è fissato abbiamo prop. com (copia).\\In dB, avremo che $d_{max} \propto \frac{1}{2} G_{RX}$, sappiamo che 3dB è circa un 2x di guadagno, ogni 6dB (4 volte di guadagno) si ha un raddoppio della distanza del link (la radice la porta a 2).\\Invece, un aumento di guadagno di 3dB dice che òa distanza di lettura aumenta di un fattore $\sqrt{2}$ (circa 1 volta e mezza) (IMPORTANTE).\\Facciamo un grafico questo concetto: (copia grafico)\\c'è un'attenuazione che andrebbe come $(\frac{d}{\lambda})^{-2}$. Avendo quindi fissato il sistema di lettura, un modo per aumentare la distanza è cercare di abbassare la sensitivity (ma ci sono i limiti fisici ad un certo punto).\\Per link simmetrici vale la stessa cosa, basta invertire rx con tx, in questo caso il trasponder è dotato di una sorgente locale di alimentazione.
+Abbiamo considerato il link diretto, dove abbiamo che i due dispositivi sono posti a distanza grande rispetto alla distanza di Fraunhofer.\\Continuiamo con link diretti, ricaviamo dalla formula di Friis la distanza massima del collegamento: introduciamo una p del ricevitore che è la power sensitivity del ricevitore: se $P_{rx} \geq p_{rx}$ allora li link sarà attivo altrimenti non si stabilisce.\\Considerando l'uguaglianza, $P_{rx} = p_{rx}$, possiamo trovare la distanza massima per cui tale collegamento si stabilisce: facciamo Friis$^{-1}$ e troviamo che
+\begin{equation}
+	d_{max} = \frac{\lambda}{4\pi} \sqrt{\dfrac{G_{TX} P_{TX}G_{RX}\tau_{TX} \tau_{RX}}{p_{rx}} \eta_P}	
+\end{equation}
+dove:
+\begin{itemize}
+	\item se il tx è adattato, abbiamo una proporzionalità $\propto \sqrt{\frac{G_{RX}}{p_{RX}}}$
+	\item se invece c'è adattamento anche con il ricevitore c'è proporzionalità con  $\propto \sqrt{G_{RX}}$
+\end{itemize}
+In dB, avremo che 
+\begin{equation}
+	d_{max}\bigg\rvert_{dB} \propto \frac{1}{2} G_{RX}\bigg\rvert_{dB}
+\end{equation}
+sappiamo che 3dB è circa un 2x di guadagno, ogni 6dB (4 volte di guadagno) si ha un raddoppio della distanza del link (la radice la porta a 2).\\Invece, un aumento di guadagno di 3dB dice che la distanza di lettura aumenta di un fattore $\sqrt{2}$ (circa 1 volta e mezza) (IMPORTANTE).\\Facciamo un grafico per questo concetto:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/gain_dist.png}
+\end{figure}\\\\
+c'è un'attenuazione che andrebbe come $(\frac{d}{\lambda})^{-2}$. Avendo quindi fissato il sistema di lettura, un modo per aumentare la distanza è cercare di abbassare la sensitivity (ma ci sono i limiti fisici ad un certo punto).\\Per link simmetrici vale la stessa cosa, basta invertire rx con tx, in questo caso il trasponder è dotato di una sorgente locale di alimentazione.
+
 \section{Far field - link asimmetrici}
-Qui i ruoli fra transponder ed interrogatore non si scambiano mai, applicheremo quindi nuovamente un protocollo di modulazione dell'impedenza, ma non nell'accoppiamento bensì nel back scattering (riflessione).\\Immaginiamo la seguente situazione: (copia disegno)\\la distanza d è di campo lontano, il reader avrà un suo guadagno $G_R$ ed anche il transponder $G_T$.\\Il reader manderà un segnale ed il transponder lo andrà a riflettere modulandolo: avremo un vettore di Pointing dal transponder verso il reader e poi ci sarà un giro di round trip indietro, abbiamo un fenomeno di \textbf{scattering}, che verrà pilotata dal carico.\\Questo è il classico modello radar, dove c'è un antenna che manda impulsi verso un aereo ma qui la differenza è che il segnale che torna indietro deve portare informazione ovvero una sequenza binaria.\\Scriviamo la densità di potenza $S_{R \rightarrow T}(d) = \frac{1}{2Z_0}\abs{E_{R \rightarrow T}(d)}^2$ che si può anche scrivere come (copia) dove la I è l'intensità di radiazione che è densità di potenza per unità di angolo solido.\\Entra in gioco nel guadagno dell'antenna trasmittente: $G_R = \frac{I_R 4\pi}{P_R}$ da cui possiamo ricavare $P_R = \frac{P_{in}G_R}{4 \pi}$, la inseriamo nell'espressione della densità di potenza ottenendo $S_{R \rightarrow T}(d) = \frac{P_{in}G_R}{4 \pi d^2}$ che ci dive come si attenua la potenza man mano che ci si allontana da una sfera di raggio d (o diametro?).\\Introduciamo ora il concetto di \textbf{radar cross-action}: è l'area di uno scatteratore isotropico (riflette allo stesso modo in tutte le direzioni), quindi una sferetta metallica, che una volta investita dal campo retro-diffonde nella direzione dove c'è il mio oggetto la stessa quantità di potenza.\\È la $\sigma$, che va valutata in campo lontano ($d \rightarrow \infty$) $\sigma \lim\limits_{r \rightarrow \infty} 4 \pi r^2 $(copia).\\Utilizzo: conosciamo il campo incidente, possiamo quindi calcolare il campo che emerge dal transponder e torna indietro dal ricevitore: (copia).\\È la potenza $S_{R \rightarrow T}(d)$ e che quindi porterà il segnale che torna indietro.\\La potenza rilasciata sul carico del ricevitore sarà uguale : $S_{R \rightarrow T}(d) \cdot A_{C,R}$ dove $A_C$ è l'area efficacie del reader, ovvero una superficie equivalente che se investita da un'onda raccoglie una quantità di potenza uguale da quella che avrebbe raccolto l'antenna (ed è più piccola dell'area geometrica) (?? vedi bene).\\Mettendo quindi tutto dentro: (copia)\\ci aggiungiamo $\eta_P$ (polarization loss factor) perché se abbiamo un oggetto di una certa forma ed irradiamo con un campo, per effetto della forma probabilemnte il campo scatterato avrà una forma differente, quindi quando incide sull'antenna può non avere la stessa polarizzazione di quando è partito e quindi si tiene in conto con questo fattore. (copia)\\Questa è l'equazione del radar, dipende anche dalla capacità di scatterare del transponder in una direzione rispetto che in un'altra.\\Abbiamo anche che $\sigma$ può essere considerata in due casi:
+Qui i ruoli fra transponder ed interrogatore non si scambiano mai, applicheremo quindi nuovamente un protocollo di modulazione dell'impedenza, ma non nell'accoppiamento bensì nel back scattering (riflessione).\\Immaginiamo la seguente situazione:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/back_scatt.png}
+\end{figure}
+\\\\la distanza d è di campo lontano, il reader avrà un suo guadagno $G_R$ ed anche il transponder $G_T$.\\Il reader manderà un segnale ed il transponder lo andrà a riflettere modulandolo: avremo un vettore di Pointing dal transponder verso il reader e poi ci sarà un giro di round trip indietro, abbiamo un fenomeno di \textbf{scattering}, che verrà pilotata dal carico.\\Questo è il classico modello radar, dove c'è un antenna che manda impulsi verso un aereo ma qui la differenza è che il segnale che torna indietro deve portare informazione ovvero una sequenza binaria.\\Scriviamo la densità di potenza 
+\begin{equation}
+	S_{R \rightarrow T}(d) = \frac{1}{2Z_0}\abs{E_{R \rightarrow T}(d)}^2	
+\end{equation}
+che si può anche scrivere come 
+\begin{equation}
+	S_{R \rightarrow T}(d) = I_{R \rightarrow T} \cdot \frac{1}{d^2}
+\end{equation}
+dove la I è l'intensità di radiazione che è densità di potenza per unità di angolo solido ($\frac{W}{sk}$).\\Entra in gioco nel guadagno dell'antenna trasmittente
+\begin{equation}
+	G_R = \frac{I_R 4\pi}{P_R}	
+\end{equation}
+da cui possiamo ricavare 
+\begin{equation}
+	P_R = \frac{P_{in}G_R}{4 \pi}	
+\end{equation}
+la inseriamo nell'espressione della densità di potenza ottenendo 
+\begin{equation}
+	S_{R \rightarrow T}(d) = \frac{P_{in}G_R}{4 \pi d^2}	
+\end{equation}
+che ci dice come si attenua la potenza man mano che ci si allontana da una sfera di raggio d.\\Introduciamo ora il concetto di \textbf{radar cross-section}: è l'area di uno scatteratore isotropico (riflette allo stesso modo in tutte le direzioni), quindi una sferetta metallica, che una volta investita dal campo retro-diffonde nella direzione dove c'è il mio oggetto la stessa quantità di potenza.\\È la $\sigma$, che va valutata in campo lontano ($d \rightarrow \infty$):
+\begin{equation}
+	\sigma = \lim\limits_{r \rightarrow \infty} 4 \pi r^2 \dfrac{S^{scatt}}{S^{in}} = \lim\limits_{r \rightarrow \infty} 4 \pi r^2 \dfrac{\abs{E^{scatt}}^2}{\abs{E^{in}}^2}
+\end{equation}
+Come si utilizza: conosciamo il campo incidente, possiamo quindi calcolare il campo che emerge dal transponder e torna indietro dal ricevitore: 
+\begin{equation}
+	S_{R \leftarrow T}(d) = \sigma \dfrac{S_{R \rightarrow T}(d)}{4\pi d^2}
+\end{equation}
+è la potenza $S_{R \leftarrow T}(d)$ e che quindi porterà il segnale che torna indietro.\\La potenza rilasciata sul carico del ricevitore sarà uguale a: 
+\begin{equation}
+	P_{R \leftarrow T}S_{R \leftarrow T}(d) \cdot A_{C,R}
+\end{equation}
+dove $A_C$ è l'area efficace del reader, ovvero una superficie equivalente che se investita da un'onda raccoglie una quantità di potenza uguale da quella che avrebbe raccolto l'antenna (ed è più piccola dell'area geometrica): 
+\begin{equation}
+	A_e = \lambda^2 \frac{G}{4 \pi}
+\end{equation}
+Mettendo quindi tutto dentro: 
+\begin{equation}
+	P_{R \leftarrow T} = \dfrac{P_{in}G_RA_{e,R}}{(4\pi d^2)^2} \eta_P \sigma_T
+\end{equation}
+ci aggiungiamo $\eta_P$, che è il \textbf{polarization loss factor}, perché se abbiamo un oggetto di una certa forma ed irradiamo con un campo, per effetto della forma probabilmente il campo scatterato avrà una forma differente, quindi quando incide sull'antenna può non avere la stessa polarizzazione di quando è partito e quindi si tiene in conto con questo fattore.\\Questa è l'equazione del radar, dipende anche dalla capacità di scatterare del transponder in una direzione rispetto che in un'altra.\\Abbiamo anche che $\sigma$ può essere considerata in due casi:
 \begin{itemize}
 	\item monostatica: il segnale è raccolto dalla stessa antenna che interroga
 	\item bistatico: abbiamo due antenne, una illumina il bersaglio ed un'altra prende il segnale retro-diffuso (tipicamente c'è un vantaggio per quanto riguarda la qualità del segnale)
 \end{itemize}
-ragioniamo con situazione monostatica:\\la potenza che torna indietro è $\propto \frac{1}{d^4}$ perché deve fare un round trip quindi abbiamo due attenuazioni da $\frac{1}{d^2}$ quindi il segnale retrodiffuso è molto flebile rispetto ad un oggetto che sta trasmettendo di suo.\\Dobbiamo ora fare in modo che arrivi dell'informazione: occorre intanto isolare il dispositivo da tutto il riflesso dell'ambiente. Questo si ottiene con la modulazione, in modo che il segnale che si sovrappone al disturbo oscilli.\\Passiamo ad un'antenna che abbia un'impedenza d'ingresso $Z_a$ ed un carico $Z_L$ con un generatore equivalente che tiene conto del campo che arriva, possiamo esprimere $\sigma$ come $\frac{\lambda^2}{4 \pi} G \abs{A - \Gamma^*}^2$ quindi è lo scattering di un dispositivo caricato.\\$\Gamma^*$ è un coefficiente di riflessione generalizzato, dato dal coefficiente che vedo fra l'antenna ricevente ed il suo carico. Ha come differenza rispetto al classico che c'è un complesso coniugato, perché c'è qualcosa che deve immagazzinare energia.\\ A è un complesso che dipende da forma e soprattutto dimensione dell'antenna scatterante: se la dimensione di tale antenna è $L << \lambda$ allora $A \simeq 1$. In queste condizioni la $\sigma$ del transponder sarà data da: (copia, più passaggi) ottenendo $\sigma_T = \frac{\lambda^2}{4 \pi} G_T^2 $(copia) aggiungiamo di nuovo l'efficienza di polarizzazione perché l'oggetto può cambiare la polarizzazione.\\Questa è quindi l'area di scattering equivalente con un guadagno $G_T$ ed una certa impedenza del carico, che  quella che possiamo variare per far variare l'RCS: possiamo quindi controllare quanto questo oggetto rifletta, se lo facciamo on due stati cambia l'informazione che torna indietro e quindi possiamo mandare informazione.\\Abbiamo che $P_{R \rightarrow T} = (\frac{\lambda}{4 \pi d})^4 P_{in} G_R^2 G_T^2 \dfrac{4 R_{in,T}^2}{\abs{Z_L + Z_{IN,T}}^2} \eta_P^2$ ci interessa che l'equazione sia dominabile andando ad agire sull'impedenza del carico.
+ragioniamo con situazione monostatica:\\la potenza che torna indietro è $\propto \frac{1}{d^4}$ perché deve fare un round trip quindi abbiamo due attenuazioni da $\frac{1}{d^2}$ quindi il segnale retrodiffuso è molto flebile rispetto ad un oggetto che sta trasmettendo di suo.\\Dobbiamo ora fare in modo che arrivi dell'informazione: occorre intanto isolare il dispositivo da tutto il riflesso dell'ambiente. Questo si ottiene con la modulazione, in modo che il segnale che si sovrappone al disturbo oscilli.\\Passiamo ad un'antenna che abbia un'impedenza d'ingresso $Z_a$ ed un carico $Z_L$ con un generatore equivalente che tiene conto del campo che arriva, possiamo esprimere $\sigma$ come
+\begin{equation}
+	\sigma = \frac{\lambda^2}{4 \pi} G \abs{A - \Gamma^*}^2 
+\end{equation}
+quindi è lo scattering di un dispositivo caricato.\\$\Gamma^*$ è un coefficiente di riflessione generalizzato, dato dal coefficiente che vedo fra l'antenna ricevente ed il suo carico. Ha come differenza rispetto al classico che c'è un complesso coniugato, perché c'è qualcosa che deve immagazzinare energia.\\ A è un complesso che dipende da forma e soprattutto dimensione dell'antenna scatterante: se la dimensione di tale antenna è $L << \lambda$ allora $A \simeq 1$. In queste condizioni la $\sigma$ del transponder sarà data da:
+\begin{equation}
+	\sigma_T = \frac{\lambda^2}{4\pi}G_T^2 \abs{1 - \dfrac{Z_L - Z_{in,T}^*}{Z_L + Z_{in,T}}^2}
+\end{equation}
+da cui, avendo $Z_{in,T} = Z_A$ e sviluppando il comun denominatore:
+\begin{equation}
+	\abs{\dfrac{Z_L + Z_{in,T}-Z_L +Z_{in,L}^*}{Z_L + Z_{in,T}}^2} = \dfrac{4R_{in,T}^2}{\abs{Z_L + Z_{in,T}}^2}
+\end{equation}
+ottenendo infine
+\begin{equation}
+	\sigma_T = \frac{\lambda^2}{4 \pi} G_T^2 \dfrac{4R_{in,T}^2}{\abs{Z_L + Z_{in,T}}^2} \eta_P 
+\end{equation}
+aggiungiamo di nuovo l'efficienza di polarizzazione perché l'oggetto può cambiare la polarizzazione.\\Questa è quindi l'area di scattering equivalente con un guadagno $G_T$ ed una certa impedenza del carico ($Z_L$), che  quella che possiamo variare per far variare l'RCS: possiamo quindi controllare quanto questo oggetto rifletta, se lo facciamo on due stati cambia l'informazione che torna indietro e quindi possiamo mandare informazione.\\Abbiamo che
+\begin{equation}
+	P_{R \leftarrow T} = (\frac{\lambda}{4 \pi d})^4 P_{in} G_R^2 G_T^2 \dfrac{4 R_{in,T}^2}{\abs{Z_L + Z_{in,T}}^2} \eta_P^2	
+\end{equation} 
+ci interessa che l'equazione sia dominabile andando ad agire sull'impedenza del carico.
+
 \subsubsection{Modulazione di impedenza}
 Immaginiamo di avere due stati:
 \begin{itemize}
 	\item 0, associato ad un'impedenza di carico che sia virtualmente un circuito aperto $Z_L \rightarrow \infty$, e quindi $P_{R \rightarrow T} = 0$
-	\item per lo stato 1 si può scegliere: $Z_L = 0$ (corto circuito) che ci da (copia) una potenza $\neq 0$
+	\item per lo stato 1 si può scegliere: $Z_L = 0$ (corto circuito) che ci da una potenza 
+	\begin{equation}
+		P_{R \leftarrow T} = (\frac{\lambda}{4 \pi d})^4 P_{in}G_R^2G_T^2 \cdot \dfrac{4 R_{in,T}^2}{\abs{Z_{in,T}}^2} \eta_P^2 \neq 0
+	\end{equation}
 \end{itemize}
-così possiamo cambiare a piacimento la potenza retro diffusa.\\Una scelta di questi due livelli ha un grosso limite: l'oggetto comincia a riflettere ciò che arriva, ma se il RX switcha fra $\infty$ e 0, l'aspetto critico è che, funzionando solo con l'energia che arriva da lontano, non raccolgo quindi potenza: non c'è un carico collegato, quindi la corrente raccolta non può essere immagazzinata.\\Conviene quindi che uno dei due stati sia compresa fra $0$ ed $\infty$, quindi prendiamo $Z_L = Z_{IN,T}^*$ dove quindi in questo stato assorbe e immagazzina energia, mentre nell'altro caso no: (copia) non c'è più dipendenza fra le impedenze. Quindi, nel caso 1 non abbiamo carica remota per il dispositivo, perché non è in grado di raccoglierla.\\Vediamo ora come avviene effettivamente la comunicazione: (copia immagine) abbiamo poi gli altri oggetti che saranno di dimensioni sicuramente più grandi di quelle di tx ed rx. Quando tx produce il suo campo, immaginiamo un'onda continua che si distribuisce in varie direzioni avremo una riflessione non modulata, quindi la stessa sinusoide con la stessa frequenza (attenuata) che finirà sull'rx e poi l'effetto prodotto dalla modulazione di impedenza: (copia disegno) abbiamo quindi nel carico del transponder nuovamente uno switch che connette due stati.\\Avremo quindi l'inviluppo con dentro l'onda che viene riflessa: ha la stessa frequenza del reader ma è modulata in ampiezza.\\Sul reader ci sarà la somma delle onde blu e rosse, l'ambiente grande rifletterà molto di più dell'oggetto che trasmette: (copia altro disegno) ai capi del transponder vedremo quindi un qualcosa del genere: (copia ulteriore disegno) avremo quindi il segnale totale al reader, tolta la sinusoide rimane l'inviluppo e possiamo estrarre il valore inviato.\\Si chiama \textbf{modulazione di back scattering}, che è la tecnologia con cui funzionano tutti i sistemi di identificazione in radiofrequenza.\\Per la distanza massima del collegamento, dobbiamo tenere conto che 
+così possiamo cambiare a piacimento la potenza retro diffusa.\\Una scelta di questi due livelli ha un grosso limite: l'oggetto comincia a riflettere ciò che arriva, ma se il RX switcha fra $\infty$ e 0, l'aspetto critico è che, funzionando solo con l'energia che arriva da lontano, non raccolgo quindi potenza: non c'è un carico collegato, quindi la corrente raccolta non può essere immagazzinata.\\Conviene quindi che uno dei due stati sia compresa fra $0$ ed $\infty$, quindi prendiamo $Z_L = Z_{IN,T}^*$ dove quindi in questo stato assorbe e immagazzina energia, mentre nell'altro caso no: 
+\begin{equation}
+	P_{R \leftarrow T} = (\frac{\lambda}{4 \pi d})^4 P_{in} G_R^2G_T^2\eta_P^2
+\end{equation}
+non c'è più dipendenza fra le impedenze. Quindi, nel caso 1 non abbiamo carica remota per il dispositivo, perché non è in grado di raccoglierla.\\Vediamo ora come avviene effettivamente la comunicazione: nello spazio possiamo avere persone, altri oggetti che saranno di dimensioni sicuramente più grandi di quelle di tx ed rx. Quando tx produce il suo campo, immaginiamo un'onda continua che si distribuisce in varie direzioni avremo una riflessione non modulata, quindi la stessa sinusoide con la stessa frequenza (attenuata) che finirà sull'rx e poi l'effetto prodotto dalla modulazione di impedenza:\\ 
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/mod_transp_01.png}
+\end{figure}
+\\\\abbiamo quindi nel carico del transponder nuovamente uno switch che connette due stati.\\Avremo quindi l'inviluppo con dentro l'onda che viene riflessa: ha la stessa frequenza del reader ma è modulata in ampiezza.\\Sul reader ci sarà la somma delle onde blu e rosse, l'ambiente grande rifletterà molto di più dell'oggetto che trasmette:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/onda_verso_reader.png}
+\end{figure}
+\\\\ai capi del transponder vedremo quindi un qualcosa del genere:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/ris_capi_transp.png}
+\end{figure}
+\\\\avremo quindi il segnale totale al reader, tolta la sinusoide rimane l'inviluppo e possiamo estrarre il valore inviato.\\Si chiama \textbf{modulazione di back scattering}, che è la tecnologia con cui funzionano tutti i sistemi di identificazione in radiofrequenza.\\Per la distanza massima del collegamento, dobbiamo tenere conto che 
 \begin{itemize}
-	\item il link diretto,governato dalla formula di Friis serve ad accendere ed alimentare il transponder. Questo va come $(\frac{d}{\lambda})^2$ e si attiva quando (copia)
-	\item il link inverso, che va da transponder a reader e serve a modulare il backscattering (copia anche qui)
+	\item il link diretto ($R \rightarrow T$),governato dalla formula di Friis serve ad accendere ed alimentare il transponder. Questo va come $(\frac{d}{\lambda})^2$ e si attiva quando $P_{R \rightarrow T} \geq P_T$
+	\item il link inverso ($R \leftarrow T$), che va da transponder a reader e serve a modulare il backscattering. Va come $(\frac{d}{\lambda})^4$ Si attiva quando $P_{R \leftarrow T} \geq P_R$
 \end{itemize}
-il link si stabilisce quindi quando sono verificate ambe due le condizioni. Anche qui facciamo un grafico per capire la distanza massima del collegamento: (copia disegno)\\ dove $p_R << p_T$ in quanto $p_R: -100dBm - -70 dBm$ mentre $p_T: -20 dBm - -5 dBm$, avremo quindi che $\d_{max} = min\{d_D, d_I\}$ tipicamente il bottleneck è il link al quale compete la lunghezza più breve che è quasi sempre il link diretto.
+il link si stabilisce quindi quando sono verificate ambe due le condizioni. Anche qui facciamo un grafico per capire la distanza massima del collegamento:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.2]{immagini/bs_max_d.png}
+\end{figure}
+\\\\ dove $p_R << p_T$ in quanto $p_R: -100dBm \% -70 dBm$ mentre $p_T: -20 dBm \% -5 dBm$, 
+
+avremo quindi che $d_{max} = min\{d_D, d_I\}$ tipicamente il bottleneck è il link al quale compete la lunghezza più breve che è quasi sempre il link diretto.
+
 \subsection{Logica di modulazione}
-Cosa c'è nel transponder per acquisire energia e pilotare il transponder alto/basso: c'è una logica di modulazione che ha delle parti analogiche e delle parti digitali.\\Lo schema è il seguente: (copia immagine)\\
-la prima cosa che avviene è un passaggio da analogico a digitale, c'è un rettificatore (immaginiamo un diodo collegato ad un condensatore, come se fosse la batteria virtuale del dispositivo) si passa quindi da AC a DC, la corrente alimenterà i componenti, primo fra cui il modulatore.\\Il modulatore comanda il carico e lo fa aprire o chiudere fra due valori, la frequenza a cui vengono fatte queste operazioni è tipicamente più bassa della $f_0$ di interrogazione: c'è un clock che scandisce tale frequenza, quindi anche il segnale di clock serve per gestire il modulatore. Abbiamo poi la RAM che mantiene l'informazione, da cui si legge e su cui si scrive.\\Tutta l'attività è svolta da un circuito integrato che è molto piccolo (chip da 0.5mm - 3mm)\\La prima parte è analogica dove avviene l'energy harvesting, ovvero il raccogliere l'energia, poi c'è il blocco di data modulation ed infine il data access che sono parti digitali.\\Il blocco analogico mette in contatto col mondo esterno, quello digitale serve per fare le operazioni.\\Da un punto di vista a radio frequenza, ci interessa la $Z_L$ per fare i calcoli di adattamento: vedremo l'impedenza del primo blocco analogico: avremo una parte reale dovuta alle perdite e poi un condensatore che serve ad immagazzinare l'energia che arriva da fuori, che può essere serie o parallelo (copia disegno), avremo che $Z_C = R_{IC} - \frac{1}{j \omega C_{IC}}$ dove la parte $R_{IC}$ (copia) è quindi questo il circuito a cui l'antenna di deve adattare per avere un $\tau_T = 1$, deve avvenire che (copia), quindi l'antenna deve essere progettata per lavorare non in risonanza (induttanza ?), sarà l'insieme ad essere risonante.
+Cosa c'è nel transponder per acquisire energia e pilotare il transponder alto/basso: c'è una logica di modulazione che ha delle parti analogiche e delle parti digitali.\\Lo schema è il seguente:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/log_mod.png}
+\end{figure}\\\\
+la prima cosa che avviene è un passaggio da analogico a digitale, c'è un rettificatore (immaginiamo un diodo collegato ad un condensatore, come se fosse la batteria virtuale del dispositivo) si passa quindi da AC a DC, la corrente alimenterà i componenti, primo fra cui il modulatore.\\Il modulatore comanda il carico e lo fa aprire o chiudere fra due valori, la frequenza a cui vengono fatte queste operazioni è tipicamente più bassa della $f_0$ di interrogazione: c'è un clock che scandisce tale frequenza, quindi anche il segnale di clock serve per gestire il modulatore. Abbiamo poi la RAM che mantiene l'informazione, da cui si legge e su cui si scrive.\\Tutta l'attività è svolta da un circuito integrato che è molto piccolo (chip da 0.5mm - 3mm)\\La prima parte è analogica dove avviene l'energy harvesting, ovvero il raccogliere l'energia, poi c'è il blocco di data modulation ed infine il data access che sono parti digitali.\\Il blocco analogico mette in contatto col mondo esterno, quello digitale serve per fare le operazioni.\\Da un punto di vista a radio frequenza, ci interessa la $Z_L$ per fare i calcoli di adattamento: vedremo l'impedenza del primo blocco analogico: avremo una parte reale dovuta alle perdite e poi un condensatore che serve ad immagazzinare l'energia che arriva da fuori, che può essere serie o parallelo\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/parte_imm.png}
+\end{figure}\\\\avremo che $Z_C = R_{IC} - \frac{1}{j \omega C_{IC}}$ dove la parte $R_{IC}$ è tra $1 \Omega - 20 \Omega$, mentre il denominatore stra fra $100 - 200 \Omega$, è quindi questo il circuito a cui l'antenna di deve adattare per avere un $\tau_T = 1$, deve avvenire che\\ 
+\[
+	\begin{cases}
+	R_{in,T} = R_{ic}\\
+	X_{in,T} = -X_{in,C}	
+	\end{cases}
+\]
+\\quindi l'antenna deve essere progettata per lavorare non in risonanza (induttanza ?), sarà l'insieme ad essere risonante.
 
 \chapter{Lezione 9}
 
