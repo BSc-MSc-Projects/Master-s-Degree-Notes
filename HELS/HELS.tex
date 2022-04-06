@@ -1435,33 +1435,239 @@ la prima cosa che avviene è un passaggio da analogico a digitale, c'è un retti
 \\quindi l'antenna deve essere progettata per lavorare non in risonanza (induttanza ?), sarà l'insieme ad essere risonante.
 
 \chapter{Lezione 9}
+\section{Lezioncina di storia}
+Abbiamo visto vari meccanismi di comunicazione sul corpo umano, sia a bassissima distanza con oggetti nel corpo, sia con oggetti sul corpo ed anche come possa avvenire la trasmissione di informazione senza usare batteria.\\Vediamo un implementazione di queste tecnologie di comunicazione basate su modulazione, introduciamo l'identificazione a radio frequenza: nata come evoluzione del codice a barre ed evoluta nelle applicazioni sensoristiche.\\Leon Theremin: inventore Russo dell'800, noto per il \textbf{theremin}: strumento musica suonato con le mani, sfrutta l'EM per suonare (ha un dipolo ed un loop), quindi muovendo le mani si può cambiare timbro ed altezza del suono.\\Guerra fredda: America e Russia non si vogliono bene ( :'( ), donarono all'ambasciatore Russo (?) un'antenna nascosta senza batterie, così che gli Americani avevano ascoltato le comunicazioni. Primo oggetto spia della storia inventato da Theremin, \textbf{the great seal bug}, la cosa interessante è che non aveva fonte di alimentazione: monopolo, che termina in una membrana sottile che è quindi una cavità risonante (un microfono a condensatore), le onde sonore mettevano in risonanza l'oggetto ma così non viene trasmesso nulla. Al di fuori, la spia inviava una portante a 300MHz, che viene raccolta dal monopolo. Questo vede una capacità variabile e gli cambia la frequenza di risonanza effettuando una modulazione in ampiezza (back scattering, 80 anni fa :O).\\\\È il primo esempio di dispositivo di spionaggio. (metti qualche immaginetta?) \\Passati gli anni, venne ripreso per applicazioni civili
+
+\section{IoT - introduzione}
+La tecnologia dell'RFID si innesta nel contesto di come sta cambiando l'Internet adesso: l'Internet di ieri è una comunicazione host-to-host passando per la rete, oggi internet si sta "spalmando" nel mondo, quindi si mescola al tessuto quotidiano diventandone parte integrante.\\Già 30 anni fa si ipotizzava che il PC sarebbe stato spezzato e distribuito in casa su diversi schermi (foto della Siemens di 30 anni fa), senza più doversi sedere davanti al PC fisso.\\Quasi tutti gli oggetti oggi hanno delle espansioni digitali (es libri, QR code etc...), SPIME: (SPace + tIME), nell'internet di domani avremo un sistema nervoso che ingloba sia linee che trasmettono dati che nodi che includono sensori ed hanno capacità di captare cosa accade intorno.\\Tutti i sensori di mare, terra etc... servono per avere una comprensione maggiore per poter poi prendere delle decisioni in maniera più consapevole, il tutto è sia in macro-scala che micro-scala, ad esempio oggetti che possono essere impiantati nel corpo umano per capire meglio come questo funzioni.\\Arriviamo all'IoT, il presente: sensori apposti su qualunque tipo di oggetto nella manifattura dei dispositivi e comunicano con il nucleo di Internet mediante la comunicazione wireless.\\Ha molte declinazioni, fra cui "Industria 4.0", in cui non c'è solo il controlla automatico, la robotica ma anche l'interconnessione fra gli oggetti.\\Per avere IoT serve:
+\begin{itemize}
+	\item capacità di etichettare gli oggetti
+	\item capacità di misurare una grandezza fisica
+	\item la capacità di essere localizzato
+\end{itemize}
+es: il cellulare fra IoT, in quanto fra i compiti che svolge geolocalizza (AAAA GOOGLE SA DOVE SONO AIUTO), tracciando la posizione nel tempo: è possibile creare un "digital twin" del mondo reale, nel quale riusciamo a ricostruire anche le interazioni logiche e fisiche.\\Applicazioni dell'IoT: siamo ancora agli albori, si può immaginare di usare i dati in combinazione con AI per l'agricoltura di precisione (riducendo i pesticidi), smart cities, medicina smart etc... da qui viene estratta una "saggezza" ovvero la capacità di prendere decisioni.\\Il grosso degli oggetti interconnessi sono
+\begin{itemize}
+	\item automobili
+	\item webcams
+	\item ...
+\end{itemize}
+Noi (loro) siamo (sono) interessati in Internet of Helthcare Things: sono oggetti che possano essere identificati univocamente, connessi ad internet e capaci di comunicare l'un l'altro ed usati in ambiente medico. Cosa si può fare:
+\begin{itemize}
+	\item localizzare gli asset: in un ospedale ci sono molti oggetti, che si perdono. A livello minimo se ne fa il tracking
+	\item gestione automatica delle risorse, dove in senso lato è anche capire lo stato di salute del paziente
+\end{itemize}
+Vantaggi:
+\begin{enumerate}
+	\item punto di vista del paziente: può essere monitorato in continuo da remoto, quindi poter avere la possibilità di avere warning nel caso in cui qualche parametro vitale stia andando fuori controllo (anche ad es. se si cade).\\C'è anche possibilità di avere assistenza da remoto in caso di eventi come cadute e non ultimo la possibilità di trasferire dati ad una centrale di controllo remota.\\Infine, consulti medici da remoto ed automatic reminder, ovvero la possibilità che la rete ricordi che devo fare delle cose come prendere delle medicine
+	\item staff medico: un po' il duale, ovvero la possibilità di avere un accesso remoto allo storico del paziente.\\Poter usare algoritmi (AI) per individuare nei dati dei pattern anomali (pattern recognition?). Accesso alla cartella clinica del paziente con un web browser.
+	\item manager: può meglio controllare il fatto che alcuni dispositivi vengano rubati, ma può anche avere una notifica quando questi escono da una certa area.\\Può fare analisi statistiche sul consumo di apparecchiature, ottimizzare il personale in una sala operatoria, capire come si muove il personale durante un intervento.\\Non ultimo, pianificare la manutenzione preventiva.
+\end{enumerate}
+Un oggetto è detto interconnesso quando ha una o più di queste caratteristiche:
+\begin{itemize}
+	\item identificazione
+	\item localizzazione
+	\item auto-diagnosi
+	\item sensing
+	\item attuazione (anche da remoto)
+	\item local computing (edge computing: es, estrarre delle feature e mandare solo quelle nel cloud e non tutti i dati pesanti)
+\end{itemize}
+per interconnettere l'oggetto, si usa elettronica microscopica: oggetti piccoli quanto granelli di sabbia, che si collegano ad antenne di forma variabile in base alla frequenza, ottenendo una catena per cui c'è:
+\begin{itemize}
+	\item sensore, spesso senza batteria che contiene un ID e lo stato fisico di ciò che misura
+	\item acceso da remoto con la tecnica di modulazione in back-scattering
+	\item l'oggetto intermedio acquisisce l'informazione e lo manda nel cloud
+\end{itemize}
+È, a livello minimo, il \textbf{primo metro dell'IoT}, da cui si possono implementare tutti i servizi aggiuntivi.
+
+\section{RFID}
+
+In un sistema di identificazione ci sono:
+\begin{itemize}
+	\item identificatore che tx ed rx, dove ci sono aspetti di antenne, propagazione ed eventualmente sensistica
+	\item transponder, spesso chiamato tag in quanto è nato come evoluzione del codice a barre. Riceve un comando, si attiva e rimanda un dato
+\end{itemize}
+ragioniamo su dispositivi di etichettatura EM: 
+\begin{itemize}
+	\item in principio ci sono state le etichette stampate, dove c'è tutto ciò che serve sapere e si legge
+	\item codice a barre, salto concettuale enorme. È una rappresentazione visiva di un "numero" (\textbf{NUMERELLO SOTTO}). Rispetto al precedente, l'informazione non è scritta nel codice a barre, che appunto contiene solo un codice ed è quindi un puntatore ad un file dove c'è effettivamente l'informazione.\\Quindi si entra da tutt'altra parte dove poi si legge il dato: viene letto in maniera ottica, la distanza è di pochi cm (ma scandit ha fottuto questa distanza).
+	\item carte magnetiche o smart card: funziona concettualmente come il codice a barre, ma mentre quest'ultimo è leggibile, qui è nascosto in un chip o codificato nella striscia magnetica quindi per leggerlo occorre dare energia dall'esterno. Possiamo quindi immagazzinare più dati, in alcuni casi riscriverli, ma senza adeguato lettore o software io, \textbf{UOMO DELLA STRADA} non posso leggere il dato
+	\item RFID, dove il comportamento è lo stesso della smart card ma la lettura avviene in modalità wireless, quindi senza contatto galvanico.\\Anche qui c'è un puntatore e quindi il dato può essere cambiato senza cambiare il codice.
+\end{itemize}
+Differenza fra barcode ed RFID:
+\begin{itemize}
+	\item quantità di dati: in RFID c'è un microchip che può contenere fino a Kb di dati, barcode poche centinaia di bit
+	\item RFID è difficile da leggere "in strada", barcode si
+	\item se il barcode si riga o si incrosta non si legge, RFID è più tollerante
+	\item se barcode è coperto manca di leggibilità ottica, RFID è meno sensibile
+	\item copia o modifica non autorizzata: codice a barre si può copiare, RFID è difficile
+	\item barcode si leggono uno alla volta, RFID si possono leggere "apparentemente" in più alla volta
+	\item maggiore distanza di lettura di RFID (2m), cambia proprio la finalità del sistema
+\end{itemize}
+l'idea del transponder, prima di Theremin è nata durante la II WW, poi Theremin e nel 48' è uscito il primo articolo che descrive un sistema RFID completo.\\Già una decina di anni dopo ci sono anti-taccheggio (sistemi ad 1 bit senza elettronica).\\Avanzo dell'elettronica, per monitorare gli animali, anni 90' sistema molto noto è il Toll system (telepass) o l'immobilizer dell'automobile (es auto che non hanno chiavi).\\Nuovo secolo: inchiostri conduttivi, oggetti di tutti i tipi e chi più ne ha più ne metta.\\\\Funzionamento: un oggetto che include un microchiop ed un antenna e poi c'è un lettore: il lettore manda energia o comandi, il transponder raccoglie l'onda e rimanda un'informazione modulandola. Quando il tag passa sotto al lettore si stabilisce la comunicazione, non è necessaria la visibilità ottica fra reader e tag ed inoltre si possono leggere più tag alla volta.
+\subsection{Classificazione}
+Abbiamo 3 tipologie di tag e transponder:
+\begin{itemize}
+	\item attivi: hanno una fonte di alimentazione, tipicamente una batteria. Hanno a che fare tipicamente con i link simmetrici, possono trasmettere anche senza back scattering, hanno costi elevati ed autonomia scarsa, un esempio sono i tile (tracker BL) possono essere letti fino a 100aia di metri
+	\item semi-passivi: tag a batteria ma non la usano per trasmettere ma solo per attività di bordo ovvero l'acquisizione del dato sensoristico che richiede poca energia mentre la comunicazione continua ad avvenire per riflessione. Serve anche per amplificare la capacità del chip, così che questo possa accendersi anche se la distanza è molta. Capacità elevata (ordine di anni, es il telepass: la batteria dura 4-5 anni), sono anche detti BAP (Battery Assisted Passive)
+	\item passivi: il grosso che si trova, alimentati da remoto e funzionano solo con backscattering modulation. Costi anche più bassi di 5cent, distanze coperte minore di 20m.
+\end{itemize}
+Hanno campi di applicazione differenti: su una maglietta di Decathlon di mette un passivo, in un contenitore di vaccini di cui si vuole monitorare la temperatura si mette attivo o semi-passivo.\\SI può anche calssificare in base alla memoria:
+\begin{itemize}
+	\item tag a bit unico: trasmettono un informazione binaria (ON/OFF) e sono usati come sistemi anti-taccheggio: c'è un "varco" formato da coil ed abbiamo il tag, funziona in due modalità:
+	\begin{enumerate}
+		\item sistema acusto-magnetico: ci sono due strisce di metallo vicine. La prima striscia è fatta di materiale ferro magnetico amorfo che quando eccitato da un campo magnetico ad opportuna frequenza oscilla (come una corda). tipicamente riceve toni a 58KHz, quindi oscillando va a modulare il campo EM. Il coil dell'anti-taccheggio si accorgerà quindi che c'è qualcosa. Di fianco c'è il secondo, che invece è un magnete, puù rigido del primo, che tende ad amplificare il campo magnetico prodotto dall'interrogatore. Ha un effetto di enfasi sulla risonanza della prima striscia, non è in contatto con la prima.\\La prima striscia serve a comunicare che c'è al varco, la seconda striscia fa si che, se deattivata, il disturbo osservato dal varco è più flebile (per de-attivarlo viene mandato un campo EM che lo rovina, viene de-magnetizzata la seconda strip). Altrimenti, il segnale sarà forte ed il varco suonerà.
+		\item codice a barre + adesivo dove dentro c'è un coil (spesso sta nei libri). Il coil si richiude su due piazzole, una di fronte all'altra, quindi su un condensatore che porta in risonanza il circuito, è come avere un piccolo circuito (RLC), il dispositivo quindi concatena un po' di campo EM prodotto dal varco e quindi questo si rende conto che c'è l'oggetto (sono risonanti). Per portarlo fuori dalla risonanza, occorre rovinare il coil, ad esempio bucandolo, ma nei negozi si mette in un cestino dove c'è un coil più grosso che genera un campo elevato che produce quindi una ddp molto intensa ai capi del materiale e quindi il materiale che sta nel mezzo(che può essere plastica etc...) riceve un cambiamento in permettività 
+	\end{enumerate}
+	\item tag con memoria, che sono read /write
+\end{itemize}
+Le frequenze sono state standardizzate sia a livello regionale che mondiale:\\
+(copia dalle slides le due immagini)\\
+\subsection{Tag ed accoppiamento magnetico}
+Sistema più complesso, dove abbiamo ancora il coil e per chiudere il circuito occorre realizzare un pezzo di conduttore dalla parte opposta e si chiude con il condensatore di tuning, infine abbiamo il microchip (immagine?) che produce la modulazione capacitiva.\\Il coil ha più spire perché $B \propto N \cdot I$, questa è una versione in cui il filo che produce il coil è avvolto in un cilindretto di ferrite, che ha una permeabilità relativa, è un dispositivo impiantabile (dangerous things vende sta roba, nome molto confortante). (funzionamento, vedi sopra), all'interno del microchip abbiamo i pad, il rettificatore all'interno che permette il passaggio AC-DC quindi parte analogica + parte digitale (come lo schema di sopra).
+\subsection{NFC}
+È un sistema HF, basato su accoppiamento induttivo e modulazione capacitiva, (gli oggetti sono coil) la differenza è nello standard di comunicazione nato per mettere in piedi una comunicazione bidirezionale quando due oggetti NFC vengono accostati a pochi mm o cm.\\Si stabilisce una rete p2p e si scambiano i dati, la frequenza è quella di 15-56 MHz ed ormai lo hanno quasi tutti i cellulari (usato per lo più per i pagamenti).\\Un sistema di questo tipo ha varie declinazioni di utilizzo:
+\begin{itemize}
+	\item leggere un tag NFC
+	\item usato come TAG, ovvero altri oggetti lo leggono
+\end{itemize} 
+il dispositivo può essere quindi sia iniziatore che transponder, la comunicazione è sempre passiva (mediante modulazione), ormai (bho nme ricordo che dovevo scrivere), inoltre la comunicazione è cifrata.
+Il protocollo di sicurezza più usato per l'NCF è MIFAR.
 
 
+\chapter{Lezione 10}
+\section{Tag ad accomppiamento EM}
+Sono nella banda 860 MHz- 960 MHz, sono antenne vere e proprie (principalmente dipoli) con forme molto differenti: ricorre spesso la configurazione a "meandro" perché permette di ottimizzare le dimensioni ed il t-match (generalizzazione del dipolo ripiegato) che serve per adattare l'impedenza. Ci sono poi dipoli spessi, il fatto che siano larghi serve ad ottenere una banda più larga: non serve perché la comunicazione è a banda larga, ma serve per compensare il fatto che poggiando l'antenna su diversi materiali questa tende a desintonizzarsi: compensa la variazione di prestazione dovuta al fatto non si sa a priori dove su che i dispositivi verranno posti i dipoli; ma fare dipoli spessi a priori ha impatto sul costo.\\Abbiamo visto diverse misure (vedi capitoli prima):
+\begin{itemize}
+	\item max distanza di lettura
+	\item da un punto di vista elettrico, possiamo considerare un microchip come circuito RC, dove la capacità tiene conto della quantità di energia immagazzinata e la resistenza tiene conto di eventuali perdite. Si cerca quindi di ottenere adattamento coniugato, così che l'insieme antenna + microchip sia un circuito risonante.\\L'antenna di per se è induttiva, mettendole insieme occorre che il dispositivo risoni alla frequenza di lavoro.
+	\item $\tau$ è coefficiente di tx in potenza, deve essere vicino ad 1 ed il massimo si ha in adattamento coniugato
+\end{itemize}
+Il $\tau$ è proprio il coefficiente più importante quando si progetta il tag (oltre al guadagno), questo entrava nella formula di Friis, quindi la massima distanza è $\propto \sqrt{G_T \tau}$, vediamo quindi come cambia la distanza di lettura: (immagine)
+per un $\tau$ circa 0.6 la distanza di lettura è scesa del 20\%, quindi per un $\tau \geq 0.7$ abbiamo un adattamento discreto. Qui non conta tanto se usiamo tutta la potenza bensì a che distanza riusciamo a leggere, 0.7 è un valore da tenere sotto controllo.\\Notiamo inoltre che la $r_{max}$ è $\propto \sqrt{G_T \tau}$, quindi ogni volta che (ragionando in dB) aumentiamo di 6dB abbiamo un raddoppio della distanza e può fare molto la differenza.
+
+\subsection{Sensibilità del chip}
+Si parte dalla legge di Moore, dove si è passati da chip con molti transistor a multicore (per via dei limiti fisici).Qualcosa è accaduto anche qui, in termini della potenza necessaria per aggiungere un microchip (copia grafico): siamo passati da 1mW di 20 anni fa a 0.1mW, passando da una distanza di 20m a quella di 2m di 20 anni fa.
+\subsection{Modulazione}
+Abbiamo visto che quando il tag deve mandare indietro informazione cambierà l'ampiezza del segnale riflesso mediante modulazione in ampiezza, c'è una logica interna che commuta fra i due stati (immagine).\\La modulazione serve a fare in modo che il segnale da trasmettere venga "incasellata" in un certo canale di frequenza: se abbiamo un segnale in banda base, ma il segnale che voglio trasmettere non può usare la banda attuale, occorre spostarsi avanti in frequenza individuando una "finestra" e occorre fare in modo che si sposti il segnale.\\Si moltiplica quindi per una sinusoide, che è una delta di Dirac, avremo lo stesso segnale valutato nel punto $\omega - \omega_0$ (copia).\\Possiamo quindi multiplare tanti segnali in tanti canali differenti:
+\begin{itemize}
+	\item S($\omega$) è il segnale che porta l'informazione (modulante)
+	\item c'è la portante, segnale monocromatico ($\delta(\omega - \omega_0)$)
+\end{itemize}
+(immagine)
+immaginiamo che questo sia il segnale da trasmettere m(t) e sia M il picco del segnale. Questa è la modulante, poi abbiamo la sinusoide che ha come picco A, la a(t). Quando ne facciamo il prodotto, otteniamo un segnale che sarà fatto così: (immagine) il segnale rosso è l'inviluppo, la portante oscillerà all'interno dell'inviluppo. Questo ci permette di inviare informazione sul canale che ci serve. In ricezione si fa una demodulazione e si recupera il segnale in banda base (la prima).\\Si definisce quindi l'indice di modulazione M che è il valore massimo della modulante diviso il picco della portante: $m = \frac{M}{A}$ in \%, ad esempio m = 0.5 vuol dire che: se la modulante è una ancora sinusoide, il segnale portato oscillerà fra: A $+-$ mA, quindi se vale il 50\%, il max andrà fra 0.5 ed 1.5 se ammettiamo che la portante abbia ampiezza unitaria.\\Quanto più vicino ad 1 (l'indice di modulazione), più semplice sarà decodificare e recuperare il segnale in banda base quando si fa la demodulazione.\\\\Abbiamo a che fare con una modulazione in cui m(t) è un segnale digitale: dobbiamo trasmettere bit da reader a tag e viceversa, quindi la modulante sarà un segnale che ha un livello alto ed uno basso, possiamo quindi avere una modulazione in ampiezza a cui a livello basso corrisponde uno 0 (immagine sotto sx), o avere modulazioni in frequenza: (dx) a livello 1 abbiamo una sinusoide con periodo più breve e a livello 0 una sinusoide con passo più alto, vantaggio è che trasmetto sempre energia ma con frequenze differenti.\\Altro caso è la PSK: quando passo da 0 ad 1 moltiplico per -1, anche qui usiamo una sola frequenza ma inverto la fase.\\\\Su queste modulazioni di base sono costruite quelle che si trovano nell'RFID, in particolare prima di trasmettere il dato viene fatto un \textbf{encoding}: lo 0 e l'1 vengono codificati come combinazioni di livelli alti e bassi, serve anche per gestire in maniera efficiente la potenza a disposizione.\\Abbiamo ad esempio la PIE, dove 
+\begin{itemize}
+	\item 0 è rappresentato da livello alto e poi una transizione
+	\item 1 è rappresentato da livello alto per più tempo e poi una transizione
+\end{itemize}
+(immagine immagine)
+questo permette di avere una maggiore immunità al rumore, tra l'altro il reader che usa questa modulazione trasmette sempre energia, così che il chip potrà sempre accendersi.\\Nel reader, si può controllare il tempo tari, agendo su di esso si può ottimizzare la perdita di informazione e la velocità di interrogazione: maggiore tar i, più lenta è l'interrogazione ma più robusto rispetto ad agenti esterni.
+\\\\Vediamo quindi lo schema di reader/tag:
+\begin{itemize}
+	\item reader fa il coding
+	\item c'è poi modulazione in ampiezza con un certo indice di modulazione (ordine del 90\%, piuttosto profondo) ed abbiamo il segnale modulato. Ingrandendolo, vediamo delle oscillazioni
+	\item il segnale entra nel chip, c'è il blocco che produce il segnale in continua per alimentare l'elettronica, la parte in radio frequenza viene demodulata per decodificare la stessa stringa binaria (al di la delle possibili perdite)
+\end{itemize}
+Lato chip, questo usa una specie di modulazione in frequenza, per applicarla serve ogni volta che si passa dal valore alto al basso si usano due sinusoidi di frequenza diverse ma chi le da al tag, non ha elettronica per generarle.\\È stata inventata una modulazione tale per cui:
+\begin{itemize}
+	\item la portante rimane la stessa
+	\item c'è encoding sui bit che deve trasmettere il chip che producono una sotto-frequenza: (immagini) lo 0 e l'1 sono dati da due segnali diversi, quando c'è uno 0 c'è un inversione. È come se lo zero fosse associato ad un'onda quadra di frequenza doppia. La frequenza è la stessa, ma a valle dell'encoding ho introdotto una diversa frequenza, ogni volta che si passa da un bit all'altro (anche da 1 ad 1) si moltiplica per -1 (c'è anche un po' di modulazione in fase).
+\end{itemize}
+La catena è quindi questa (immagine)\\
+l'antenna raccoglie il segnale dal reader, avviene il coding: modulazione in ampiezza, si va poi ad aprire e chiudere il circuito in modo che il segnale sarà alto o basso in base a come si apre/chiude e sulla cresta della sinusoide c'è una piccola variazione che è la sinusoide modulata in ampiezza che si sovrappone al rumore ambientale.\\Una volta rimosso il rumore (che è costante), si ottiene una sinusoide sporca ma che si può riconoscere.\\Man mano che ci si allontana in reader avrà difficoltà a riconoscere la sinusoide e questo dipende dalla sensitivity del reader ed anche dal coeff. di modulazione del tag, quindi il collo di bottiglia è il link inverso dal tag al reader.
+
+\subsubsection{Potenze}
+La quantità di potenza trasmissibile in RFID non è per nulla banale: abbiamo visto che è legata alla distanza di lettura.\\Si usano frequenze libere, quindi c'è un limite di emissione: quello europeo è riassunto in seguito
+(immagine)
+EIRP indica l'intensità di campo che sto generando, che è il prodotto (copia), negli USA è 4W perché siamo a frequenze maggiori, quindi attenuazione maggiore che è compensata con un po' di aumento di potenza.\\È fondamentale quando si fa il budget.
+
+\section{Memorizzazione - UHF Gen 2 tag}
+I microchip hanno una memoria, divisa in banchi ed in più importanti sono due:
+\begin{itemize}
+	\item EPC, dove ci si scrive il codice del prodotto sul quale viene apposto il tag (es il NUMERELLO del codice a barre). È memoria scrivibile
+	\item tid memory: è il seriale del microchip, stringa non scrivibile. È posta nel produttore, ogni chip ha un codice diverso e permette la distinzione. C'è un problema di bit (ricorda ipv4)
+	\item user memory: si può usare per scrivere dati utente, normalmente si possono scrivere poche parole
+	\item zona protetta dove è possibile scrivere una password: tipico comando è il kill che serve a danneggiare permanentemente il microchip (es dopo un acquisto), il comando richiede la password
+	\item CRC-16 che serve per integrità
+\end{itemize}
+(copia immagine va).\\EPC ha avuto debutto 20 anni fa, ad opera di Wal*Mart che ha imposto l'uso di tag RFID, poi è arrivato il Department of Defense, ora in Italia la polizia di stato.
+
+\section{Sicurezza di dispositivi medicali}
+Abbiamo visto molti scenari di comunicazione che hanno a che fare con il corpo umano, ora dobbiamo tenere conto che gli oggetti sono soggetti a vulnerabilità (\textsf{\textbf{c'è  tanta gente cattiva :(}}).\\Immaginiamo di avere diversi dispositivi nel corpo, che possono essere connessi con altri dispositivi per formare una \textbf{body area network}, sia per applicazioni biomedicali che sportive. Possiamo avere dispositivi impiantai che svolgono delle azioni salva vita, come elettro-stimolatori, pacemaker etc... che devono svolgere un processo con una certa cadenza di azioni ed acquisiscono molte informazioni sulla nostra salute. Avendo impiantato un dispositivo abbiamo "aperto" una canale wireless che è fondamentale per due aspetti:
+\begin{itemize}
+	\item molti dei dispositivi nel tempo vengono configurati. Es: pacemaker viene periodicamente rivalutati in termini della configurazione. Il pacemaker ha un coil, viene poggiato un altro coil e riprogrammato. Lo può fare anche un mal intenzionato
+	\item soprattutto i dispositivi wearable devono trasmettere dati fuori, anche elettro o cardiostimolatori mandano dati. Abbiamo un canale in ingresso ed in uscita
+\end{itemize}
+i dispositivi sono vulnerabili ad attacchi di tipo fisico ed informatico.\\I dispositivi fisici che vanno sul corpo necessitano di poter avere:
+\begin{itemize}
+	\item identificazione, ad esempio se facciamo un intervento occorre sapere che ci sono degli eventuali dispositivi impiantati, ad esempio la (americana) ha pensato di inserire degli RFID nei dispositivi impiantati
+	\item configurabilità ed aggiornamento: si può fare aggiornamento del software anche di dispositivi impiantati
+	\item auditable: se il dispositivo fallisce, occorre avere dei file di log per capire cosa va male. Serve sia per progettare meglio il dispositivo che per l'agenzia delle assicurazioni
+\end{itemize}
+il punto critico con i dispositivi medici è che questi gestiscono \textbf{dati personali}: questa è la parola chiave che ha che fare con la certificazione dei dispositivi medici.\\Un dato personale è un'associazione di un'ID personale ed una traccia personale (es: nome con il numero di passi al giorno) (copia slides)\\si associa ad uno pseudonimo, che può essere nome e cognome ma anche un codice, che di per se non dice nulla ma da qualche parte in un DB si arriva al nome e cognome. Deve essere univoco e rappresentabile con un set univoco di valori.\\Abbiamo quindi dati personali e pseudonimi (gli ultimi sono dati personali).\\\\La gestione dei dati personali apre due grossi capitoli:
+\begin{itemize}
+	\item security: imporre dei confini contro utenti non autorizzati, quindi proteggere i dati da accessi non autorizzati. Il problema qui è fare in modo che i dati non siano acceduti a dati a cui non può (anche in chiaro). Qui occorre proteggersi da accessi non autorizzati, es: i dispositivi medici devono essere protetti dalle modifiche ai dati. Va risolto a livello fisico;
+	\item privacy: l'utente deve avere consapevolezza di chi sta utilizzando e chi userà i dati, quindi anche eventualmente che possano essere vendute. La privacy è quindi definire un limite alle politiche relativamente all'uso del dato, quindi dare all'utente il controllo dell'informazione su chi manipola i dati e chi li usa, qui può esserci breccia sulla confidenzialità. Si firma un contratto.
+\end{itemize}
+hanno un peso molto maggiore quando si ha a che fare con dispositivi medici, perché i dati sono dati sanitari. Tutto ciò che ha a che fare con i dati sensibili deve essere legato a security e privacy, quindi si sta passando alla parte di security and privacy by design.\\I due aspetti si combinano: (immagine, dove indichiamo quali possono essere gli eventuali problemi che si possono avere), es: nel caso 3, possiamo accedere ai dati ma magari non possiamo usarli come vogliamo.
+\subsection{Fondamenti di sicurezza}
+Abbiamo diverse proprietà:
+\begin{itemize}
+	\item autenticazione: poter dimostrare che un'entità può accedere ai dati (es con password). Lato malevolo, c'è lo spoofing, quindi impersonare un'entità che è qualificata per accedere a dei dati.
+	\item confidenzialità: si scambiano informazioni su un canale, ci può essere lato malevolo eavsedropping, quindi intercettazione di dati. Molto più semplice se il canale è di tipo wireless
+	\item integrità: devo garantire lato servizio che l'informazione che memorizzo e quella che trasmetto non siano state in alcun modo modificate. Lato malevolo può esserci interesse a modificare il dato acquisito dal sensore
+	\item disponibilità, ovvero garantire che le risorse del sistema siano istantanee e continue in qualunque momento, non possiamo ammettere disservizi. Può esserci un tentativo di DoS lato attaccante, ad esempio mandando una serie di informazioni inutili che rende la comunicazione col dispositivo inutilizzabili.
+\end{itemize}
+Abbiamo quindi il seguente schema:
+(immagini)\\lo skimmer è un dispositivo che legge i dati del dispositivo medico cercando di rubarli. C'è poi il tamperer (effrattore) che cerca di provocare un malfunzionamento nel dispositivo.\\La privacy ha diversi obiettivi:
+\begin{enumerate}
+	\item il fatto di avere un dispositivo impiantato non può essere noto;
+	\item device-type privacy: se il dispositivo è visibile, non può essere noto il modello
+	\item specific device id: non si può sapere il codice del dispositivo
+	\item measurement and log privacy: entità non autorizzatre non possono avere accesso ai dati di telemetria
+	\item non deve essere possibile identificare un paziente da un dispositivo
+	\item tracciamento, le entità non autorizzate non possono usare i dati del dispositivo medico non solo per identificare ma per tracciare
+\end{enumerate}
+la fase di design del sistema deve anche includere una fase di privacy assessment, quindi prima di mettere in vendita il dispositivo occorre verificare che vi siano procedure che garantiscono gli obiettivi.
+\subsection{Tipi di attacco}
+Abbiamo due tipi di attacco:
+\begin{itemize}
+	\item passivo: l'avversario si limita ad ascoltare
+	\item attivo, l'vversario può iniettare informazioni
+\end{itemize}
+può essere:
+\begin{itemize}
+	\item interno: l'avversario può essere qualcuno che può essere autoirzzato
+	\item esterno
+\end{itemize}
+\begin{itemize}
+	\item singolo
+	\item associazione criminale
+\end{itemize}
+non esiste la sicurezza al 100\%, si può solo aumentare la sicurezza e più si aumenta la sicurezza può il "malintenzionato" deve avere un livello di conoscenza maggiore.\\Il target dell'attacco può essere
+\begin{itemize}
+	\item paziente, acquisire informazioni come dove si trova, la malattia (diagnosi) e creargli un fastidio psico fisico
+	\item dispositivo o produttore, può acquisire l'informazione per spionaggio industriale
+	\item sistema che gestisce le risorse, può voler usare il dispositivo in maniera non autorizzata o compromettere la rete
+\end{itemize}
+Le minacce possono quindi avvenire:
+\begin{itemize}
+	\item al sistema di telemetria, magari posso far si che il dato non sia più accurato
+	\item al software: coordina sia il sensore che il sistema di telemetrica
+	\item all'hardware o interfaccia di sensore
+\end{itemize}
+abbiamo quindi le due grandi classi di sicurezza informatica:
+\begin{itemize}
+	\item cybersecurity: proteggere da un attacco dispositivi che includono procedure o programmi informatici. Si attacca un sistema informatico, tipicamente con un malware.
+	\item physical security: protezione da azioni fisiche ed eventi che possono causare perdita di dati o funzionalità. Significa anche protezione rispetto ad incendi, atti di vandalismo etc... qui c'è un attacco di tipo EM. Attacchi fatti a dispositivo fatti da componenti hardware
+\end{itemize}
+sono completamente differenti ma che hanno diverse tecnologie di mitigazione: il primo è il grosso del problema, il secondo è più subdolo perché non si sa dove sta.\\L'utente che ha oggetti wearable deve stare attento  a diverse cose, ora è cruciale sia per un fattore di pre-design che di post design.
 
 
-
-
-
-
-
-
-
-
-
-
+\part{Parte Hardware}
 
 
 
 \part{Parte Localization}
-
-
-
-
-
-
-
-
-\part{Parte Hardware}
 
 
 
