@@ -1662,8 +1662,333 @@ abbiamo quindi le due grandi classi di sicurezza informatica:
 \end{itemize}
 sono completamente differenti ma che hanno diverse tecnologie di mitigazione: il primo è il grosso del problema, il secondo è più subdolo perché non si sa dove sta.\\L'utente che ha oggetti wearable deve stare attento  a diverse cose, ora è cruciale sia per un fattore di pre-design che di post design.
 
+\chapter{Lezione 11}
+\section{Security and privacy threats}
+(recupera in qualche modo)
+Attacco passivo: fa eavsedropping su dati privati, quindi anche un dispositivo impiantato potrebbe avere dati come diagnosi o ECG, l'effetto di captazione non mette a repentaglio il funzionamento del dispositivo, ma è una violazione della privacy.\\Gli attacchi sono stati dimostrati su dispositivi off-the-shelf (comuni, non sofisticati).\\Attacchi attivi consistono nell'inviare un comando non autorizzato al dispositivo, di tipo fisico e che può mettere in difficoltà il dispositivo
+\begin{itemize}
+	\item spegnere un pacemaker da fuori;
+	\item defibrillatore aggressivo, che rilascia uno shock al cuore;
+\end{itemize}
+esempio realmente accaduto: sistema che rilascia insulina in modalità controllata, misura il livello di glucosio e deve rilasciare l'insulina. Sul dispositivo hanno individuato problemi di privacy security: potevano essere artefatte delle letture di livelli di insulina ed usare la valvola in maniera impropria, somministrando dosi basse o elevate.\\Cosa si può fare: la via maestra è quella dell'encryption, così che anche se le informazioni vengono rilevate non si ci può fare nulla oppure fare in modo che il device rilasci informazione solo su autorizzazione. (metti immagine): si usa RSA, il dispositivo medico e l'interrogatore hanno le due chiavi e nota una chiave è difficilissimo recuperare l'altra. È richiesta un'attività di calcolo importante, quindi vuol dire un incremento di energia e di risorse. La chiave è contenuta nel dispositivo ed è protetta dall'accesso esterno.\\Ma così come ci si ingegna a cercare tecniche crittografiche sofisticate, dall'altro c'è la crittoanalisi: cercare di capire come funziona il cifrario. Si da per scontato che l'attaccante conosca come è fatto il cifratore, l'unica cosa che deve fare è individuare la chiave segreta. Chi progetta i dispositivi deve fare del proprio meglio per rendere il recupero della sk il più ardo possibile ammettendo che sia noto il protocollo, l'hardware etc...\\Per rubare la chiave, da un punto di visto fisico, si può applicare un side channel attack: un side channel non proviene tanto dall'algoritmo ma dall'implementazione fisica (nei circuiti e componenti), così da permettere che vengano estratti numeri e cerco di capire come l'effetto fisico, elettronico meccanico possa.\\È difficile fare penetration test perché l'informazine recuperata può essere elettrica, termina, acustica etc...\\Basandosi su analisi temporale: serve avere conoscenza tecnica. Es: il segnale seguente è un tentativo di scoprire la chiave segreta del cifrario RSA, usando un'analisi in potenza. Il picco dell'algoritmo dice che si stanno facendo delle azioni senza moltiplicazioni, mentre quella di destra include le moltiplicazioni. Quindi, con un approccio statistico si può capire come vengono codificati 0 ed 1.\\\\
+4 tipi di side channel:
+\begin{itemize}
+	\item Timining: basato sulla misura di quanto tempo viene occupato da alcuni task computazionali, quanto ci mette il dispositivo a comparare una password fornita dall'attaccante con quella incognita della vittima. Si osservano le variazioni sul tempo che viene usato per fare delle operazioni crittografiche si può trovare la chiave, avendo molti trial a disposizione;
+	\item Power-monitoring attack: fa uso dell'informazione sulla variazione di potenza consumata dall'hardware durante il calcolo. Osservando la CPU, abbiamo molte informazioni su quanta potenza sta consumando durante le operazioni. Occorre avere accesso nel dispositivo
+	\item acoustic crypto analysis: in alcuni casi, mentre il sistema lavora le parti meccaniche possono produrre dei suoni associate alle operazioni di crittografia
+	\item attacchi EM: grossa branca, non necessitano contatto fisico col dispositivo. Tutti gli elementi elettronici emettono onde EM, a frequenze preferenziali, nel dispositivo sono delle micro-antenne che producono campi che non volontariamente rivelano informazioni a patto che non siano ben progettati.
+\end{itemize}
+Negli attacchi EM si cerca di misurare la sk misurando la variazione EM emessa dal dispositivo ed applicando signal processing in maniera massiva. Nota la sk possiamo entrare in maniera libera al dispositivo, questi attacchi sono tipicamente passivi, ma in alcuni casi possono essere attacchi dove si manda un segnale che rovini il dispositivo. Se si ha la possibilità si possono fare delle analisi più accurate andando a spacchettare il dispositivo, togliendo l'involucro etc... per avvicinarsi di più alla sorgente emittente.\\Le emissioni avvengono perché i dispositivi hanno due front-ends:
+\begin{itemize}
+	\item analogico, per acquisizione dati dei sensori, per fare harvesting di energia, per comunicare il dato...
+	\item digitale, è fatta di transistor che computano fra due livelli alto/basso per processare informazioni binarie. La corrente scorre e vengono prodotte delle onde quadre in banda base e quindi questa transizione basso/alto è molto netta, quindi la frasformata di Fourier darà un segnale con lo spettro molto elevato: la corrente continua non irradia, man mano che la frequenza comincia a salire il movimento degli elettroni produce un'irradiazione che contiene informazioni di cosa sta accadendo all'interno.
+\end{itemize}
+Per prendere le informazioni, il modo più facile è usare un coil ad induzione: (immagine) si avvicina al dispositivo emittente, l'informazione va ad un digital converter che recupera la forma d'onda \\(immagine, x tempi ed y frequenze)\\tipicamente abbiamo la noise, l'informazione è sui picchi che ci dicono che ci sono delle transizioni importanti.
+\subsection{Emissione}
+L'emissione può essere diretta ed in generale non intenzionale. L'emissione diretta è legata alle correnti che portano il segnale da un circuito all'altro, man mano che passano come effetto collaterale irradiano su una banda piuttosto larga, le componenti a frequenze più elevate sono le più appetibili per l'attaccante perché sono lontane dal rumore. Occorre avvicinarsi al dispositivo con i coil di lettura, in alcuni casi per ottenere buoni risultati occorre fare unpacking del dispositivo. Le correnti sono quindi intenzionali e producono delle emissioni intenzionali, va contrastato il fenomeno in progettazione.\\Ci sono poi le emissioni non intenzionali: quando la corrente si propaga, interagendo con altri dispositivi, fanno si che venga indotto una emanazione di nuove componenti spettrali, rivelando delle informazioni anche di questo ulteriore dispositivo, quindi indirettamente possiamo sapere cose su un dispositivo che magari sta facendo elaborazione.\\Piccole osservazioni, che spesso sono ignorate dal progettista, è estremamente delicato. Vi sarà un segnale digitale, che può portare a produrre un segnale che è modulato in ampiezza e facendoli interagire troveremo che la sinusoide viene parzialmente modulato, quindi il disturbo sinusoidale del dispositivo 1 + il segnale del dispositivo 2 fanno si che si abbia una modulazione in ampiezza non intenzionale su cosa sta facendo il dispositivo 2: (immagine).\\Per catturare le emissioni:
+\begin{itemize}
+	\item accesso al dispositivo
+	\item potersi avvicinare per captare
+	\item catturare i dati in campo lontano, usando delle antenne direttive: persona con il medical device, l'attaccante deve dotarsi di antenna direttiva e può pensare di catturare i dati a distanza in modo che non sia visto. Per dispositivi passivi è molto improbabile, mentre per bluetooth è fattibile.
+\end{itemize}
+\subsection{Esempio: attacco Mifare}
+Mifare è un protocollo di sicurezza proprietario della società NxP che produce dispositivi RFID, NFC... spinoff della Philips e sono fra i maggiori produttori di chip.\\Le due chiavi sono una dentro alla serratura ed una della carta:
+\begin{itemize}
+	\item primo step è autenticazione, se viene stabilito che le chiavi siano accoppiate si va avanti altrimenti nulla
+	\item attacco: l'attaccante arriva con un dispositivo che finge di essere una carta, poi comincia a captare cosa il reader risponde 
+	\item scarica il dato dalla carta impostare e recupera la chiave crittografica
+	\item attacco: si passa col coil vicino alla carta utente carpendone i dati. Il dispositivo aveva impersonificato il lettore fisso.
+\end{itemize}
+quindi la lettura può essere effettuata in maniera fisica, quanto più il sistema è semplice maggiore è la probabilità che siano poco sicuri. L'aumento di sicurezza è sempre relativa ad un aumento di consumo di potenza e quindi di una minore autonomia.\\È un attacco passivo, che legge senza dare fastidio al dispositivo
+\subsection{Fault-induction attack}
+Si mette il dispositivo in condizioni di lavorare male, così che mi manderà informazioni più ricche di quelle in condizioni ideali, così da avere più dati su cui applicare la cryptoanalysis. Facendo funzionare un dispositivo in maniera errata può mostrare comportamenti non protetti in fase di progettazione, si fanno lavorare fuori specifica per ottenere più informazioni.\\I danni possono essere permanenti, arrivando a danneggiare il dispositivo crittografico, producendo:
+\begin{itemize}
+	\item reset memoria
+	\item piccoli tagli al bus dati
+\end{itemize}
+oppure produrre un malfunzionamento transitorio, facendo ad esempio in modo di mandare un segnale a frequenze maggiori, aumentando la temperatura di funzionamento, rivelando codici a cui altrimenti non avrei avuto accesso.\\Si può poi anche mandare radiazione focalizzata che possa mettere in difficoltà il dispositivo.\\Progettando un dispositivo occorre quindi fare in modo che l'attaccante:
+\begin{itemize}
+	\item non consumi la batteria
+	\item non abbia oveflow dei dati
+	\item non ci sia jam della comunicazione
+\end{itemize}
+La suscettibilità dice quanto un dispositivo è incline a raccogliere dei disturbi che produce verso l'esterno.\\Nel caso passivo domina l'emissione, anche essa quantificabile, qui dipende dalla suscettibilità.\\
+\textsf{sindrome della Havana}: non molti anni fa, sono stati riportati dei sintomi biofisici da alcuni ambasciatori Americani: la vittima sentiva una specie di suono fastidioso, che veniva percepito da un posto specifico ma dove poi non c'era nulla, altri sentivano una specie di vibrazione come una risonanza meccanica.\\L'effetto è stato documentato in articolo del 2018: la congettura è che i diplomatici fossero stati attaccati da un'antenna a microonde che mandava una onda dalla forma di una specie di "palla", in modo che se ci fosse un dispositivo impiantato il danno fosse stato importate. Quindi prima di andare sul posto, se fa la bonifica EM così da stare più sicuri.
+\section{Privacy}
+La capacità di poter controllare come vengono utilizzare le informazioni personali, non molto tempo fa (2004) la FDA (equivalente del CE) ha approvato l'utilizzo di dispositivi RFID impiantati così da poter accedere ai dati medici anche quando l'utente non è in grado di cooperare.\\L'attaccante non deve essere in grado di tracciare il dispositivo medico, dobbiamo avere il controllo della nostra posizione, di quale dato viene utilizzato e dell'uso che se ne fa. Dati privati:
+\begin{itemize}
+	\item nome
+	\item storia medica
+	\item tracking, ovvero evoluzione nel tempo delle informazioni
+\end{itemize}
+\subsection{Violazione della privacy}
+Viene costruita una storia dell'utente senza che esso ne sia a conoscenza, quindi c'è privacy breach in quanto viene mostrato l'ID personale ad una parte non autorizzata + tracking che rileva la registrazione di un fenomeno. Siamo in un centro commerciale: Helen si compra un cappello, tutti gli oggetti hanno un etichetta EM, dove c'è un puntatore col quale il negozio può risalire alle informazioni. Il cappello è quindi ora un oggetto digitale, in quanto l'etichetta ha un identificativo univoco in grado di fornire dati.\\Helen ha il cappello, lo compra e può pagarlo con la carta di credito. Il negozio sa che Helen ha acquistato il cappello \#1, supponiamo che l'informazione resti privata.\\Helen esce con sto cappello difettato e decide di non togliere l'etichetta perché c'ha un armadio digitale e se diverte a cataloga cappelli e scarpe (tacci tua Helen).\\Continua a passeggiare per negozi e quando entra nel negozio, siccome ci sono sicuramente dei varchi, attraversandolo questo si rende conto che sta passando un tag RFID rivela il codice del cappello. Dallo store B passa a C, D ed E e se c'è un sistema di controllo degli accessi centralizzato, si riesce a ricostruire il cappello \#1 e quindi tracciato la persona.\\A na certa, Helen incontra un'amica Suzie che ha acquistato un maglione, pure lei co sta mania de tene le etichette (so matte). Quindi abbiamo due entità di cui sappiamo quali traiettorie hanno percorso: sebbene non sia stato commesso nessun illecito, viene prodotta molta informazione da un'etichetta con RFID, le informazioni possono essere rivendute in quanto i negozi possono avere la facoltà di rivenderle ad aziende terzi.\\Si può fare la profilazione del gusto, inoltre le informazioni specifiche della persona non appaiono in nessun dato pubblico ma basta recuperare l'associazione cappello - Helen per ricondurre tutto a lei.\\\\Ci si muove in una zona "grigia" per quanto riguarda la legalità, ci sono ancora dei punti dove l'informazione viene acquisita in maniera non nota.
+\section{Security and privacy by design}
+Il ruolo dell'ingegnere in questi casi è di prevenire delle "sbavature" di questo tipo e quindi di applicare delle misure di security and privacy by design, che accompagnino il dispositivo durante tutto il suo ciclo di vita: sia quando viene impiantato che aggiornato etc...\\Sta avvenendo una trasformazione delle regole per l'immissione nel mercato dei dispositivi medici:
+\begin{itemize}
+	\item aspetti di biocompatibilità
+	\item requisiti sulla compatibilità elettromagnetica
+	\item anche il software va descritto (vedi SERT)
+	\item necessità di assicurare che siano stati considerati anche aspetti di sicurezza e privacy
+\end{itemize}
+l'FDA considera le linee guida come motivo per rigettare la domanda di immissione.\\C'è un aspetto collaterale: rendere i dispositivi più sicuri prevede di complicare il dispositivo.\\Usando sistemi crittografici viene ridotta la possibilità di accede al dispositivo in maniera libera: se un paziente sta in India (\textbf{cit*}) occorre fare in modo che i dati siano leggibili, ma se non ci sono i sistemi adeguati. Occorre bilanciare l'usabilità con la sicurezza.
+\subsection{Mitigazione degli attacchi}
+Si sta andando verso la creazione di chiavi che abbiano una genesi di tipo biometrico: costruisco una chiave misurando un fenomeno fisico come l'ECG, in quanto è noto che i segnali generati sono diversi da individuo ad individuo, anche la variabilità fra i battiti cardiaci.\\Il dispositivo medico ed il lettore non si scambiano una chiave fissa, bensì viene volta per volta costruita misurando un fenomeno fisico che cambia volta per volta: il cerotto o l'aggeggio smart fa delle misurazioni che producono due chiavi identiche se misurano ad esempio il battito cardiaco, sappiamo che la misurazione sta avvenendo sul corpo.\\\\Altra possibilità è fare in modo che la lettura possa avvenire solo a piccole distanze: il dispositivo che legge deve sapere quanto ci mette a leggere il dato così da sapere quanto è distante.\\\\In ultimo, si usa un 3° dispositivo, il watch dog elettronico, che si frappone fra il MD ed il lettore:
+\begin{itemize}
+	\item il lettore non si autentica col dispositivo medico ma lo fa con lo shield
+	\item il MD può avere una elettronica semplice, la potenza crittografica sta nel watch dog.
+	\item il lettore si fa prima riconoscere dallo shield, che interroga il dispositivo medico e restituisce la risposta
+\end{itemize}
+Variazione sul tema: lo shield produce un jamming sul dispositivo medico così che il lettore non possa interagirvi, una volta che il lettore si è autenticato con lo shield quest'ultimo tira giù la barriera e può avvenire la comunicazione.\\\\Ultimo, usare un canale diverso da quello della comunicazione per l'autenticazione (es 500 KHz) oppure usare un'autenticazione di tipo diverso:
+\begin{itemize}
+	\item ottico
+	\item tattile: per leggere il dato, avviciniamo il dito per far si che la frequenza si adatti e si trasmetta il dato
+\end{itemize}
+\subsection{Contromisure}
+Si lega alla branca dell'EMC (EM Compatibility), molto di quel know si trasmette in sicurezza:
+\begin{itemize}
+	\item schermare il dispositivo per ridurre la potenza del segnale, quando si può fare, così da non permettere la lettura esterna
+	\item randomizzare il segnale trasmesso, si mischia il segnale fittizio
+\end{itemize}
+
+\chapter{Lezione 12}
+\section{Compatibilità EM}
+Ricondotto le problematiche che ci possono essere sono riconducibili a  
+\begin{itemize}
+	\item emissione
+	\item suscettibilità 
+\end{itemize}
+entriamo ora nel dominio della compatibilità EM, vedremo in particolare
+\begin{itemize}
+	\item emissione radiata: ha a che fare con la capacità di rivelare segreti, ma anche produrre interferenze verso altri dispositivi vicini
+	\item suscettibilità radiata: è una proprietà o un effetto legato alla ricezione di disturbi che siano non intenzionali o di tipo malevolo.
+\end{itemize}
+è una branca dell'ingegneria molto sviluppata negli anni.\\Introduciamo il concetto di \textbf{disturbo}, tipicamente si fa riferimento a questo schema qui: (copia)\\
+il secondo blocco può essere sia la vittima che anche l'effrattore, quindi il malevolo. Affinché i due interagiscano fra di loro è necessario che vi sia un canale, quindi un percorso di accoppiamento in modo che il campo prodotto dall'emettitore raggiunga la vittima e viceversa. Per avere l'interazione devono esserci tutti e 3 i pezzi, è il classico schema dell'interferenza EM (EMI).\\Come avviene l'emissione di un segnale: per effetto di correnti, quindi immaginiamo il seguente schema: (copia schema dispositivi) abbiamo dei dispositivi legati fra di loro da bus dati, ovvero che devono trasportare segnali.\\Può poi capitare che il dispositivo sia collegato alla presa di rete, le correnti che scorrono devono farlo per necessità, se il loro contenuto spettarle è elevato viene prodotta un'emissione, che può produrne un'altra nel dispositivo D$_L$ che può fornire informazioni in maniera involontaria.\\\\La suscettibilità è il caso duale: lo schema è lo stesso, tutti i percorsi dai quali i produce energia possono raccoglierla, quindi i fili possono divenire antenne: se ci sono delle aperture, il campo può uscire ma anche entrare dall'esterno.\\In entrambe i casi, il disturbo viene emesso/raccolto per radiazione, esistono anche di tipo condotto dove il canale sono dei fili che raccolgono il segnale e lo trasmettono da altre parti, chiaramente in questo caso il canale è più efficiente dell'etere in quanto c'è meno attenuazione.\\Vediamo due modelli per capire come funzioniamo i fenomeni e da quali parametri sono determinati
+\subsection{Modelli di emissione}
+Consideriamo nuovamente una coppia di dispositivi, che possono anche essere due circuiti integrati in un PCB (basetta elettronica, copia disegno), i dispositivi sono interconnessi, sui fili passeranno delle correnti che dovrebbero essere di conduzione. L'effetto radiativo dovrebbe tendere a bilanciarsi, ma la situazione non è così pulita: un circuito pcb (copia) è fatto da linee che non sono del tutto isolate, quindi se immaginiamo di porre un oggetto metallico vicino, si satbiliranno delle interazioni con i fili (che possiamo schematizzare come dei condensatori) che faranno si che le correnti non siano più bilanciate. Chiamiamo nel nuovo modello le correnti $I_1$ ed $I_2$ generiche e non meglio specificate. Quando abbiamo due correnti diverse, si possono sempre scomporre in due set di correnti: possiamo introdurre delle \textbf{correnti di modo comune}, che chiameremo $I_C$ e delle \textbf{correnti di modo differenziale} $I_D$, possiamo scrivere come sovrapposizione degli effetti:
+\begin{itemize}
+	\item $I_1 = I_C + I_D$
+	\item $I_2 = I_C - I_D$
+\end{itemize}
+e ricavare le due:
+\begin{itemize}
+	\item $I_C = \frac{I_1 + I_2}{2}$
+	\item $I_D = \frac{I_1 - I_2}{2}$
+\end{itemize}
+possiamo quindi rifare il disegno: (a ricopia)\\vanno in qualche modo sovrapposte, applicando la sovrapposizione degli effetti.\\Le correnti di modo differenziale sono quelle che dobbiamo avere nel dispositivo, con cui trasferiamo potenza e dati. Le correnti di modo comune sono degli effetti collaterali, legate all'interazione con oggetti vicini, possiamo immaginarle come "antenne nascoste" e sono un problema da un punto di vista del funzionamento perché produrranno irradiazione, ma da un punto di vista della sicurezza sono una vulnerabilità perché tx al di fuori della basette delle informazioni.\\Per fare delle analisi quantitative, immaginiamo che i fili siano paralleli ed approssimabili a dei dipoli:
+(disegno)\\ammettiamo che i fili siano lunghi $l$ e la spaziatura sia $s$, avremo poi le due correnti.\\L'oggetto viene considerato con il \textbf{metodo degli Array}: questo è un array di due fili, possiamo inserire le posizioni $y_1$ ed $y_2$ (copia) e valutiamo l'irradiazione dei fili come se fossero un array.\\Facciamo delle ipotesi:
+\begin{itemize}
+	\item campo lontano
+	\item trascuriamo gli effetti di oggetti vicini
+\end{itemize}
+se abbiamo fili rettilinei disposti in questo modo, il campo elettrico avrà una componente $E_{\theta}$ che sarà :$E_{\theta} = M I(0) \frac{e^{-jk_o r}}{r} f(\theta)$, è la corrente in $z = 0$
+$f(\theta)$ trattandosi di un dipolo non dipende da $\phi$ \\Se L $<< \lambda$ perché stiamo parlando di linee di conduzione quindi sono tratti piccoli possiamo immaginare che i fili siano dei dipoli elementari, quindi la funzione di radiazione è $f(\theta) = sin \theta$, M = $\frac{j \eta_0 k_0}{4 \pi} L$, elaborando un po' $\frac{j 120\pi 2\pi}{c 4 \pi} fL$ = $\frac{j 60 \pi}{c } f \cdot L$. C'è l'effetto che l'intensità del campo aumenta anche con la frequenza, è il campo del singolo filo, consideriamo quello dei due fili e ne facciamo la somma con la \textbf{teoria degli array}:
+$E(\theta)^A = E(\theta)^1 + E(\theta)^2 = M \frac{e^{-jk_o r}}{r} f(\theta) F(\theta, \phi) sin \theta$ dove $F(\theta, \phi) = \sum\liminf_{n=1}^{2} I_n e^{jk_0 \underline{\rho_n}\cdot \hat{\underline{r}}$
+dove (copia).\\Per calcolare $\underline{\rho_n}\cdot \hat{\underline{r}}$ otteniamo $y_n sin \theta sin \phi$, c'è dentro $\hat{\underline{r}} \cdot \hat{\underline{y}}$ e quindi otteniamo (copiala non me va de scrive).\\Per ripulire l'espressione, andiamo ad osservare cosa succede su un piano che attraversa i due fili, semplifichiamo per $\theta = \frac{\pi}{2}$, (immagine copia) quindi ci mettiamo sul piano giallo.\\L'espressione che otteniamo è $E_{\theta}^A = M $ (copia, anche l'immagine) guardiamo il dispositivo in sezione e vediamo cosa succede fra i due elementi. Possiamo particolareggiare l'espressione dei due casi dei due modi:
+\subsubsection{Modo differenziale}
+La condizione è che $I_1 = I_D$ ed $I_2 = -I_D$ e quindi la $E_{\theta}^A$ sarà dato da (copia fortissimo) (NB: esponenziale è il termine di onda sferica!) il $k_0$... viene dalla formula di Eulero. (copia sempre, le lettere che sembrano sigma sono s).\\Come è fatto l'andamento in coordinate polari:\\considerando $\phi = 0$, il sin fa 0 e quindi il campo è 0, il campo prodotto è fatto nel seguente modo: (copia immagine).L'irradiazione massima si ha per $\phi = +i 90°$, dove abbiamo che $\abs{E{\theta, max}^D (\phi = 90°)}$ vale $\frac{120 \pi}{c} \frac{f \cdot L}{r} sin k_0 \frac{s}{2} \abs{I_D}$ se ammettiamo che la spaziatura $s << \lambda$ (ed è lecito), allora abbiamo $sin k_0 \frac{s}{2} \approx k_0 \frac{s}{2}$ ma abbiamo anche (copia) e quindi infime $\abs{E_{\theta}^D}_{max}$ = (copia, nb: c è la velocità della luce!!), che numericamente è $1,31 \cdot 10^_{14} \frac{f^2 L s}{r} \abs{I_D}$.\\Analizzando, vediamo che dipende dalla corrente di modo differenziale, quindi normalizziamo per la corrente di conduzione ed otteniamo (copia) che ha unità di misura $[\frac{V}{m}] [A^{-1}] = \frac{\Omega}{m}$ e quindi è la \textbf{Funzione di Leakage}, quindi non è affatto vero che una linea di trasmissione non irradia, tale irradiazione dipende dal quadrato della frequenza e questa è la ragione per cui le linee di trasmissione non si usano mai a frequenza elevata.\\C'è poi la dipendenza dal prodotto (L $\cdot$s), dove se i fili sono lunghi L e la distanza è s questa rappresenta l'area fra i due fili, quindi un modo per ridurre l'irradiazione è
+\begin{itemize}
+	\item non avere delle tracce lunghe, ridurre la lunghezza dei fili
+	\item avere delle tracce molto vicine, diminuire s
+\end{itemize}
+Questi sono gli aspetti che devono essere tenuti conto nella security dy design
+
+\subsubsection{Modo comune}
+Qui abbiamo $I_1 = I_2 = I_C$ e questo nasce dallo sbilanciamento delle linee di conduzione per effetto dell'accoppiamento con degli oggetti vicini.\\Otteniamo un'espressione simile dove però avremo dei coseni al posto dei seni (copia)\\Ci mettiamo anche qui nella condizione sul piano ($\theta = \frac{pi}{2}$) e possiamo disegnare il diagramma di irradiazione: (copialo) è un diagramma abbastanza omni-direzionale, quindi non c'è nessuna direzione verso cui riusciamo a proteggere l'informazione. Sempre considerando $k_0 s << 1$ possiamo approssimare il cos ad 1.\\ Qui, per $\phi = 0$ abbiamo la massima radiazione ed otteniamo un campo massimo (copia)\\Anche ora possiamo calcolare una funzione di trasferimento che prescinde dal valore della corrente di modo comune ottenendo (copia) $1.26 \cdot 10^{-6} f \cdot \frac{L}{r}$.\\Qui vediamo che dipende solo con la prima potenza dalla frequenza, quindi la crescita è meno spedita del caso precedente. Dipende poi dalla lunghezza dei fili, non dipende più dalla distanza perché è come avere un unico dipolo un po' più grande sulla quale scorre una corrente che è la somma delle due, è poi inversamente prop. alla distanza.\\Il coefficiente è molto più alto dell'altro $10^{-6} >> 10^{-14}$ quindi l'effeto è molto più aggressivo: piccole correnti di modo comune possono produrre elevati livelli di campo irradiato, comunicando all'esterno delle informazioni su cosa sta avvenendo all'interno.\\\\ \textbf{esempio:}\\immaginiamo di stare ad una frequenza di $100 MHz$, che può essere la frequenza di clock di un dispositivo biomedicale. Immaginiamo che i fili abbiamo la lunghezza L = 1cm e che s = 1mm.\\Osserviamo il fenomeno ad 1m di distanza. Calcoliamo 
+\begin{itemize}
+	\item la funzione di trasferimento del modo differenziale: $1.31 10^{-14} 10^{16}10^{-2}10^{-3} = 1.31 \cdot 10^{-3} \frac{\Omega}{m}$. Quindi $1mA$ produrrà $1.3 \cdot 10^{-6} V/m$ di emissione, che è basso ma è un valore più alto di quello che il telefono riesce a percepire e quindi identificabile e misurabile
+	\item modo comune: $1.26 10^{-6} 10^{8} 10^{-2}$ = $1.26 \frac{\Omega}{m}$, quindi confrontato con quello di sopra abbiamo effettivamente che $1mA \rightarrow 1.26 \frac{mV}{m}$ che è un livello di campo facilmente individuabile
+\end{itemize}
+se non si possono fare collegamenti corti e vicini, l'unica cosa che si può fare è richiudere il circuito in una scatola PEC, che è un oggetto metallico che blocca l'irradiazione spuria, ma non si può fare sempre (ad esempio in molti dispositivi medici impiantati o da "spalmare" sul corpo umano)
+\subsection{Suscettibilità}
+È legata all'inclinazione di un dispositivo elettronico di raccogliere disturbi provenienti dall'esterno.\\Facciamo sempre un modello: (copia)\\due dispositivi collegati da un bus, possiamo modellare i dispositivi con due carichi reali $R_L$ ed $R_S$, con le tensioni $V_S$ e $V_L$, L è la lunghezza ed s la spaziatura.\\Immaginiamo che da fuori arrivi un campo EM, dove il campo elettrico si propaga nella direzione indicata, polarizzato verticalmente (E), mentre il campo magnetico entrante nel foglio (H). Il campo investe il dispositivo radente, abbiamo:
+\begin{itemize}
+	\item $\underline{E^i} = E_y^i \cdot \underline{\hat{y}$
+		\item $H^i = -H_z^i \cdot \underline{\hat{z}$
+\end{itemize}
+vogliamo esprimere le due tensioni sia rispetto alla geometria che rispetto al campo incidente.\\Consideriamo una "fettina" di lunghezza H $\cdot$ x, che modelliamo come un'induttanza ed una capacità (tutte per unità di lunghezza).\\Abbiamo un spessore lungo $\Delta x$ abbiamo $c = \pi \epsilon_0 \epsilon_r \frac{1}{ln \frac{s}{r\omega}}} F/m$ e poi abbiamo $l = \frac{\mu_0}{\pi} ln \frac{s}{r\omega} H/m$, possiamo tenere conto di 
+\begin{enumerate}
+	\item un generatore di corrente equivalente: si ottiene calcolando la tensione indotta $V_C$ dal campo elettrico incidente, che è data dalla circuitazione del campo E $V_C = \int\limits_{0}^{s} \underline{E^i} \underline{dy}$ e poi abbiamo la corrente $I^i$ che viene iniettata per effetto del campo incidente (copia)
+	\item un generatore di tensione, può essere in serie o in parallelo: consideriamo nuovamente il pezzo di filo di prima, immaginando che faccia parte di una spira chiusa dove una parte è un condensatore ed il resto una curva matematica. Verrà generata una forza elettromotrice indotta (sempre la circuitazione)$\text{emf} = ...$. È una forza potenziale che vale qualunque sia il percorso chiuso, possiamo esprimerla in funzione di H, mediante il \textbf{teorema di Stokes} che dice che (copia) (dove mathscrC è il contorno chiuso)\\otteniamo quindi una emf in funzione del campo magnetico (copiala!!!!!). È una tensione per unità di lunghezza
+\end{enumerate}  
+Consideriamo quindi il circuitino di prima come (immagine):
+Se ammettiamo che i fili siano molto vicini rispetto alla lunghezza d'onda $s << \lambda$ possiamo assumere che il campo elettrico incidente sia costante per $0 < y < s$, possiamo quindi calcolare gli integrali moltiplicando semplicemente per s, ottenendo $V^i = j \omega \mu_0 H_z^i \cdot s$ e $I^i = j \omega c E_y^i \cdot s$, se poi immaginiamo che $L << \omega$, abbiamo che tutta la linea è assimilabile ad quanto segue: (altra immagine)\\
+vediamo due casi:
+\begin{itemize}
+	\item $V^i$ ON e $I^i$ OFF (togliamo il generatore): $V_S = \frac{R_S}{R_S R_L} V^i L$ e $V_L = -\frac{R_S}{R_S R_L} V^i L$
+	\item $V^i$ OFF e $I^i$ ON: $V_S = \frac{R_S R_L}{R_S R_L} I^i L$ e $V_L$ sarà uguale 
+\end{itemize}
+possiamo quindi scrivere la tensione totale $V_L = - \dfrac{R_L}{R_S + R_L}V^i \cdot L + j \omega \mu_0 H_z^i (s\cdot L) - j \omega c E_y^i (s \cdot L) \frac{R_S R_L}{R_S R_L}$. Questa tensione può creare problemi di funzionamento al dispositivo 2, dipende nuovamente dall'area sottesa ai fili, quindi nuovamente i fili devono essere corti e vicini.\\\\Considerazioni: $P_L$ che è la potenza raccolta sul carico L, che è data da (copia). Per fare in modo che la potenza raccolta dal dispositivo sia piccola, è necessario che $R_L$ sia molto elevato, al limite per $\infty$ il dispositivo sarebbe immune, ma l'impendenza di terminazione dipende dalle operazioni che deve fare il dispositivo.\\Possiamo aggiungere un componente di \textbf{choke}, che serva a tagliare l'effetto del disturbo in maniera selettiva:\\immaginiamo di avere un microchip RFID, che abbia dei piedini ai quali colleghiamo un antenna che farà energy harvesting o trasmetterà informazione.\\Il chip ha anche un'altra coppia di piedini che servono per pilotare un sensore che funziona in corrente DC, non ha quindi meccanismi di protezione. Se arriva un'onda che investe il dispositivo, entreranno delle correnti di radiofrequenza nel dispositivo che produrranno un malfunzionamento, che falserà di molto la lettura di un dato. Si inseriscono due dispositivi di choke che devono generare un'impedenza elevata per evitare che entrino correnti a radiofrequenza, generando però impedenza elevata a frequenze elevate.\\Come deve essere fatto per far passare la continua ma attenuare le frequenze elevate: un induttore, ha un impedenza $Z_C = j \omega L$, quindi quando $\omega -> 0$ e siamo in continua. $Z_C = 0$ e quindi il segnale entra e viene processato, ma all'aumentare della frequenza aumenta l'impedenza e quindi taglia la radiofrequenza mentre attenua la continua.\\Lo schema usato tipicamente è il seguente:(copia)\\così che anche se viene raccolta la radio-frequenza il chip è immune perché questa non passa. Questo è quello che tipicamente si fa, distribuire dei choke fatti con induttori o bid di ferrite.
 
 \part{Parte Hardware}
+\chapter{Introduzione}
+Vediamo gli attacchi sull'hardware vero e proprio. Vedremo:
+\begin{itemize}
+	\item sicurezza;
+	\item design di componenti hardware;
+\end{itemize}
+hardware security inquadrate in due tematiche:
+\begin{itemize}
+	\item trust, sulla catena produttiva che ci ha portato ad avere quel dispositivo. Posso fidarmi di chi ha fatto il dispositivo?
+	\item vulnerabilità: dispositivo non è maliziosamente modificato, ma è suscettibile ad attacchi, tipicamente side channel attack su vari livelli.
+\end{itemize}
+Vedremo poi le contromisure per gli aspetti di attacchi trust e di tipo vulnerabilità: è come sempre una gara tra due fazioni in cui c'è una continua gara (Cesati cit*), vediamo anche delle primitive per rendere sicuro l'hardware:
+\begin{itemize}
+	\item TRNG
+	\item Physically Unclonable Functions
+\end{itemize}
+Sarà un approccio molto nozionisitico, per avere tutte le chiavi di interpretazione dell'hardware security
+\section{Nozioni di background}
+L'aspetto di hardware security si inwuadra tipicamente nel più ampio campo della Dependability: capacità del sistema di operare come ci aspettavamo, che comprende 3 aspetti, siamo in un concetto più ampio. I sistemi dependable si comportano secondo le specifiche di progettazione, 3 aspetti:
+\begin{itemize}
+	\item quality, come essere sicuri che il dispositivo non è affetto da guasti di produzione. La produzione delle VLSI è sempre affetta da difetti ed è invalutabile che i difetti creino dei guasti.\\10\% dell'area del chip è usata solo per il design for test, che sia assicura che il dispositivo non sia guasto.
+	\item Affidabilità: livello di fiducia che abbiamo che il dispositivo opererà bene nel corso del tempo, contro degli eventi random. I livelli di affidabilità sono tipicamente elevati per permettere che il dispositivo sia affidabile
+	\item security: livello di certezza che il dispositivo funzioni bene sia in fase di produzione che durante la vita utile del dispositivo. IL nemico non sono eventi casuali ma eventi maliziosi.
+\end{itemize}
+Nell'ottica dei sistemi dependable la security è una declinazione di questo aspetto, infatti tecniche applicate per garantire l'affibdabilità e la relibability sono anche usate per la sicurezza.\\Un sistema è sicuro se l'hardware è intoccabile: questo dicono gli esperti di cybersec, il dispositivo è fuori dalla portata dell'attaccante è ci sono dei ciphertext, ma non è più il caso. Ormai il dispositivo stesso è un oggetto di attacco, non più solo il canale. SPlittimao l'hw security in
+\begin{itemize}
+	\item hw trust:
+	\begin{itemize}
+		\item siamo sicuri che l'hardware sia fatto da sorgenti di cui ci fidiamo
+		\item ci sono modifiche maliziose, ad esempio con trojan
+		\item quali sono gli effetti del trojan
+	\end{itemize}
+	\item hw security
+	\begin{itemize}
+		\item alla fase di progettazione, c'erano cose che non abbiamo tenuto in considerazione sfruttabili da un attaccante
+		\item tansient execution attacks
+	\end{itemize}
+\end{itemize}
+Cos'è l'hardware: è ciò che consideriamo il proof of trust nella crittografica, ma questo concetto è molto poco evidente siccome i dispositivi ormai sono tanti.\\Già dai tempi della guerra fredda c'erano nozioni di hardware attacks (es. fotocopiatrice hackerata russa), anche ultimamente ci sono stati casi di attacchi basati su trojan volontari: 'kill switch' nelle difese siriane.\\Successo anche con virus del 91' che creò dei problemi nell'amministrazione Iraquena.\\\\Ci sono delle evidenze che possono dare indizio: Huawei, provider network non più fidati, legittimi sospetti che l'hardware sia potenzialmente affetto da problemi, hw trojan è un pò una "prova di fede", ma non s può pensare che non ci sia a priori soprattutto in dispositivi dove la sicurezza è importante.\\Anche casi di router CISCO e dispositivi wearable, che devono avere degli aspetti di security perché l'attacco non è necessariamente qualcosa che ruba informazione ma anche DoS, oppure battery drain (sempre tutti hardware trojan) che può causare un DoS.\\Gli attacchi sono tanti, vedremo anche aspetti di dispositivi contraffatti: esiste un modo dove vendono il dispositivo per ciò che non è a scopi di lucro. Si vendono dispositivi senza test, contraffatti e che potrebbe causare problemi, altro aspetto di problematiche di trust.C'è poi tutta la questione di attacchi di tipo side channel, che ad esempio mettono delle probe direttamente sul chip.
+
+\section{VLSI industry}
+Una volta la supply chain era verticale, ma ormai una compagnia che fa tutto da sola è raro (copia immagine).\\Andare "foundless" permette di non legarsi a dei volumi limitati della produzione: producendo solo i propri semiconduttori non si riesce a rientrare nei costi, quindi si sfrutta l'economia di scala sfruttando delle found esterne che fanno grossi volumi, ad esempio a Taiwan: faccio il progetto e loro lo realizzano (azienda).\\È stata la fortuna anche di ARM , disaccoppiamento di IT e di silicio, è buono da un punto di vista economico (modello orizzontale) ma introduce una problematica: si creano vari player, produttore di Intellectual Property, manifatturieri (copia) ma chiunque dei player può essere non trusted:
+\begin{itemize}
+	\item può esserci un problema di IP vendor: c'è un esplosione interna di hardware scritti in software: linguaggi che descrivono un hardware da un punto di vista software.\\Quando si descrive un chip è usare gli Hardware Description Language (HDL, forse Cesati con sys embedded?). Può aver messo delle modifiche nel codice che attivi qualcosa di non voluto.\\La verifica è difficile come in software, si può fare coverage etc... ma un attore sa come farsi non scoprire
+	\item system integrator: può esserci sia un problema che chi ha messo insieme le varie IP: un chip composto da core, memorie etc... viene assemblato da un produttore che è un system integrator. Può aggiungere delle modifiche che causino backdoor, leakage informazioni etc... che può causare un attacco
+	\item manufactorer: nella parte di produzione, possono essere modificate le performance dei transistor per far fallire il dispositivo
+\end{itemize}
+quindi i tanti attori potrebbero avere interesse a causare problemi, questo è il System on Chip: il microprocessore del cellulare non ha solo CPU, ma memoria, cache, interfaccia di I/O etc... (copia), tipicamente come nel caso di ARM, il piccolo pezzetto del processore è messo con le memorie etc... e nel SOC ogni pezzo può venire da una 3° parte non fidata. Facendo tutto in casa sei sicuro, prendendo pezzi da varie parti si rischia di inserire nel dispositivo cose che causano grossi problemi.\\All'interno della attuale supply chain, abbiamo che normalmente il codice HDL è fatta mediamente negli USA, mentre chi fa verifica e produzione sta in China, quindi ci sono tante entità in gioco.\\\\C'è poi il discorso del counterfaiting: usare alcune parti del flusso di produzine per fare prodotti:
+\begin{itemize}
+	\item over-produzione, produce più chip e vende il surplus che non ho richiesto in mercato secondario
+	\item alcuni chip vengono buttati perché ci sono dei guasti, qualcuno può tenerseli e venderli sotto banco
+\end{itemize}
+Esistono poi casi in cui ci sono i recycled IC: soprattutto nel 3° mondo, tanta gente stacca i componenti da dispositivi vecchi, li ripulisce e li rivende come nuovi. Il costo della manodopera è zero e vengono rimessi come nuovi, è un altro problema perché limita la vita utile dei dispositivi elettronici.\\In generale, nella supply chain ci sono tantissime problematiche (copia immagine).
+\subsection{Definizioni di base}
+Soprattutto quando si parla di intellectual property, ovvero dei brevetti o marchi di fabbrica, et... nel nostro caso come è stato scritto il dispositivo per fare delle cose. Spesso quando si fa un dispositivo elettronico si comprano delle IP come memoria etc... non si sa cosa c'è dentro ed è critico per la sicurezza.\\Vediamo delle definizioni per la sicurezza, in termini di informazione:
+\begin{itemize}
+	\item C: rendo noti dati che dovrebbero essere segreti
+	\item I: modifico dati che non dovrebbero essere modificati
+	\item A: rendere un dispositivo non più accessibile
+\end{itemize}
+può essere più oscuro cosa è l'hardware security: ci sono le IP, non sappiamo come è stato prodotto l'hardware e quali possono essere le vulnerabilità. Parlando di rischi hardware: aspetti relativi all'IP, fino al deployment:
+(immagine)
+possiamo avere aggiunto delle backdoor nell'IP, oppure modificare il dispositivo per renderlo attaccabile.\\Le soluzioni sono varie, ad esempio per i trojan occorre migliorare la loro detection, mitigare i side channel.\\Parlando di vulnerabilità hardware, intendendo superfici di attacco:
+\begin{itemize}
+	\item hardware trojan
+	\item attacchi fisici
+	\item altri ... (slides)
+\end{itemize}
+per ogni tipo di problematica ci sono diversi tipi di nemici, fra cui anche enti governativi di 3° parti.
+\section{Design dell'harwdare per sistemi sicuri}
+Intanto si implementa l'encryption, ma occorre anche essere in modo di evitare gli accessi sui dispositivi. Ci sono dei vincoli in più per dispositivi IoT o embedded: devono lavorare a bassa potenza e con rapporto di power /performance che è elevata, in quanto c'è la batteria e quindi non si può usare tutta la potenza di calcolo e quindi ci non vincoli aggiuntivi in progettazione.\\La superficie di attacco è ovunque, quindi i parametri di progettazione devono essere non pesanti e compatibili con l'IoT.\\Vogliamo che il sistema sicuro sia: (copia immagine)\\abbiamo però diversi problemi e sfide che possono essere interessanti per domande di ricerca 
+
+\begin{itemize}
+	\item fare qualcosa a bassa potenza ma non attaccabile
+	\item chip che lavora a bassa potenza ma è scevro da side channel attacks
+	\item ...
+\end{itemize}
+parlando in generale del canale si parla di crittografia: partendo dal sub cipher di Giulio Cesare, fino ad Enigma della II guerra mondiale, ma c' un aspetto interessante sulla crittografia: questa non è migliore se il chip che lo implementa, ricorda la security by obscurity. Nella crittografia moderna il processo è noto e pubblicizzato perché si cerca di trovare un feedback per rilevare delle vulnerabilità. È tutto basato sul fatto che senza la chiave in bruteforcing non si fa nulla, è computazionalmente complesso.\\I problemi sul canale sono:
+\begin{itemize}
+	\item  intercettazioni della conversazione
+	\item creazione dal nulla
+	\item blocco
+\end{itemize}
+se riusciamo a superare le vulnerabilità sul canale, riusciamo a fermare questi attacchi. Si parla di cryptology: gara fra chi crea il nuovo cifrario e chi lo rompe "in tempi umani". Partendo da un PT, si ottiene un CT : (copia immagine).\\Nel caso della crittologia classica, l'ambiente ostile è solo sul canale, quindi dobbiamo far si che chi cerca di fare dei danni non ci riesca: dobbiamo accorgercene oppure impedirgli di decodificare: si usano quindi una coppia di chiavi, una di ecryption ed una di decryption. (copia dalle slides)\\Abbiamo che tipicamente:
+\begin{itemize}
+	\item crittografia simmetrica (AES), più veloci
+	\item crittografia asimmetrica (RSA), basati su chiave pubblica, privata e spesso sono usate per fare lo scambio delle chiavi.
+\end{itemize}
+L'obiettivo della crittoanalisi è rompere il cifrario:
+\begin{itemize}
+	\item  cercare la frequenza delle lettere se si conosce la lingua
+	\item etc...
+\end{itemize}
+sempre tutti basati sulla conoscenza del cifrato e quindi senza conoscere l'hardware che implementa il cifrario.\\Teoricamente è possibile ipotizzare un sistema crittografico che sia rotto, ma praticamente i sistemi crittografici sono sempre attaccabili ma in termini di tempo.\\Ci sono diversi tipi di chipers:
+\begin{itemize}
+	\item copia slides
+\end{itemize}
+AES tipicamente combina le cose.\\Possono esserci poi degli approcci di attacco:
+\begin{itemize}
+	\item product cipher (copia)
+\end{itemize}
+Un buon cipher:
+\begin{itemize}
+	\item combina substitution e transposition, quindi ci sono permutazione, scrumble etc... che sono parametri che rendono difficili inferire il plaintext dal ciphertext
+	\item DES ed AES sono due implementazioni
+	\item copia sempre
+\end{itemize}
+Abbiamo poi la differenza fra
+\begin{itemize}
+	\item stream cipher: si codifica ogni bit del plaintext, si sostituisce di volta in volta una lettera con un'altra, (copia slides)
+	\item block cipher: si usa un blocco di caratteri che vengono cifrati per intero. (slides)
+\end{itemize}
+abbiamo poi la problematica della Public key encryption: stream e block cipher sono basati sull'uso di una chiave segreto condivisa, ma se ho tanti party devo avere qualcosa che va come $O(n^2)$ nel numero di chiavi che limitano molto la crittografia simmetrica, da cui nasce la Pub key encryption:
+\begin{itemize}
+	\item Diffie Hellman: si usa la chiave pubblica per cifrare e solo la privata per decifrare, si scala ad $O(n)$
+	\item il problema è che deve essere facile decifrare il messaggio conoscendo le chiavi ma non deve essere facile ricavare una chiave dell'altra o da un plaintext attack
+\end{itemize}
+La pub key encryption è circa 10000 volte più lenta della symmetric encryption, quindi tipicamente è usata per iniziare la comunicazione fra due parti e poi passare a chiave simmetrica.
+\subsection{Crittoanalisi}
+Cerca su canale di trovare il modo di capire se ci sono informazioni che possono essere dedotte o partendo dalla parola crittografata, o dalle parole del plaintext o disponendo della chiave di enc/dec.\\Esistono diversi approcci per poter dedurre il messaggio o la chiave, fra cui il side channel attack (copia slides), i primi sono tutti bassati sulla conoscenza parziale del plaintext / ciphertext ma non usano il dispositivo.\\Nel caso del side channel attack non ci limitiamo a cercare approcci matematici per dedurre la parola dal palintext, ma cerchiamo di aggiungere informazioni dal dispositivo stesso, quindi per rompere il codice. Riduco i tempi che ci metterei per decifrare / rompere il cifrario.
+\section{Tecniche di progettazione dei dispositivi VLSI}
+La progettazione di un sistema elettronico parte dalle specifiche, si fa la traduzione: (copia immagine)\\si ottengono i wafer, che sono delle "foto" dei chip e che vengono affettate per inserirle nel chip.\\Il burn in è il test esaustivo del dispositivo per vedere se ci sono delle problematiche, poi viene testato in produzione e mandato al cliente.\\La progettazione del sistema può essere diviso in vari aspetti, a seconda dei livelli di astrazione.\\Nel caso di transistor, (metti immagine) funzionalmente è come un interruttore controllato da un gate che crea connessione fra un drain ed un source. (???)\\Sempre per la solita legge di Moore, c'è una crescita esponenziale della densità che si possono mettere nello spazio del silicio: Moore notò che la densità dei transistor raddoppiava di anno in anno ma ormai la cosa è morta perché la legge esponenziale (varia nel campo logaritmico) è limitata (siamo a dimensioni di pochi nanometri).\\Si ha avuto quindi un technology scale che ha portato ad ottenere miglioramenti delle performance. Per noi il transistor è un interruttore che si apre/chiude in base al valore alto basso di tensione (0/1 valore logico) ed in base ai transistor abbiamo accesso /spento (copia!!!)\\\\Il vero successo è stato il CMOS, ovvero combinare i due mos ed il vantaggio è che non c'è connessione diretta fra ground e $V_{in}$ (copia) $V_{out}$.\\\\Vedendolo come un insieme di interruttori: (copia)\\ il passaggio fra una porta logica ed un'altra causa ritardo, le porte logiche permettono di realizzare qualunque funzione booleana, si possono realizzare le diverse porte anche più complesse: (copia)\\In generale nella CMOS, per implementare la funzione logica:
+\begin{itemize}
+	\item accendendo quello sotto, l'uscita è 0 e viceversa
+\end{itemize}
+Tradurre la logica in design (VLSI design) è stato il grande progresso degli ultimi anni, dai tempi del primo computer: si parte dalle specifiche e si crea un chip. Non si scrivono più a mano le equazioni booleane che vogliamo sui chip, in quanto abbiamo miliardi di transistor. Il ciclo quindi prevede: (copiaaa)\\scendendo poi più in basso, l'insieme delle porte logiche è trasformato in un insieme di porte in silicio e poi c'è la fabbricazione (copia immagine)\\Il processo di produzione dei semiconduttori è fatto mediante foto-litografia, con una frequenza alta (UV per avere una $\lambda$ piccola) (copia immagine), è un percorso iterativo.\\I wafer sono circolari perché vengono persi dai lingotti, creati da un crogiolo di silicio fuso, c'è un seme da cui viene fuori un mono-cristallino enorme.Si affettano in wafer circolari, perché la crescita è concentrica. Il processo è il seguente: (copia immagine)\\Vengono poi fatte delle metalizzazioni per connettere i transistor (?? copia immagine).\\\\Uno dei primi microprocessori fu l'intel 4004, passando da (metti tabellina) da 2300 transistor,... al ryzen 5.\\Ci sono diversi requirement di progettazione, per la progettazione:
+\begin{itemize}
+	\item si parte dall'input/output (metti immagine)
+	\item per la descrizione si usano gli HDL: (metti immagine), non si fanno più i transistor bensì si specifica questo. (copia sempre). Ormai si parla di hardware / software co-design
+\end{itemize}
+I transistor infine si trasformano nel layout, ovvero come apparirebbe il vero e proprio chip se si potesse aprire: vengono messi tanti blocchi p e l'altra (?) vicini sulla stessa altezza, per poi collegarli fra di loro.\\\\Il processo è quindi iterativo:
+\begin{itemize}
+	\item fpga, programmabile
+	\item asic, dispositivo non modificabile dalla fabbrica
+\end{itemize}
+e questo riassume gli standard di progettazione attuale: (copia immagine), avendo dei bug hardware nel silicio è un problema (it's not a bug, it's a feature!), mentre nelle FPGA c'è programmabilità ma non sono ottimizzate e non sono ad alte prestazioni quindi si va comunque sugli ASIC che hanno bassi costi.\\Possiamo vedere i costi a confronto (grafico)
+\subsection{VLSI chip yield}
+Parliamo di ASIC: può succedere di tutto, l'aria è filtrata per evitare delle impurità perché quando si produce un semi-conduttore può creare dei difetti e dei guasti nel silicio.\\C'è quindi un grosso lavoro per aumentare la resa di produzione: un processo produttivo maturo avrà una resa elevata, ma altrimenti sicuramente ci saranno dei chi guasti. Quindi occorre testare tutti i chip che produco, perché la cosa peggiore è avere dei chip guasti che arrivano al cliente rispetto ad avere un chip da buttare.\\Questo avviene mediante test: si applicano dei vettori al dispositivo e si verificano le uscite attese, è fatto s tutti i chip e per accelerare la velocità del test si modificano i dispositivi elettronici anche per aumentare la copertura del test.\\Si ha anche un 10\% di perdita di resa del chip, nell'area del test, che è dovuta all'uso per i test. Vogliamo quindi scoprire che è meglio avere una perdita di resa, quindi 20 / 100 chip si buttano piuttosto che avere meno dispositivi fallati in vendita.\\ Il defect level deve tendere allo 0, ovvero avere dei dispositivi in vendita sicuramente funzionanti, la parte di qualità della dependability è tale per cui i chip hanno defect level bassissimo.\\Esiste la regola del "10", o anche "20", ovvero che costa sempre 10 volte di più trovare un guasto su un chip incapsulato in un sistema sempre più grande.\\Il test cerca il numero di chip guasti sul totale, c'è il concetto di clustering che ci aiuta (forse Pellegrini), si usano dei flip-flop scan che permettono di creare una grande catena di scan per avere più osservabilità sui chip e trovare i guasti.\\Si usano queste scan chain, che vengono usate solo in produzione, ma la controllabilità dei flip flop nel chip possono essere usati per fare anche debugging del microprocessore.\\Il test è quindi applicare i vettori a tutto il circuito ed anche alla scan chain per vrieficare che non ci siano errori, si fa perché "what you see is not what you get": nel manufacturing non si riesce ad essere deterministici in ciò che si è creato.\\C'è un implicazione di sicurezza, il fatto che varia il processo produttivo rende in qualche modo il dispositivo "unico": un PUF sfrutta il fatto che ogni chip è diverso dall'altro e quindi di avere una specie di impronta digitale.\\\\Parlando di qualità ed affidabilità i due aspetti sono fra loro allacciati: (ricopia)
+\begin{itemize}
+	\item la qualità ed il test fanno in modo di trovare tutti i guasti a tempo 0
+	\item l'affidabilità fa in modo di trovare tutti i guasti che si manifesteranno dopo nel tempo
+\end{itemize}
+\subsection{Fault tolerant design}
+Le tecniche tornano tutte utili per la security.\\Per ottenere massima affidabilità si deve aumentare l'hardware usato: in un sistema elettronico, inizialmente, ha un failure rate più elevato per poi calare perché i guasti che stavano per avvenire in produzione scompaiono.\\Ad un certo tempo, sperabilmente, i dispositivi si guastano costantemente nel tempo per motivi random, per poi crescere verso la fine della vita.\\Abbiamo questo grafico (slides)\\ci aspettiamo di avere un dispositivo che permette di lavorare nella parte centrale.\\Vediamo la differenza fra
+\begin{itemize}
+	\item guasto: questione tipicamente fisica, c'è un problema sul componente
+	\item fault, errore: conseguenza, esempio il processore deve sommare due addendi. Uno dei due ha un bit flippato e la somma fallisce. Ma può anche accadere che il guasto sia mascherato, ad esempio se riflippo quel bit nel registro, non ho il fault.
+	\item failure: se l bitflip avviene su un'immagine, vederemo un pixel di colore diverso. Se invece questo avviene ad esempio sul PC o sull'IP il danno può essere ben più grave.
+\end{itemize}
+in un sistema complesso il failure rate si misura con la $\lambda_{sys}$ che se non ci sono guasti è la somma: se un ho automobile che funziona su 4 gomme, basta che se ne rompa 1 per avere un sistema che non funziona più
+\begin{equation}
+	\lambda_{sys} = \sum\limits_{i=1}^{k} \lambda_{c,i}
+\end{equation}
+se invece abbiamo un camion, c'è della \textbf{ridondanza} che aumenta quindi l'affidabilità.\\Copia tutte le formule dalle slides. Per misurare l'affidabilità di un sistema, abbiamo i \textbf{reliability bloc diagram}: (copia immagine), in questo caso abbiamo un diagramma in serie, dove se si rompe un blocco è finita, si blocca il flusso.\\Abbiamo poi la fault tree analysis (copia immagine).\\Si possono anche applicare la Markov chain per calcolare l'affidabilità del sistema (copia).\\\\Ci sono poi delle tecniche di ridondanza per migliorare l'affidabilità del sistema: un modo è aumentare le cose che si usano per fare la stessa cosa
+\begin{itemize}
+	\item Hardware redundancy
+	\item Time redundancy
+	\item Information redundancy
+\end{itemize}
+per far si che il sistema viva più a lungo, non viene gratis: devo aumentare la ridondanza, ad esempio passare da x risorse ad x + "qualcosa".\\Le tecniche si possono anche usare per problemi di sicurezza.\\
+Si possono:
+\begin{itemize}
+	\item usare 3 blocchi che fanno la stessa cosa e che vanno nel voter, che da il risultato finale come la maggioranza degli ingressi (TMR). Maschera i guasti, costano in hardware ma hanno questo grosso vantaggio e quindi abbiamo availability del 100\%. Semplice dal punto di vista progettuale
+	\item time redundancy: ripetere l'operazione più volte, ad esempio il caso in cui si usano 2 thread per fare la stessa cosa.\\Non usiamo più risorse hardware, ma ci si mette più tempo per fare la stessa cosa (ad esempio flip flop a basso livello). Anche questa è semplice
+	\item information redundancy è aggiungere più risorse per fare la stessa cosa: è complessa, si mettono le mani sui dati, ad esempio con i bit in più per la parità per la rivelazione/correzione di errori (L'anima di Giaconi aleggia su di me).
+\end{itemize}
+
 
 
 
