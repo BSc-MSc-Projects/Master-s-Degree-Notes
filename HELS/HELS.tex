@@ -1822,7 +1822,8 @@ vediamo due casi:
 possiamo quindi scrivere la tensione totale $V_L = - \dfrac{R_L}{R_S + R_L}V^i \cdot L + j \omega \mu_0 H_z^i (s\cdot L) - j \omega c E_y^i (s \cdot L) \frac{R_S R_L}{R_S R_L}$. Questa tensione può creare problemi di funzionamento al dispositivo 2, dipende nuovamente dall'area sottesa ai fili, quindi nuovamente i fili devono essere corti e vicini.\\\\Considerazioni: $P_L$ che è la potenza raccolta sul carico L, che è data da (copia). Per fare in modo che la potenza raccolta dal dispositivo sia piccola, è necessario che $R_L$ sia molto elevato, al limite per $\infty$ il dispositivo sarebbe immune, ma l'impendenza di terminazione dipende dalle operazioni che deve fare il dispositivo.\\Possiamo aggiungere un componente di \textbf{choke}, che serva a tagliare l'effetto del disturbo in maniera selettiva:\\immaginiamo di avere un microchip RFID, che abbia dei piedini ai quali colleghiamo un antenna che farà energy harvesting o trasmetterà informazione.\\Il chip ha anche un'altra coppia di piedini che servono per pilotare un sensore che funziona in corrente DC, non ha quindi meccanismi di protezione. Se arriva un'onda che investe il dispositivo, entreranno delle correnti di radiofrequenza nel dispositivo che produrranno un malfunzionamento, che falserà di molto la lettura di un dato. Si inseriscono due dispositivi di choke che devono generare un'impedenza elevata per evitare che entrino correnti a radiofrequenza, generando però impedenza elevata a frequenze elevate.\\Come deve essere fatto per far passare la continua ma attenuare le frequenze elevate: un induttore, ha un impedenza $Z_C = j \omega L$, quindi quando $\omega -> 0$ e siamo in continua. $Z_C = 0$ e quindi il segnale entra e viene processato, ma all'aumentare della frequenza aumenta l'impedenza e quindi taglia la radiofrequenza mentre attenua la continua.\\Lo schema usato tipicamente è il seguente:(copia)\\così che anche se viene raccolta la radio-frequenza il chip è immune perché questa non passa. Questo è quello che tipicamente si fa, distribuire dei choke fatti con induttori o bid di ferrite.
 
 \part{Parte Hardware}
-\chapter{Introduzione}
+
+\chapter{Introduction and background notions}
 Vediamo gli attacchi sull'hardware vero e proprio. Vedremo:
 \begin{itemize}
 	\item sicurezza;
@@ -1988,6 +1989,82 @@ Si possono:
 	\item time redundancy: ripetere l'operazione più volte, ad esempio il caso in cui si usano 2 thread per fare la stessa cosa.\\Non usiamo più risorse hardware, ma ci si mette più tempo per fare la stessa cosa (ad esempio flip flop a basso livello). Anche questa è semplice
 	\item information redundancy è aggiungere più risorse per fare la stessa cosa: è complessa, si mettono le mani sui dati, ad esempio con i bit in più per la parità per la rivelazione/correzione di errori (L'anima di Giaconi aleggia su di me).
 \end{itemize}
+\chapter{Trust Issues}
+\section{Hardware trojan}
+Hardware security, nelle problematiche di trust: tutto ciò che fa in modo che noi sospettiamo che qualche attore malizioso sia inserito, iniziamo da cosa è un hw trojan: è un sistema che aggiunto al componente elettronico che usiamo crea un malfunzionamento.\\Possiamo fare tassonomia degli hw trojan, è abbastanza ampia ma che ci mostra che il trojan può mostrarsi in diversi livelli della produzione di hardware.\\Siamo nel caso dell'hw trust: siamo sicuri che un sistema sia fatto da sorgenti fidate? Ci sono modifiche nel dispositivo?\\Un hw trojan è un'aggiunta malevola od una modifica ad un elemento del hardware. Queste modifiche, a differenza di una modifica sw sono permanenti al sistema elettronico e come esso si comporta nella sua missione.\\Il concetto del trojan viene dal cavallo di Troia etc... bisogna fidarsi ma anche controllare: è una questione di fiducia nel processo che ha portato ad avere il dispositivo.\\Dobbiamo tenere in considerazione la possibilità che tale modifica possa essere stata introdotta, anche se non ne abbiamo una prova empirica.\\Siamo familiari a software trojan, come ransomware, etc... Nel caso hardware, c'è un po' un atto di fede: sono presenti nell'hw e occorre fare in modo di scovarli. È analogo a trovare la presenza di un guasto nel dispositivo nella sua produzione, quindi le tecniche di rilevazione dei guasti in produzione è simile alla rilevazione degli hw trojan:
+\begin{itemize}
+	\item un guasto di produzione è random
+	\item hw trojan crea un malfunzionamento dell'hw, ma può essere identificato con tecniche di testing che devono essere pù accurate. Sono difficili da trovare
+\end{itemize}
+Il problema: non ci fidiamo di chi ha fatto il circuito integrato o l'IP:
+\begin{itemize}
+	\item  possiamo avere problemi a livello di IP, ad esempio inserito nel codice dell'HDL
+	\item nella foundary, qualcuno aggiunge modifiche al layout 
+\end{itemize}
+Possiamo fidarci dell'hardware sono se gestito in casa, ma ormai non è più così.Possiamo avere:
+\begin{itemize}
+	\item IP trust issue: un sistema composto da diversi componenti che sono IP, (vedi immagine sopra) e quindi vendono da 3° parti che potrebbero avere all'interno degli attori malevoli
+	\item System integrator
+	\item produzione
+\end{itemize}
+Nel modello attuale orizzontale di produzione, possiamo avere questo: (immagine)\\c'è una parte trusted, ma poi mandando in fabbrica possiamo avere problemi di trust, quindi qualcosa nelle interfacce, la fabbricazione, il test dei dispositivi potrebbe non essere fidato.\\Se degli attori non fidati sono nel mezzo, abbiamo qualcosa non fidato.\\Ma possiamo anche avere che delle IP o delle std sec hanno delle modifiche, quindi diversi attori possono causare problematiche.
+\subsection{Esempi di hw trojan}
+Si identificano tipicamente due parti:
+\begin{itemize}
+	\item trigger: basandosi sulla combinazione di segnali interni al sistema fa partire l'effetto del trojan
+	\item payload: effetto del trojan
+\end{itemize}
+esempi: (copia immagine)\\esempio combinatorio, se A e B sono 0, il valore di C viene invertito per l'effetto del trojan, si attiva ogni volta che c'è combinazione di ingressi.\\Qualcosa di più elaborato è un trojan sequenziale: l'attivazione non è sempre basata sula combinazione degli ingressi, ma anche dal tempo: (copia immagine), quando q1 e q2 sono pari ad 1, il clock passa da 0 ad 1, dopo alcuni cicli di clock il contatore arriva ad avere il bit più significativo ad 1, che diventa l'effetto payload in modo che il valore di ER cambi. C'è quindi ad esempio una macchina a stati che crea la condizione per far partire il payload.\\Il trojan può anche non necessariamente modificare la funzione interna del dispositivo: (copia immagine) qui il trojan crea una emissione EM da parte del chip, che viene catturata a valle da qualcuno che fa side channel observation. In questo caso, abbiamo un crypto module (AES) con la chiave di k bit, che vengono anche captati da un trojan che mischiando con un PRNG carica un condensatorino nel dispositivo. Caricando /scaricando il condensatore, per via del movimento di cariche, ci sono delle emissioni EM, che possono essere captate per vedere il contenuto della chiave.\\Il trojan è chiamato MOLE (spia), la parte colorata serve per far trapelare la chiave, ma invece di fare carica /scarica del condensatore che sarebbe troppo ovvio si aggiunge un PRNG che almeno apparentemente disaccoppia le emissioni EM dal contenuto della chiave.
+\subsection{Trovare i trojan}
+La verifica fatta nel flusso di progettazione del VLSI, si fanno verifiche sull'hardware, sul fatto che porte logiche abbiano gli output attesi etc...\\Per test e verifica cerchiamo cose non intenzionali, quindi è più facile, mentre nel caso di trojan è più complesso perché sono messi a posta per essere difficilmente trovabili.\\Le funzionalità trovate potrebbero anche essere non documentate.\\Un altro tipico caso di problematiche dei trojan è una silicon backdoor: metto un antenna in un dispositivo per ricevere / emettere informazioni da un attore malizioso. Può causare malfunzionamenti, è complesso trovare la problematica se non è documentata, perché se l'antenna non è attiva in lettura /scrittura non ce ne accorgiamo, si trovano con tecniche che vedono emissioni EM, densità di potenza etc...\\Altre tecniche possono essere anche silicon time bomb, che può causare grossi problemi affidabilistici:
+\begin{itemize}
+	\item può capitare dopo molto tempo
+	\item è fatto con molti pattern, magari combinazioni molto rare di segnali interni che causano il malfunzionamento
+\end{itemize}
+può essere triggerato da:
+\begin{itemize}
+	\item counter
+	\item chiavi interne
+\end{itemize}
+può anche essere fatto a diversi livelli, anche non attivarlo "manualmente" ma far si che l'effetto si attivi su combinazione di segnali interni o su guasti.\\\\Le applicazioni dove possono verificarsi i pericoli sono molteplici, i trojan possono interessare ogni tipo di applicazione, possiamo vedere un'idea dei possibili modelli di attacco nella filiera produttiva: (copia tabella)\\nei dispositivi off-the-shelf possiamo avere addirittura che non sia trusted nulla, il trust ha un costo relativo alla verifica di tutti gli attori che realizzano il componente.\\Verificare ad esempio un 3P IP, ad esempio un processore, potremmo verificare che faccia tutto ciò che deve ma vuol dire ho la versione "golden" dell'IP core ma non è sempre vero che ce lo abbia, quindi quando compriamo a "scatola chiusa" è complesso trovare cose non documentate.
+\section{Tassonomia dei trojan}
+Possiamo separarli per diversi aspetti:
+(copia immagine)
+uno stesso trojan ha delle caratteristiche in ciascuno dei punti: diciamo che se li contiamo tutti, abbiamo la combinazione dei diversi aspetti.\\In ciascuno ci sono dei livelli che vanno dal basso verso l'alto, inoltre ad esempio un cambiamento delle funzionalità può essere rilevato con un test, ma un leak di informazioni è più complesso da rilevare etc... In base al livello o al tipo di attributo, può essere più o meno facile la rilevazione mediante test.\\Il livello rtl è quello del HDL\\\\Vediamo alcuni esempi, anche per capire come lo stesso trojan abbia diverse caratteristiche
+\subsection{Esempi di trojan}
+Un trojan di questo tipo ha qualcosa che ad un certo punto cambia il valore di qualcosa, si rileva se si riesce a vedere il cambiamento durante il test
+(copia)\\Il downgrade performance va ad aumentare le capacità sulle piste di collegamento, aumentando i carichi capacitivi o resistivi, quindi aumento le $\tau$ (costante dei condensatori) ovvero peggioro i tempi di ritardo da una porta logica ad un'altra.\\Il sistema può quindi non riuscire a rispettare il clock per cui è stato progettato. Il tempo di porpagazione attraverso una porta logica si basa sui tempi di carica e scarica dei condensatori che sono ad ingressi ed uscite della porta logica stessa. Il clock del sistema è limitato da quanto velocemente si caricano / scaricano i condensatori, quindi nel progetto cerchiamo di ridurre i $\tau$, per creare danno quindi aumento questi apposta in modo da causare ritardi che creerebbero dei problemi nella rete combinatoria, quindi il sistema non funziona più. (immagine).\\\\Gli stesso trojan ha diverse manifestazioni in base al livello di astrazione su cui si trova: il primo è ad un gate level, nel secondo caso siamo a physical level, connessioni fra transistor.\\Anche i trigger cambiano: caso 1 abbiamo un contatore che attiva il trojan, caso due viene aggiunto un condensatore in più (porte logiche sono implementate con transitor), quindi le performance peggiorano perché c'è un condensatore in più da caricare.\\\\Esistono molti benchmark di trojan, esiste un repository (trust-hub.org) che riporta i trojan con la stessa tassonomia. È utile per evitare di trovare trojan in hardware.
+\section{FPGA}
+Sono possibili target di trojan. Sono composte da:
+\begin{itemize}
+	\item elementi logici
+	\item interfaccia di I/O
+	\item interconnessioni programmabili
+\end{itemize}
+è hardware riprogrammabile quante volte voglio.\\In generale, le FPGA sono array di risorse logiche interconnesse: (immagini), possiamo programmare la funzione logica di ciasun LE ma anche le interconnesisoni fra i LE.\\Nel LE ho:
+\begin{itemize}
+	\item lookup table
+	\item flip flop
+	\item multiplexer
+\end{itemize}
+La lookup table è una tabella di verità programmabile, abbiamo una memoria dove a locazione (0,1) mettiamo un bit e così via... Se siamo in grado di programmare il contenuto di 4 entry, possiamo programmare 16 diverse tabelle. (immagine?)\\I due grandi vendor di FPGA erano Altera (ora acquisita da Intel) e Xilings (acquisito da AMD) e questo ci dice tanto su quanto importanti stanno diventando le FPGA.\\Possiamo vedere un esempio: (immagine).\\Usiamo dei CAD tool che permettono di sintetizzare qualunque progetto in HDL in dei bitstream che si sintetizza in una FPGA, questo rende l'hardware softwarizzato.
+\subsection{Hardware trojan in FPGA}
+Possono interessare diversi livelli:
+\begin{itemize}
+	\item IP block, ovvero quello che è il bitsream che programma le FPGA. Non è facile trovarli perché gli stream sono cifrati e non possiamo fare reversing del bistream e quindi metterci un torjan lo rende difficile da trovare;
+	\item Abbiamo poi la FPGA fabrique (immagine con le varie LE) possiamo avere connessioni non volute, porte logiche in più etc...
+\end{itemize}
+In entrambe i casi, possono essere dipendenti dall'IP o indipendenti (vedi slides).
+
+
+
+
+
+
+
+
+
+
 
 
 
