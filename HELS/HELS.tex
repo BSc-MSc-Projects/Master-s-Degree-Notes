@@ -1890,7 +1890,7 @@ possiamo quindi scrivere la tensione totale $V_L = - \dfrac{R_L}{R_S + R_L}V^i \
 
 \part{Parte Hardware}
 
-\chapter{Introduction and background notions}
+\chapter{Blocco 1 - Introduzione e nozioni di background}
 Vediamo gli attacchi sull'hardware vero e proprio. Vedremo:
 \begin{itemize}
 	\item sicurezza;
@@ -2056,7 +2056,11 @@ Si possono:
 	\item time redundancy: ripetere l'operazione più volte, ad esempio il caso in cui si usano 2 thread per fare la stessa cosa.\\Non usiamo più risorse hardware, ma ci si mette più tempo per fare la stessa cosa (ad esempio flip flop a basso livello). Anche questa è semplice
 	\item information redundancy è aggiungere più risorse per fare la stessa cosa: è complessa, si mettono le mani sui dati, ad esempio con i bit in più per la parità per la rivelazione/correzione di errori (L'anima di Giaconi aleggia su di me).
 \end{itemize}
-\chapter{Trust Issues}
+
+
+\chapter{Blocco 2 - Trust Issues}
+
+
 \section{Hardware trojan}
 Hardware security, nelle problematiche di trust: tutto ciò che fa in modo che noi sospettiamo che qualche attore malizioso sia inserito, iniziamo da cosa è un hw trojan: è un sistema che aggiunto al componente elettronico che usiamo crea un malfunzionamento.\\Possiamo fare tassonomia degli hw trojan, è abbastanza ampia ma che ci mostra che il trojan può mostrarsi in diversi livelli della produzione di hardware.\\Siamo nel caso dell'hw trust: siamo sicuri che un sistema sia fatto da sorgenti fidate? Ci sono modifiche nel dispositivo?\\Un hw trojan è un'aggiunta malevola od una modifica ad un elemento del hardware. Queste modifiche, a differenza di una modifica sw sono permanenti al sistema elettronico e come esso si comporta nella sua missione.\\Il concetto del trojan viene dal cavallo di Troia etc... bisogna fidarsi ma anche controllare: è una questione di fiducia nel processo che ha portato ad avere il dispositivo.\\Dobbiamo tenere in considerazione la possibilità che tale modifica possa essere stata introdotta, anche se non ne abbiamo una prova empirica.\\Siamo familiari a software trojan, come ransomware, etc... Nel caso hardware, c'è un po' un atto di fede: sono presenti nell'hw e occorre fare in modo di scovarli. È analogo a trovare la presenza di un guasto nel dispositivo nella sua produzione, quindi le tecniche di rilevazione dei guasti in produzione è simile alla rilevazione degli hw trojan:
 \begin{itemize}
@@ -2100,7 +2104,7 @@ Possiamo separarli per diversi aspetti:
 uno stesso trojan ha delle caratteristiche in ciascuno dei punti: diciamo che se li contiamo tutti, abbiamo la combinazione dei diversi aspetti.\\In ciascuno ci sono dei livelli che vanno dal basso verso l'alto, inoltre ad esempio un cambiamento delle funzionalità può essere rilevato con un test, ma un leak di informazioni è più complesso da rilevare etc... In base al livello o al tipo di attributo, può essere più o meno facile la rilevazione mediante test.\\Il livello rtl è quello del HDL\\\\Vediamo alcuni esempi, anche per capire come lo stesso trojan abbia diverse caratteristiche
 \subsection{Esempi di trojan}
 Un trojan di questo tipo ha qualcosa che ad un certo punto cambia il valore di qualcosa, si rileva se si riesce a vedere il cambiamento durante il test
-(copia)\\Il downgrade performance va ad aumentare le capacità sulle piste di collegamento, aumentando i carichi capacitivi o resistivi, quindi aumento le $\tau$ (costante dei condensatori) ovvero peggioro i tempi di ritardo da una porta logica ad un'altra.\\Il sistema può quindi non riuscire a rispettare il clock per cui è stato progettato. Il tempo di porpagazione attraverso una porta logica si basa sui tempi di carica e scarica dei condensatori che sono ad ingressi ed uscite della porta logica stessa. Il clock del sistema è limitato da quanto velocemente si caricano / scaricano i condensatori, quindi nel progetto cerchiamo di ridurre i $\tau$, per creare danno quindi aumento questi apposta in modo da causare ritardi che creerebbero dei problemi nella rete combinatoria, quindi il sistema non funziona più. (immagine).\\\\Gli stesso trojan ha diverse manifestazioni in base al livello di astrazione su cui si trova: il primo è ad un gate level, nel secondo caso siamo a physical level, connessioni fra transistor.\\Anche i trigger cambiano: caso 1 abbiamo un contatore che attiva il trojan, caso due viene aggiunto un condensatore in più (porte logiche sono implementate con transitor), quindi le performance peggiorano perché c'è un condensatore in più da caricare.\\\\Esistono molti benchmark di trojan, esiste un repository (trust-hub.org) che riporta i trojan con la stessa tassonomia. È utile per evitare di trovare trojan in hardware.
+(copia)\\Il downgrade performance va ad aumentare le capacità sulle piste di collegamento, aumentando i carichi capacitivi o resistivi, quindi aumento le $\tau$ (costante dei condensatori) ovvero peggioro i tempi di ritardo da una porta logica ad un'altra.\\Il sistema può quindi non riuscire a rispettare il clock per cui è stato progettato. Il tempo di propagazione attraverso una porta logica si basa sui tempi di carica e scarica dei condensatori che sono ad ingressi ed uscite della porta logica stessa. Il clock del sistema è limitato da quanto velocemente si caricano / scaricano i condensatori, quindi nel progetto cerchiamo di ridurre i $\tau$, per creare danno quindi aumento questi apposta in modo da causare ritardi che creerebbero dei problemi nella rete combinatoria, quindi il sistema non funziona più. (immagine).\\\\Gli stesso trojan hanno diverse manifestazioni in base al livello di astrazione su cui si trova: il primo è ad un gate level, nel secondo caso siamo a physical level, connessioni fra transistor.\\Anche i trigger cambiano: caso 1 abbiamo un contatore che attiva il trojan, caso due viene aggiunto un condensatore in più (porte logiche sono implementate con transitor), quindi le performance peggiorano perché c'è un condensatore in più da caricare.\\\\Esistono molti benchmark di trojan, esiste un repository (trust-hub.org) che riporta i trojan con la stessa tassonomia. È utile per evitare di trovare trojan in hardware.
 \section{FPGA}
 Sono possibili target di trojan. Sono composte da:
 \begin{itemize}
@@ -2108,7 +2112,7 @@ Sono possibili target di trojan. Sono composte da:
 	\item interfaccia di I/O
 	\item interconnessioni programmabili
 \end{itemize}
-è hardware riprogrammabile quante volte voglio.\\In generale, le FPGA sono array di risorse logiche interconnesse: (immagini), possiamo programmare la funzione logica di ciasun LE ma anche le interconnesisoni fra i LE.\\Nel LE ho:
+è hardware riprogrammabile quante volte voglio.\\In generale, le FPGA sono array di risorse logiche interconnesse: (immagini), possiamo programmare la funzione logica di ciasun LE ma anche le interconnessioni fra i LE.\\Nel LE ho:
 \begin{itemize}
 	\item lookup table
 	\item flip flop
@@ -2123,15 +2127,124 @@ Possono interessare diversi livelli:
 \end{itemize}
 In entrambe i casi, possono essere dipendenti dall'IP o indipendenti (vedi slides).
 
+\chapter{Blocco 3 - Problemi di vulnerabilità}
+\section{Recap}
+Per le problematiche i trust, si parla in primo luogo di hw trojan. Quando noi parliamo di hw security c'è un opponent che vuole causare delle problematiche: possiamo avere modifiche del'hw causate da agenti malintenzionati.\\Inquadriamo questo come problematica di hw trust, la problematica è dove i trojan compaiono e questo può avvenire in tutta la catena produttiva: IP, integrazione, produzione, etc... ci sono diversi livelli di inserimento.\\Questo ritorna nella tassonomia, un trojan avrà una sua proiezione su ciascuna delle qualità dell'immagine, questo è in generale il modo in cui si definiscono i trojan.\\Abbiamo sempre payload + trigger: ad esempio il trigger può essere l'aggiunta nel circuito di una NOR (??) (rivedi l'immagine).\\Trojan sequenziali hanno un'attivazione più complessa, perché serve la combinazione di stati, posiamo poi avere dei trojan che abbiano come effetto un DoS, ad esempio cambiare un bit del PC facendo hijacking di ciò che stava facendo il processore: a decode stage c'è un'eccezione, si va quindi in trap e quindi DoS.\\Spesso i trojan sono cose che vengono realizzate e risolte.\\Esempio del leak di una chiave (es di AES): MOLE, capta i valori della chiave e carica / scarica dei condensatori che generano dei campi EM in modo che le emissioni siano monitorate, sfruttando il side channel. Combinazione di:
+\begin{itemize}
+	\item modifica hardware
+	\item sfruttare un side channel
+\end{itemize}
+non si può trovare il trojan, almeno funzionalmente, perché le operazioni vengono fatte dal processore. Quindi per verificarlo, possiamo vedere l'assorbimento di potenza medio del circuito, oppure vedere le costanti RC (tipiche dei circuiti elettronici) così che se abbiamo dei fan out aggiunti in più avremo dei ritardi maggiori ma è comunque difficile.\\È complesso trovarli perché mentre si fanno i test sappiamo quali possono essere i difetti, li possiamo prevedere, mentre qui:
+\begin{itemize}
+	\item non sappiamo come sono fatti i trojan;
+	\item non sappiamo come è fatto il circuito (IP), potrebbe essere stato modificato;
+\end{itemize}
+Si possono anche avere dei trojan che si inseriscono a livello di testing, mediante tecniche di scan si può boicottare il comportamento del dispositivo.\\Ci sono anche casi di attivazione esterna, ad esempio combinazioni di input esterne o anche delle antenne che si accoppiano con un attaccante esterno per causare malfunzionamenti.\\Il payload può poi essere un DoS, un attacco alle performance, un leak delle informazioni o anche \underline{un aumento delle $\tau$ per abbassare le frequenze di lavoro (??)}.\\Gli stessi trojan possono avere due descrizioni diverse in base alla tassonomia: un \textbf{change functionality}, che magari aggiunge delle porte logiche come una porta OR o XOR, può fare diverse cose. Il payload può essere introdotto a livello di porte logiche, o magari ho mandato in foundary tutta la descrizione del chip e quando viene fatta la metalizzazione del chip qualcuno peggiora le performance elettriche aumentando ad esempio i carichi capacitivi o resistivi così da avere delle performance peggiori.\\Abbiamo quindi modifiche o a livello logico oppure a livello fisico.\\FPGA: software hardware codesing, molto interessanti, poco costose e permettono di scrivere hardware che giri sulle FPGA.\\Hanno grosso potenziale ed anche su sbocchi lavorativi, molto a confine fra software ed hardware.\\Le soluzioni qui si possono creare mettendo le mani proprio sull'architettura.\\Da un punto di vista di sicurezza di sono due punti di attacco:
+\begin{itemize}
+	\item l'hardware di cui sono fatte, in quanto sono fatte di blocchi che poi vengono collegati mediante software, quindi possiamo modificare il blocco (foundary)
+	\item trojan che sono nella parte di programmazione, nell'IP block: il bitstream non è in chiaro, fare reverse engineering non è facile:
+	\begin{itemize}
+		\item i vendor non lo documentano molto
+		\item spesso sono cifrati, vengono vendute delle IP. Si lavora quindi su una black box
+	\end{itemize}
+	Qui i trojan sono anche più plausibili, è come se fosse software
+\end{itemize}
 
 
-
-
-
-
-
-
-
+\section{Vulnerabilità hardware}
+L'altro lato della medaglia, focalizzeremo la vulnerabilità sul side channel: nel mondo ideale è isolato da chi vuole attaccare. La vulnerabilità è basata sul fatto che questa cosa non è più vera, si basa sul concetto del \textbf{side channel attack}: ci sono attacchi che funzionano anche sul test, se le strutture di test che vengono messe lì e non usate dopo le uso per trovare i segreti, la root of trust non vale più (isolamento totale).\\La crittografia è basata sull'astrazione matematica: basandosi solo sulle informazioni che ho sul canale, servirebbe tempo molto lungo per fare bruteforcing e trovare la parola in chiaro.\\Qui abbiamo più informazioni che ci permettono di diminuire il tempo necessario al ricavare l'informazione in chiaro.\\Parliamo quindi di side channel attacks fisici, che permettono di ottenere ulteriori informazioni per poter rompere la crittografia.\\Nel caso reale, gli attacchi possono avvenire su tutto il canale e non solo sugli end points.\\I side channel che si possono usare sono tanti:
+\begin{itemize}
+	\item uso di potenza, assorbimento di corrente
+	\item emissioni EM
+	\item emissioni ottiche delle giunzioni, più invasivo
+	\item timing e ritardi generali nei processori
+	\item acustici
+\end{itemize}
+vederemo i primi due per lo più.\\Il tipico setup è dato da:
+\begin{itemize}
+	\item dispositivo sotto attacco
+	\item input ed output passati al dispositivo
+\end{itemize}
+vediamo tutte le informazioni che il dispositivo può tirare fuori, misurandole con oscilloscopi, probes etc...\\Esistono anche setup economici che permettono mediante probes appositi di rompere la crittografia sul dispositivo target.\\Abbiamo anche qui una tassonomia: (metti immagine)
+possiamo già classificare due branche:
+\begin{itemize}
+	\item attacchi passivi: non si fa nulla sul dispositivo. Non aggiungo ingressi che permettono di cambiare lo stato del dispositivo per aumentare cosa io posso osservare. Faccio solo osservabilità, "origlio" ulteriori dati, senza modificare nulla
+	\begin{itemize}
+		\item attacchi invasivi, metto dei probe sul chip
+		\item analisi della potenza: cerchiamo di correlare il segreto alla potenza osservata
+		\item analisi elettromagnetica: correliamo il segreto alle emissioni EM
+		\item timing: come sopra ma correlo al tempo
+	\end{itemize}
+	\item attacchi di tipo attivo: metto le mani nell'hardware, aggiungiamo dei nostri input per aumentare lo spazio delle cose che possiamo osservare. Possono essere
+	\begin{itemize}
+		\item glitching, introduco degli errori;
+		\item modifico il clock;
+		\item disturbo EM;
+		\item glitching con il laser, l'equivalente delle particelle ionizzanti
+	\end{itemize}
+\end{itemize}
+possiamo anche avere degli approcci invasivi: se vogliamo vedere delle informazioni, ad esempio attività in memoria, lo vediamo come emissioni di fotoni ma occorre aprire il dispositivo ed osservare, quindi il side channel è invasivo e costoso.\\Probing: mettere dei mini-sensori per vedere i valori di tensione, per cui serve:
+\begin{itemize}
+	\item avere una visione completa del target
+	\item è facile poter creare dei danni nel dispositivo
+\end{itemize}
+Potremmo poi bloccare il RNG, così che la chiave creata sia nota, possiamo poi ricostruire dei fusibili che sono stati distrutti, che magari sono state rotte in seguito al test, in modo da riutilizzarle; è un attività di micro-probing accurata.\\Ci sono poi le attività di fault injection per introdurre degli errori, ad esempio nei vari round dell'AES, che poi possiamo correlare con le versioni non corrotte in modo da capire in base all'errore, delle informazioni in più.
+\section{Attacco}
+Quando si attacca, si cerca di scoprire la chiave, vale l'assunzione di Kerckhoff per cui la segretezza deve essere solo nella chiave, il resto è noto, non vogliamo security by obscurity.\\Gli attacchi side channel hanno una fase in cui si interagisce con l'hardware per ottenere delle caratteristiche fisiche (emissione EM, potenza) e presi i dati ottenuti li correlo con un'analisi a posteriori per capire cosa sta avvenendo nel dispositivo.\\Possiamo cercare di correlare almeno una parte della chiave, così che dopo sia più semplice la ricerca esaustiva sulla parte mancante (vengono esponenzialmente dimezzate le ricerche da fare).
+\subsection{Classificazione degli attacchi} 
+Vediamo due categorie:
+\begin{itemize}
+	\item semplici: cercano di mappare il risultato di un numero limitato di tracce con delle attività del dispositivo. Cerchiamo di capire algoritmicamente cosa sta facendo il dispositivo
+	\item differenziale: cerchiamo molte tracce per correlarle con la parola segreta che viene trattata. Cerchiamo di derivare la chiave, abbiamo un modello che correliamo a cosa osserviamo.
+\end{itemize}
+Per fare il side channel attack, misuriamo la potenza assorbita: non ci interessano né la media né il picco perché non si possono correlare col segreto, voglio fare una correlazione a run time per capire cosa sta accadendo (metti immagine).\\Occorre poter avere le mani sul dispositivo per catturare le firme di corrente prodotte quando il dispositivo è sotto attacco, è basato sull'idea che non sia invasiva, è stato possibile rompere AES in pochi minuti.\\Ci sono vari tipi di analisi, vengono create delle tracce di assorbimento e ne servono molte per condurre un'analisi di successo.\\esempio:\\smart card, hanno (copia), 8 fili e per metterci le mani sopra c'è qualcosa di fisico che nel momento in cui tento di aprirlo, uno shield distrugge il chip, qui si può tentare di fare delle analisi di assorbimento di potenza.\\Il setup tipico:\\un inverter assorbe corrente quando il valore cambia, se A rimane 0 o 1 non ci sono assorbimenti di potenza, altrimenti sì. Correliamo l'assorbimento di potenza a quello di corrente, ad esempio colleghiamo ad una resistenza, correliamo le uscite di un oscilloscopio alla caduta di potenziale alla cifratura di un plaintext. Creiamo un numero elevato di tracce.\\L'analisi più classica è la SPA (1996): basato su power analysis, cerchiamo di capire le operazioni che stanno avvenendo sul dispositivo. IL vantaggio è che bastano poche tracce per capire il funzionamento, utile se non ho accesso al dispositivo, è inoltre correlabile ad un timing side channel attack, possiamo vedere cosa sta facendo il processore sotto attacco: vedendo le tracce possiamo capire se il dispositivo stava crittografando con chiavi che hanno 0 o 1, possiamo anche applicare degli attacchi basati su ML, classificando i segreti che vengono trattati.\\esempio:\\smart card DES, è un product cipher che ha sia permutazioni che sostituzioni, ad ogni round (che sono 16), c'è una round key generata dalla segreta, si arriva da un blocco di 64 bit di plaintext ad uno di 64 bit di ciphertext (immagine), ci sono delle emissioni EM quando vengono compiuti i round: con le tracce, facendo lo zoom, riusciamo a capire le potenziali emissioni EM che possiamo correlare alla funzionalità di ciò che è stato fatto dal round del DES (immagine).\\Può tornare utile perché possiamo, sapendo quali operazioni vengono fatte, se ci sono casi di operazioni condizionali in base al valore della chiave, possiamo sapere se c'è stato uno 0 o un 1, vediamo un pattern algoritmico di un if invece di un then, se queste hanno due manifestazioni di potenza diverse lo vediamo.\\Anche se ci sono moltiplicazioni si possono vedere, perché hanno complessità che dipendono dal peso di Hamming, ovvero dal numero di 1 che vengono moltiplicati, quindi l'assorbimento può dipendere dal numero di 1 delle chiavi segrete.\\In più, egli RSA dove ci sono le esponenziazioni, c' è un algoritmo di tipo square and multiply: l'operazione di square è diversa dalla mutliply per ragioni di velocità, qui di nuovo non pensiamo alla possibilità di side channel, qui: (copia codice), ci sono if sui bit del segreto, in base al valore facciamo o solo square oppure sq + mult.\\(riscrivi RSA), con un algoritmo naive, le tempistiche ed i pattern di assorbimento sono differenti in base al fatto che l'esponente abbia uno 0 o un 1 (copia), quindi il pattern è fatto in modo seguente:(copia)\\vedo gli 0 e gli 1 della chiave $\rightarrow$ RSA rotta.\\È un attacco anche di tipo timing + delay, correlo a cosa vedo dall'esterno in base a quanto tempo ci mette a fare le operazioni, quindi posso fare delle assunzioni sul peso di Hamming della chiave (quanti 1 ci sono).
+\subsubsection{Differtial power analysis}
+È il più classico caso di side channel attack, si ottiene con un elevato numero di tracce. Si crea un modello del device fisico dove abbiamo i dati e la chiave e tiriamo fuori da questi un ipotetico modello della power absorption.\\Man mano correliamo i dati osservati fino ad avere delle correlazioni forti che ci permettono di trovare i valori della parola in plaintext (e della chiave) perché la correlazione è forte.
+\subsubsection{Electromagnetic Power Analysis}
+Possiamo poi avere la EM power analysis: l'attacco è passivo, si mette una spia collegata ad un osciolloscopio, se c'è una caduta EM sulla spira, ci sono cambiamenti di dati nei transistor, anche qui si posson fare analisi simple o differential, qui cerchiamo di osservare quali sono le correnti circolate nel dispositivo (immagine)\\Qui le tracce sono diverse dal caso della power: (immagine)\\nel caso power le tracce sono smussate, meno rumoroso perché si eliminano le frequenze elevate dai condensatori, le emissioni EM sono invece più rumorose e più acute quindi occorre fare post processing del segnale.\\Ad esempio, possiamo avere un processore usato per la crittografia:(copia immagine)\\con l'EM analysis possiamo vedere dove c'è stata attività durante la crittografia, la densità spettrale permette di correlare le attività funzionali e quindi anche di capire dove sono i bit dei segreti e quindi più informazioni = più facilità nel rompere l'algoritmo.\\esempio:\\(immagine) la potenza da una sola traccia su tutto il chip, posso solo osservare la potenza assorbita, mentre vedendo le probe nei diversi punti nel chip abbiamo una traccia per ognuno dei componenti hardware e possiamo capire quindi se:
+\begin{itemize}
+	\item stiamo facendo fetch del dato
+	\item stiamo facendo processamento del dato
+\end{itemize}
+Quindi il vantaggio dell'EMA è che le informazioni locali sono più correlate ai dati, bypassando i condensatori che altrimenti fanno smoothing dell'assorbimento di potenza.\\Sperimentalmente sono più complesse, lo scan su tutto il chip può essere tedioso e ci sono molte più problematiche da gestire.
+\subsection{Fault injection attacks}
+Il side channel è attivo: inietto un guasto, ad esempio glitchando il clock o l'alimentazione, cambio un bit e quindi l'effetto ad esempio sulle istruzioni è che ne venga eseguita un'altra che può causare dei side effect, quindi sono approcci algoritmici.\\Facendo questo in massa, è possibile trovare delle correlazioni con la chiave.\\esempio:\\ (immagine) glitchiamo la chiave in modo che sia fatta da soli zeri, quindi ne vediamo l'effetto in quanto il ciphertext creato è diverso e ci permette di identificare poi il vero valore di k: correliamo alla stessa cifratura della parola che si ottiene senza fare glitching, già trovare un sotto insieme della chiave riduciamo esponenzialmente il numero di ricerche esaustive.\\Le tecniche possono essere:
+\begin{itemize}
+	\item di tipo voltage, buono in quanto non invasivo. Ci sono dei voltage smoother che riducono l'effetto, ma toccando il voltage si cambia il comportamento
+	\item clock pin, si fa una piccola variazione del clock nel suo andamento oscillatorio, correlando questo effetto con quello "pulito", dopo tante simulazioni possiamo tirare fuori l'effetto sul dato misurato e quindi una rivelazione del dato segreto
+	\item disturbi EM
+	\item laser, possiamo andare in maniera molto puntuale a flippare dei bit in una locazione del chip. Il problema è che occorre togliere l'incapsulamento del chip, altrimenti il laser non può passare. Siccome il laser è puntuale, si possono flipapre zone del chip dove possiamo immaginare che ci siano parole della crittografia o parti della chiave segreta. L'approccio è però molto invasivo.
+\end{itemize}
+\subsection{Attacchi timing}
+Sfruttano vulnerabilità dell'hardware che potrebbero essere osservati da remoto.\\Se ci colleghiamo ad un dispositivo, mediante analisi accurata del timing, riusciamo a derivare i cicli che ci ha messo un processore per fare delle operazioni, posso inferire la chiave.\\È un approccio come la SPA, dove assorbo la potenza e vedo dove sono gli 1, anche qui vedo almeno quanti 1 ci sono e lo faccio da remoto: sempre con l'approccio naive, possiamo avere questa misurazione.\\Sfrutto un ottimizzazione a mio vantaggio, ce ne sono altre quando ci sono delle ottimizzazioni del microprocessore: ricorda OOO, caching, speculative execution, possiamo usarle per inferire il segreto.\\Nelle micro-architetture, tipicamente c'è un processore in-order, senza OOO, senza branch prediciton: se c'è un errore la pipe e squashata, se serve prendere dati dalla memoria si va in stallo.\\Per avere ottimizzazione:
+\begin{itemize}
+	\item branch predicition
+	\item OOO
+	\item pipelining
+\end{itemize}
+quando le cose vanno male, si flusha la pipeline e vengono rese non valide le operazioni fatte prima.\\Il problema è che le operazioni di flush lasciano un impronta nel dispositivo. Abbiamo quindi transient execution attack, con due grandi esempi:
+\begin{itemize}
+	\item spectre: lettura arbitraria di locazioni di memoria
+	\item meltdown permette di leggere tutta la memoria di un sistema
+\end{itemize}
+dovute all'esecuzione speculativa, della presenza della pipeline e l'OOO.\\Dipende dall'implementazione dei manufactutrer, come funziona:
+\begin{itemize}
+	\item preparazione della micro-architettura
+	\item parte l'esecuzione di trigger
+	\item c'è un esecuzione transiente che porta ad eseguire istruzioni illegali, che porta quindi allo squash della pipeline
+	\item la CPU fa il retirement dell'istruzione
+	\item si può ricostruire l'informazione
+\end{itemize}
+Esiste ad esempio il caso del flush + reload: l'attacco è combinato, c'è qualcuno che osserva gli effetti fatti dall'altra fase. Qui:
+\begin{itemize}
+	\item invalido tutta la cache di primo livello
+	\item un dato richiesto va fetchato quindi dalla memoria centrale
+	\item osservo un tempo elevato di accesso ai dati, perché il fetch richiede un accesso in memoria
+	\item ricarico e vedo tutti tempi lunghi. Ma se nel frattempo l'attaccante, per via di una operazione OOO o speculativa ha fetchato uno dei dati che sta in un indirizzo che ho invalidato e questo è correlabile con un segreto. Quindi al reload, per accedere all'indirizzo dove so che c'è il segreto, ci metterò di meno ad accedervi e saprò che è lì il segreto.\\È l'indirizzo correlato al segreto
+\end{itemize}
+Sono tutti attacco micro-architetturali, ciò che ne viene fuori è che quando si progetta un dispositivo per le performance, non sempre questo è ottimizzato per la security: occorre pensare se le performance vadano a tradire la sicurezza, analogo allo square + multiply dove per ottimizzare non si fa multiply quando c'è 1 all'esponente.
+\subsection{Attacchi basati sul test}
+Potendo vedere il contenuto dei flip flop del dispositivo, potrei anche vedere il contenuto di registri intermedi che contengono parti della chiave AES, blocco quindi l'esecuzione intermedia e cerco di recuperare la chiave (rivedi dalle slides), una delle contromisure è la defuse, ovvero si spacca l'hardware usato, tanto lo vederemo meglio quando parliamo delle contromisure(??).
 
 
 
