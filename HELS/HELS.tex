@@ -1820,7 +1820,7 @@ Si lega alla branca dell'EMC (EM Compatibility), molto di quel know si trasmette
 
 \chapter{Lezione 12}
 \section{Compatibilità EM}
-Ricondotto le problematiche che ci possono essere sono riconducibili a  
+Le problematiche che ci possono essere sono riconducibili a  
 \begin{itemize}
 	\item emissione
 	\item suscettibilità 
@@ -1830,10 +1830,21 @@ entriamo ora nel dominio della compatibilità EM, vedremo in particolare
 	\item emissione radiata: ha a che fare con la capacità di rivelare segreti, ma anche produrre interferenze verso altri dispositivi vicini
 	\item suscettibilità radiata: è una proprietà o un effetto legato alla ricezione di disturbi che siano non intenzionali o di tipo malevolo.
 \end{itemize}
-è una branca dell'ingegneria molto sviluppata negli anni.\\Introduciamo il concetto di \textbf{disturbo}, tipicamente si fa riferimento a questo schema qui: (copia)\\
-il secondo blocco può essere sia la vittima che anche l'effrattore, quindi il malevolo. Affinché i due interagiscano fra di loro è necessario che vi sia un canale, quindi un percorso di accoppiamento in modo che il campo prodotto dall'emettitore raggiunga la vittima e viceversa. Per avere l'interazione devono esserci tutti e 3 i pezzi, è il classico schema dell'interferenza EM (EMI).\\Come avviene l'emissione di un segnale: per effetto di correnti, quindi immaginiamo il seguente schema: (copia schema dispositivi) abbiamo dei dispositivi legati fra di loro da bus dati, ovvero che devono trasportare segnali.\\Può poi capitare che il dispositivo sia collegato alla presa di rete, le correnti che scorrono devono farlo per necessità, se il loro contenuto spettarle è elevato viene prodotta un'emissione, che può produrne un'altra nel dispositivo D$_L$ che può fornire informazioni in maniera involontaria.\\\\La suscettibilità è il caso duale: lo schema è lo stesso, tutti i percorsi dai quali i produce energia possono raccoglierla, quindi i fili possono divenire antenne: se ci sono delle aperture, il campo può uscire ma anche entrare dall'esterno.\\In entrambe i casi, il disturbo viene emesso/raccolto per radiazione, esistono anche di tipo condotto dove il canale sono dei fili che raccolgono il segnale e lo trasmettono da altre parti, chiaramente in questo caso il canale è più efficiente dell'etere in quanto c'è meno attenuazione.\\Vediamo due modelli per capire come funzioniamo i fenomeni e da quali parametri sono determinati
+è una branca dell'ingegneria molto sviluppata negli anni.\\Introduciamo il concetto di \textbf{disturbo}, tipicamente si fa riferimento a questo schema qui:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/schema_distrurbo.png}
+\end{figure}\\\\
+il secondo blocco può essere sia la vittima che anche l'effrattore, quindi il malevolo.\\Affinché i due interagiscano fra di loro è necessario che vi sia un canale, quindi un percorso di accoppiamento in modo che il campo prodotto dall'emettitore raggiunga la vittima e viceversa.\\ Per avere l'interazione devono esserci tutti e 3 i pezzi, è il classico schema dell'interferenza EM (EMI).\\Come avviene l'emissione di un segnale: per effetto di correnti, quindi immaginiamo il seguente schema:\\ 
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/schema_emissione.png}
+\end{figure}
+\\\\abbiamo dei dispositivi legati fra di loro da bus dati, ovvero che devono trasportare segnali.\\Può poi capitare che il dispositivo sia collegato alla presa di rete, le correnti che scorrono devono farlo per necessità, se il loro contenuto spettarle è elevato viene prodotta un'emissione, che può produrne un'altra nel dispositivo D$_L$ che può fornire informazioni in maniera involontaria.\\\\La suscettibilità è il caso duale: lo schema è lo stesso, tutti i percorsi dai quali i produce energia possono raccoglierla, quindi i fili possono divenire antenne: se ci sono delle aperture, il campo può uscire ma anche entrare dall'esterno.\\In entrambe i casi, il disturbo viene emesso/raccolto per radiazione, esistono anche di tipo condotto dove il canale sono dei fili che raccolgono il segnale e lo trasmettono da altre parti, chiaramente in questo caso il canale è più efficiente dell'etere in quanto c'è meno attenuazione.\\Vediamo due modelli per capire come funzioniamo i fenomeni e da quali parametri sono determinati
 \subsection{Modelli di emissione}
-Consideriamo nuovamente una coppia di dispositivi, che possono anche essere due circuiti integrati in un PCB (basetta elettronica, copia disegno), i dispositivi sono interconnessi, sui fili passeranno delle correnti che dovrebbero essere di conduzione. L'effetto radiativo dovrebbe tendere a bilanciarsi, ma la situazione non è così pulita: un circuito pcb (copia) è fatto da linee che non sono del tutto isolate, quindi se immaginiamo di porre un oggetto metallico vicino, si satbiliranno delle interazioni con i fili (che possiamo schematizzare come dei condensatori) che faranno si che le correnti non siano più bilanciate. Chiamiamo nel nuovo modello le correnti $I_1$ ed $I_2$ generiche e non meglio specificate. Quando abbiamo due correnti diverse, si possono sempre scomporre in due set di correnti: possiamo introdurre delle \textbf{correnti di modo comune}, che chiameremo $I_C$ e delle \textbf{correnti di modo differenziale} $I_D$, possiamo scrivere come sovrapposizione degli effetti:
+Consideriamo nuovamente una coppia di dispositivi, che possono anche essere due circuiti integrati in un PCB:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.2]{immagini/pcb.png}
+\end{figure}
+\\\\i dispositivi sono interconnessi, sui fili passeranno delle correnti che dovrebbero essere di conduzione. L'effetto radiativo dovrebbe tendere a bilanciarsi, ma la situazione non è così pulita: un circuito pcb è fatto da linee che non sono del tutto isolate, quindi se immaginiamo di porre un oggetto metallico vicino, si satbiliranno delle interazioni con i fili (che possiamo schematizzare come dei condensatori) che faranno si che le correnti non siano più bilanciate. Chiamiamo nel nuovo modello le correnti $I_1$ ed $I_2$ generiche e non meglio specificate. Quando abbiamo due correnti diverse, si possono sempre scomporre in due set di correnti: possiamo introdurre delle \textbf{correnti di modo comune}, che chiameremo $I_C$ e delle \textbf{correnti di modo differenziale} $I_D$, possiamo scrivere come sovrapposizione degli effetti:
 \begin{itemize}
 	\item $I_1 = I_C + I_D$
 	\item $I_2 = I_C - I_D$
@@ -1843,18 +1854,95 @@ e ricavare le due:
 	\item $I_C = \frac{I_1 + I_2}{2}$
 	\item $I_D = \frac{I_1 - I_2}{2}$
 \end{itemize}
-possiamo quindi rifare il disegno: (a ricopia)\\vanno in qualche modo sovrapposte, applicando la sovrapposizione degli effetti.\\Le correnti di modo differenziale sono quelle che dobbiamo avere nel dispositivo, con cui trasferiamo potenza e dati. Le correnti di modo comune sono degli effetti collaterali, legate all'interazione con oggetti vicini, possiamo immaginarle come "antenne nascoste" e sono un problema da un punto di vista del funzionamento perché produrranno irradiazione, ma da un punto di vista della sicurezza sono una vulnerabilità perché tx al di fuori della basette delle informazioni.\\Per fare delle analisi quantitative, immaginiamo che i fili siano paralleli ed approssimabili a dei dipoli:
-(disegno)\\ammettiamo che i fili siano lunghi $l$ e la spaziatura sia $s$, avremo poi le due correnti.\\L'oggetto viene considerato con il \textbf{metodo degli Array}: questo è un array di due fili, possiamo inserire le posizioni $y_1$ ed $y_2$ (copia) e valutiamo l'irradiazione dei fili come se fossero un array.\\Facciamo delle ipotesi:
+possiamo quindi rifare il disegno:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/correnti_d.png}
+\end{figure}
+\\\\vanno in qualche modo sovrapposte, applicando la sovrapposizione degli effetti.\\Le correnti di modo differenziale sono quelle che dobbiamo avere nel dispositivo, con cui trasferiamo potenza e dati. Le correnti di modo comune sono degli effetti collaterali, legate all'interazione con oggetti vicini, possiamo immaginarle come "antenne nascoste" e sono un problema da un punto di vista del funzionamento perché produrranno irradiazione, ma da un punto di vista della sicurezza sono una vulnerabilità perché tx al di fuori della basette delle informazioni.\\Per fare delle analisi quantitative, immaginiamo che i fili siano paralleli ed aporossimabili a dei dipoli:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/rapp_array.png}
+\end{figure}
+\\\\ammettiamo che i fili siano lunghi $l$ e la spaziatura sia $s$, avremo poi le due correnti.\\L'oggetto viene considerato con il \textbf{metodo degli Array}: questo è un array di due fili, possiamo inserire le posizioni 
+\begin{itemize}
+	\item $y_1 = -\frac{s}{2}$;
+	\item $y_2 = \frac{s}{2}$	
+\end{itemize}
+e valutiamo l'irradiazione dei fili come se fossero un array.\\Facciamo delle ipotesi:
 \begin{itemize}
 	\item campo lontano
 	\item trascuriamo gli effetti di oggetti vicini
 \end{itemize}
-se abbiamo fili rettilinei disposti in questo modo, il campo elettrico avrà una componente $E_{\theta}$ che sarà :$E_{\theta} = M I(0) \frac{e^{-jk_o r}}{r} f(\theta)$, è la corrente in $z = 0$
-$f(\theta)$ trattandosi di un dipolo non dipende da $\phi$ \\Se L $<< \lambda$ perché stiamo parlando di linee di conduzione quindi sono tratti piccoli possiamo immaginare che i fili siano dei dipoli elementari, quindi la funzione di radiazione è $f(\theta) = sin \theta$, M = $\frac{j \eta_0 k_0}{4 \pi} L$, elaborando un po' $\frac{j 120\pi 2\pi}{c 4 \pi} fL$ = $\frac{j 60 \pi}{c } f \cdot L$. C'è l'effetto che l'intensità del campo aumenta anche con la frequenza, è il campo del singolo filo, consideriamo quello dei due fili e ne facciamo la somma con la \textbf{teoria degli array}:
-$E(\theta)^A = E(\theta)^1 + E(\theta)^2 = M \frac{e^{-jk_o r}}{r} f(\theta) F(\theta, \phi) sin \theta$ dove $F(\theta, \phi) = \sum\liminf_{n=1}^{2} I_n e^{jk_0 \underline{\rho_n}\cdot \hat{\underline{r}}$
-dove (copia).\\Per calcolare $\underline{\rho_n}\cdot \hat{\underline{r}}$ otteniamo $y_n sin \theta sin \phi$, c'è dentro $\hat{\underline{r}} \cdot \hat{\underline{y}}$ e quindi otteniamo (copiala non me va de scrive).\\Per ripulire l'espressione, andiamo ad osservare cosa succede su un piano che attraversa i due fili, semplifichiamo per $\theta = \frac{\pi}{2}$, (immagine copia) quindi ci mettiamo sul piano giallo.\\L'espressione che otteniamo è $E_{\theta}^A = M $ (copia, anche l'immagine) guardiamo il dispositivo in sezione e vediamo cosa succede fra i due elementi. Possiamo particolareggiare l'espressione dei due casi dei due modi:
+se abbiamo fili rettilinei disposti in questo modo, il campo elettrico avrà una componente $E_{\theta}$ che sarà:
+\begin{equation}
+	E_{\theta} = M I(0) \frac{e^{-jk_0 r}}{r} f(\theta)	
+\end{equation}
+è la corrente in $z = 0$, $f(\theta)$ trattandosi di un dipolo non dipende da $\phi$.\\Se L $<< \lambda$ perché stiamo parlando di linee di conduzione quindi sono tratti piccoli possiamo immaginare che i fili siano dei dipoli elementari, quindi la funzione di radiazione è 
+\begin{equation}
+	f(\theta) = sin \theta	
+\end{equation}
+\begin{equation}
+	M = \frac{j \eta_0 k_0}{4 \pi} L = j\frac{120\pi 2\pi}{c 4 \pi} fL = j\frac{60 \pi}{c } f \cdot L
+\end{equation}
+C'è l'effetto che l'intensità del campo aumenta anche con la frequenza, è il campo del singolo filo, consideriamo quello dei due fili e ne facciamo la somma con la \textbf{teoria degli array}:
+\begin{equation}
+	E_{\theta}^A = E_{\theta}^1 + E_{\theta}^2 = M \frac{e^{-jk_0 r}}{r} F(\theta, \phi) sin \theta	
+\end{equation}
+dove 
+\begin{equation}
+	F(\theta, \phi) = \sum\limits_{n=1}^{2} I_n e^{jk_0 \underline{\rho_n}\cdot \hat{\underline{r}}
+\end{equation}
+è il \textbf{fattore di array} ed abbiamo:
+\begin{itemize}
+	\item $\underline{\rho_n} = y_n\underline{\hat{y}}$;
+	\item $\underline{\hat{r}}$, versore di osservazione
+\end{itemize}
+Abbiamo quindi
+\begin{equation}
+	\underline{\rho_n}\cdot \hat{\underline{r}} = y_n sin\theta sin\phi
+\end{equation}
+c'è dentro $\hat{\underline{r}} \cdot \hat{\underline{y}}$ e quindi otteniamo
+\begin{equation}
+	E_{\theta}^A = M \dfrac{e^{-jk_0r}}{r} [I_1 e^{-jk_0\frac{s}{2}sin\theta sin\phi} + I_2e^{+jk_0\frac{s}{2}sin\theta sin\phi}]sin\theta
+\end{equation}
+Per ripulire l'espressione, andiamo ad osservare cosa succede su un piano che attraversa i due fili, semplifichiamo per $\theta = \frac{\pi}{2}$:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/sez_fili.png}
+\end{figure}
+\\\\quindi ci mettiamo sul piano giallo.\\L'espressione che otteniamo è 
+\begin{equation}
+	E_{\theta}^A = M \dfrac{e^{-jk_0r}}{r} [I_1 e^{-jk_0\frac{s}{2}sin\phi} + I_2e^{+jk_0\frac{s}{2}sin\phi}]
+\end{equation}
+guardiamo il dispositivo in sezione e vediamo cosa succede fra i due elementi.\\Possiamo particolareggiare l'espressione dei due casi dei due modi.
 \subsubsection{Modo differenziale}
-La condizione è che $I_1 = I_D$ ed $I_2 = -I_D$ e quindi la $E_{\theta}^A$ sarà dato da (copia fortissimo) (NB: esponenziale è il termine di onda sferica!) il $k_0$... viene dalla formula di Eulero. (copia sempre, le lettere che sembrano sigma sono s).\\Come è fatto l'andamento in coordinate polari:\\considerando $\phi = 0$, il sin fa 0 e quindi il campo è 0, il campo prodotto è fatto nel seguente modo: (copia immagine).L'irradiazione massima si ha per $\phi = +i 90°$, dove abbiamo che $\abs{E{\theta, max}^D (\phi = 90°)}$ vale $\frac{120 \pi}{c} \frac{f \cdot L}{r} sin k_0 \frac{s}{2} \abs{I_D}$ se ammettiamo che la spaziatura $s << \lambda$ (ed è lecito), allora abbiamo $sin k_0 \frac{s}{2} \approx k_0 \frac{s}{2}$ ma abbiamo anche (copia) e quindi infime $\abs{E_{\theta}^D}_{max}$ = (copia, nb: c è la velocità della luce!!), che numericamente è $1,31 \cdot 10^_{14} \frac{f^2 L s}{r} \abs{I_D}$.\\Analizzando, vediamo che dipende dalla corrente di modo differenziale, quindi normalizziamo per la corrente di conduzione ed otteniamo (copia) che ha unità di misura $[\frac{V}{m}] [A^{-1}] = \frac{\Omega}{m}$ e quindi è la \textbf{Funzione di Leakage}, quindi non è affatto vero che una linea di trasmissione non irradia, tale irradiazione dipende dal quadrato della frequenza e questa è la ragione per cui le linee di trasmissione non si usano mai a frequenza elevata.\\C'è poi la dipendenza dal prodotto (L $\cdot$s), dove se i fili sono lunghi L e la distanza è s questa rappresenta l'area fra i due fili, quindi un modo per ridurre l'irradiazione è
+La condizione è che $I_1 = I_D$ ed $I_2 = -I_D$ e quindi la $E_{\theta}^A$ sarà dato da
+\begin{equation}
+	E_{\theta}^A = -\bar{j}f \cdot L \dfrac{e^{-jk_0r}}{r}2jsin(k_0\frac{s}{2}sin\phi)\cdot I_D = \frac{120\pi}{c}f\cdot L \dfrac{e^{-jk_0r}}{r}sin(k_0\frac{s}{2}sin\phi)\cdot I_D
+\end{equation}
+(NB: esponenziale è il termine di onda sferica!) il $k_0$... viene dalla formula di Eulero.\\Come è fatto l'andamento in coordinate polari:\\considerando $\phi = 0$, il sin fa 0 e quindi il campo è 0, il campo prodotto è fatto nel seguente modo:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/campo_modo_diff.png}
+\end{figure}
+\\\\.L'irradiazione massima si ha per $\phi = \pm 90°$, dove abbiamo
+\begin{equation}
+	\abs{E_{\theta, max}^D (\phi = 90°)} = \frac{120 \pi}{c} \frac{f \cdot L}{r} sin k_0 \frac{s}{2} \abs{I_D} 
+\end{equation}
+se ammettiamo che la spaziatura $s << \lambda$ (ed è lecito), allora abbiamo $sin k_0 \frac{s}{2} \approx k_0 \frac{s}{2}$ ma abbiamo anche
+\begin{equation}
+	sink_0\frac{s}{2} \approx k_0 \frac{s}{2}
+\end{equation}
+e
+\begin{equation}
+	\frac{2\pi}{\lambda} \frac{s}{2} = \frac{2\pi}{c}\frac{s\cdot f}{2} = \frac{\pi f \cdot s}{c}
+\end{equation}
+e quindi infine 
+\begin{equation}
+	\abs{E_{\theta}^D}_{max} = \frac{120 \pi}{c} \frac{f \cdot L}{r} \pi \frac{f\cdot s}{c}
+\end{equation}
+(nb: c è la velocità della luce!!), che numericamente è $1,31 \cdot 10^_{14} \frac{f^2 L s}{r} \abs{I_D}$.\\Analizzando, vediamo che dipende dalla corrente di modo differenziale, quindi normalizziamo per la corrente di conduzione ed otteniamo 
+\begin{equation}
+	\dfrac{\abs{E_{\theta}^D}_{max}}{\abs{I_D}} = 1,31 \cdot 10^_{14} \frac{f^2 L s}{r}
+\end{equation}
+che ha unità di misura $[\tfrac{V}{m}] [A^{-1}] = \tfrac{\Omega}{m}$ e quindi è la \textbf{Funzione di Leakage}, quindi non è affatto vero che una linea di trasmissione non irradia, tale irradiazione dipende dal quadrato della frequenza e questa è la ragione per cui le linee di trasmissione non si usano mai a frequenza elevata.\\C'è poi la dipendenza dal prodotto (L $\cdot$s), dove se i fili sono lunghi L e la distanza è s questa rappresenta l'area fra i due fili, quindi un modo per ridurre l'irradiazione è
 \begin{itemize}
 	\item non avere delle tracce lunghe, ridurre la lunghezza dei fili
 	\item avere delle tracce molto vicine, diminuire s
@@ -1862,23 +1950,50 @@ La condizione è che $I_1 = I_D$ ed $I_2 = -I_D$ e quindi la $E_{\theta}^A$ sar�
 Questi sono gli aspetti che devono essere tenuti conto nella security dy design
 
 \subsubsection{Modo comune}
-Qui abbiamo $I_1 = I_2 = I_C$ e questo nasce dallo sbilanciamento delle linee di conduzione per effetto dell'accoppiamento con degli oggetti vicini.\\Otteniamo un'espressione simile dove però avremo dei coseni al posto dei seni (copia)\\Ci mettiamo anche qui nella condizione sul piano ($\theta = \frac{pi}{2}$) e possiamo disegnare il diagramma di irradiazione: (copialo) è un diagramma abbastanza omni-direzionale, quindi non c'è nessuna direzione verso cui riusciamo a proteggere l'informazione. Sempre considerando $k_0 s << 1$ possiamo approssimare il cos ad 1.\\ Qui, per $\phi = 0$ abbiamo la massima radiazione ed otteniamo un campo massimo (copia)\\Anche ora possiamo calcolare una funzione di trasferimento che prescinde dal valore della corrente di modo comune ottenendo (copia) $1.26 \cdot 10^{-6} f \cdot \frac{L}{r}$.\\Qui vediamo che dipende solo con la prima potenza dalla frequenza, quindi la crescita è meno spedita del caso precedente. Dipende poi dalla lunghezza dei fili, non dipende più dalla distanza perché è come avere un unico dipolo un po' più grande sulla quale scorre una corrente che è la somma delle due, è poi inversamente prop. alla distanza.\\Il coefficiente è molto più alto dell'altro $10^{-6} >> 10^{-14}$ quindi l'effeto è molto più aggressivo: piccole correnti di modo comune possono produrre elevati livelli di campo irradiato, comunicando all'esterno delle informazioni su cosa sta avvenendo all'interno.\\\\ \textbf{esempio:}\\immaginiamo di stare ad una frequenza di $100 MHz$, che può essere la frequenza di clock di un dispositivo biomedicale. Immaginiamo che i fili abbiamo la lunghezza L = 1cm e che s = 1mm.\\Osserviamo il fenomeno ad 1m di distanza. Calcoliamo 
+Qui abbiamo $I_1 = I_2 = I_C$ e questo nasce dallo sbilanciamento delle linee di conduzione per effetto dell'accoppiamento con degli oggetti vicini.\\Otteniamo un'espressione simile dove però avremo dei coseni al posto dei seni
+\begin{equation}
+	E_{\theta}^C = M \frac{e^{-jk_0r}}{r}I_C 2 cos(k_0 \frac{s}{2}sin\phi)sin\theta 
+\end{equation}
+Ci mettiamo anche qui nella condizione sul piano ($\theta = \frac{pi}{2}$) e possiamo disegnare il diagramma di irradiazione:\\ 
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/irrad_modo_comune.png}
+\end{figure}
+\\\\è un diagramma abbastanza omni-direzionale, quindi non c'è nessuna direzione verso cui riusciamo a proteggere l'informazione. Sempre considerando $k_0 s << 1$ possiamo approssimare il cos ad 1.\\ Qui, per $\phi = 0$ abbiamo la massima radiazione ed otteniamo un campo massimo 
+\begin{equation}
+	E_{\theta, max}^C \approx 2M \dfrac{e^{-jk_0r}}{n}I_C = 2j \frac{60\pi}{c} f \cdot L \dfrac{e^{-jk_0r}}{r} I_C
+\end{equation}
+Anche ora possiamo calcolare una funzione di trasferimento che prescinde dal valore della corrente di modo comune ottenendo 
+\begin{equation}
+	\dfrac{\abs{E_{\theta, max}^C}}{\abs{I_C}} = \frac{120 \pi}{c}\frac{f \cdot L}{r} = 1.26 \cdot 10^{-6} f \cdot \frac{L}{r}	
+\end{equation}
+Qui vediamo che dipende solo con la prima potenza dalla frequenza, quindi la crescita è meno spedita del caso precedente. Dipende poi dalla lunghezza dei fili, non dipende più dalla distanza perché è come avere un unico dipolo un po' più grande sulla quale scorre una corrente che è la somma delle due, è poi inversamente proporzionale alla distanza.\\Il coefficiente è molto più alto dell'altro $10^{-6} >> 10^{-14}$ quindi l'effetto è molto più aggressivo: piccole correnti di modo comune possono produrre elevati livelli di campo irradiato, comunicando all'esterno delle informazioni su cosa sta avvenendo all'interno.\\\\ \textbf{esempio:}\\immaginiamo di stare ad una frequenza di $100 MHz$, che può essere la frequenza di clock di un dispositivo biomedicale. Immaginiamo che 
+\begin{itemize}
+	\item i fili abbiamo la lunghezza L = 1cm;
+	\item s = 1mm;
+	\item osserviamo il fenomeno ad r = 1m di distanza;
+\end{itemize}
+Calcoliamo:
 \begin{itemize}
 	\item la funzione di trasferimento del modo differenziale: $1.31 10^{-14} 10^{16}10^{-2}10^{-3} = 1.31 \cdot 10^{-3} \frac{\Omega}{m}$. Quindi $1mA$ produrrà $1.3 \cdot 10^{-6} V/m$ di emissione, che è basso ma è un valore più alto di quello che il telefono riesce a percepire e quindi identificabile e misurabile
 	\item modo comune: $1.26 10^{-6} 10^{8} 10^{-2}$ = $1.26 \frac{\Omega}{m}$, quindi confrontato con quello di sopra abbiamo effettivamente che $1mA \rightarrow 1.26 \frac{mV}{m}$ che è un livello di campo facilmente individuabile
 \end{itemize}
 se non si possono fare collegamenti corti e vicini, l'unica cosa che si può fare è richiudere il circuito in una scatola PEC, che è un oggetto metallico che blocca l'irradiazione spuria, ma non si può fare sempre (ad esempio in molti dispositivi medici impiantati o da "spalmare" sul corpo umano)
+
 \subsection{Suscettibilità}
-È legata all'inclinazione di un dispositivo elettronico di raccogliere disturbi provenienti dall'esterno.\\Facciamo sempre un modello: (copia)\\due dispositivi collegati da un bus, possiamo modellare i dispositivi con due carichi reali $R_L$ ed $R_S$, con le tensioni $V_S$ e $V_L$, L è la lunghezza ed s la spaziatura.\\Immaginiamo che da fuori arrivi un campo EM, dove il campo elettrico si propaga nella direzione indicata, polarizzato verticalmente (E), mentre il campo magnetico entrante nel foglio (H). Il campo investe il dispositivo radente, abbiamo:
+È legata all'inclinazione di un dispositivo elettronico di raccogliere disturbi provenienti dall'esterno.\\Facciamo sempre un modello:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/suscettibilità_modello.png}
+\end{figure}
+\\\\due dispositivi collegati da un bus, possiamo modellare i dispositivi con due carichi reali $R_L$ ed $R_S$, con le tensioni $V_S$ e $V_L$, L è la lunghezza ed s la spaziatura.\\Immaginiamo che da fuori arrivi un campo EM, dove il campo elettrico si propaga nella direzione indicata, polarizzato verticalmente (E), mentre il campo magnetico entrante nel foglio (H). Il campo investe il dispositivo radente, abbiamo:
 \begin{itemize}
-	\item $\underline{E^i} = E_y^i \cdot \underline{\hat{y}$
-		\item $H^i = -H_z^i \cdot \underline{\hat{z}$
+	\item $\underline{E^i} = \underline{E_y}^i \cdot \underline{\hat{y}$
+	\item $\underline{H^i} = -\underline{H_z}^i \cdot \underline{\hat{z}$
 \end{itemize}
-vogliamo esprimere le due tensioni sia rispetto alla geometria che rispetto al campo incidente.\\Consideriamo una "fettina" di lunghezza H $\cdot$ x, che modelliamo come un'induttanza ed una capacità (tutte per unità di lunghezza).\\Abbiamo un spessore lungo $\Delta x$ abbiamo $c = \pi \epsilon_0 \epsilon_r \frac{1}{ln \frac{s}{r\omega}}} F/m$ e poi abbiamo $l = \frac{\mu_0}{\pi} ln \frac{s}{r\omega} H/m$, possiamo tenere conto di 
+vogliamo esprimere le due tensioni sia rispetto alla geometria che rispetto al campo incidente.\\Consideriamo una "fettina" di lunghezza H $\cdot$ x, che modelliamo come un'induttanza ed una capacità (tutte per unità di lunghezza).\\Abbiamo un spessore lungo $\Delta x$ abbiamo $c = \pi \epsilon_0 \epsilon_r \frac{1}{ln \frac{s}{r\omega}}} F/m$ e poi abbiamo $l = \frac{\mu_0}{\pi} ln \frac{s}{r\omega} H/m$, possiamo tenere conto di
 \begin{enumerate}
 	\item un generatore di corrente equivalente: si ottiene calcolando la tensione indotta $V_C$ dal campo elettrico incidente, che è data dalla circuitazione del campo E $V_C = \int\limits_{0}^{s} \underline{E^i} \underline{dy}$ e poi abbiamo la corrente $I^i$ che viene iniettata per effetto del campo incidente (copia)
 	\item un generatore di tensione, può essere in serie o in parallelo: consideriamo nuovamente il pezzo di filo di prima, immaginando che faccia parte di una spira chiusa dove una parte è un condensatore ed il resto una curva matematica. Verrà generata una forza elettromotrice indotta (sempre la circuitazione)$\text{emf} = ...$. È una forza potenziale che vale qualunque sia il percorso chiuso, possiamo esprimerla in funzione di H, mediante il \textbf{teorema di Stokes} che dice che (copia) (dove mathscrC è il contorno chiuso)\\otteniamo quindi una emf in funzione del campo magnetico (copiala!!!!!). È una tensione per unità di lunghezza
-\end{enumerate}  
+\end{enumerate}
 Consideriamo quindi il circuitino di prima come (immagine):
 Se ammettiamo che i fili siano molto vicini rispetto alla lunghezza d'onda $s << \lambda$ possiamo assumere che il campo elettrico incidente sia costante per $0 < y < s$, possiamo quindi calcolare gli integrali moltiplicando semplicemente per s, ottenendo $V^i = j \omega \mu_0 H_z^i \cdot s$ e $I^i = j \omega c E_y^i \cdot s$, se poi immaginiamo che $L << \omega$, abbiamo che tutta la linea è assimilabile ad quanto segue: (altra immagine)\\
 vediamo due casi:
@@ -2246,8 +2361,142 @@ Sono tutti attacco micro-architetturali, ciò che ne viene fuori è che quando s
 \subsection{Attacchi basati sul test}
 Potendo vedere il contenuto dei flip flop del dispositivo, potrei anche vedere il contenuto di registri intermedi che contengono parti della chiave AES, blocco quindi l'esecuzione intermedia e cerco di recuperare la chiave (rivedi dalle slides), una delle contromisure è la defuse, ovvero si spacca l'hardware usato, tanto lo vederemo meglio quando parliamo delle contromisure(??).
 
-
-
+\chapter{Blocco 4 - Contromisure}
+\section{Introduzione}
+Le contromisure sono le tecniche ad oggi usate per o mitigare o evitare i problemi di trust o vulnerabilità. Parzialmente le tecniche fanno leva su quelle per garantire affidabilità e reliability del sistema.\\Possiamo vedere un riassunto delle problematiche ma anche delle soluzioni: (copia immagine)\\possiamo avere mischiate le problematiche di trust e vulnerability, anche se il prof preferisce separarle.\\Di nuovo, siamo focalizzati su trojan horses e physical attacks, in campo più ampio si parla anche di
+\begin{itemize}
+	\item IP piracy
+	\item reverse engineering
+	\item slides
+\end{itemize} 
+ci sono problematiche sia di fiducia che di sicurezza, che possiamo inquadrare in un generico trust.\\Quando si tratta di attacchi, vogliamo proteggere informazioni di sicurezza nel dispositivo:
+\begin{itemize}
+	\item on-device key
+	\item firmware
+	\item on-device protected data, oggetto di attacchi dove sia l'attore fa leva con trojan hardware sia con attacchi puramente hardware.
+	\item configurazione del device
+	\item bit di entropia: se rendo predicibile il TRNG, quindi cosa genera la chiave crittografia, ho sconfitto la crittografia.
+\end{itemize} 
+(tutto meglio sulle slides).Il confine quando si tratta gli asseta attaccati, fra trust e vulnerability, è molto più labile, ovviamente l'attaccante potrebbe anche voler causare DoS.\\L'ambito è sempre di un attore malevolo che vuole causare un danno di qualunque tipo.\\Riassumendo i possibili attacchi: (immagine), possiamo anche parlare di j-tag: sta su tutti i chip, usata da chi programma hardware (FPGA) per fare debugging, ad esempio accedere al processore, si può fare step-by-step execution tramite questa porta. Nasce come protocollo di test di produzione, che può essere soggetto ad attacchi.
+\section{Contromisure contro i trust issues}
+Il primo problema può essere di IP trust, dovrei verificare un IP e come faccio a farlo?\\Possiamo avere IP di diverso livello in base a quanto le possiamo manipolare, ma alla fine ne facciamo uso senza conoscerne il contenuto a fondo, sono protette da copyright.\\Non abbiamo quindi un golden model (perché altrimenti sarebbe open), potrei usare le specifiche come golden che però magari non mi permettono di conoscerne il funzionamento al 100\%.\\Per capire se l'IP si comporta come dovrebbe, esistono diversi livelli di astrazione dove poter agire:
+\begin{itemize}
+	\item fase di pre-sintesi, formal verification: non è ancora implementata in silicio, possiamo usare tecniche di verifica formale o copertura. Possiamo fare tracing e verifica come nel software come testing e code coverage, functional coverage. È un modo che può coprire delle problematiche che sono state introdotte a livello di specifica o a livello di progettazione. es: una macchina a stati nascosta che si attivano tramite una molto rara combinazione di ingressi, mediante code coverage potrei trovare del codice che non viene mai eseguito. Vengono quindi fatte:
+	\begin{itemize}
+		\item property checking
+		\item equivalent checking: controllo fra RTL (codice come il C) ed il GDSII file;
+		\item model checking: il sistema è descritto in codice C o HDL, viene fatto un insieme di proprietà e si verifica che l'implementazione verifichi il modello formale;
+	\end{itemize};
+	\item coverage analysis: verifica che nel codice ci siano diversi livelli di coverage, che vengono verificati con un profiler usando dei benchmark significativi per vedere se il codice viene utilizzato. Se un asserzione fallisce, può esserci un problema di IP trust.\\Altra cosa è il coverage, se non viene attivata una parte di codice, ci può essere del codice nascosto proprio perché l'attivazione dei trojan è pensata per essere rara.
+\end{itemize}
+IC trust: dopo la sintesi, il prodotto deve comportarsi da specifica. Qui il problema è che i trojan sono piccoli e difficili da trovare, quindi gli approcci del test in production funzionano poco, non sono efficaci perché nel test di produzione ci focalizziamo sui difetti di produzione che sono predicibili ma non su qualcosa aggiunto maliziosamente.\\Abbiamo la tassonomia per la rilevazione dei trojan: (immagine)\\si può fare sia in maniera distruttiva che non distruttiva. Nel secondo approccio, una volta avuto il chip (siamo a livello IC, è stato già prodotto), possiamo:
+\begin{itemize}
+	\item mettere approcci di run time monitor: abbiamo messo delle ridondanze nel chip per verificare se run time qualcosa va storto.\\I difetti maliziosi che si attivano come time bomb le stano perché ho queste ridondanze che cercano errori random ma anche maliziosi. Può verificare sia problematiche di trust che anche di affidabilità
+	\item a livello di test, il famoso test di produzione. Si può fare sia logic test o un test che usa i side channel, che sono usati per verificare se ci sono delle emissioni, assorbimenti di potenza, corrente quiescente o transitoria che possono rivelare la presenza di trojan.
+\end{itemize}
+L'approccio distruttivo serve per verificare se un lotto è affetto da trojan, quindi lo distruggiamo: questo vuol dire dis-encapsularlo e fare una specie di affettatura di layer di metalizzazione, con agenti chimici o meccanici.\\Facciamo delle "foto" con cad di ogni livello prima di rimuoverlo, guardando le caratteristiche fisiche del dispositivo capiamo cosa fa e quindi se ci sono dei trojan. È costoso e potenzialmente non risolutivo dovuti ad errori che possono esserci nel processo, inoltre a meno di capire al volo se un transistor doveva esserci o meno, occorre capire se il layout corrisponde con quello reale: io ho fatto il pape-out (il golden) mandato in foundary, dove è stato modificato maliziosamente, quindi se non ho il golden non posso verificarlo.\\
+\subsection{Approccio del logic test}
+Mutua le tecniche di test che vengono fatte in produzione. Devo generare dei vettori di test che triggerino il trojan e poi osservare il comportamento del payload.\\Ad esempio: (immagine)\\il pro è che se riusciamo ad avere dei vettori funzionali e strutturali buoni usiamo tecniche note per trovare i trojan, in maniera rapida.\\Se però i test sono fatti "alla cieca", il tasso di successo è basso, poiché esiste tutta una letteratura che riduce il numero di vettori necessari per trovare i problemi e comunque occorre fare del lavoro aggiuntivo per ridurne ancora il numero e serve la conoscenza del layout.\\Senza sapere il layout occorre anche fare delle assunzioni, quindi ho diversi contro: (slides)
+\begin{itemize}
+	\item i trojan sono fatti per essere attivati in condizioni rare
+	\item il test che si basa sulla ricerca delle attivazioni nelle net, non può ad esempio trovare trojan che vengono attivati dall'esterno ad esempio con emissioni EM dall'esterno, o anche trojan che non cambiano le funzionalità ma emettono EM verso l'esterno per info leaking
+\end{itemize}
+Ad esempio, per test funzionali su un adder (per trojan funzionali), dovremmo passare un numero di input elevato che quindi potrebbero richiedere centinaia di anni (slides).\\Invece di usare approcci funzionali, si possono applicare approcci strutturali, quindi invece di far fare al dispositivo quello che dovrebbe fare, lo scompongono e lo osservo: è l'approccio tipico del test di produzione, si perde la funzionalità ma ho maggiore controllo ed osservabilità.\\Nel test strutturale si usa comunque un approccio deterministico, so dove sono i guasti sulla net, ma per i trojan non è detto che io sappia dove siano, quindi posso usare approcci statistici come MERO: prendo la netlist, l'approccio cerca di vedere quali sono gli eventi rari (es: 1/4 per lo 0 sulla porta OR), cerchiamo quindi di trovare vettori che stimolino gli eventi rari N volte. Assumiamo che i trojan siano stati messi proprio per essere attivati da eventi rari, i test vector stimolano proprio gli eventi rari nella speranza di trovare i trojan.\\L'articolo di MERO dimostra che la coverage in termini di trojan migliora, ma chiaramente anche la test length aumenta perché faccio toggling degli eventi rari molte più volte. (copia grafici, i numeri sopra sono relativi ai benchmark).
+\subsection{Potenza assorbita}
+Facciamo l'approccio speculare di quella malevola: qui l'assorbimento di potenza è un indicatore dell'eventuale presenza di qualcosa di malevolo nel dispositivo stesso.\\Facciamo attivare (almeno parzialmente) il trojan, che creerà dei picchi di assorbimento di potenza (genera toggle di transitor) che si manifestano come outlayer nell'assorbimento medio del dispositivo.\\Occorre conoscere il circuito originale, la netlist originale, altrimenti non posso sapere qual è un outlayer: avendola, posso confrontare l'assorbimento di potenza che registro con quello originale.\\Questi test sono anche usati in test di produzione ad esempio per vedere se ci sono dei transitor sempre accesi, quindi sono usati anche per cercare dispsotivi guasti in produzione.\\Il problema dell'approccio è che quando si fa la produzione del dispositivo elettronico, nei wafer etc.. c'è la così detta process variation: qualcosa che dice che non tutti i transistor sono nati uguali (immagine slides), questo porta a delle dimensioni di tutti i parametri che fanno si che tutti i dispositivi non siano identici bensì distribuiti come una Gaussianas, c'è variazione fra i diversi die ma anche nello stesso die.\\Questo vuol dire che ci sono molte problematiche nella capacità di poter rivelare la presenza effettiva del trojan.\\I segnali di tipo side channel usati sono:
+\begin{itemize}
+	\item IDDQ
+	\item IDDT, corrente assorbita di transizione
+	\item path dealy, vedere i ritardi in una rete combinatoria per cercare delle porte logiche aggiuntive che introducono ritardi
+	\item emissioni EM aggiuntive
+\end{itemize}
+Pro: è efficace per trovare trojan che non causano malfunzionamenti nel circuito, qui ad esempio con emissioni EM vediamo i trojan, non abbiamo il problema che avevamo nei test strutturali (ad esempio il MOLE fa un casino ma non cambia le funzionalità  e quindi col test non si trovava).\\Contro: la process variation rende complesso trovare i trojan, occorre togliere molto rumore.\\Inoltre occorre sempre avere i golden chip su cui parametrarsi.\\I metodi di sensitività prevedono che:
+\begin{itemize}
+	\item più il trojan piccolo, più la sensitività si abbassa
+	\item pi+ la taglia del circuito (copia slides)
+\end{itemize}
+Riassumendo, pro e contro degli approcci di logic testing e side channel analysis: (copia tabella?)\\Uu altro modo per mitigare il rumore è usare più parametri, come la frequenza massima e la corrente assorbita durante la transizione.\\Questo permette di togliere di mezzo la variazione: correlando i due parametri, siccome questa dipende dalla variazione, se il dispositivo è tamper (modificato) riusciamo meglio a rivelare la presenza di trojan, i due variano insieme e quindi il rapporto dovrebbe essere costante mentre se c'è un effetto di trojan, magari a parità di corrente riduce la frequenza massima.\\\\esempio: ipotizziamo un trojan in un benchmark s, inserito in una zona specifica del dispositivo.\\Vediamo la distribuzione dell'alimentazione modellata come una rete RC: (immagine) l'effetto del trojan può causare un assorbimento di corrente maggiore ad esempio nel PP4, mentre magari nel PP1 essendoci più carichi capacitivi c'è un minore assorbimento.\\C'è quindi un aspetto di località dei trojan: nella rete di distribuzione della potenza, possiamo vedere in uno specifico pad che l'assorbimento di potenza è effettivamente più alta che nel resto del dispositivo, quindi \textbf{sempre sapendo che ho il golden}, possiamo caratterizzare un assorbimento anomalo.\\Qui il trojan è stato messo in un buco libero (??).\\\\Un altro metodo prevede l'integrazione della corrente: integrando la corrente durante il funzionamento del golden e del tamper, dovrei vedere una differenza importante. Il trojan causerà un assorbimento maggiore della carica nel tempo (copia integrali).\\Il metodo è però poco localizzabile rispetto a prima.\\La power analysis ha comunque dei problemi:
+\begin{itemize}
+	\item come trovare dei vettori che stimolino i trojan
+	\item come ridurre il rumore
+	\item località dello switiching (che può essere rilevata con tecniche viste sopra)
+	\item random pattern: applichiamo un certo numero di vettori senza osservare i bit sul layout
+\end{itemize}
+(altro slides).\\\\Un altro modo per fare l'analisi dei side channel è con l'analisi dei ritardi: (immagine)\\abbiamo una rete combinatoria con il trojan che aumenta il carico capacitivo sui nodi, aumentando quindi i ritardi di propagazione, la costante RC è più alta e quindi la frequenza del dispositivo è più bassa.\\Possiamo usare delle tecniche per rivelare la presenza di ritardi anomali, sempre sapendo il funzionamento ideale:\\tecniche usate per fare DVFS: nei sistemi embedded c'è un controllore che si occupa di ridurre la potenza assorbita, avendo una batteria è inutile mandare il clock al massimo o tenere le tensioni alti. Guardo gli stati di potenza (i pstate): dal più basso dove è quasi idle, al più alto (maggiore è lo stato maggiori le prestazioni e l'assorbimento di potenza).\\Sono tutte tecniche per la riduzione di potenza assorbita. Usano spesso un doppio flop: (copia immagine) se il ritardo è elevato perché il circuito combinatorio è lento, la transizione che doveva arrivare al flop non ce la fa prima che quello shadow parallelo campioni.\\Un flop è attivato col fronte d'onda che sale, l'altro con quello che scende, quindi se c'è differenza fra i due flop la frequenza (lo XOR alla fine compara i due bit e flagga se diversi) è troppo bassa e va alzata.\\Se quindi c'è un trojan, a parità di tensione e frequenze di funzionamento, vedo dei fail sulla rete combinatoria, sfruttando una tecnica di ridondanza dell'affidabilità.\\\\Altro è la clock sweeping technique: devo confrontare sempre col golden, se vedo dei ritardi anomali, provando tutti i percorsi possibili, riesco facilmente a dire, in base a quale percorso ha il problema, su quale net si trova il trojan. (immagine).\\Problematiche: rispetto alla power analysis non serve attivare il trojan, si vedono i ritardi. I test sono anche usati in produzione, quindi li posso riusare. Il problema è nella variazione di processo, temperatura e tensione che ovviamente introducono rumore.\\ (tabellone riassuntivo di dove usare le cose?)
+\section{Desing per trust dell'hardware}
+Come progettiamo per evitare la presenza dei trojan, o comunque ostacolarne l'inserimento:
+\begin{itemize}
+	\item tecniche che migliorano la rilevazione dei trojan stessi. Faccio progettazione che li rende più rilevabili
+	\item tecniche per prevenire l'inserimento del trojan, con una specie di offuscamento del progetto
+\end{itemize}
+Per migliorare la detection, posson rimuovere gli eventi rari: i trojan sono messi lì in modo da essere attivati da eventi rari della netlist. Rimuovendo questi eventi, potrei rendere l'inserimento del trojan più difficile e la rilevazione più semplice. Per fare ciò: ipotizziamo di avere questa netlist: (immagine)\\il trojan sfrutta degli eventi molto rari, l'attivazione è $\frac{1}{256}$, per renderlo meno raro aumento l'osservabilità mettendo un flop di scan, che viene attivato solo durante il test, il flop è normalmente 0 ma mettendo 1 durante lo scan la probabilità dell'1 aumenta (immagine a dx), quindi posso migliorare la controllabilità e quindi ridurre la probabilità di eventi rari.\\Questo aiuta sia quando vogliamo vedere la funzionalità del trojan, ma anche per vedere l'assorbimento di potenza (se ci sono pattern anomali) o di delay.\\Possiamo quindi:
+\begin{itemize}
+	\item aumentare l'attivazione completa (slides)
+\end{itemize}
+Possiamo avere tecniche di run time monitoring, a livello di progettazione si modifica la presenza di modifiche maliziose del dispositivo, così che se ci sono dei trojan su FPGA o un trojan su hard IP SoC si possono detectare.
+\subsection{Design obfuscation}
+Come si offusca il progetto: ipotizziamo di avere questa macchina a stati (immagine)\\aggiungiamo delle transizioni che non servono a nulla, ma confondono l'eventuale attaccante.\\Magari il problema del trojan viene creato su una transizione fra due stati che funzionalmente non verrebbero mai usati. Il problema è che si aggiunge ridondanza, inoltre il trojan dovrà essere inserito negli stati inutili, comunque l'idea è rendere più complesso capire la struttura per l'attaccante.\\Tipicamente in un circuito avanzano degli spazi inutilizzati dove si possono mettere dei checker, ha impatto basso da un punto di vista di layout
+\section{Contromisure per le problematiche di vulnerabilità}
+Qui l'obiettivo è rendere più complesso un attacco di tipo side channel:
+\begin{itemize}
+	\item tecniche di hiding: riduco il rapporto segnale/rumore, aggiungendo ad esempio segnali di rumore mediante un TRNG, che faccia si che non è semplice riconoscere il segnale utile. È costoso,
+	\begin{itemize}
+		\item usare i bit anche nel valore negato, così che tutte le transizioni siano sempre binarie e non si capisca quale valore c'è dentro perché ci sono sempre transizioni
+		\item usare logica sincrona
+		\item low power design per ridurre le emissioni
+		\item shileding: la metallizzazione impedisce le emissioni EM
+	\end{itemize}
+	\item mascheramento, possiamo ad esempio cambiare gli algoritmi per rendere le cose uniformi (come lo square + mult)
+	\item partizionare il progetto, per rendere difficile all'attaccante capire in quali zone c'è il ct e in quale il pt
+	\item tecniche di physical security ed anti-tamper, ad esempio facendo si che il decapsulamento distrugga il chip
+\end{itemize}
+ha comunque tutto un costo.\\
+Contromisure contro la DPA: (slides)
+\begin{itemize}
+	\item randomizzare il messaggio
+	\item vincolare i bit variabili
+	\item (slides)
+	\item desync: se l'approccio è tale per cui in una certa fase, ad esempio, si decifra una parola, l'attaccante deve avere tante tracce per poterle correlare. Se io rendo ogni taccia diverse dalle altre perché introduco dei delay random, la correlazione delle tracce con il modello è più complesso perché andrebbe anche modellato l'effetto della contromisura;
+\end{itemize}
+rendono difficile a chi sta osservando il comportamento della macchina a stati di capire cosa sta accadendo.\\DPA è potente ma ci sono diversi algoritmi che mitigano gli attacchi.\\Ad esempio: (immagine), quando si de-sincronizza, la tracce assomigliano sempre di più a rumore.\\\\Attacchi EM: come negli approcci DPA o SPA, ridurre le emissioni radiative o cancellarle
+\begin{itemize}
+	\item software che cambiano come sono implementate le crypto routine
+	\item in hardware, con un layer di metallo (slides)
+	\begin{itemize}
+		\item creo onde EM che si cancellano
+	\end{itemize}
+\end{itemize}
+Contromisure per le micro-architetture: qui l'attacco non deve poter sfruttare i timing o dell'algoritmo elaborato sul processore:
+\begin{itemize}
+	\item cambiare il programma, così da evitare dei leak
+	\item usare diverse micro-architetture che non creino il side channel
+\end{itemize}
+esempio: usare la Dual Rail Precharge: (immagine) avere delle transizioni che non abbiano dei picchi così definiti (NAND di sinistra), mentre con A,B ed in negati possono avere sempre una transizione o pe uno o per l'altro, così da vedere sempre una potenza assorbita dinamica ed avere una dissipazione data-independent. Lo svantaggio è comunque di dover avere due porte e dover propagare due segnali, ma avere un segnale che è sempre il negato dell'altro può dare benefici di dependability.\\A livello di processore: (immagine)\\ho un doppio di tutto, solo la instruction memory è unica, se osservo le emissioni, la potenza totale che sarà la somma è costante.\\Implica una modifica architettura del processore ed ha impatto sulle performance.\\\\Un approccio che mitighi gli attacchi timining, ovvero le vulnerabilità micro-architetturali che monitorano i ritardi di esecuzione:
+\begin{itemize}
+	\item modificare l'architettura, per evitare di mischiare lo spazio utente da quello kernel, con delle perfomance penalty;
+	\item aggiungere un checker online per analizzare e trovare attività malevole: gli attacchi micro-architetturali sono spesso basati sull'esecuzione ripetitiva di una serie di operazioni che lasciano una firma. Possiamo fare un profiling del codice run time, per poter flaggare e passare ad un exeption handler;
+\end{itemize}
+Open ISA sono l'equivalente delle open OS, da un punto di vista del mantenimento del codice è più facile.\\\\
+Contromisure per fault injection: attacchi side channel invasivi, in cui glitchamo power, clock, laser che flippano etc... occorre usare:
+\begin{itemize}
+	\item tecniche che rilevino la presenza dei guasti
+	\item detection di fault injection
+	\item detection per fault effect (error)
+\end{itemize}
+Si potrebbe far si che sia difficile la predizione del timing: nel FIA dobbiamo inserire i trojan in un punto specifico dell'algoritmo di cifratura, così da sapere che l'effetto causerà dalle conseguenze osservabili. Per renderlo difficile:
+\begin{itemize}
+	\item si crea una maggiore incertezza sul timing dell'esecuzione, aggiungendo jitter nel clock
+	\item dummy instruction
+	\item operazioni randomizzate
+\end{itemize}
+così che se si pensa che c'è il ciclo che fa la 4° iterazione di AES, questa è fatta sempre in tempi diversi.\\Altro modo è fare delle metalizzazioni che impediscono il passaggio del laser.\\O anche tecniche che:
+\begin{itemize}
+	\item rilevino il problema:
+	\begin{itemize}
+		\item fotocellule che rilevino attacchi
+	\end{itemize} 
+\end{itemize}
+ci possono essere falsi positivi.\\Oppure si usano tecniche di ridondanza, di spazio tempo e informazione (slides).\\Infine, tecniche per mitigare la vulnerabilità al test: un'altra cosa che può essere spazio di attacco è che i dispositivi sotto test lascino aperti ponti da osservare nella vita utile. Dopo il test le scan chain vengono staccate così da impedire l'accesso fisico, a questo punto il debug e test successivi non sono più fattibili.\\Possiamo anche far si che il dispositivo non sia più accessibile da fuori, un tend attuale è il built in self test, ovvero il dispositivo si testa da solo. È già fatto nelle memorie, ma il test logico di un circuito combinatorio sequenziale ancora non lo è ma permetterebbe di non avere accesso da fuori, però può fare problemi nella coverage.\\Ultima contromisura: invece di tagliare le scan chain o usare il self test, si fa un accesso al dispositivo che sia cifrato: la chiave del dispositivo è nota solo a chi fa il test, il contenuto dello scan chain prima di essere mandato sul dispositivo è cifrato così che un attaccante che non conosce la chiave non possa attaccare. (immaginetta?).\\È simile a cosa viene fatto per i bitstream crittografati delle FPGA.
 
 \part{Parte Localization}
 
