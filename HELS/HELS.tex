@@ -7,6 +7,7 @@
 \usepackage[dvipsnames]{xcolor}
 \usepackage[italian]{babel}
 \usepackage{amsmath}
+\usepackage{mathrsfs}	% for pretty symbols
 \usepackage{mathtools}
 \usepackage{amssymb}
 \usepackage[utf8]{inputenc}
@@ -1889,7 +1890,7 @@ C'è l'effetto che l'intensità del campo aumenta anche con la frequenza, è il 
 \end{equation}
 dove 
 \begin{equation}
-	F(\theta, \phi) = \sum\limits_{n=1}^{2} I_n e^{jk_0 \underline{\rho_n}\cdot \hat{\underline{r}}
+	F(\theta, \phi) = \sum\limits_{n=1}^{2} I_n e^{jk_0 \underline{\rho_n}\cdot \hat{\underline{r}}}
 \end{equation}
 è il \textbf{fattore di array} ed abbiamo:
 \begin{itemize}
@@ -1938,9 +1939,9 @@ e quindi infine
 \begin{equation}
 	\abs{E_{\theta}^D}_{max} = \frac{120 \pi}{c} \frac{f \cdot L}{r} \pi \frac{f\cdot s}{c}
 \end{equation}
-(nb: c è la velocità della luce!!), che numericamente è $1,31 \cdot 10^_{14} \frac{f^2 L s}{r} \abs{I_D}$.\\Analizzando, vediamo che dipende dalla corrente di modo differenziale, quindi normalizziamo per la corrente di conduzione ed otteniamo 
+(nb: c è la velocità della luce!!), che numericamente è $1,31 \cdot 10^{-14} \frac{f^2 L s}{r} \abs{I_D}$.\\Analizzando, vediamo che dipende dalla corrente di modo differenziale, quindi normalizziamo per la corrente di conduzione ed otteniamo 
 \begin{equation}
-	\dfrac{\abs{E_{\theta}^D}_{max}}{\abs{I_D}} = 1,31 \cdot 10^_{14} \frac{f^2 L s}{r}
+	\dfrac{\abs{E_{\theta}^D}_{max}}{\abs{I_D}} = 1,31 \cdot 10^{-14} \frac{f^2 L s}{r}
 \end{equation}
 che ha unità di misura $[\tfrac{V}{m}] [A^{-1}] = \tfrac{\Omega}{m}$ e quindi è la \textbf{Funzione di Leakage}, quindi non è affatto vero che una linea di trasmissione non irradia, tale irradiazione dipende dal quadrato della frequenza e questa è la ragione per cui le linee di trasmissione non si usano mai a frequenza elevata.\\C'è poi la dipendenza dal prodotto (L $\cdot$s), dove se i fili sono lunghi L e la distanza è s questa rappresenta l'area fra i due fili, quindi un modo per ridurre l'irradiazione è
 \begin{itemize}
@@ -1986,22 +1987,97 @@ se non si possono fare collegamenti corti e vicini, l'unica cosa che si può far
 \end{figure}
 \\\\due dispositivi collegati da un bus, possiamo modellare i dispositivi con due carichi reali $R_L$ ed $R_S$, con le tensioni $V_S$ e $V_L$, L è la lunghezza ed s la spaziatura.\\Immaginiamo che da fuori arrivi un campo EM, dove il campo elettrico si propaga nella direzione indicata, polarizzato verticalmente (E), mentre il campo magnetico entrante nel foglio (H). Il campo investe il dispositivo radente, abbiamo:
 \begin{itemize}
-	\item $\underline{E^i} = \underline{E_y}^i \cdot \underline{\hat{y}$
-	\item $\underline{H^i} = -\underline{H_z}^i \cdot \underline{\hat{z}$
+	\item
+	\item $\underline{E^i} = \underline{E_y^i} \cdot \underline{\hat{y}}$
+	\item $\underline{H^i} = -\underline{H_z^i} \cdot \underline{\hat{z}}$
 \end{itemize}
-vogliamo esprimere le due tensioni sia rispetto alla geometria che rispetto al campo incidente.\\Consideriamo una "fettina" di lunghezza H $\cdot$ x, che modelliamo come un'induttanza ed una capacità (tutte per unità di lunghezza).\\Abbiamo un spessore lungo $\Delta x$ abbiamo $c = \pi \epsilon_0 \epsilon_r \frac{1}{ln \frac{s}{r\omega}}} F/m$ e poi abbiamo $l = \frac{\mu_0}{\pi} ln \frac{s}{r\omega} H/m$, possiamo tenere conto di
+vogliamo esprimere le due tensioni sia rispetto alla geometria che rispetto al campo incidente.\\Consideriamo una "fettina" di lunghezza H(??) $\cdot$ x, che modelliamo come un'induttanza ed una capacità (tutte per unità di lunghezza):\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/suscett_schema.png}
+\end{figure}
+\\\\Abbiamo un spessore lungo $\Delta x$ e vale:
+\begin{equation}
+	c = \pi \epsilon_0 \epsilon_r \frac{1}{ln \frac{s}{r\omega}} [\tfrac{F}{m}]
+\end{equation}
+e poi abbiamo 
+\begin{equation}
+	l = \frac{\mu_0}{\pi} ln \frac{s}{r\omega} [\tfrac{H}{m}]
+\end{equation}
+possiamo tenere conto di
 \begin{enumerate}
-	\item un generatore di corrente equivalente: si ottiene calcolando la tensione indotta $V_C$ dal campo elettrico incidente, che è data dalla circuitazione del campo E $V_C = \int\limits_{0}^{s} \underline{E^i} \underline{dy}$ e poi abbiamo la corrente $I^i$ che viene iniettata per effetto del campo incidente (copia)
-	\item un generatore di tensione, può essere in serie o in parallelo: consideriamo nuovamente il pezzo di filo di prima, immaginando che faccia parte di una spira chiusa dove una parte è un condensatore ed il resto una curva matematica. Verrà generata una forza elettromotrice indotta (sempre la circuitazione)$\text{emf} = ...$. È una forza potenziale che vale qualunque sia il percorso chiuso, possiamo esprimerla in funzione di H, mediante il \textbf{teorema di Stokes} che dice che (copia) (dove mathscrC è il contorno chiuso)\\otteniamo quindi una emf in funzione del campo magnetico (copiala!!!!!). È una tensione per unità di lunghezza
+	\item un generatore di corrente equivalente: si ottiene calcolando la tensione indotta $V_C$ dal campo elettrico incidente, che è data dalla circuitazione del campo E:
+	\begin{equation}
+		V_C = -\int\limits_{0}^{s} \underline{E^i} \cdot \underline{dy} = -\int\limits_{0}^{s} E_y^i dy
+	\end{equation}
+	e poi abbiamo la corrente $I^i$ che viene iniettata per effetto del campo incidente
+	\begin{equation}
+		I^i = \frac{V_C}{X_C} = -j\omega c \int\limits_{0}^{s} E_y^i dy
+	\end{equation}
+	\item un generatore di tensione, può essere in serie o in parallelo: consideriamo nuovamente il pezzo di filo di prima, immaginando che faccia parte di una spira chiusa dove una parte è un condensatore ed il resto una curva matematica.\\Verrà generata una forza elettromotrice indotta (sempre la circuitazione) 
+	\begin{equation}
+		emf = \oint_{\mathscr{C}} \underline{E^i} \cdot \underline{dl}	
+	\end{equation}
+	È una forza potenziale che vale qualunque sia il percorso chiuso, possiamo esprimerla in funzione di H, mediante il \textbf{teorema di Stokes} che dice che
+	\begin{equation}
+		emf = \oint_{\mathscr{C}} \underline{E^i} \cdot \underline{dl} = \iint_{S(\mathscr{C})} \nabla x \underline{E} \cdot \underline{\hat{u}} de
+	\end{equation}
+	 ($\mathscr{C}$ è il contorno chiuso).\\Otteniamo quindi una emf in funzione del campo magnetico 
+	 \begin{equation}
+	 	emf = V^i = j\omega \mu_0 \int_{0}^{s} H_z dy
+	 \end{equation}
+	 È una tensione per unità di lunghezza
 \end{enumerate}
-Consideriamo quindi il circuitino di prima come (immagine):
-Se ammettiamo che i fili siano molto vicini rispetto alla lunghezza d'onda $s << \lambda$ possiamo assumere che il campo elettrico incidente sia costante per $0 < y < s$, possiamo quindi calcolare gli integrali moltiplicando semplicemente per s, ottenendo $V^i = j \omega \mu_0 H_z^i \cdot s$ e $I^i = j \omega c E_y^i \cdot s$, se poi immaginiamo che $L << \omega$, abbiamo che tutta la linea è assimilabile ad quanto segue: (altra immagine)\\
-vediamo due casi:
+Consideriamo quindi il circuitino di prima\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/susc_circ_2.png}
+\end{figure}
+\\\\Se ammettiamo che i fili siano molto vicini rispetto alla lunghezza d'onda $s << \lambda$ possiamo assumere che il campo elettrico incidente sia costante per $0 < y < s$, possiamo quindi calcolare gli integrali moltiplicando semplicemente per s, ottenendo 
+\begin{equation}
+	V^i = j \omega \mu_0 H_z^i \cdot s
+\end{equation}
+e 
+\begin{equation}
+	I^i = -j \omega c E_y^i \cdot s
+\end{equation}	
+se poi immaginiamo che $L << \lambda$, abbiamo che tutta la linea è assimilabile ad quanto segue:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/susc_circ_3.png}
+\end{figure}
+\\\\vediamo due casi:
 \begin{itemize}
-	\item $V^i$ ON e $I^i$ OFF (togliamo il generatore): $V_S = \frac{R_S}{R_S R_L} V^i L$ e $V_L = -\frac{R_S}{R_S R_L} V^i L$
-	\item $V^i$ OFF e $I^i$ ON: $V_S = \frac{R_S R_L}{R_S R_L} I^i L$ e $V_L$ sarà uguale 
+	\item $V^i$ ON e $I^i$ OFF (togliamo il generatore):
+	\begin{equation}
+		V_S = \frac{R_S}{R_S R_L} V^i L
+	\end{equation}
+	e
+	\begin{equation}
+		V_L = -\frac{R_S}{R_S R_L} V^i L
+	\end{equation}
+	\item $V^i$ OFF e $I^i$ ON
+	\begin{equation}
+		V_S = \frac{R_S R_L}{R_S R_L} I^i L	
+	\end{equation}
+	e $V_L$ sarà uguale 
 \end{itemize}
-possiamo quindi scrivere la tensione totale $V_L = - \dfrac{R_L}{R_S + R_L}V^i \cdot L + j \omega \mu_0 H_z^i (s\cdot L) - j \omega c E_y^i (s \cdot L) \frac{R_S R_L}{R_S R_L}$. Questa tensione può creare problemi di funzionamento al dispositivo 2, dipende nuovamente dall'area sottesa ai fili, quindi nuovamente i fili devono essere corti e vicini.\\\\Considerazioni: $P_L$ che è la potenza raccolta sul carico L, che è data da (copia). Per fare in modo che la potenza raccolta dal dispositivo sia piccola, è necessario che $R_L$ sia molto elevato, al limite per $\infty$ il dispositivo sarebbe immune, ma l'impendenza di terminazione dipende dalle operazioni che deve fare il dispositivo.\\Possiamo aggiungere un componente di \textbf{choke}, che serva a tagliare l'effetto del disturbo in maniera selettiva:\\immaginiamo di avere un microchip RFID, che abbia dei piedini ai quali colleghiamo un antenna che farà energy harvesting o trasmetterà informazione.\\Il chip ha anche un'altra coppia di piedini che servono per pilotare un sensore che funziona in corrente DC, non ha quindi meccanismi di protezione. Se arriva un'onda che investe il dispositivo, entreranno delle correnti di radiofrequenza nel dispositivo che produrranno un malfunzionamento, che falserà di molto la lettura di un dato. Si inseriscono due dispositivi di choke che devono generare un'impedenza elevata per evitare che entrino correnti a radiofrequenza, generando però impedenza elevata a frequenze elevate.\\Come deve essere fatto per far passare la continua ma attenuare le frequenze elevate: un induttore, ha un impedenza $Z_C = j \omega L$, quindi quando $\omega -> 0$ e siamo in continua. $Z_C = 0$ e quindi il segnale entra e viene processato, ma all'aumentare della frequenza aumenta l'impedenza e quindi taglia la radiofrequenza mentre attenua la continua.\\Lo schema usato tipicamente è il seguente:(copia)\\così che anche se viene raccolta la radio-frequenza il chip è immune perché questa non passa. Questo è quello che tipicamente si fa, distribuire dei choke fatti con induttori o bid di ferrite.
+possiamo quindi scrivere la tensione totale 
+\begin{equation}
+	V_L = - \dfrac{R_L}{R_S + R_L} + j \omega \mu_0 H_z^i (s\cdot L) - j \omega c E_y^i (s \cdot L) \frac{R_S R_L}{R_S R_L}
+\end{equation}
+Questa tensione può creare problemi di funzionamento al dispositivo 2, dipende nuovamente dall'area sottesa ai fili, quindi nuovamente i fili devono essere corti e vicini.
+\subsubsection{Considerazioni}
+$P_L$ che è la potenza raccolta sul carico L, che è data da 
+\begin{equation}
+	P_L = \frac{1}{2} \dfrac{\abs{V_L}^2}{R_C}
+\end{equation}
+Per fare in modo che la potenza raccolta dal dispositivo sia piccola, è necessario che $R_L$ sia molto elevato, al limite per $\infty$ il dispositivo sarebbe immune, ma l'impedenza di terminazione dipende dalle operazioni che deve fare il dispositivo.\\Possiamo aggiungere un componente di \textbf{choke}, che serva a tagliare l'effetto del disturbo in maniera selettiva:\\immaginiamo di avere un microchip RFID, che abbia dei piedini ai quali colleghiamo un antenna che farà energy harvesting o trasmetterà informazione.\\Il chip ha anche un'altra coppia di piedini che servono per pilotare un sensore che funziona in corrente DC, non ha quindi meccanismi di protezione. Se arriva un'onda che investe il dispositivo, entreranno delle correnti di radiofrequenza nel dispositivo che produrranno un malfunzionamento, che falserà di molto la lettura di un dato. Si inseriscono due dispositivi di choke che devono generare un'impedenza elevata per evitare che entrino correnti a radiofrequenza, generando però impedenza elevata a frequenze elevate.\\Come deve essere fatto per far passare la continua ma attenuare le frequenze elevate: un induttore, ha un impedenza 
+\begin{equation}
+	Z_C = j \omega L	
+\end{equation}
+quindi quando $\omega \rightarrow 0$ e siamo in continua.\\$Z_C = 0$ e quindi il segnale entra e viene processato, ma all'aumentare della frequenza aumenta l'impedenza e quindi taglia la radiofrequenza mentre attenua la continua.\\Lo schema usato tipicamente è il seguente:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/schermi_chokes.png}
+\end{figure}
+\\\\così che anche se viene raccolta la radio-frequenza il chip è immune perché questa non passa. Questo è quello che tipicamente si fa, distribuire dei choke fatti con induttori o bid di ferrite.
 
 \part{Parte Hardware}
 
