@@ -2082,30 +2082,32 @@ quindi quando $\omega \rightarrow 0$ e siamo in continua.\\$Z_C = 0$ e quindi il
 \part{Parte Hardware}
 
 \chapter{Blocco 1 - Introduzione e nozioni di background}
+\section{Panoramica dei contenuti}
 Vediamo gli attacchi sull'hardware vero e proprio. Vedremo:
 \begin{itemize}
 	\item sicurezza;
 	\item design di componenti hardware;
 \end{itemize}
-hardware security inquadrate in due tematiche:
+hardware security inquadrata in due tematiche:
 \begin{itemize}
 	\item trust, sulla catena produttiva che ci ha portato ad avere quel dispositivo. Posso fidarmi di chi ha fatto il dispositivo?
-	\item vulnerabilità: dispositivo non è maliziosamente modificato, ma è suscettibile ad attacchi, tipicamente side channel attack su vari livelli.
+	\item vulnerabilità: il dispositivo non è maliziosamente modificato, ma è suscettibile ad attacchi, tipicamente side channel attack su vari livelli.
 \end{itemize}
-Vedremo poi le contromisure per gli aspetti di attacchi trust e di tipo vulnerabilità: è come sempre una gara tra due fazioni in cui c'è una continua gara (Cesati cit*), vediamo anche delle primitive per rendere sicuro l'hardware:
+Vedremo poi le contromisure per gli aspetti di attacchi trust e di tipo vulnerabilità: è come sempre una gara continua tra due fazioni (Cesati cit*), vediamo anche delle primitive per rendere sicuro l'hardware:
 \begin{itemize}
 	\item TRNG
 	\item Physically Unclonable Functions
 \end{itemize}
-Sarà un approccio molto nozionisitico, per avere tutte le chiavi di interpretazione dell'hardware security
+Sarà un approccio molto nozionistico, per avere tutte le chiavi di interpretazione dell'hardware security
+
 \section{Nozioni di background}
-L'aspetto di hardware security si inwuadra tipicamente nel più ampio campo della Dependability: capacità del sistema di operare come ci aspettavamo, che comprende 3 aspetti, siamo in un concetto più ampio. I sistemi dependable si comportano secondo le specifiche di progettazione, 3 aspetti:
+L'aspetto di hardware security si inquadra tipicamente nel più ampio campo della \textbf{dependability}: capacità del sistema di operare come ci aspettavamo, che comprende 3 aspetti, siamo in un concetto più ampio. I sistemi dependable si comportano secondo le specifiche di progettazione, 3 aspetti:
 \begin{itemize}
-	\item quality, come essere sicuri che il dispositivo non è affetto da guasti di produzione. La produzione delle VLSI è sempre affetta da difetti ed è invalutabile che i difetti creino dei guasti.\\10\% dell'area del chip è usata solo per il design for test, che sia assicura che il dispositivo non sia guasto.
-	\item Affidabilità: livello di fiducia che abbiamo che il dispositivo opererà bene nel corso del tempo, contro degli eventi random. I livelli di affidabilità sono tipicamente elevati per permettere che il dispositivo sia affidabile
-	\item security: livello di certezza che il dispositivo funzioni bene sia in fase di produzione che durante la vita utile del dispositivo. IL nemico non sono eventi casuali ma eventi maliziosi.
+	\item qualità, come essere sicuri che il dispositivo non è affetto da guasti di produzione. La produzione delle VLSI è sempre affetta da difetti ed è invalutabile che i difetti creino dei guasti.\\10\% dell'area del chip è usata solo per il "design for test", che sia assicura che il dispositivo non sia guasto.
+	\item affidabilità: livello di fiducia che abbiamo che il dispositivo opererà bene nel corso del tempo, contro degli eventi random. I livelli di affidabilità sono tipicamente elevati per permettere che il dispositivo sia affidabile
+	\item sicurezza: livello di certezza che il dispositivo funzioni bene sia in fase di produzione che durante la vita utile del dispositivo. IL nemico non sono eventi casuali ma eventi maliziosi.
 \end{itemize}
-Nell'ottica dei sistemi dependable la security è una declinazione di questo aspetto, infatti tecniche applicate per garantire l'affibdabilità e la relibability sono anche usate per la sicurezza.\\Un sistema è sicuro se l'hardware è intoccabile: questo dicono gli esperti di cybersec, il dispositivo è fuori dalla portata dell'attaccante è ci sono dei ciphertext, ma non è più il caso. Ormai il dispositivo stesso è un oggetto di attacco, non più solo il canale. SPlittimao l'hw security in
+Nell'ottica dei sistemi dependable la security è una declinazione di questo aspetto, infatti tecniche applicate per garantire l'affidabilità e la relibability sono anche usate per la sicurezza.\\Un sistema è sicuro se l'hardware è intoccabile: questo dicono gli esperti di cybersec, il dispositivo è fuori dalla portata dell'attaccante è ci sono dei ciphertext, ma non è più il caso. Ormai il dispositivo stesso è un oggetto di attacco, non più solo il canale. Dividiamo l'hw security in
 \begin{itemize}
 	\item hw trust:
 	\begin{itemize}
