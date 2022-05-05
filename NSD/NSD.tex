@@ -63,6 +63,7 @@ Piattaforme da utilizzare per la parte da 6 CFU (Hardware):
 \item Lubuntu
 \item Ubuntu server
 \end{itemize}
+
 \chapter{Introduzione alla cybersecurity}
 Ci sono 3 fattori principali quando si parla di cyberscurity:
 \begin{itemize}
@@ -73,25 +74,35 @@ Ci sono 3 fattori principali quando si parla di cyberscurity:
 \paragraph{Definizione di computer security:}le misure ed i controlli che garantiscono confidenzialità, integrità e disponibilità degli assets dei sistemi informativi, incluso hardware, software etc...
 \begin{itemize}
 \item confidenzialità: i dati sono privati, le informazioni confidenziali non sono note ad entità non autorizzate. Esempi: usare SSH o HTTPS per scambiare credenziali con un server.
-\item Privacy: (slides)
-\item Integrità: se dei dati, indica che essi sono cambiati solo in maniera autorizzata. Se voglio traferire un messaggio con cui trasferisco del denaro, non voglio che il contenuto sia compromesso. Se si parla di integrità dei sistemi, si intende che il sistema performi come deve (vedi slides)
-\item disponibilità: si assicura che il sistema lavori in maniera corretta e che i servizi non siano negati ad utenti autorizzati
+\item Privacy: assicurarsi che gli individui controllino o influenzino quale informazione è legata a loro potrebbe essere raccolta e a chi potrebbe essere rivelata;
+\item Integrità: se dei dati, indica che essi sono cambiati solo in maniera autorizzata. Se voglio traferire un messaggio con cui trasferisco del denaro, non voglio che il contenuto sia compromesso. Se si parla di integrità dei sistemi, si intende che il sistema performi, che sia libero da una manipolazione dello stesso;
+\item disponibilità: si assicura che il sistema lavori in maniera corretta e che i servizi non siano negati ad utenti autorizzati. In infrastrutture critiche, la disponibilità può diventare di gran lunga l'obiettivo di sicurezza più importante
 \end{itemize}
 Altri aspetti importanti:
 \begin{itemize}
 \item Authenticity: dell'utente, indica che sia possibile verificare che l'utente è chi dice di essere. Della sorgente: capacità di verificare che un messaggio arriva da una sorgente effettivamente affidabile.
-\item altri ... (slides)
+\item Controllo d'accesso (autorizzazione), ovvero l'abilità di verificare che l'utente ha il permesso di effettuare alcune attività;
+\item accountability, ovvero poter tenere traccia delle azioni di qualche entità, incluso la possibilità di salvare tali attività in un file di log per analisi forensi successive;
+\item adversary: individuo, gruppo governo... che vuole condurre attività dannose
+\item contromisure: un dispositivo o tecnica che ha come obiettivo la prevenzione di spionaggio etc...
+\item rischio, ovvero una misura di quanto una entità sia minacciata da potenziali eventi
+\item policy di sicurezza, quindi un insieme di criteri per fornire servizi di sicurezza
+\item risorsa di sistema: un'applicazione major, un supporto generale al sistema, un programma ad alto impatto ...
+\item minaccia (threat): una qualunque circostanza o evento col potenziale di impattare in maniera avversa delle organizzazioni
+\item vulnerabilità: debolezza di un sistema informativo, procedura di sicurezza ...
 \end{itemize} 
-\textbf{ALTRE IMPORTANTI DEFINIZIONI CHE SI TROVANO SULLE SLIDES}. \\ Quali sono le diverse superfici di attacco:
+Quali sono le diverse superfici di attacco:
 \begin{enumerate}
 \item la rete stessa: i sistemi sono Internet-based, quindi è sempre possibile attaccare la rete. Attaccare la rete implica sfruttare vulnerabilità della rete Internet: ARP, WEP, link fisici, intrusioni nella rete etc...
 \item attacchi al software: vulnerabilità nell OS, server web, code injection etc...
 \item attacchi all'umano: molte vulnerabilità create da noi stessi, social engineering, errori umani, mancanza di competenze etc...
 \end{enumerate}
 È importante non pensare che la sicurezza sia data solo dalla tecnologia, ma anche dalle persone.\\ \paragraph{CIS critical security controls:} 20 applicazioni pratiche che la SANS suggerisce di applicare per verificare la sicurezza di una corporation (anche piccola Enterprise). Ogni controllo ha dei sotto-controlli più "concreti"\\ Quindi, non avendo il tempo di fare tutto, ci concentrare su alcuni aspetti fondamentali di tutto l'insieme visto.
-\section{Lezione 2: vulnerabilità intrinseche IP/TCP}
+
+
+\chapter{Lezione 2: vulnerabilità intrinseche IP/TCP}
 Prima di capire le vulnerabilità, è necessaria una revisione dei protocolli di rete.
-\subsection{Architettura di IP}
+\section{Architettura di IP}
 Intenet non è altro che una inter-connessione di reti che possono avere differenti tecnologie.\\ La comunicazione fra i device è possibile con IP, che è implementato sui livelli 1 e 2 (che sono indipendenti). Ogni dispositivo è identificato dall'indirizzo univoco a 32/64 bit (che seguono la nomenclatura CIDR), le diverse sotto-reti comunicano tramite i router ovvero un device IP che ha almeno 3 livelli dello stack Internet. Ha diverse interfacce che possono essere in diverse tecnologie: ADSL, Ethernet, Fibra etc...\\ Le operazioni compiute dai router:
 \begin{itemize}
 \item IP forwarding: longest prefix mathcing, manda un pacchetto verso la prossima interfaccia del percorso di rete. È diretta se la destinazione è nella subnet, mentre indiretta se serve trovare il next hop, quindi andare fuori dalla propria sotto-rete. Il next hop è un dispositivo nella propria sotto-rete che sa come arrivare alla destinazione.
@@ -101,7 +112,9 @@ Il goal di IP è quello di mandare il pacchetto a destinazione, l'Internet è di
 \item header più piccolo in IPv6
 \item no fragmentation in IPv6
 \end{itemize}
-\paragraph{Routing table:}struttura dati che associa una destinazione ad un next hop. Per il routing si usa il longest prefix matching, l'IP più "specifico" è quello scelto. La differenza principale fra host e router è che se un host riceve un pacchetto da una src non fra quelle locali, lo scarta; un router lo forwarda. Il forwarding standard basico è fatto in base all'indirizzo di destinazione. Dopo l'estrazione del pacchetto IP, se l'IP dest è locale, lo manda al livello superiore, altrimenti lo guarda nella tabella di routing: se non si trova un matching, il pacchetto è scartato. Altrimenti: se c'è un next hop, bisogna scoprire chi è, altrimenti basta scoprire il MAC associato all'IP.\\ La maggior parte dei pacchetti che vengono mandati vanno fuori dall'AS con cui si firma il contratto: possono esserci diversi AS di transito prima di arrivare al data center del sito a cui si cerca di connettersi.
+\subsection{Routing table}
+Sstruttura dati che associa una destinazione ad un next hop. Per il routing si usa il longest prefix matching, l'IP più "specifico" è quello scelto. La differenza principale fra host e router è che se un host riceve un pacchetto da una src non fra quelle locali, lo scarta; un router lo forwarda. Il forwarding standard basico è fatto in base all'indirizzo di destinazione. Dopo l'estrazione del pacchetto IP, se l'IP dest è locale, lo manda al livello superiore, altrimenti lo guarda nella tabella di routing: se non si trova un matching, il pacchetto è scartato. Altrimenti: se c'è un next hop, bisogna scoprire chi è, altrimenti basta scoprire il MAC associato all'IP.\\ La maggior parte dei pacchetti che vengono mandati vanno fuori dall'AS con cui si firma il contratto: possono esserci diversi AS di transito prima di arrivare al data center del sito a cui si cerca di connettersi.
+
 \subsection{Vulnerabilità di TCP/IP}
 Per design, IP e TCP non si preoccupano della sicurezza in quanto sono stati progettati quando la sicurezza non era un problema. C'è un certo numero di vulnerabilità intrinseche nei protocolli, ed è ancora così in quanto sono stati progettati senza pensare all'aspetto di sicurezza:
 \begin{itemize}
@@ -111,9 +124,11 @@ Per design, IP e TCP non si preoccupano della sicurezza in quanto sono stati pro
 \item Integrity: voglio essere sicuro che il pacchetto non sia modificato durante il percorso fra src e dest. C'è il checksum, ma è calcolato su dati in chiaro, quindi non va bene come "codice" per poter assicurare l'integrità
 \item Packet replication: non c'è sequence number nell'IP header nella sessione, non ci sono meccanismi per proteggersi da questo threat
 \end{itemize}
+
 \subsubsection{Dynamic mapping}
 Le cose si complicano perché i protocolli Internet usano diversi meccanismi per implementare il mapping: ad esempio il DSN, ARP, 802.3 bridging (lo switch impara in automatico quale MAC è dietro quale porta) e questo è dinamico in quanto può cambiare nel tempo. Questo problema è presente in ogni layer ed anche questi meccanismi non sono stati penasti per essere sicuri.
-\paragraph{DNS spoofing:}possiamo spoofare una richiesta DNS, quindi fare un hijack della sessione. Attacco triviale (e vecchio):
+\subsubsection{DNS spoofing}
+Possiamo spoofare una richiesta DNS, quindi fare un hijack della sessione. Attacco triviale (e vecchio):
 \begin{itemize}
 \item sfruttiamo il mapping MAC-IP per diventare MiTM
 \item sfruttiamo il mapping fra il nome di dominio e l'IP per impersonare il server web
@@ -126,6 +141,7 @@ Lo scenario è che l'attaccante sia nella stessa sotto-rete.\\ L'idea è quella 
 \item Impersonification
 \end{itemize}
 Per emulare un server DNS è possibile configurare bind ma c'è un piccolo servizio DNS da configurare e che permette di forwardare all'attacker tutto ciò che sono è noto.
+
 \subsection{Security requirements per le vulnerabilità}
 Vediamo cosa è possibile risolvere questi problemi: per la confidenzialità si usano algoritmi a chiave simmetrica per garantirla.\\ Un algoritmo a chiave simmetrica, entrambe le end della comunicazione condividono la stessa chiave, c'è anche la differenza fra:
 \begin{itemize}
@@ -133,6 +149,7 @@ Vediamo cosa è possibile risolvere questi problemi: per la confidenzialità si 
 \item block ciphers, che usano concatenazione per evitare ECB, in cui se la stessa chiave viene riusata per molto è possibile scoprire il contenuto di blocchi che hanno lo stesso contenuto
 \end{itemize}
 Per l'integrità, vogliamo una prova che nessuno modifichi il contenuto del messaggio, quindi si produce un MAC basato su hash functions: l'hash è calcolato non solo sui dati ma anche sulla chiave.\\ L'Authenticated Encryption permette, con "la stessa chiave" di fornire sia confidenzialità che integrità. Si può ottenere un algoritmo del genere anche con le tecniche base di symmetric encyption.\\ Per l'autenticità è possibile usare pub key cryptography per realizzare dei meccanismi di firma, come RSA e Diffie-Hellman. Serve comunque avere una certificazione che un utente è il vero proprietario di una chiave, quindi che sia crittograficamente legato alla chiave: Public Key Infrastructure.
+
 \section{Lezione 3: Ethernet LAN security}
 Ethernet è una tecnologia di livello 2, il primo standard open e multi-vendor nato nel 1976.\\ L'802 è una famiglia di standard dell'IEEE, fra di essi ci sono diversi gruppi di lavoro e quello che si occupa di Ethernet è 802.3 e quindi si parla di questi standard, in quanto Ethernet era il nome commerciale.\\ La trama Ethernet originale ha un header molto snello, c'è il campo type / length che può essere due campi differenti a seconda della situazione (vedi slides)\\ Anche in questo caso è tutto in chiaro, quindi ci sono gli stessi problemi. Gli indirizzi MAC sono a 48 bit
 \paragraph{Hub, Switch e Bridge:} un hub è uno strumento che forwarda pacchetti verso tutti. Uno switch ha un forwading database, ovvero una struttura dati che associa MAC alle porte. Lo switch impara in automatico quale è il MAC dietro una certa porta. Il problema sta proprio nel fatto che lo switch impara in automatico il mapping.\\ Si usa l'algoritmo spanning three per evitare i loop, che si possono creare perché, per motivi di ridondanza, è possibile avere dei loop nella rete.\\\\ Per operare al di sopra di Ethernet, IPv4 usa ARP e DHCP mentre IPv6 usa NDP, protocollo simile. NDP non è sicuro, ma c'è un protocollo per renderlo sicuro e lo stesso protocollo è stato progettato già pensando alla sicurezza.\\ Anche nel caso di DHCP, usato per ottenere un IP, abbiamo gli stessi problemi detti sopra.
