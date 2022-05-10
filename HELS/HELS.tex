@@ -2831,85 +2831,211 @@ Potendo vedere il contenuto dei flip flop del dispositivo, potrei anche vedere i
 \chapter{Blocco 4 - Contromisure}
 
 \section{Introduzione}
-Le contromisure sono le tecniche ad oggi usate per o mitigare o evitare i problemi di trust o vulnerabilità. Parzialmente le tecniche fanno leva su quelle per garantire affidabilità e reliability del sistema.\\Possiamo vedere un riassunto delle problematiche ma anche delle soluzioni: (copia immagine)\\possiamo avere mischiate le problematiche di trust e vulnerability, anche se il prof preferisce separarle.\\Di nuovo, siamo focalizzati su trojan horses e physical attacks, in campo più ampio si parla anche di
+Le contromisure sono le tecniche ad oggi usate per o mitigare o evitare i problemi di trust o vulnerabilità. Parzialmente le tecniche fanno leva su quelle per garantire affidabilità e reliability del sistema.
+\\Possiamo vedere un riassunto delle problematiche ma anche delle soluzioni:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/hardware/hw_treats_sol.png}
+\end{figure}
+\\\\possiamo avere mischiate le problematiche di trust e vulnerability, anche se il prof preferisce separarle.
+\\Di nuovo, siamo focalizzati su trojan horses e physical attacks, in campo più ampio si parla anche di
 \begin{itemize}
 	\item IP piracy
 	\item reverse engineering
-	\item slides
+	\item tampering
+	\item ...
 \end{itemize} 
-ci sono problematiche sia di fiducia che di sicurezza, che possiamo inquadrare in un generico trust.\\Quando si tratta di attacchi, vogliamo proteggere informazioni di sicurezza nel dispositivo:
+ci sono problematiche sia di fiducia che di sicurezza, che possiamo inquadrare in un generico trust.
+\\Quando si tratta di attacchi, vogliamo proteggere informazioni di sicurezza nel dispositivo:
 \begin{itemize}
-	\item on-device key
-	\item firmware
+	\item on-device key: la chiave privata di un algoritmo di cifratura.
+	\\Tipicamente salvate sul chip nella forma di memoria non volatile, se sono scoperte, il requisito di confidenzialità salta
+	\item firmware del costruttore: istruzioni di basso livello e firmware proprietario.
+	\\Sono valori di IP del costruttore originale 
 	\item on-device protected data, oggetto di attacchi dove sia l'attore fa leva con trojan hardware sia con attacchi puramente hardware.
-	\item configurazione del device
+	\item configurazione del device, che contiene i dati di configurazione e determina quali risorse e servizi sono disponibili per un particolare utente.
+	\\Un attaccante potrebbe manomettere questi asset per ottenere accesso non autorizzato alle risorse
 	\item bit di entropia: se rendo predicibile il TRNG, quindi cosa genera la chiave crittografia, ho sconfitto la crittografia.
 \end{itemize}
-(tutto meglio sulle slides).Il confine quando si tratta gli asseta attaccati, fra trust e vulnerability, è molto più labile, ovviamente l'attaccante potrebbe anche voler causare DoS.\\L'ambito è sempre di un attore malevolo che vuole causare un danno di qualunque tipo.\\Riassumendo i possibili attacchi: (immagine), possiamo anche parlare di j-tag: sta su tutti i chip, usata da chi programma hardware (FPGA) per fare debugging, ad esempio accedere al processore, si può fare step-by-step execution tramite questa porta. Nasce come protocollo di test di produzione, che può essere soggetto ad attacchi.
+.Il confine quando si tratta gli asseta attaccati, fra trust e vulnerability, è molto più labile, ovviamente l'attaccante potrebbe anche voler causare DoS.
+\\L'ambito è sempre di un attore malevolo che vuole causare un danno di qualunque tipo, quindi riassumendo i possibili attacchi:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/hardware/attacks.png}
+\end{figure}
+\\\\possiamo anche parlare di j-tag: sta su tutti i chip, usata da chi programma hardware (FPGA) per fare debugging, ad esempio accedere al processore, si può fare step-by-step execution tramite questa porta.
+\\Nasce come protocollo di test di produzione, che può essere soggetto ad attacchi.
+
 \section{Contromisure contro i trust issues}
-Il primo problema può essere di IP trust, dovrei verificare un IP e come faccio a farlo?\\Possiamo avere IP di diverso livello in base a quanto le possiamo manipolare, ma alla fine ne facciamo uso senza conoscerne il contenuto a fondo, sono protette da copyright.\\Non abbiamo quindi un golden model (perché altrimenti sarebbe open), potrei usare le specifiche come golden che però magari non mi permettono di conoscerne il funzionamento al 100\%.\\Per capire se l'IP si comporta come dovrebbe, esistono diversi livelli di astrazione dove poter agire:
+\subsection{IP trust}
+Il primo problema può essere di IP trust, dovrei verificare un IP e come faccio a farlo?
+\\Possiamo avere IP di diverso livello in base a quanto le possiamo manipolare, ma alla fine ne facciamo uso senza conoscerne il contenuto a fondo, sono protette da copyright.
+\\Non abbiamo quindi un golden model (perché altrimenti sarebbe open), potrei usare le specifiche come golden che però magari non mi permettono di conoscerne il funzionamento al 100\%.
+\\Per capire se l'IP si comporta come dovrebbe, esistono diversi livelli di astrazione dove poter agire:
+\\nella fase di pre-sintesi, l'IP soft è solo codice HDL, dopo la sintesi il codice verrà tradotto in una netlist a livello di gate.
+\\La verifica formale e la coverage analysis sono usate per assicurarsi che la netslist sia fidata.
+\\Possiamo quindi distinguere diversi tipi di controlli:
 \begin{itemize}
-	\item fase di pre-sintesi, formal verification: non è ancora implementata in silicio, possiamo usare tecniche di verifica formale o copertura, si guarda proprio al codice.\\Possiamo fare tracing e verifica come nel software come testing e code coverage, functional coverage. È un modo che può coprire delle problematiche che sono state introdotte a livello di specifica o a livello di progettazione. es: una macchina a stati nascosta che si attivano tramite una molto rara combinazione di ingressi, mediante code coverage potrei trovare del codice che non viene mai eseguito. Vengono quindi fatte:
+	\item formal verification: possiamo fare tracing e verifica come nel software testing.
+	\\È un modo che può coprire delle problematiche che sono state introdotte a livello di specifica o a livello di progettazione. 
+	\\Vengono quindi fatte:
 	\begin{itemize}
-		\item property checking
-		\item equivalent checking: controllo fra RTL (codice come il C) ed il GDSII file;
+		\item property checking: ogni requisito è definito come un asserzione nei testbench ed è controllato
+		\item equivalent checking: controllo fra RTL (codice come il C), la netlist ed il GDSII file;
 		\item model checking: il sistema è descritto in codice C o HDL, viene fatto un insieme di proprietà e si verifica che l'implementazione verifichi il modello formale;
 	\end{itemize};
-	\item coverage analysis: verifica che nel codice ci siano diversi livelli di coverage, che vengono verificati con un profiler usando dei benchmark significativi per vedere se il codice viene utilizzato. Se un asserzione fallisce, può esserci un problema di IP trust.\\Altra cosa è il coverage, se non viene attivata una parte di codice, ci può essere del codice nascosto proprio perché l'attivazione dei trojan è pensata per essere rara.
+	\item coverage analysis: verifica che nel codice ci siano diversi livelli di coverage, che vengono verificati con un profiler usando dei benchmark significativi per vedere se il codice viene utilizzato.
+	\\es: una macchina a stati nascosta che si attivano tramite una molto rara combinazione di ingressi, mediante code coverage potrei trovare del codice che non viene mai eseguito.
+	\\Se un asserzione fallisce, può esserci un problema di IP trust.\\Altra cosa è il coverage, se non viene attivata una parte di codice, ci può essere del codice nascosto proprio perché l'attivazione dei trojan è pensata per essere rara.
+	\\Possono esserci diverse metriche di coverage:
+	\begin{itemize}
+		\item code coverage:
+		\begin{itemize}
+			\item line coverage
+			\item statement coverage
+			\item FSM coverage
+			\item toggle coverage
+		\end{itemize}
+		\item functional coverage, dove verifichiamo le asserzioni
+	\end{itemize}
 \end{itemize}
-IC (System) trust: provengono da tecniche per verificare il silicio.\\Il problema qui è che l'avversario (payload etc..) potrebbe essere messo a posta per non venire scoperto.\\Dopo la sintesi, il prodotto deve comportarsi da specifica. Qui il problema è che i trojan sono piccoli e difficili da trovare, quindi gli approcci del test in production funzionano poco, non sono efficaci perché nel test di produzione ci focalizziamo sui difetti di produzione che sono predicibili ma non su qualcosa aggiunto maliziosamente.\\Abbiamo la tassonomia per la rilevazione dei trojan: (immagine)\\si può fare sia in maniera distruttiva che non distruttiva. Nel secondo approccio, una volta avuto il chip (siamo a livello IC, è stato già prodotto), possiamo:
+
+\subsection{IC (System) trust}
+Provengono da tecniche per verificare il silicio.
+\\Il problema qui è che l'avversario (payload etc..) potrebbe essere messo a posta per non venire scoperto.
+\\Dopo la sintesi, il prodotto deve comportarsi da specifica, qui il problema è che i trojan sono piccoli e difficili da trovare, quindi gli approcci del test in production funzionano poco, non sono efficaci perché nel test di produzione ci focalizziamo sui difetti di produzione che sono predicibili ma non su qualcosa aggiunto maliziosamente.
+\\Abbiamo la tassonomia per la rilevazione dei trojan:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/hardware/ic_troj.png}
+\end{figure}
+\\\\si può fare sia in maniera distruttiva che non distruttiva.\\
+Nel secondo approccio, una volta avuto il chip (siamo a livello IC, è stato già prodotto), possiamo:
 \begin{itemize}
-	\item mettere approcci di run time monitor: abbiamo messo delle ridondanze nel chip per verificare se run time qualcosa va storto.\\I difetti maliziosi che si attivano come time bomb le stano perché ho queste ridondanze che cercano errori random ma anche maliziosi. Può verificare sia problematiche di trust che anche di affidabilità
+	\item mettere approcci di run time monitor: abbiamo messo delle ridondanze nel chip per verificare se run time qualcosa va storto.
+	\\I difetti malevoli che si attivano come time bomb le stano perché ho queste ridondanze che cercano errori random ma anche maliziosi. Può verificare sia problematiche di trust che anche di affidabilità
 	\item a livello di test, il famoso test di produzione. Si può fare sia logic test o un test che usa i side channel, che sono usati per verificare se ci sono delle emissioni, assorbimenti di potenza, corrente quiescente o transitoria che possono rivelare la presenza di trojan.
 \end{itemize}
-L'approccio distruttivo serve per verificare se un lotto è affetto da trojan, quindi lo distruggiamo: questo vuol dire dis-encapsularlo e fare una specie di affettatura di layer di metalizzazione, con agenti chimici o meccanici.\\Facciamo delle "foto" con cad di ogni livello prima di rimuoverlo, guardando le caratteristiche fisiche del dispositivo capiamo cosa fa e quindi se ci sono dei trojan. È costoso e potenzialmente non risolutivo dovuti ad errori che possono esserci nel processo, inoltre a meno di capire al volo se un transistor doveva esserci o meno, occorre capire se il layout corrisponde con quello reale: io ho fatto il pape-out (il golden) mandato in foundary, dove è stato modificato maliziosamente, quindi se non ho il golden non posso verificarlo.\\
+L'approccio distruttivo serve per verificare se un lotto è affetto da trojan, quindi lo distruggiamo: questo vuol dire dis-encapsularlo e fare una specie di affettatura di layer di metalizzazione, con agenti chimici o meccanici.
+\\Facciamo delle "foto" con cad di ogni livello prima di rimuoverlo, guardando le caratteristiche fisiche del dispositivo capiamo cosa fa e quindi se ci sono dei trojan. È costoso e potenzialmente non risolutivo dovuti ad errori che possono esserci nel processo, inoltre a meno di capire al volo se un transistor doveva esserci o meno, occorre capire se il layout corrisponde con quello reale: io ho fatto il pape-out (il golden) mandato in foundary, dove è stato modificato maliziosamente, quindi se non ho il golden non posso verificarlo.
+
 \subsection{Approccio del logic test}
-Mutua le tecniche di test che vengono fatte in produzione. Devo generare dei vettori di test che triggerino il trojan e poi osservare il comportamento del payload.\\Ad esempio: (immagine)\\il pro è che se riusciamo ad avere dei vettori funzionali e strutturali buoni usiamo tecniche note per trovare i trojan, in maniera rapida.\\Se però i test sono fatti "alla cieca", il tasso di successo è basso, poiché esiste tutta una letteratura che riduce il numero di vettori necessari per trovare i problemi e comunque occorre fare del lavoro aggiuntivo per ridurne ancora il numero e serve la conoscenza del layout.\\Senza sapere il layout occorre anche fare delle assunzioni, quindi ho diversi contro: (slides)
+Mutua le tecniche di test che vengono fatte in produzione. Devo generare dei vettori di test che triggerino il trojan e poi osservare il comportamento del payload.
+\\Ad esempio:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/hardware/troj_activ.png}
+\end{figure}
+\\\\il pro è che se riusciamo ad avere dei vettori funzionali e strutturali buoni usiamo tecniche note per trovare i trojan, in maniera rapida.
+\\Se però i test sono fatti "alla cieca", il tasso di successo è basso, poiché esiste tutta una letteratura che riduce il numero di vettori necessari per trovare i problemi e comunque occorre fare del lavoro aggiuntivo per ridurne ancora il numero e serve la conoscenza del layout.
+\\Senza sapere il layout occorre anche fare delle assunzioni, quindi ho diversi contro: (slides)
 \begin{itemize}
+	\item la difficoltà nel eccitare od osservare nodi a bassa controllabilità o bassa osservabilità
 	\item i trojan sono fatti per essere attivati in condizioni rare
 	\item il test che si basa sulla ricerca delle attivazioni nelle net, non può ad esempio trovare trojan che vengono attivati dall'esterno ad esempio con emissioni EM dall'esterno, o anche trojan che non cambiano le funzionalità ma emettono EM verso l'esterno per info leaking
 \end{itemize}
-Ad esempio, per test funzionali su un adder (per trojan funzionali), dovremmo passare un numero di input elevato che quindi potrebbero richiedere centinaia di anni (slides).\\Invece di usare approcci funzionali, si possono applicare approcci strutturali, quindi invece di far fare al dispositivo quello che dovrebbe fare, lo scompongono e lo osservo: è l'approccio tipico del test di produzione, si perde la funzionalità ma ho maggiore controllo ed osservabilità.\\Nel test strutturale si usa comunque un approccio deterministico, so dove sono i guasti sulla net, ma per i trojan non è detto che io sappia dove siano, quindi posso usare approcci statistici come MERO: prendo la netlist, l'approccio cerca di vedere quali sono gli eventi rari (es: 1/4 per lo 0 sulla porta OR), cerchiamo quindi di trovare vettori che stimolino gli eventi rari N volte. Assumiamo che i trojan siano stati messi proprio per essere attivati da eventi rari, i test vector stimolano proprio gli eventi rari nella speranza di trovare i trojan.\\L'articolo di MERO dimostra che la coverage in termini di trojan migliora, ma chiaramente anche la test length aumenta perché faccio toggling degli eventi rari molte più volte. (copia grafici, i numeri sopra sono relativi ai benchmark).
+Ad esempio, per test funzionali su un adder (per trojan funzionali), dovremmo passare un numero di input elevato che quindi potrebbero richiedere centinaia di anni:\\
+se ad esempio consideriamo un adder con 64 input occorrerebbe effettuare la combinazione di $2^{65}$ input, quindi conti non fattibili.
+\\Invece di usare approcci funzionali, si possono applicare approcci strutturali, quindi invece di far fare al dispositivo quello che dovrebbe fare, lo scompongono e lo osservo: è l'approccio tipico del test di produzione, si perde la funzionalità ma ho maggiore controllo ed osservabilità.\\Nel test strutturale si usa comunque un approccio deterministico, so dove sono i guasti sulla net, ma per i trojan non è detto che io sappia dove siano, quindi posso usare approcci statistici come MERO: prendo la netlist, l'approccio cerca di vedere quali sono gli eventi rari (es: 1/4 per lo 0 sulla porta OR), cerchiamo quindi di trovare vettori che stimolino gli eventi rari N volte. Assumiamo che i trojan siano stati messi proprio per essere attivati da eventi rari, i test vector stimolano proprio gli eventi rari nella speranza di trovare i trojan.\\L'articolo di MERO dimostra che la coverage in termini di trojan migliora, ma chiaramente anche la test length aumenta perché faccio toggling degli eventi rari molte più volte. 
 
-\subsection{Potenza assorbita}
-Facciamo l'approccio speculare di quella malevola: qui l'assorbimento di potenza è un indicatore dell'eventuale presenza di qualcosa di malevolo nel dispositivo stesso.\\Facciamo attivare (almeno parzialmente) il trojan, che creerà dei picchi di assorbimento di potenza (genera toggle di transitor) che si manifestano come outlayer nell'assorbimento medio del dispositivo.\\Occorre conoscere il circuito originale, la netlist originale, altrimenti non posso sapere qual è un outlayer: avendola, posso confrontare l'assorbimento di potenza che registro con quello originale.\\Questi test sono anche usati in test di produzione ad esempio per vedere se ci sono dei transitor sempre accesi, quindi sono usati anche per cercare dispsotivi guasti in produzione.\\Il problema dell'approccio è che quando si fa la produzione del dispositivo elettronico, nei wafer etc.. c'è la così detta process variation: qualcosa che dice che non tutti i transistor sono nati uguali (immagine slides), questo porta a delle dimensioni di tutti i parametri che fanno si che tutti i dispositivi non siano identici bensì distribuiti come una Gaussianas, c'è variazione fra i diversi die ma anche nello stesso die.\\Questo vuol dire che ci sono molte problematiche nella capacità di poter rivelare la presenza effettiva del trojan.\\I segnali di tipo side channel usati sono:
+\subsection{Analisi side channel - potenza assorbita}
+Usiamo l'approccio speculare di quello malevolo: qui l'assorbimento di potenza è un indicatore dell'eventuale presenza di qualcosa di malevolo nel dispositivo stesso.
+\\Facciamo attivare (almeno parzialmente) il trojan, che creerà dei picchi di assorbimento di potenza (genera toggle di transitor) che si manifestano come outlayer nell'assorbimento medio del dispositivo.
+\\Occorre conoscere il circuito originale, la netlist originale, altrimenti non posso sapere qual è un outlayer: avendola, posso confrontare l'assorbimento di potenza che registro con quello originale.
+\\Questi test sono anche usati in test di produzione ad esempio per vedere se ci sono dei transitor sempre accesi, quindi sono usati anche per cercare dispsotivi guasti in produzione.
+\\Il problema dell'approccio è che quando si fa la produzione del dispositivo elettronico, nei wafer etc.. c'è la così detta process variation: qualcosa che dice che non tutti i transistor sono nati uguali\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/hardware/die_distrib.png}
+\end{figure}
+\\\\questo porta a delle dimensioni di tutti i parametri che fanno si che tutti i dispositivi non siano identici bensì distribuiti come una Gaussianas, c'è variazione fra i diversi die ma anche nello stesso die.
+\\Questo vuol dire che ci sono molte problematiche nella capacità di poter rivelare la presenza effettiva del trojan.
+\\I segnali di tipo side channel usati sono:
 \begin{itemize}
 	\item IDDQ
-	\item IDDT, corrente assorbita di transizione
+	\item IDDT, gli switch extra consumano più potenza dinamica
 	\item path dealy, vedere i ritardi in una rete combinatoria per cercare delle porte logiche aggiuntive che introducono ritardi
 	\item emissioni EM aggiuntive
 \end{itemize}
-Pro: è efficace per trovare trojan che non causano malfunzionamenti nel circuito, qui ad esempio con emissioni EM vediamo i trojan, non abbiamo il problema che avevamo nei test strutturali (ad esempio il MOLE fa un casino ma non cambia le funzionalità  e quindi col test non si trovava).\\Contro: la process variation rende complesso trovare i trojan, occorre togliere molto rumore.\\Inoltre occorre sempre avere i golden chip su cui parametrarsi.\\I metodi di sensitività prevedono che:
+Pro: è efficace per trovare trojan che non causano malfunzionamenti nel circuito, qui ad esempio con emissioni EM vediamo i trojan, non abbiamo il problema che avevamo nei test strutturali (ad esempio il MOLE fa un casino ma non cambia le funzionalità  e quindi col test non si trovava).
+\\Contro: la process variation rende complesso trovare i trojan, occorre togliere molto rumore.
+\\Inoltre occorre sempre avere i golden chip su cui parametrarsi.
+\\I metodi di sensitività prevedono che:
 \begin{itemize}
 	\item più il trojan piccolo, più la sensitività si abbassa
-	\item più la taglia del circuito (copia slides)
+	\item più la taglia del circuito aumenta e più si abbassa la sensitività
 \end{itemize}
-Riassumendo, pro e contro degli approcci di logic testing e side channel analysis: (copia tabella?)
-\\Un altro modo per mitigare il rumore è usare più parametri, come la frequenza massima e la corrente assorbita durante la transizione.
+in generale, segue la regola:
+\begin{equation}
+	Sensitivity = \dfrac{I_{tampered} - I_{original}}{I_{original}} \cdot 100\%
+\end{equation}
+Riassumendo, pro e contro degli approcci di logic testing e side channel analysis:\\\\
+\begin{table}[!h]
+	\begin{tabular}{c|c|c|}
+		\hline
+		 & Logic testing & side-channel analysis\\
+		 \hline
+		 Pros & robusto al rumore nel processo & efficace con trojan grandi\\
+		 \hline
+		  & efficace per trojan molto piccoli & facile generale test vector efficaci\\
+		  \hline
+		  Cons & difficile generare vettori di test & vulnerabile al rumore nel processo\\
+		  \hline
+		   & i trojan grandi sono difficili da scoprire & i trojan piccoli sono difficili da scoprire\\
+		   \hline
+	\end{tabular}
+\end{table}
+
+\subsubsection{Corrente assorbita}
+Un altro modo per mitigare il rumore è usare più parametri, come la frequenza massima e la corrente assorbita durante la transizione.
 \\Questo permette di togliere di mezzo la variazione: correlando i due parametri, siccome questa dipende dalla variazione, se il dispositivo è tamper (modificato) riusciamo meglio a rivelare la presenza di trojan, i due variano insieme e quindi il rapporto dovrebbe essere costante mentre se c'è un effetto di trojan, magari a parità di corrente riduce la frequenza massima.
 \\\\esempio: ipotizziamo un trojan in un benchmark s, inserito in una zona specifica del dispositivo.
-\\Vediamo la distribuzione dell'alimentazione modellata come una rete RC: (immagine) l'effetto del trojan può causare un assorbimento di corrente maggiore ad esempio nel PP4, mentre magari nel PP1 essendoci più carichi capacitivi c'è un minore assorbimento.
+\\Vediamo la distribuzione dell'alimentazione modellata come una rete RC:\\ 
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/hardware/alim_mod.png}
+\end{figure}
+\\\\l'effetto del trojan può causare un assorbimento di corrente maggiore ad esempio nel PP4, mentre magari nel PP1 essendoci più carichi capacitivi c'è un minore assorbimento.
 \\C'è quindi un aspetto di località dei trojan: nella rete di distribuzione della potenza, possiamo vedere in uno specifico pad che l'assorbimento di potenza è effettivamente più alta che nel resto del dispositivo, quindi \textbf{sempre sapendo che ho il golden}, possiamo caratterizzare un assorbimento anomalo.
 \\Qui il trojan è stato messo in un buco libero (??).
-\\\\Un altro metodo prevede l'integrazione della corrente: integrando la corrente durante il funzionamento del golden e del tamper, dovrei vedere una differenza importante. Il trojan causerà un assorbimento maggiore della carica nel tempo (copia integrali).\\Il metodo è però poco localizzabile rispetto a prima.
+
+\subsubsection{Integrazione della corrente}
+Un altro metodo prevede l'integrazione della corrente: integrando la corrente durante il funzionamento del golden e del tamper, dovrei vedere una differenza importante. Il trojan causerà un assorbimento maggiore della carica nel tempo
+\begin{equation}
+	Q_{trojan-free}(t) = \int I_{trojan_free}(t) dt
+\end{equation}
+ed anche
+\begin{equation}
+	Q_{trojan-inserted}(t) = \int I_{trojan_inserted}(t) dt = \int (I_{trojan_free}(t) + I_{trojan}(t)) dt
+\end{equation}
+Il metodo è però poco localizzabile rispetto a prima.
 \\La power analysis ha comunque dei problemi:
 \begin{itemize}
 	\item come trovare dei vettori che stimolino i trojan
 	\item come ridurre il rumore
 	\item località dello switiching (che può essere rilevata con tecniche viste sopra)
 	\item random pattern: applichiamo un certo numero di vettori senza osservare i bit sul layout
+	\item problemi legati al rumore nella misura
+	\item calibrazione per via delle variazione di processo
 \end{itemize}
-(altro slides).
-\\\\Un altro modo per fare l'analisi dei side channel è con l'analisi dei ritardi: (immagine)
-\\abbiamo una rete combinatoria con il trojan che aumenta il carico capacitivo sui nodi, aumentando quindi i ritardi di propagazione, la costante RC è più alta e quindi la frequenza del dispositivo è più bassa.
+
+\subsubsection{Delay analysis}
+Un altro modo per fare l'analisi dei side channel è con l'analisi dei ritardi:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/hardware/delay.png}
+\end{figure}
+\\\\abbiamo una rete combinatoria con il trojan che aumenta il carico capacitivo sui nodi, aumentando quindi i ritardi di propagazione, la costante RC è più alta e quindi la frequenza del dispositivo è più bassa.
 \\Possiamo usare delle tecniche per rivelare la presenza di ritardi anomali, sempre sapendo il funzionamento ideale:
 \\tecniche usate per fare DVFS: nei sistemi embedded c'è un controllore che si occupa di ridurre la potenza assorbita, avendo una batteria è inutile mandare il clock al massimo o tenere le tensioni alti. Guardo gli stati di potenza (i pstate, ovvero i power state che sono fondamentali in dispositivi IoT): dal più basso dove è quasi idle, al più alto (maggiore è lo stato maggiori le prestazioni e l'assorbimento di potenza).
-\\Sono tutte tecniche per la riduzione di potenza assorbita. Usano spesso un doppio flop: (copia immagine) se il ritardo è elevato perché il circuito combinatorio è lento, la transizione che doveva arrivare al flop non ce la fa prima che quello shadow parallelo campioni.
+\\Sono tutte tecniche per la riduzione di potenza assorbita. Usano spesso un doppio flop:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/hardware/circuito.png}
+\end{figure}
+\\\\se il ritardo è elevato perché il circuito combinatorio è lento, la transizione che doveva arrivare al flop non ce la fa prima che quello shadow parallelo campioni.
 \\Un flop è attivato col fronte d'onda che sale, l'altro con quello che scende, quindi se c'è differenza fra i due flop la frequenza (lo XOR alla fine compara i due bit e flagga se diversi) è troppo bassa e va alzata.
 \\Se quindi c'è un trojan, a parità di tensione e frequenze di funzionamento, vedo dei fail sulla rete combinatoria, sfruttando una tecnica di ridondanza dell'affidabilità.
-\\\\Altro è la clock sweeping technique: devo confrontare sempre col golden, se vedo dei ritardi anomali, provando tutti i percorsi possibili, riesco facilmente a dire, in base a quale percorso ha il problema, su quale net si trova il trojan. (immagine).
+
+\subsubsection{Clock sweeping}
+Altro è la clock sweeping technique: devo confrontare sempre col golden, se vedo dei ritardi anomali, provando tutti i percorsi possibili, riesco facilmente a dire, in base a quale percorso ha il problema, su quale net si trova il trojan:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/hardware/clock_sweeping.png}
+\end{figure}
+\\\\
 \\Problematiche: rispetto alla power analysis non serve attivare il trojan, si vedono i ritardi. I test sono anche usati in produzione, quindi li posso riusare. Il problema è nella variazione di processo, temperatura e tensione che ovviamente introducono rumore.
-\\ (tabellone riassuntivo di dove usare le cose?)
 
 \section{Desing per trust dell'hardware}
 Oltre agli approcci di prima, possiamo cercare di rendere più difficile a 3° di introdurre dei side channel.\\
@@ -2918,20 +3044,31 @@ Come progettiamo per evitare la presenza dei trojan, o comunque ostacolarne l'in
 	\item tecniche che migliorano la rilevazione dei trojan stessi. Faccio progettazione che li rende più rilevabili
 	\item tecniche per prevenire l'inserimento del trojan, con una specie di offuscamento del progetto
 \end{itemize}
-Per migliorare la detection, possono rimuovere gli eventi rari: i trojan sono messi lì in modo da essere attivati da eventi rari della netlist. Rimuovendo questi eventi, potrei rendere l'inserimento del trojan più difficile e la rilevazione più semplice. Per fare ciò: ipotizziamo di avere questa netlist: (immagine)
-\\il trojan sfrutta degli eventi molto rari, l'attivazione è $\frac{1}{256}$, per renderlo meno raro aumento l'osservabilità mettendo un flop di scan, che viene attivato solo durante il test, il flop è normalmente 0 ma mettendo 1 durante lo scan la probabilità dell'1 aumenta (immagine a dx), quindi posso migliorare la controllabilità e quindi ridurre la probabilità di eventi rari.
+Per migliorare la detection, possono rimuovere gli eventi rari: i trojan sono messi lì in modo da essere attivati da eventi rari della netlist.
+\\Rimuovendo questi eventi, potrei rendere l'inserimento del trojan più difficile e la rilevazione più semplice. Per fare ciò: ipotizziamo di avere questa netlist:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/hardware/netlist_troj.png}
+\end{figure}
+\\\\il trojan sfrutta degli eventi molto rari, l'attivazione è $\frac{1}{256}$, per renderlo meno raro aumento l'osservabilità mettendo un flop di scan, che viene attivato solo durante il test, il flop è normalmente 0 ma mettendo 1 durante lo scan la probabilità dell'1 aumenta (immagine a dx), quindi posso migliorare la controllabilità e quindi ridurre la probabilità di eventi rari.
 \\Questo aiuta sia quando vogliamo vedere la funzionalità del trojan, ma anche per vedere l'assorbimento di potenza (se ci sono pattern anomali) o di delay.
 \\Possiamo quindi:
 \begin{itemize}
-	\item aumentare l'attivazione completa (slides)
+	\item aumentare l'attivazione completa
+	\item generare delle attività di switching
+	\item attivare più percorsi per migliorare la coverage
 \end{itemize}
-Possiamo avere tecniche di run time monitoring, a livello di progettazione si modifica la presenza di modifiche maliziose del dispositivo, così che se ci sono dei trojan su FPGA o un trojan su hard IP SoC si possono detectare.\\Usano tecniche già note per la fault tolerance, ovvero aggiungere dei checker che monitorino il chip, ci sono varie tecniche già usate per avionica, etc... e si possono usare per determinare che l'evento random che causa il problema sia stato inserito in maniera malevola.
+Possiamo avere tecniche di run time monitoring, a livello di progettazione si modifica la presenza di modifiche maliziose del dispositivo, così che se ci sono dei trojan su FPGA o un trojan su hard IP SoC si possono detectare.
+\\Usano tecniche già note per la fault tolerance, ovvero aggiungere dei checker che monitorino il chip, ci sono varie tecniche già usate per avionica, etc... e si possono usare per determinare che l'evento random che causa il problema sia stato inserito in maniera malevola.
 
 \subsection{Design obfuscation}
-Rendiamo più complesso ad un attaccante di inserire un trojan, come si offusca il progetto: ipotizziamo di avere questa macchina a stati (immagine)
-\\aggiungiamo delle transizioni che non servono a nulla, ma confondono l'eventuale attaccante, questo fa si che l'attaccante magari inserisca il trojan in una transizione fra stati che non avverrà mai.
+Rendiamo più complesso ad un attaccante di inserire un trojan, come si offusca il progetto: ipotizziamo di avere questa macchina a stati:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/hardware/fsm_obf.png}
+\end{figure}
+\\\\aggiungiamo delle transizioni che non servono a nulla, ma confondono l'eventuale attaccante, questo fa si che l'attaccante magari inserisca il trojan in una transizione fra stati che non avverrà mai.
 \\Magari il problema del trojan viene creato su una transizione fra due stati che funzionalmente non verrebbero mai usati. Il problema è che si aggiunge ridondanza, inoltre il trojan dovrà essere inserito negli stati inutili, comunque l'idea è rendere più complesso capire la struttura per l'attaccante.
-\\Tipicamente in un circuito avanzano degli spazi inutilizzati dove si possono mettere dei checker, ha impatto basso da un punto di vista di layout.\\Alcuni svantaggi:
+\\Tipicamente in un circuito avanzano degli spazi inutilizzati dove si possono mettere dei checker, ha impatto basso da un punto di vista di layout.
+\\Alcuni svantaggi:
 \begin{itemize}
 	\item deve dirci bene che l'attaccante sbagli, essendo un approccio random avremo una certa probabilità di successo;
 	\item introduco ridondanza, quindi più ritardi, più area necessaria ...
@@ -2940,7 +3077,8 @@ Rendiamo più complesso ad un attaccante di inserire un trojan, come si offusca 
 \section{Contromisure per le problematiche di side channel}
 Qui l'obiettivo è rendere più complesso un attacco di tipo side channel:
 \begin{itemize}
-	\item tecniche di hiding: riduco il rapporto segnale/rumore, aggiungendo ad esempio segnali di rumore mediante un TRNG, che faccia si che non è semplice riconoscere il segnale utile. È costoso, potrei quindi fare delle modifiche funzionali del dispositivo
+	\item tecniche di hiding: riduco il rapporto segnale/rumore, aggiungendo ad esempio segnali di rumore mediante un TRNG, che faccia si che non è semplice riconoscere il segnale utile.
+	\\È costoso, potrei quindi fare delle modifiche funzionali del dispositivo
 	\begin{itemize}
 		\item usare i bit anche nel valore negato, così che tutte le transizioni siano sempre binarie e non si capisca quale valore c'è dentro perché ci sono sempre transizioni.
 		\item usare logica sincrona
@@ -2952,22 +3090,44 @@ Qui l'obiettivo è rendere più complesso un attacco di tipo side channel:
 	\item tecniche di physical security ed anti-tamper, ad esempio facendo si che il decapsulamento distrugga il chip
 \end{itemize}
 ha comunque tutto un costo.
-\\Contromisure contro la DPA: (slides)
+\\Contromisure contro la DPA:
 \begin{itemize}
-	\item randomizzare il messaggio
-	\item vincolare i bit variabili
-	\item (slides)
-	\item desync: se l'approccio è tale per cui in una certa fase, ad esempio, si decifra una parola, l'attaccante deve avere tante tracce per poterle correlare. Se io rendo ogni taccia diverse dalle altre perché introduco dei delay random, la correlazione delle tracce con il modello è più complesso perché andrebbe anche modellato l'effetto della contromisura. È molto usato, rendo random il clock e vado contro gli attacchi che usino tante tracce, saranno più complessi;
+	\item contromisure applicative, che rendono la randomizzazione del messaggio impossibile:
+	\begin{itemize}
+		\item fissare alcuni byte del messaggio
+		\item vincolare i byte variabili
+	\end{itemize}
+	\item scorrelare le curve di potenza dai dati:
+	\begin{itemize}
+		\item in hardware: scrumble di corrente, mediante rumore aggiunto
+		\item in software: con data whitering
+	\end{itemize}
+	\item desync delle N tracce: se l'approccio è tale per cui in una certa fase, ad esempio, si decifra una parola, l'attaccante deve avere tante tracce per poterle correlare.
+	\\Se rendiamo ogni taccia diverse dalle altre perché introduco dei delay random, la correlazione delle tracce con il modello è più complesso perché andrebbe anche modellato l'effetto della contromisura.
+	\\È molto usato, rendo random il clock e vado contro gli attacchi che usino tante tracce, saranno più complessi
+	\begin{itemize}
+		\item delay random nel software
+		\item ordini random nel software
+		\item stati di wait nell'hardware, stalli aggiunti dalla CPU
+		\item clock hardware instabili internamente, con shift di fase
+	\end{itemize}
 \end{itemize}
 rendono difficile a chi sta osservando il comportamento della macchina a stati di capire cosa sta accadendo.
 \\DPA è potente ma ci sono diversi algoritmi che mitigano gli attacchi.
-\\Ad esempio: (immagine), quando si de-sincronizza, la tracce assomigliano sempre di più a rumore.
+\\Ad esempio:\\ 
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/hardware/sync_vs_desync.png}
+\end{figure}
+\\\\quando si de-sincronizza, la tracce assomigliano sempre di più a rumore.
 \\\\Attacchi EM: come negli approcci DPA o SPA, ridurre le emissioni radiative o cancellarle
 \begin{itemize}
 	\item software che cambiano come sono implementate le crypto routine
-	\item in hardware, con un layer di metallo (slides)
+	\item in hardware:
 	\begin{itemize}
+		\item confinare la radiazione con un layer metallico (tipo gabbia di Faraday)
 		\item creo onde EM che si cancellano
+		\item ridurre la radiazione
+		\item cancellazione della radiazione
 	\end{itemize}
 \end{itemize}
 Contromisure per le micro-architetture: qui l'attacco non deve poter sfruttare i timing o dell'algoritmo elaborato sul processore:
@@ -2975,10 +3135,19 @@ Contromisure per le micro-architetture: qui l'attacco non deve poter sfruttare i
 	\item cambiare il programma, così da evitare dei leak
 	\item usare diverse micro-architetture che non creino il side channel
 \end{itemize}
-esempio: usare la Dual Rail Precharge: Qui assorbo potenza sempre, che è molto svantaggioso per sistemi embedded ad esempio, quindi potrei penalizzare un utilizzo ad esempio per dispositivi IoT.\\Il vantaggio è che avendo sempre l'opposto del segnale, se uno dei due flippa posso sempre verificare l'XOR che deve essere pari ad 1, se non lo è scopro che c'è un problema (è ridondanza spaziale).\\
-(immagine) avere delle transizioni che non abbiano dei picchi così definiti (NAND di sinistra), mentre con A,B ed in negati possono avere sempre una transizione o pe uno o per l'altro, così da vedere sempre una potenza assorbita dinamica ed avere una dissipazione data-independent. Lo svantaggio è comunque di dover avere due porte e dover propagare due segnali, ma avere un segnale che è sempre il negato dell'altro può dare benefici di dependability.
-\\A livello di processore: (immagine)
-\\ho un doppio di tutto, solo la instruction memory è unica, se osservo le emissioni, la potenza totale che sarà la somma è costante.
+esempio: usare la Dual Rail Precharge:
+\\qui assorbo potenza sempre, che è molto svantaggioso per sistemi embedded ad esempio, quindi potrei penalizzare un utilizzo ad esempio per dispositivi IoT.
+\\Il vantaggio è che avendo sempre l'opposto del segnale, se uno dei due flippa posso sempre verificare l'XOR che deve essere pari ad 1, se non lo è scopro che c'è un problema (è ridondanza spaziale).\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/hardware/drpc.png}
+\end{figure}
+\\\\avere delle transizioni che non abbiano dei picchi così definiti (NAND di sinistra), mentre con A,B ed in negati possono avere sempre una transizione o pe uno o per l'altro, così da vedere sempre una potenza assorbita dinamica ed avere una dissipazione data-independent.
+\\Lo svantaggio è comunque di dover avere due porte e dover propagare due segnali, ma avere un segnale che è sempre il negato dell'altro può dare benefici di dependability.
+\\A livello di processore:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/hardware/vsc.png}
+\end{figure}
+\\\\ho un doppio di tutto, solo la instruction memory è unica, se osservo le emissioni, la potenza totale che sarà la somma è costante.
 \\Implica una modifica architettura del processore ed ha impatto sulle performance.
 \\\\Un approccio che mitighi gli attacchi timining, ovvero le vulnerabilità micro-architetturali che monitorano i ritardi di esecuzione:
 \begin{itemize}
@@ -3001,82 +3170,108 @@ Si potrebbe far si che sia difficile la predizione del timing: nel FIA dobbiamo 
 	\item dummy instruction
 	\item operazioni randomizzate
 \end{itemize}
-così che se si pensa che c'è il ciclo che fa la 4° iterazione di AES, questa è fatta sempre in tempi diversi.\\Altro modo è fare delle metalizzazioni che impediscono il passaggio del laser.\\O anche tecniche che:
+così che se si pensa che c'è il ciclo che fa la 4° iterazione di AES, questa è fatta sempre in tempi diversi.
+\\Altro modo è fare delle metalizzazioni che impediscono il passaggio del laser.
+\\O anche tecniche che:
 \begin{itemize}
 	\item rilevino il problema:
 	\begin{itemize}
 		\item fotocellule che rilevino attacchi
+		\item sensori bulk
+		\item rilevatori di glitch
 	\end{itemize} 
 \end{itemize}
 ci possono essere falsi positivi.
-\\Oppure si usano tecniche di ridondanza, di spazio tempo e informazione (slides).
-\\Infine, tecniche per mitigare la vulnerabilità al test: il test è fatto apposta per osservare e controllare , ma se posso farlo ho sconfitto tutto ciò che è sicurezza, quindi si possono tagliare i ponti oppure cifrare le scan chain.\\Un'altra cosa che può essere spazio di attacco è che i dispositivi sotto test lascino aperti ponti da osservare nella vita utile. Dopo il test le scan chain vengono staccate così da impedire l'accesso fisico, a questo punto il debug e test successivi non sono più fattibili.
+\\Oppure si usano tecniche di ridondanza, di spazio tempo e informazione:
+\begin{itemize}
+	\item fare due volte la stessa operazione e confrontare il risultato
+	\item fare l'operazione ad anche la sua inversa e verificare
+	\item aggiungere codici a correzione di errori
+	\item gli stessi metodi per trovare errori nel software causati da sorgenti di rumore casuale
+\end{itemize}
+Infine, tecniche per mitigare la vulnerabilità al test: il test è fatto apposta per osservare e controllare , ma se posso farlo ho sconfitto tutto ciò che è sicurezza, quindi si possono tagliare i ponti oppure cifrare le scan chain.
+\\Un'altra cosa che può essere spazio di attacco è che i dispositivi sotto test lascino aperti ponti da osservare nella vita utile. Dopo il test le scan chain vengono staccate così da impedire l'accesso fisico, a questo punto il debug e test successivi non sono più fattibili.
 \\Possiamo anche far si che il dispositivo non sia più accessibile da fuori, un tend attuale è il built in self test, ovvero il dispositivo si testa da solo. È già fatto nelle memorie, ma il test logico di un circuito combinatorio sequenziale ancora non lo è ma permetterebbe di non avere accesso da fuori, però può fare problemi nella coverage.
-\\Ultima contromisura: invece di tagliare le scan chain o usare il self test, si fa un accesso al dispositivo che sia cifrato: la chiave del dispositivo è nota solo a chi fa il test, il contenuto dello scan chain prima di essere mandato sul dispositivo è cifrato così che un attaccante che non conosce la chiave non possa attaccare. (immaginetta?).
+\\Ultima contromisura: invece di tagliare le scan chain o usare il self test, si fa un accesso al dispositivo che sia cifrato: la chiave del dispositivo è nota solo a chi fa il test, il contenuto dello scan chain prima di essere mandato sul dispositivo è cifrato così che un attaccante che non conosce la chiave non possa attaccare.
 \\È simile a cosa viene fatto per i bitstream crittografati delle FPGA.
 
 
 \chapter{Blocco 5 - Hardware Security Primitives}
 \section{Randomness in hardware}
-Fin ora abbiamo visto tutto ciò che si fa sfruttando tecniche di affidabilità o di qualità.\\Esistono dei moduli ad hoc a supporto dell'autenticazione o della crittografia. Sono:
+Fin ora abbiamo visto tutto ciò che si fa sfruttando tecniche di affidabilità o di qualità.
+\\Esistono dei moduli ad hoc a supporto dell'autenticazione o della crittografia. Sono:
 \begin{itemize}
 	\item PUF
 	\item TRGN
 \end{itemize}
 Usano la randomicità dell'hardware, il "seed" è un fenomeno fisico impredicibile.
-\\Questi blocchi sfruttando le sorgenti di randomicità del dispositivo, nel processo ci sono delle randomicità aggiunte che non sono volute, per cui gli hw designer cercando di eliminarle prendendosi del margine ampio.\\Queste invece la sfruttano a loro vantaggio, le randomicità possono essere:
+\\Questi blocchi sfruttando le sorgenti di randomicità del dispositivo, nel processo ci sono delle randomicità aggiunte che non sono volute, per cui gli hw designer cercando di eliminarle prendendosi del margine ampio.
+\\Queste invece la sfruttano a loro vantaggio, le randomicità possono essere:
 \begin{itemize}
 	\item in fabbricazione, quindi usiamo quella per identificarlo con una "impronta digitale" che sarà sempre la stessa per tutta la vita utile. Sfrutta la process variaibility per i PUF
 	\item a run time sfruttiamo diversi eventi che causano generazione randomica di eventi che possiamo usare come seed per le chiavi crittografiche
 \end{itemize}
-\subsection{PUF}
+
+\section{PUF}
 Usato tipicamente per l'autenticazione dei dispositivi integrati, esistono:
 \begin{itemize}
 	\item strong PUF: dopo che il dispositivo viene prodotto, lo caratterizzo. Mandando dei segnali, memorizzo le risposte a queste random challenge. Ora, mando il dispositivo nel mondo e per verificare che sia lui uso una challenge / response pair che dovrebbe non essere replicabile perché non dipende dal layout del dispositivo: anche facendo revering del dispositivo non riesco a ricostruire quelle coppie di C/R.
 \end{itemize}
-Sono necessarie per fare ad esempio:
-\begin{itemize}
-	\item chiavi segrete
-	\item (slides)
-	\item le memorie non volatili che contengono le chiavi del dispositivo possono essere clonate.
-	\\La "spia" ha con se la chiave, mentre non dovrebbe essere così, l'approccio delle smart card non è fattibile, si possono approcciare con interfacce "non tradizionali";
-\end{itemize}
+Sono necessarie in quanto le chiavi segrete e gli ID dei circuiti spesso sono salvati in memorie non volatili e queste possono essere attaccate e le chiavi clonate.
+\\La "spia" ha con se la chiave, mentre non dovrebbe essere così, l'approccio delle smart card non è fattibile, si possono approcciare con interfacce "non tradizionali";
 come faccio a non memorizzare la chiave nel dispositivo, così che chi fa RE troverà solo un circuito: ci sono varie maniere di fare i PUF
-\subsubsection{Silicon PUF}
-Esempio: (immagine)
-\\sfruttano delle variazioni fisiche che esistono nei circuiti integrati moderni.
-\\Le piccole diversità vengono sfruttate per questi fini, la variazione come detto avviene sia nello stesso wafer che fra i diversi wafer.\\Ognuno ha la sua variabilità e può essere ovunque, viene tenuta in considerazione quando si fa la progettazione, vengono chiamata \textbf{corners}, ovvero tutte le possibili transizioni fra due end di un circuito in modo che si prenda in considerazione che i transistor in media non sono tutti uguali, alcuni sono più veloci altri meno.\\In realtà sono disposti più o meno su una Gaussiana: (copia disegno fortissimo)
-\\nel circuito ci può essere variazione nella dimensione del condensatore etc... che fa variare la $\tau$ e quindi invece di una $\delta$ (Dirac) abbiamo una Guassiana.\\È solo uno dei casi di uso, ovvero la frequenza degli oscillatori.\\Nel PUF devo prima caratterizzare il sistema fisico, per poi tirare fuori i respose bits (immagine), posso generare diversi segreti in base alle challenge che mando.
+
+\subsection{Silicon PUF}
+Sfruttano delle variazioni fisiche che esistono nei circuiti integrati moderni.
+\\Le piccole diversità vengono sfruttate per questi fini, la variazione come detto avviene sia nello stesso wafer che fra i diversi wafer.
+\\Ognuno ha la sua variabilità e può essere ovunque, viene tenuta in considerazione quando si fa la progettazione, vengono chiamata \textbf{corners}, ovvero tutte le possibili transizioni fra due end di un circuito in modo che si prenda in considerazione che i transistor in media non sono tutti uguali, alcuni sono più veloci altri meno.
+\\In realtà sono disposti più o meno su una Gaussiana:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/hardware/proc_variation_distrib.png}
+	\caption{}
+\end{figure}
+\\\\nel circuito ci può essere variazione nella dimensione del condensatore etc... che fa variare la $\tau$ e quindi invece di una $\delta$ (Dirac) abbiamo una Guassiana.
+\\È solo uno dei casi di uso, ovvero la frequenza degli oscillatori.
+\\Nel PUF devo prima caratterizzare il sistema fisico, per poi tirare fuori i respose bits e posso generare diversi segreti in base alle challenge che mando.
 \\Ci sono diversi vantaggi:
 \begin{itemize}
 	\item la chiave non è salvata
 	\item posso generare diverse master keys
 \end{itemize}
 Ci sono vari approcci per costruirli relativi a dei fenomeni che sono facili da misurare
-\subsubsection{Ring obscillator PUF}
-Ci sono N oscillatori che hanno frequenze che dipendono dai transitor che li compongono.\\ (immagine)\\per tirare fuori l'informazione ed abbiamo dei contatori (la cui velocità è random), la response è se i contatori sono andati più veloci o più lenti fra loro mentre la challenge è la scelta degli oscillatori (fatta mediante multiplexer).\\Per avere un output M-bit devo fare un confronto in parallelo di più paia di oscillatori.
+\subsection{Ring obscillator PUF}
+Ci sono N oscillatori che hanno frequenze che dipendono dai transitor che li compongono:\\ 
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/hardware/ro_puf.png}
+\end{figure}
+\\\\per tirare fuori l'informazione ed abbiamo dei contatori (la cui velocità è random), la response è se i contatori sono andati più veloci o più lenti fra loro mentre la challenge è la scelta degli oscillatori (fatta mediante multiplexer).\\Per avere un output M-bit devo fare un confronto in parallelo di più paia di oscillatori.
 
-\subsubsection{Arbiter PUF}
-Mentre prima la variazione era basata sulla frequeunza di oscillazione, qui:
+\subsection{Arbiter PUF}
+Mentre prima la variazione era basata sulla frequenza di oscillazione, qui:
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/hardware/arb_pug.png}
+\end{figure}
 \begin{itemize}
 	\item faccio partire la trasmissione di un segnale all'ingresso di una sequenza di multiplexer
 	\item ogni stato ha due multiplexer in cui entra un segnale, possiamo invertire i segnali in base agli ingressi del multiplexer: se il select (sceglie quale input del multiplexer inviare in uscita) è 0, si prende un ingresso, altrimenti l'altro;
 \end{itemize}
-(immagine)
-quindi se c'è un bit uguale ad 1 si inverte il percorso, altrimenti va diretto.\\C'è una concatenazione di porte logiche, l'obiettivo è che questa è una transizione, alla fine i segnali vanno a finire come ingressi di un flop:
+quindi se c'è un bit uguale ad 1 si inverte il percorso, altrimenti va diretto.
+\\C'è una concatenazione di porte logiche, l'obiettivo è che questa è una transizione, alla fine i segnali vanno a finire come ingressi di un flop:
 \begin{itemize}
 	\item l'ingresso D è quello che campiono
 	\item l'ingresso CK è quello che fa campionare
 \end{itemize}
 se il clock arriva dopo la transizione del D campiono 1, altrimenti 0.
 \\Siccome i segnali attraversano il circuito in un certo modo, arriva al flop sfasati e quindi verrà campionato o 0 o 1.
-\\Da un punto di vista logico i due segnali dovrebbero essere concorrenti, ma in realtà i segnali dipendono dalla variabilità e dai bit di challenge (che determinato la selezione del mux). (copia fine slides).
+\\Da un punto di vista logico i due segnali dovrebbero essere concorrenti, ma in realtà i segnali dipendono dalla variabilità e dai bit di challenge (che determinato la selezione del mux), l'arbitro FF alla fine decide quale dei due segnali è il più veloce.
 \\I ritardi dei percorsi sono dovute alle variazioni di processo di produzione
 
-\subsubsection{SRAM PUF}
-Basato sul tipo di SRAM: le SRAM sono fatte così:
-(immagine)
-ci sono due inverter dove l'uscita di uno si chiude sull'ingresso dell'altro ( e vice versa) è un multivibratore bi stabile, ovvero un dispositivo stabile che sta o su 01 o su 10 perché le uscite non fanno altro che confermare il valore.
+\subsection{SRAM PUF}
+Basato sul tipo di SRAM: le SRAM sono fatte così:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/hardware/sram_puf.png}
+\end{figure}
+\\\\ci sono due inverter dove l'uscita di uno si chiude sull'ingresso dell'altro ( e vice versa) è un multivibratore bi stabile, ovvero un dispositivo stabile che sta o su 01 o su 10 perché le uscite non fanno altro che confermare il valore.
 \\È usata per i registri e per le cache di livello 1 perché sono veloci, ci sono anche altri due transitor per accedere alle informazioni (sono messi in array).
 \\Quando accendiamo un dispositivo, lo stato degli inverter dipende dalla variazione del processo produttivo: non c'è una legge che ci dice uno stato di convergenza, lo stato iniziale è indeterminato, dipenderà da molte cose e quindi vendendo l'accensione c'è una capacità di tirare su o giù il segnale in base alla variazione di processo produttivo.
 \\Quindi lo stato di ON della ROM all'accensione ha sempre la stessa configurazione di bit a 0 ed a 1.
@@ -3100,10 +3295,12 @@ Lo strong PUF può essere tipicamente un arbiter PUF, mentre il weak può essere
 	\item invecchiamento
 	\item rumore termico, ambientale etc...
 \end{itemize}
-quindi è difficile limitare questi effetti, i metodi prevedono aggiungere ad esempio dei codici a correzione di errore.\\\\
-Ci sono attacchi ai PUF basati su ML che riescono anche efficacemente a predire le CRP mancanti basandosi sull'osservazione di un certo numero di CRP.\\C'è una predicibilità non evidente, dovuta a fenomeni fisici che sottostanno alla apparente randomicità che si possono predirre.
+quindi è difficile limitare questi effetti, i metodi prevedono aggiungere ad esempio dei codici a correzione di errore.\\
+Ci sono attacchi ai PUF basati su ML che riescono anche efficacemente a predire le CRP mancanti basandosi sull'osservazione di un certo numero di CRP.
+\\C'è una predicibilità non evidente, dovuta a fenomeni fisici che sottostanno alla apparente randomicità che si possono predirre.
 \\Esistono maniere per mescolare le cose, ma è un problema sulla non predicibilità della risposta soprattutto se provo a ripetere le risposte di qualcuno
-\subsubsection{Applicazioni}
+
+\subsection{Applicazioni}
 I weak PUF servono piuttosto ad:
 \begin{itemize}
 	\item identificare un dispositivo
@@ -3111,9 +3308,9 @@ I weak PUF servono piuttosto ad:
 	\item SRAM based o ring oscillator
 \end{itemize}
 se il numero di CRP è limitato, ci possono essere approcci che banalmente testano tutte le possibili challenge, i ML approach usano una predicibilità che non può essere solo brute force.
-\\Gli strong PUF invece tipicamente sono usati per fare autenticazione, tipicamente sono arbiter PUF.\\\\Il problema maggiore del PUF è se l'ID generato con la SRAM cambi nel tempo per via di invecchiamento etc... quindi si usano dei dati aggiuntivi a supporto, ovvero tecniche di correzione di errori (ridondanza di informazione) (immagine)\\si cerca di correggere eventuali errori del PUF dovuti all'invecchiamento.\\Durante la vita utile del dispositivo si manda la challenge, se anche le risposte sono diverse vanno corretti con gli (n-k) bit memorizzati, che da soli on dicono nulla sui k bit della risposta.
-\subsubsection{Strong PUF}
-Possono essere usati per autenticazione, in quanto dopo la produzione viene fatto C/R col dispositivo, memorizzo le risposte in un DB sicuro ed inaccessibile.
+\\Gli strong PUF invece tipicamente sono usati per fare autenticazione, tipicamente sono arbiter PUF.\\\\Il problema maggiore del PUF è se l'ID generato con la SRAM cambi nel tempo per via di invecchiamento etc... quindi si usano dei dati aggiuntivi a supporto, ovvero tecniche di correzione di errori (ridondanza di informazione).
+\\Si cerca di correggere eventuali errori del PUF dovuti all'invecchiamento, in modo che durante la vita utile del dispositivo si manda la challenge, se anche le risposte sono diverse vanno corretti con gli (n-k) bit memorizzati, che da soli on dicono nulla sui k bit della risposta.
+\\\\Gli strong PUF invece possono essere usati per autenticazione, in quanto dopo la produzione viene fatto C/R col dispositivo, memorizzo le risposte in un DB sicuro ed inaccessibile.
 \\Per autenticarlo mando la challenge e mi faccio mandare la risposta per autenticarlo, avendo a disposizione CRP a iosa, anche se alcune non corrispondono per i problemi detti prima possiamo usare gli altri.
 
 \section{TRNG}
@@ -3125,10 +3322,16 @@ I numeri random vengono usati per differenti applicazioni:
 \end{itemize}
 Un generatore di numeri random reale genera una serie di bit che hanno diverse proprietà:
 \begin{itemize}
-	\item slides
+	\item statisticamente indipendenti
+	\item identicamente distribuiti
+	\item non predicibile
 \end{itemize}
 questo genera un entropia positiva, dobbiamo usare fenomeni fisici che creino dati ad alta entropia.
-\\Le sorgenti sono tipicamente fisiche, dove la randomicità è legata al fenomeno che non può essere rigenerato algoritmicamente (copia immagine bella bella).\\Se vogliamo sfruttare i fenomeni:
+\\Le sorgenti sono tipicamente fisiche, dove la randomicità è legata al fenomeno che non può essere rigenerato algoritmicamente:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/hardware/source_rand.png}
+\end{figure}
+\\\\Se vogliamo sfruttare i fenomeni:
 \begin{itemize}
 	\item scegliamo la sorgente di entropia, che può essere differente ma fisica e non predicibile
 	\item dobbiamo fare harvesting della sorgente, tradurre in qualcosa che riusciamo a leggere e che non disturbi il processo fisico e raccolga più entropia possibile
@@ -3143,9 +3346,7 @@ Le richieste sono che:
 	\item compatti
 	\item design semplice per un'analisi rigorosa
 \end{itemize}
-esempio:
-(slide)
-l'harvesting deve essere qualcosa che digitalizzi, poi possiamo eventualmente normalizzare la distribuzione di 0 ed 1.
+L'harvesting deve essere qualcosa che digitalizzi, poi possiamo eventualmente normalizzare la distribuzione di 0 ed 1.
 \\Alcuni TRNG possono essere biased ed inoltre la sorgente di entropia può deteriorarsi nel tempo.
 \\Alcune funnzioni di PP sono XOR, block cipher etc... ma riducono l'assorbimento
 
@@ -3155,22 +3356,44 @@ Il clock non passa da 0 ad 1 secco, c'è un andamento di salita perché sono leg
 \begin{itemize}
 	\item rumore del semi conduttore
 	\item cross-talk
-	\item slides
+	\item variazioni nel power supply
 	\item interazione con CEM esterni
 \end{itemize}
-(immagine)
-\\c'è quindi un'incertezza dovuta al jitter sul tempo di salita del clock.
-\\Posso usarli come LSFR che creano dei pattern random nel ring oscillator, campiono i segnali che hanno una fase variabile e catturo questa variabilità. (metti immagine)
+
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/hardware/jitter.png}
+\end{figure}
+c'è quindi un'incertezza dovuta al jitter sul tempo di salita del clock.
+\\Posso usarli come LSFR che creano dei pattern random nel ring oscillator, campiono i segnali che hanno una fase variabile e catturo questa variabilità:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/hardware/lfsr.png}
+\end{figure}
 \begin{itemize}
-	\item slides, spiega tutti i diversi pezzi dell'immagine
-	\item selection \& operation unit
+	\item il ring oscillator può essere process variation e variazione ambientale, o jitter random nella fase
+	\item selection \& operation unit: la fase random o il ring oscillator può essere tradotto in valori digitali da questa unità, come uno XOR
+	\item capture unit: fa si che i valori digitali siano campionati con la frequenza del numero true random
 \end{itemize}
-Quindi poi otteniamo questo:
-(altra immagine)
-\\abbiamo una sequenza truly random e non predicibile.
+Quindi poi otteniamo questo:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/hardware/trng_output.png}
+\end{figure}
+\\\\abbiamo una sequenza truly random e non predicibile.
+
 \section{Riassunto finale}
-(Metti la tabella carina)
-\\qualcosa di deterministicamente funzionante da tempo 0 a fine vita ci sono tutta una serie di variazioni negative.
+\begin{table}[!h]
+	\begin{tabular}{|l l l | l l l|}
+		Applicazione & variazione di & temperatura & rumore del & invecchiamento & Wear-out (EM)\\
+		primitiva & processo & & supplemento di potenza & & \\
+		\hline
+		design di logica/memoria & malissimo & male & male & male & male\\
+		\hline
+		PUF & buono & male & male & male & male\\
+		\hline
+		TRNG & buono & male & buono & male & male\\
+		\hline
+	\end{tabular}
+\end{table}
+qualcosa di deterministicamente funzionante da tempo 0 a fine vita ci sono tutta una serie di variazioni negative.
 \\Il PUF sfrutta SOLO la process variation, tutte le altre fanno si che esso cambi la risposta e quindi non sia più reliable.
 \\Il TRNG ha più "sweet sposts", la temperatura può causare perdita di randomicità, così come aging e wear-out perché danno un bias nella risposta.
 \\Nuovamente, riassumendo:
@@ -3179,7 +3402,12 @@ Quindi poi otteniamo questo:
 	\item nel PUF vogliamo uscite diverse per ogni PUF ma sempre identica per lo stesso
 	\item nel TRNG uscite diverse e sempre diverse over time
 \end{itemize}
-(metti immagine finale B E L L I S S I M A).\\
+
+\begin{figure}[!h]
+	\centering
+	\includegraphics[scale=0.6]{immagini/hardware/final.png}
+\end{figure}
+
 \part{Parte Localization}
 
 
