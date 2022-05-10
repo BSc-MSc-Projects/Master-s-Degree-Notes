@@ -3409,17 +3409,114 @@ qualcosa di deterministicamente funzionante da tempo 0 a fine vita ci sono tutta
 \end{figure}
 
 \part{Parte Localization}
+\chapter{Introduzione}
+\section{Introduzione}
+Possiamo dividere i sistemi che usano segnali in 3 grossi gruppi:
+\begin{itemize}
+	\item fotel: trasmettono il più alto numero di informazioni per unità di tempo
+	\item sorveglianza e monitoraggio: trasmettono segnali per far si che questo capti o legga informazioni presenti sul territorio, come immagini ad alta risoluzione del terreno anche in condizioni di scarsa visibilità, sfruttando il fatto che diversi materiali e forme riflettono il segnale in modo diverso.\\
+	Progettando bene l'onda EM e conoscendo bene il segnale si possono costruire anche immagini ad alta risoluzione, ma anche costruire immagini "fittizie", come quella del traffico aereo. 
+	\item sistemi di posizionamento: usano trasmissione dei segnali radio per fare posizionamento e navigazione, ovvero per far si che un oggetto mobile possa calcolare la sua posizione in base ad un sistema di riferimento
+\end{itemize}
+tutti condividono lo spettro EM, non solo esistono enti che standardizzano la condivisione della risorsa per non avere interferenza, ma lo spettro è così pieno di segnali che possono interferire fra di loro.
+\\L'obiettivo è occuparsi di sicurezza per quanto riguarda la gestione dei segnali in questi ambiti applicativi, in particolare per la navigazione e la sorveglianza prettamente fatta tramite radar.
+\\La sicurezza è differente in questo ambito, quando parliamo di apparati di sorveglianza o di navigazione, le problematiche di sicurezza provengono storicamente da questioni legate ad aspetti militari.
+\\Qui, gli aspetti sono legati all'uso di questi sistemi nell'ambiente militare, ciò che noi vederemo è:
+\begin{itemize}
+	\item capire la differenza fra sorveglianza e navigazione
+	\item introduzione sui sistemi di navigazione satellitare
+	\item funzionamento dei radar
+	\item metodi comuni di disturbo e di protezione: 
+	\begin{itemize}
+		\item normalmente un sistema di navigazione o sorveglianza è disturbato con un jammer, ovvero trasmettendo un segnale ad alta potenza nelle stesse bande di funzionamento del sistema attaccato.
+		\\Tipicamente il segnale è senza senso e copre il segnale di interesse così che il ricevitore non riceva il segnale corretto.
+		\item un altro esempio è lo spoofing, ovvero anzi che trasmettere un segnale senza senso nella banda dell'oggetto, se ne trasmette uno simile a quello che il sistema si aspetta.
+		\\Così, il ricevitore si confonde, può non capire di essere sotto attacco e fornire informazioni errate, si può ad esempio far credere ad un radar che è presente un oggetto in una posizione dove non è, si può anche muovere un oggetto in un altra posizione, come nella navigazione satellitare.
+		\\Questi attacchi sono molto diffusi e facili da realizzare, sono fatti a vari livelli (es: recentemente andava di moda Pokèmon Go, per farsi trovare in posti diversi del mondo, manomettendo il cellulare a livello di SO)
+		\item falsi messaggi
+		\item eavsedropping, leggere informazioni dell'utente che possono essere sensibili
+	\end{itemize}
+	tante telecomunicazioni per il traffico aereo viaggiano in chiaro, usando la banda L quindi con ricevitori economici si può sapere dove si trovano i voli, che potrebbe essere una vulnerabilità (è eavsedropping)
+	\item attacchi chaff e ARM, abbastanza banali nel funzionamento
+	\item possibili contromisure agli attacchi
+\end{itemize}
+\subsection{Esempi storici di guerra elettronica}
+La guerra elettronica ed in generale la disinformazione si fa in molti modi, fra cui ad esempio da un punto di vista EM: creare delle false informazioni da un punto di vista degli apparati utilizzati per far credere al nemico qualcosa di falso.
+\\Esempio: ammasso di truppe al confine per fare esercitazioni per mostrare la "forza".
+\\Altri esempi classici: 1° guerra del golfo, Saddam aveva cosparso l'Iraq con falsi carri armati di cartone, i carri armati avevano anche una resistenza che li teneva riscaldati e produceva delle emissioni EM nel campo degli infrarossi per far credere a chi captava che i carri fossero davvero accesi.
+\\Tecnica inventata dai tedeschi nella WWII, usata per poter navigare fino a Londra con gli aerei e bombardare anche in casi di scarsa visibilità: misero un antenna molto direttiva a Stolleberg che trasmetteva un fascio molto stretto in modo che chi andasse "dritto" lungo il fascio era sicuro di andare nella giusta rotta.
+\\Per trovare il punto dove sganciare la bomba, misero un altro fascio in Francia, i due fasci si incrociavano su Londra, sentendo entrambi i segnali si capiva che si era arrivati sulla città per bombardare.
+\\L'esistenza dei segnali era sconosciuto ai nemici, quello che veniva dalla Francia proveniva da un antenna sostitutiva di "Radio Parigi", che cambiava da omni-direzionale a fortemente direttiva verso Londra, così che gli inglesi sentissero un segnale normale, mentre 1h prima circa veniva cambiato, era un segnale molto forte verso Londra.
+\\Finita perché un radiomatore inglese ha correlato il fatto che radio Parigi venisse ricevuta molto bene da 1h prima del bombardamento, quindi vennero distrutte le antenne.
+\\\\Altro classico esempio: (copia immagine)\\
+royal air force (aeronautica inglese) aveva a disposizione fra gli aerei uno con il timone di coda fissato in modo che fossero come due code.
+\\A bordo degli aerei c'erano solo radio, misero le antenne per la radio voce su entrambe le code per massimizzare il segnale ricevuto, sempre i tedeschi scoprirono questa cosa e misero sul muso dei propri aerei una ricevente per i segnali trasmessi dagli inglesi.
+\\Se vengono trasmetti due segnali da due punti, li ricevo con interferenza costruttiva se sono al centro, mentre distruttiva se mi sposto e quindi posso capire se sono perfettamente allineato all'aereo.
+\\Arrivato alla posizione di interferenza costruttiva per procedere e trovare gli aerei della marina.
 
+\subsection{Terminologia}
+Prima ancora di introdurre i  sistemi radar e di navigazione, cerchiamo di capire come è concepito un sistema per la guerra elettronica:\\
+(copia immagine)
+ammesso di avere un sistema di qualunque tipo, abbiamo bisogno se ipotizziamo che questo sia sotto attacco, di 3 grosse funzioni:
+\begin{itemize}
+	\item ESM: misure elettroniche di supporto.
+	\\Fondamentale, devo sapere come funziona ed avere informazioni rispetto all'apparato che voglio attaccare e vale per tutti gli aspetti di sicurezza.
+	\\Nel mondo EM, l'equivalente della conoscenza del nemico è fatta con una serie di attività che servono per acquisire la conoscenza dell'apparato da disturbare.
+	\\Nella navigazione satellitare, ad esempio per la navigazione ad uso civile è tutto noto, lo standard dice come sono fatti i segnali da disturbare.
+	\\Non vale però per i segnali ad uso militare, quindi per trovarli si fanno ulteriori attività, questo è a maggior ragione valido per tutti quei sistemi derivati dai radar, perché questi non seguono standard particolari ma dipendono da chi li ha prodotti e tipicamente chi li produce viene da una formazione militare quindi fa di tutto per nascondere come sono fatte, ad esempio, le forme d'onda militare.
+	\\Si cerca di prendere informazioni in tutti i modi, fra cui ad esempio studiare direttamente i segnali mediante ricevitori ed analizzare i segnali che gli apparati che vogliamo disturbare trasmettono, così da creare una grossa \textbf{library} che contiene informazioni sugli apparti.
+	\item ECM: noti i punti deboli degli apparati, passo all'interferenza col funzionamento dell'apparato.
+	\\Nasce come tecnica di guerra, è un modo spesso intelligente per risparmiare sulle vite umane in guerra.
+	\\Possono essere:
+	\begin{itemize}
+		\item attive: trasmettono segnali, come nel jamming
+		\item passive
+	\end{itemize}
+	\item ECCM: parliamo di attacco vs difesa, quindi la controparte svilupperà delle contro-contromisure, cercando di proteggersi o di disturbare a propria volta il disturbatore.
+	\\Esempio classico: costruisco un jammer per interferire con le bande del GPS, CCM quando debo trasmettere qualcosa di importante cambio la banda di trasmissione, cambia funzionamento.
+\end{itemize}
+Il processo diventa un loop: il radar che si accorge che è sotto attacco cambia frequenza, quindi anche il jammer cambia frequenza e così via.
+\\Altra divisione:
+(copia)
+\begin{itemize}
+	\item SIGINT (signal intelligence): cerca di capire come sono fatti i segnali
+	\begin{itemize}
+		\item communication intelligence
+		\item elint, tutti gli altri
+	\end{itemize}
+	\item ESM, sorveglio di continuo l'apparato per decidere qual è il miglior momento per attaccare, per poi passare alla contromisura e quindi c'è poi la CCM
+\end{itemize}
+La differenza grande a questo livello è fra sistemi di contrasto:
+\begin{itemize}
+	\item on board, sono a bordo con chi sta compiendo il disturbo
+	\item off board, come ad esempio: dall'aereo sotto attacco (da un sistema che lancia missili a guida) ci si rende conto di essere sotto attacco, un contrasto è lanciare una specie di missile che produce molto calore, spesso molto visibili ai radar così che se il missile cerca il calore o ha un sistema che cerca forti emissioni EM sarà attirato dai \textbf{flares}
+\end{itemize}
 
+\subsection{Concetti fondamentali}
+Quando parliamo di necessità di attaccare un sistema di navigazione o di sorveglianza occorre introdurre dei concetti base:
+\begin{itemize}
+	\item library, ovvero la capacità di collezionare ed avere a disposizione una serie di informazioni che ci dicono come è fatto il sistema da attaccare.
+	\\Possono arrivare ad un livello di dettaglio elevato, si ottengono osservando le emissioni e si può arrivare a risalire ad una impronta digitale del radar: quanto è lungo l'impulso, il guadagno d'antenna, etc... si può arrivare ad identificare marca + modello.
+	\\Si può andare anche oltre, perché comunque ogni radar nel processo produttivo poi sarà diverso, quindi spingendo ai massimi livelli la ricerca, possiamo capire le imperfezioni di ciascun radar, un apparato avrà sicuramente delle deviazioni tramite cui possiamo risalire mediante i segnali e possiamo riconoscere l'oggetto e sapere ad esempio da quanto sta lavorando, quindi saprò che magari è vicino alla rottura.
+	\\Oppure posso scoprire che l'apparato è stato spostato. es: nel traffico aereo civile si usano dei trasponder che trasmettono la posizione, ognuno ha un indirizzo univoco quindi qualcuno in passato ha contato le ore di volo degli aerei. È stata modificata la normativa in modo che per gli aerei militari venga fatto cambiare il codice
+	\item probabilità di intercetto: quanto è facile vedere il segnale del nemico? Se non possiamo vederlo non saremo mai in grado di disturbarlo, quindi avere dei segnali a bassa probabilità di intercetto vuol dire essere più sicuri, quasi tutti i sistemi che si vogliono proteggere si fa in modo che abbiano una bassa probabilità di intercetto. es: potenza del segnale al di sotto della potenza del rumore, così che un ricevitore veda solo rumore, per poterlo vedere dovrei applicare un processamento particolare (devo sapere come ricevere il segnale).
+	\\Le tecniche per avere una bassa probabilità di intercetto sono varie:
+	\begin{itemize}
+		\item si può lavorare nel tempo, trasmettendo solo per lo stretto indispensabile
+		\item si trasmette con alta direttività, solo in certe direzioni specifiche
+		\item allargare in maniera spropositata la banda
+	\end{itemize}
+	così anche un segnale che non è così basso in rapporto segnale/rumore è difficile da intercettare: comunico in tempi molto corti con un antenna molto direttiva, così che chi vuole ascoltare deve mettersi nel mezzo e stare sempre ad ascoltare il target, quindi il costo è più elevato
+\end{itemize}
+Quindi, anche solo concentrandosi su sistemi di sorveglianza e navigazione dobbiamo fare una serie di attività:
+\begin{enumerate}
+	\item acquisire informazioni: possiamo farlo in modo diverso, a noi interessa in questo caso avere a disposizione ricevitori che analizzando i segnali e permettono di creare una library.
+	\\Con la library possiamo costruire le contromisure
+	\item trovare una vulnerabilità e disturbare: tipicamente la cosa che si fa è cercare di negare il servizio (come il DoS di informatica), ma non sempre è il più semplice, perché si capisce che si è sotto attacco e si passa al contro-attacco.
+	\\Quindi spesso è meglio degradare il servizio o far finta che il servizio sembra funzionare ugualmente.
+\end{enumerate}
 
-
-
-
-
-
-
-
-
+\section{Navigazione vs sorveglianza}
 
 
 
