@@ -3409,7 +3409,9 @@ qualcosa di deterministicamente funzionante da tempo 0 a fine vita ci sono tutta
 \end{figure}
 
 \part{Parte Localization}
-\chapter{Introduzione}
+
+\chapter{Generalità e concetti iniziali}
+
 \section{Introduzione}
 Possiamo dividere i sistemi che usano segnali in 3 grossi gruppi:
 \begin{itemize}
@@ -3503,8 +3505,9 @@ Quando parliamo di necessità di attaccare un sistema di navigazione o di sorveg
 	\\Le tecniche per avere una bassa probabilità di intercetto sono varie:
 	\begin{itemize}
 		\item si può lavorare nel tempo, trasmettendo solo per lo stretto indispensabile
-		\item si trasmette con alta direttività, solo in certe direzioni specifiche
+		\item si trasmette con alta direttività, solo in certe direzioni specifiche (minor spazio possibile)
 		\item allargare in maniera spropositata la banda
+		\item trasmettere con la più bassa potenza possibile
 	\end{itemize}
 	così anche un segnale che non è così basso in rapporto segnale/rumore è difficile da intercettare: comunico in tempi molto corti con un antenna molto direttiva, così che chi vuole ascoltare deve mettersi nel mezzo e stare sempre ad ascoltare il target, quindi il costo è più elevato
 \end{itemize}
@@ -3515,15 +3518,163 @@ Quindi, anche solo concentrandosi su sistemi di sorveglianza e navigazione dobbi
 	\item trovare una vulnerabilità e disturbare: tipicamente la cosa che si fa è cercare di negare il servizio (come il DoS di informatica), ma non sempre è il più semplice, perché si capisce che si è sotto attacco e si passa al contro-attacco.
 	\\Quindi spesso è meglio degradare il servizio o far finta che il servizio sembra funzionare ugualmente.
 \end{enumerate}
+L'effort è più costoso rispetto a quello richiesto, ad esempio, per un classico attacco informatico perché af esempio le informazioni qui sono segrete mentre nel caso degli ultimi tipicamente sono inferite da documentazione etc...
+\\Aggiungono ai sistemi radar una certa complessità, in quanto si fa attività di misura anche durante l'attacco in quanto questi sistemi cambiano di continuo per cercare di adattarsi alle possibili contromisure messe in piedi dal "nemico".
+\\Durante l'operazione di attacco si cicla fra:
+\begin{itemize}
+	\item ESM sorveglianza: mi accorgo che c'è un apparato di cui è possibile violare il funzionamento
+	\item ECM contrasto: cerco di impedire il funzionamento dell'apparato
+	\item ECCM reazione al contrasto: l'apparato cerca di difendersi
+\end{itemize}
+si torna all'ESM, dove dopo esserci accorti dei cambiamenti si ri-pianifica l'attacco e si riparte.
+\\Gli attacchi sono più customizzati e cercano di rimanere vivi in quanto ad esempio, nella guerra elettronica, si vuole disturbare un radar per entrare nel territorio nemico con un caccia, quindi si vuole che i radar non funzionino per tutto il tempo in cui si entra nel territorio nemico.
+\\Ho studiato tutto prima ("tempo di pace") e dopo aver iniziato la sorveglianza ed aver visto qual è la frequenza operativa, si parte col contrasto.
+\\Il radar si accorge di essere sotto attacco e magari cambia frequenza operativa quindi serve nuovamente avere sorveglianza per cambiare modo di attacco in base al modo operativo che cambia.
 
-\section{Navigazione vs sorveglianza}
+\section{Navigazione e sorveglianza}
+Vediamo sistemi di navigazione satellitare.
+\\La navigazione è un processo autonomo che permette di raggiungere una certa posizione a partire da un punto predefinito che è l'origine.
+\\Quindi è l'oggetto a guida autonoma che decide come muoversi, prevedono due fasi:
+\begin{itemize}
+	\item positioning (localizzazione): capire la posizione dove si trova
+	\item guida: sapendo dove mi trovo, devo sapere che strada prendere
+\end{itemize}
+passiamo quindi alla \textbf{radio determinazione}: trovare la posizione di un oggetto sfruttando le onde radio.
+\\Di fatto, vorremmo sfruttare qualche tipo di onda radio per trovare la posizione di un oggetto, la radio determinazione può essere:
+\begin{itemize}
+	\item attiva: è il mobile che compie l'operazione di determinare la propria posizione, è la \textbf{radio navigazione}. Da all'utente finale uno strumento che permette di calcolare la propria posizione
+	\item passiva: radio localizzazione, il mobile è soggetto passivo.
+	\\Qui si usa il termine target, è in un punto e si vuole conoscere il punto dove si trova il target e chi vuole conoscerlo non è il mobile ma qualcun altro
+\end{itemize}
+È la grande differenza fra navigazione e sorveglianza:
+\begin{itemize}
+	\item un apparato che monitora il traffico aereo fa sorveglianza, ovvero radio localizzazione
+	\item un radar montato a bordo di un aereo che punta a terra e sa misurare la velocità di movimento dell'aereo è usato per navigazione. È l'aereo stesso che vuole sapere dove si trova
+\end{itemize}
+stesso strumento, due approcci diversi. Il dualismo fa capire che le tecniche saranno le stesse e quindi anche i modi di disturbo o di attacco.\\
+Capiamo come sfruttare le onde radio per fare localizzazione, quindi trovare la posizione di qualcosa: ci sono dei principi fondamentali:
+\begin{itemize}
+	\item misura di angoli
+	\item misura di distanze
+	\item misura di velocità
+\end{itemize}
+possiamo poi impostare un sistema di equazioni per trovare la posizione, vedremo solo i primi due tipi ed anche se generali le declineremo con misure fatte attraverso le onde radio.
+\\esempio (no onde radio): un appassionato di trekking nei monti, con bussola e mappa.\\
+individuo ad esempio una cima di un monte, riconoscerlo sulla mappa, identifico l'angolo risetto al nord ed identifico una retta che passa per la montagna, misuro la stessa cosa per la torre, interseco le rette e so dove sono.\\
+Stesso esempio, senza bussola, ma ho un \textbf{TELEMETRO LASER}: identifico di nuovo due oggetti sulla mappa e misuro la distanza: identifico una circonferenza con centro l'oggetto e raggio la distanza, lo faccio con un altro ma le due circonferenze si identificano in due punti ma si dovrebbe risolvere.\\
+Le tecniche di posizionamento sono abbastanza banali, sempre risolvere un sistema di equazione che rappresentano le figure geometriche, la difficoltà sta nel misurare le distanze: devo saper trovare l'angolo di arrivo di un segnale EM.
+\subsection{Metodo di localizzazione}
+(copia immagine)\\
+tecnica che sfrutta l'angolo di arrivo. Ammettiamo di essere un oggetto in una certa posizione ($x_n, y_n$) e fissiamo un sistema di coordinate.\\
+Possiamo localizzare dei punti di riferimento, che nei sistemi di radio localizzazione vengono definiti radio-aiuti.\\
+Non conosco la mia posizione ($x_n, y_n$) ma conosco ($x_1, y_1$) e so misurare, ad esempio, l'angolo rispetto all'asse x $\theta$, posso quindi scrivere l'equazione della prima retta: (copia).\\
+Nella prima, la tg è la mia misura, so misurare l'angolo, conosco ($x_1, y_1$) ma ho due incognite, quindi mi trovo un altro radio aiuto e faccio l'altra misura e metto a sistema: (copiaa!)\\
+È un sistema lineare in ($x_n, y_n$) e possiamo trovare la posizione.\\\\
+Altro caso (copia immagine)
+\\misuriamo una distanza, sempre identificando il radio-aiuto e sappiamo fare la misura di distanza, quindi identifichiamo una circonferenza (1), poi col secondo radio-aiuto otteniamo il sistema:
+(copia)\\
+È un sistema quadratico quindi otteniamo due soluzioni, quindi c'è un problema di ambiguità e dobbiamo trovare un modo per eliminarla.\\
+Cosa banale: abbiamo una conoscenza approssimativa della posizione che basta per scegliere qual è il punto corretto da scegliere.\\\\
+Potremmo poi combinare le cose: (copia)
+\\tecnica di localizzazione mista dove avviene sia una misura di distanza che di angoli (copia)
+\\Qui basta un solo radio aiuto, perché le equazioni rappresentano due misure indipendenti e quindi basta una sola equazione.\\
+Non cambia nulla da un punto di vista matematico quanti radio-aiuti abbiamo, ma dal punti di vista reale cambia perché avere un sistema misto permette di mettere a terra meno radio-aiuti e quindi meno sistemi di riferimento, ma aumenta la complessità dell'oggetto che deve fare le misure, perché sono due diverse.\\
+Geometricamente il sistema è banale, basta avere due equazioni (o 3) in due incognite (o 3) ma viene declinato in sistemi di navigazione del mondo reale molto disparati che risolvono problemi diversi fra loro.\\
+Il radar usa una tecnica come questa, riesce a misurare la distanza di un oggetto e l'angolo sotto cui lo vede.
+
+
+\subsection{Tecniche di radio localizzazione}
+Sappiamo trovare la posizione di un oggetto, dobbiamo capire come fare le misure di distanza ed angolo per sfruttare le EM.\\
+Varie configurazioni tecniche, parliamo per lo più di navigazione si prevede l'uso dei radio aiuti che mandano segnali all'utente:
+\begin{itemize}
+	\item trasmissione broadcast: il radio aiuto trasmette un segnale verso chiunque lo voglia ricevere, è un segnale che non cambia mai e non è tagliato per uno specifico utente.\\
+	Il mobile riceve il segnale e non trasmette nulla rispetto al radio aiuto, è infatti una tecnica passiva. Attraverso la ricezione del segnale, il mobile riesce a misurare l'angolo di arrivo del segnale ricevuto o la distanza del radio aiuto.\\
+	esempio: il radio aiuto manda con un antenna omni-direzionale un segnale, a bordo del mobile c'è un antenna con capacità direttiva che permette di orientare il fascio, il segnale viene ricevuto solo quando è puntata verso il radio aiuto, altrimenti il guadagno è bassissimo.\\
+	Oppure con tecniche interferometriche, dove se il segnale arriva da due punti tangenti è equifase, altrimenti ottengo che la somma passa da costruttiva a distruttiva in base all'angolo di arrivo (???, onde radio si spostano con fasi diverse, in base a quanto si spazia si ha un angolo diverso, pensare ad interferometro).\\
+	Ancora, si può misurare un tempo di arrivo: viene trasmesso un segnale la cui trama è nota nel tempo, quindi quando la ritrovo so che è passato un certo tempo, ad esempio si può pensare alla trama di un impulso, se sa l'istante di trasmissione si può misurare la distanza.\\\\
+	Questa tecnica permette di fare sia misure di angolo che di distanza ed è una delle più usate
+	\item tecniche attive con cooperazione: qui, la comunicazione è bidirezionale.\\
+	Esiste un processo di richiesta/risposta: sia il radio aiuto che il mobile hanno a bordo un ricetrasmettitore, è una delle tecniche più usate per misurare le distanze in quanto è semplice.\\
+	Ad esempio: il mobile interroga il radio aiuto e questo risponde, quindi semplicemente misurando il tempo che intercorre si conosce la distanza del radio aiuto a due vie (si divide per 2), normalmente si conta anche il tempo che ci mette il radio aiuto a rispondere
+	Esiste DME, sistema per la navigazione aerea che funziona così
+	\item attive o unmanned: di fatto il radio aiuto non trasmette nulla, potrebbe anche non esistere.\\
+	Tutto l'apparato di localizzazione è a bordo ed autosufficiente, ad esempio un radar altimetro che dice la quota ed un radar che per effetto doppler misura la velocità, integrando nel tempo si ottiene la posizione e sapendo la posizione iniziale si sa dove ci si trova.
+\end{itemize}
+Passiva vs attiva con cooperazione
+\begin{itemize}
+	\item[V1)] la tecnica passiva dovrebbe far pensare alla radio o alla tv: il trasmettitore non si preoccupa dell'utente e quindi il primo grosso vantaggio è che il sistema funziona a prescindere dal numero di utenti nei paraggi del trasmettitore.\\
+	Intrinsecamente non c'è un limite massimo di utenti, avere un numero di utente massimo è un limite
+	\item[V2)] un sistema passivo prevede nell'utente solo la presenza del ricevitore, di solito è il trasmettitore che costa su un dispositivo, per consumi e costi fisici.
+	\item [S1)] la tecnica attiva è più semplice da utilizzare ed implementare, ad esempio nel caso del GPS.\\
+	Usandole però occorre ricordarsi che il radio-aiuto non sarà in grado di rispondere a tutti gli utenti che fanno richiesta, all'n+1 sarà impegnato con gli altri e non potrà rispondere.\\
+	Come ciò che avviene con la telefonia mobile: se telefono, trovo occupato perché la comunicazione e bidirezionale (se c'è una chiamata in corso).
+\end{itemize}
 
 
 
+Esistono tanti tipi diversi di sistemi di navigazione: tabella\\
+tanti metodi di navigazione diversa ma che sfruttano sempre le stesse cose:
+\begin{itemize}
+	\item NDB primi metodi di radio aiuto, funzionano come i fari per la navigazione marittima.
+	\\Trasmettono un sistema unidirezionale, a bordo dell'aereo ci sono due antenne formate da due loop che misurano l'angolo di arrivo del segnale trasmesso dal radio faro, con due di questi si trovano latitudine e longitudine.\\
+	\item l'evoluzione sono i VOR, altro sistema che misura l'angolo
+	\item LORAN C, OMEGA: sistemi a copertura globale che sfruttano misure di distanza dai radio aiuti (sono passivi
+)
+	\item sistemi per l'aereo: viene definita una retta rispetto alla pista che ha una certa inclinazione (prolungamento della pista) e l'aereo la segue in modo che l'angolo di inclinazione e l'azimuth siano tali che sta sempre sulla retta, altrimenti corregge sopra/sotto, destra/sinistra; può atterrare anche senza visibilità.
+\end{itemize}
+ci focalizzeremo su tecniche di navigazione satellitare, tutti basati sulla misura di n distanze da satelliti, il sistema di riferimento è l'intersezione di 3 sfere di raggio la misura effettuata e centrate sul satellite.
 
 
+\chapter{Navigazione satellitare}
 
-
+\section{Come funziona la navigazione satellitare}
+Tutti si basano sulla tecnica "rho-rho-rho" dove i radio aiuti sono posizionati su satelliti, la tecnica di misura è passiva e la misura fatta è di distanza attraverso il tempo di volo del segnale (time of arrival del segnale).\\
+Il principio è ""banale"":
+\begin{itemize}
+	\item si mettono in orbita dei satelliti, in modo da massimizzare prestazioni e copertura ...
+	\item l'utente ha sempre a disposizione delle informazioni trasmesse dai satelliti stessi, ad esempio un modo per calcolare la posizione del satellite in ogni momento
+	\item ogni satellite trasmette il suo identificativo
+	\item il ricevitore riceverà segnali da diversi satelliti, calcola il tempo di arrivo del segnale (TOA), nel segnale stesso c'è scritto anche l'istante temprale di trasmissione, quindi: (TOA - TOT)*c è la distanza del satellite. La posizione è scritta nel segnale del satellite e si può impostare l'equazione della sfera
+	(copia disegno)
+	\begin{itemize}
+		\item l'utente inizia a decodificare il segnale e ricava $x_s$, $y_s$ e $z_s$ che sono scritte lì
+		\item trova anche TOT
+		\item la cosa in più che fa il ricevitore è misurare il TOA
+	\end{itemize}
+	ora si scrive l'equazione della circonferenza: $x_r, y_r, z_r$ sono incognite, ma so che
+	\[
+		\begin{cases}
+			(x_r - x_s)^2 + (y_r - y_s)^2 + (z_r - z_s)^2 = d \\
+			d = c \cdot (\text{TOA} - \text{TOT})
+		\end{cases}
+	\]
+	abbiamo l'equazione di una sfera, 3 incognite.\\Aggiungiamo altri due satelliti e così 3 equazioni in 3 incognite
+\end{itemize}
+tutta la complessità sta nel far si che l'errore sia nell'ordine del metro, ovvero nel fare le misure correttamente: la misura è rumorosa, con molto rumore perché occorre attraversare molte "peripezie" (\textbf{C'È ER MARACANÀ}).\\
+I satelliti di cui abbiamo bisogno devono però essere almeno 4 nei sistemi moderni di navigazione satellitare: in quanto abbiamo appena detto è stato semplificato il fatto che, basandosi su misure di tempo, ipotizziamo che siamo "bravi" a fare misure di tempo e quindi che il sistema di riferimento temporale sia noto ovvero che sia tutto sincrono nel sistema.\\
+Abbiamo due tempi nell'equazione:
+\begin{itemize}
+	\item TOA lo misura l'utente
+	\item TOT è misurato dal satellite
+\end{itemize}
+se i due orologi non sono sincroni, la misura non è più di distanza perché l'errore incorporato è abbastanza grosso.\\
+La sincronizzazione non sarà mai perfetta, quindi si deve ammettere un certo grado di mancanza di sincronizzazione, ma qui l'errore deve essere il più piccolo possibile, perché la c moltiplica tutto ed anche un ms di errore ($10^{-3}$ nel tempo) diviene un $10^5$ in distanza e qui c'è il problema che tutti i satelliti devono essere fra loro sincronizzati e non è facile.\\
+Tutti i sistemi di navigazione satellitare fanno due ipotesi:
+\begin{itemize}
+	\item[I1] i satelliti sono tutti sincronizzati fra loro, si mette a bordo dei satelliti dei clock atomici molto stabili ed anche avere qualcuno da terra che monitora i clock dei satelliti e corregge eventuali mancate sincronizzazione.\\
+	Così possiamo dire che tutti i satelliti condividono la stessa sincronizzazione
+	\item ora agli utenti: sincronizzare con qualcosa di centralizzato non è bene, quindi si risolve dicendo senza chiedere che il ricevitore sia sincronizzato, ovvero accettiamo che di sia un $\delta_t$ di errore nella misura dei tempi.\\
+	Questo $\delta_t$ può essere quanto si vuole, è un'altra incognita del sistema di equazione
+\end{itemize}
+ho di nuovo il problema iniziale, ma ora faccio risolvere al sistema di equazioni anche il problema della sincronizzazione.\\
+Abbiamo quindi:
+$c \cdot (TOA - TOT + \Delta t)$, quindi il $t_{toavero} = TOA + \Delta t$, quindi l'errore è il $\Delta t$ nella misura che l'utente fa e occorre tenerne conto.\\
+Ora abbiamo 1 equazione in 4 incognite, \textbf{IL BARBATRUCCO} è che se faccio l'equazione per un altro satellite avrò le stesse incognite:
+(copia e metti le i ai pedici del satellite, così come anche al TOA), il $\Delta t$ è sempre lo stesso.\\
+Quindi, accettiamo che il sistema sia più complesso dal punto di vista di chi fornisce il servizio, perché servono più satelliti ma non devo mantenere sincronizzati i ricevitori e questo permette anche di sincronizzare al tempo universale di sistema tutti i ricevitori.\\
+Implicitamente abbiamo anche una tecnica di sincronizzazione globale, così da trovare sia la mia posizione in qualunque punto del globo ma anche di capire di quanto va male il mio orologio rispetto a quello del tempo.\\
+In realtà, tutta la prima parte della formula è una distanza geometrica, nel caso dei sistemi di navigazione satellitare l'utente misura una pseudo-distanza: è la distanza + c + l'errore dell'orologio ed è chiamato \textbf{pseudo-range}. (copia slides).
+\\
 
 
 
