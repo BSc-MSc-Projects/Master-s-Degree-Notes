@@ -3673,8 +3673,166 @@ Ora abbiamo 1 equazione in 4 incognite, \textbf{IL BARBATRUCCO} è che se faccio
 (copia e metti le i ai pedici del satellite, così come anche al TOA), il $\Delta t$ è sempre lo stesso.\\
 Quindi, accettiamo che il sistema sia più complesso dal punto di vista di chi fornisce il servizio, perché servono più satelliti ma non devo mantenere sincronizzati i ricevitori e questo permette anche di sincronizzare al tempo universale di sistema tutti i ricevitori.\\
 Implicitamente abbiamo anche una tecnica di sincronizzazione globale, così da trovare sia la mia posizione in qualunque punto del globo ma anche di capire di quanto va male il mio orologio rispetto a quello del tempo.\\
-In realtà, tutta la prima parte della formula è una distanza geometrica, nel caso dei sistemi di navigazione satellitare l'utente misura una pseudo-distanza: è la distanza + c + l'errore dell'orologio ed è chiamato \textbf{pseudo-range}. (copia slides).
-\\
+In realtà, tutta la prima parte della formula è una distanza geometrica, nel caso dei sistemi di navigazione satellitare l'utente misura una pseudo-distanza: è la distanza + c + l'errore dell'orologio ed è chiamato \textbf{pseudo-range}. (copia slides, formule).
+La distanza fra il punto u ed il punto s è di fatto legata al tempo di volo del segnale, il ricevitore non è sincrono col clock di sistema e quindi ne va tenuto conto, quindi maneggiamo la pseudo-distanza $\rho$.\\
+(eq sotto è la stessa ma scritta in forma normale).\\
+Ne consegue che per fare localizzazione servono almeno 4 satelliti, la realizzazione matematica non corrisponde però ad una realizzazione semplice nella realtà: anche sapendo fare le misure, ci sarà rumore nella misura ed avrò $\rho_i - \epsilon$.\\
+Nei sistemi satellitari la $\epsilon$ è data da molti fattori, che si cerca di minimizzare:
+\begin{itemize}
+	\item il segnale deve arrivare all'utente, attraversa ionosfera a troposfera che inficiano sulla velocità di propagazione del segnale.\\
+	Dipende dalle condizioni meteorologiche o dalle condizioni di ionizzazione che sono random (modellabili magari con v.a)
+	\item segnale ricevuto magari in un edificio, altro errore
+	\item non avere la posizione del satellite in modo accurato introduce un errore di misura
+	\item clock del satellite, ha sempre un piccolo errore
+\end{itemize}
+c'è una quantità di errori enorme, complessi da maneggiare ma oltre agli errori dovuti al normale funzionamento del sistema, le prestazioni possono essere degradate anche da altre cose ovvero legate a questioni di sicurezza:
+\begin{itemize}
+	\item interferenza sul canale:
+	\begin{itemize}
+		\item intenzionale: jamming, qualcuno trasmette potenza EM sul canale di comunicazione. Può andare dal DoS completo, non vedo i segnali che arrivano dal satellite perché troppo sotto a quella del satellite, oppure degrado performance
+		\item non intenzionale
+	\end{itemize}
+	\item spoofing: invio di messaggi simili a quello che arriva dai satelliti ma con codificate delle informazioni errate.\\
+	Questo comporta un errore sulla posizione finale, se ben fatto si può creare una costellazione virtuale nella posizione dove c'è il ricevitore sotto attacco in modo da farlo andare dove si vuole.\\
+	I segnali sono noti, quindi chiunque può sapere cosa scriverci per sostituirlo
+\end{itemize}
+Per proteggersi si può usare tipicamente la crittografia.\\
+Due tecniche introdotte per degradare intenzionalmente le prestazioni del servizio:
+\begin{itemize}
+	\item selective availability: in tempo normale, il sistema fornisce il servizio a tutti ma ad esempio il GPS nasce come sistema ad arma.\\
+	Quindi si usa un disturbo legato al GPS che gli utenti legati al dipartimento della difesa americano sanno rimuovere, quindi hanno migliori prestazioni, mentre chi non sa come rimuovere ha un degrado delle performance
+	\item anti-spoofing: cambio delle caratteristiche del segnale per evitare che vi sia disturbo con lo spoofing.\\
+	Uso un segnale nuovo, con caratteristiche che nessuno conosce (come se usassi la crittografia) quindi nessuno può attaccare.\\
+	Classica tecnica militare: in tempo di pace il servizio è noto a tutti, ma se entro in zona di guerra in tempo di guerra applico la tecnica, quindi il dispositivo non è disturbabile.\\
+	Di solito il segnale normalmente non viene trasmesso, ha una probabilità di intercetto molto bassa perché è usato solo nei periodi in cui serve che il sistema sia disponibile solo a poche persone specifiche ed autorizzate
+\end{itemize}
+terreno nascosto: non è una buona idea, prima o poi il nemico scoprirebbe almeno una parte dei codici, quindi tutti i sistemi hanno due parti, una nota al pubblico ed una no.\\\\
+Quindi, il sistema di navigazione ha necessità di 4 satelliti da cui ricevere i segnali che portino le informazioni viste sopra.\\
+Lette queste e misurate il tempo di arrivo del segnale è possibile impostare il sistema, partendo da un guess iniziale, per trovare la posizione utente. (N.B: la posizione iniziale inficia poco il processo)
+
+
+\subsection{Misurazione del tempo di arrivo}
+Come viene misurato il tempo di arrivo, è qui che si annidano le debolezze.\\
+(copia immagine)\\
+Il satellite trasmette verso terra continuamente, oltre alle informazioni dette prima, un \textbf{codice pseudo-randomico}, una sequenza di 0,1 che sembrano casuali e questo è trasmesso continuamente verso terra, ha una certa lunghezza e non porta nessun tipo di informazione ed è completamente noto sia al satellite che all'utente.\\
+Può essere replicato, come fa il satellite, nel ricevitore dell'utente e quindi avranno entrambe una sequenza di 01 sincronizzate fra di loro (ammettiamo che sia così).\\
+Il satellite trasmette questa sequenza verso terra, il ricevitore la vedrà ed avrà nel suo interno due sequenze identiche, di cui una l'ha generata lui, l'unica differenza è che quella ricevuta dal satellite ha subito un ritardo di propagazione necessario per raggiungere l'utente (d/c), lo sfasamento dipende proprio da quanto tempo ha volato il segnale.\\
+Quindi, la misura del tempo di arrivo funziona così:
+\begin{itemize}
+	\item il ricevitore comincia a ritardare la sua copia del codice finché le due copie non sono perfettamente sovrapposte
+	\item quando lo saranno, misura il tempo
+\end{itemize}
+Prendo un segnale, ne ho due copie identiche e comincio a traslarne uno e cerco il punto in cui i due segnali sono perfettamente sovrapposti, per capire di quanto devo traslare posso moltiplicarli fra loro e quando saranno perfettamente sovrapposti ci saranno solo 1, quindi l'integrale sarà molto grande.\\
+Faccio la \textbf{correlazione} del segnale che genero a terra con quello che genero io, ma in questo caso è importante l'approccio perché posso misurare il tempo di arrivo del segnale, andando a vedere dove è il picco della cross-correlazione tra il segnale replicato dal ricevitore e quello ricevuto dal satellite.\\
+Ricevitore avrà: $r(t)$ ed $s(t)$ e farà $\int_{-\infty}^{\infty} r(\tau) s(t-\tau) d\tau$ e sappiamo che è massima quando i segnali sono sovrapposti.\\
+Avremo qualcosa del genere: (copia immagine)
+non tutti i codici sono così, ce ne sono una 30ina nel GPS ovvero i \textbf{codici gold} e li associo al satellite.\\
+I segnali si portano quindi dentro dei codici pseudo random che con la correlazione col ricevitore permettono di calcolare il tempo.
+
+
+\section{GPS}
+Nel caso del GPS, ogni satellite trasmette segnali su due bande L diverse (slides):
+\begin{itemize}
+	\item L$_1$ trasmette il codice C/A e P
+	\item L$_2$ solo il codice P
+\end{itemize}
+sono due codici pseudo-random associati al satellite, con caratteristiche diverse:
+\begin{itemize}
+	\item il codice C/A ha larghezza di banda di 1 MHz, associato ad un utente standard.\\
+	Non è molto lungo, si può "trovare" con un attacco bruteforce ed è quindi il motivo per cui non viene nascosto.
+	\item il codice P di 10.23 MHz, è un codice di precisione che danno prestazioni maggiori (banda più larga) e sono presenti su due frequenze.\\
+	Nel caso del GPS possono essere cambiati dal Dipartimento della Difesa Americano per divenire Y e non essere noti a tutti se non al Dipartimento stesso.\\
+	Il codice P è molto lungo (circa 30 settimane), si tronca ad una settimana e si ripete: ha throughput di 10 MBit/sec con una lunghezza di 1 settimana, quindi fare bruteforcing non è pensabile.
+\end{itemize}
+Il clock del satellite può essere riassunto come segue (copia immagine)\\
+
+Questi sono invece gli spettri dei segnali trasmessi: (copia immagini)\\
+sono segnali a banda larga perché trasportano poche informazioni ma hanno una banda abbastanza elevata e questo è importante perché di fatto usando delle bande così elevate, a parità di potenza trasmessa per arrivare a terra, i segnali arrivano a terra con una potenza molto bassa e quindi non sono intercettabili in condizioni normali.\\
+Per potervi risalire, occorre correlare il segnale che ri riceve con quello generato a terra, è il \textbf{despliting??}: la potenza del segnale ricevuto cresce molto, si stringe la banda, quindi possiamo decodificarlo e leggerlo.\\
+Il trasmettitore di bordo del satellite inserisce nel segnale da trasmettere un segnale pseudo random che allarghi la banda (modulazione a spettro espanso), fa si che il segnale abbia una bassa probabilità di intercetto e non disturbi gli altri.\\
+Nel ricevitore si va l'inverso, tutta la potenza del segnale è concentrata su una banda stretta per decodificare, quindi se non si conosce il codice non si può ricevere il segnale mail codice poi di fatto è a disposizione di chiunque.\\
+È utile anche per proteggere il sistema da disturbi intenzionali a banda stretta.\\\\
+Un ricevitore per navigazione satellitare è tipicamente fatto così:
+(copia immagine)
+\begin{itemize}
+	\item si arriva fino alla banda base
+	\item si fanno una serie di processamenti 
+	\item si risolve il sistema di equazioni
+\end{itemize}
+Il sistema non è un semplice ricevitore:
+\begin{itemize}
+	\item deve fare code acquisition, ovvero cercare di capire se c'è un satellite nei paraggi, deve acquisire almeno 4 segnali diversi
+	\item siccome i satelliti si muovono cambia la frequenza su cui arriva il segnale e deve trovarla
+	\item si deve agganciare al segnale per fare misure precise
+\end{itemize}
+solo dopo può fare tutti i calcoli, dentro al ricevitore ci sono quindi algoritmi diversi ad esempio:
+(copia immagine)\\
+nella parte a sinistra c'è proprio la correlazione e poi si comincia a cercare il picco: (frequenza doppler, ritardo) (copia immagine), trovo il satellite ed acquisisco il segnale.\\
+Si passa poi al tracking del segnale per far si che si rimanga sempre agganciati al picco per stimare il tempo di arrivo (si muove sull'asse delle x).\\
+Tutti i sistemi di navigazione satellitare sono fatti così, hanno le caratteristiche simili a quanto abbiamo detto.
+
+\chapter{Sistemi radar}
+
+\section{Funzionamento}
+RADAR sta per Radio Detection and Ranging, sfrutta le onde radio per capire se c'è qualche cosa e per fare posizionamento, in realtà i radar riescono a localizzare in due direzioni (anche in azimuth).\\
+Il segnale viene riflesso dall'oggetto, chiamato target, viene ricevuto dal ricevitore del radar ed il tempo che intercorre fra la trasmissione ed il ritorno da la distanza del bersaglio (slides per formule).\\
+Esistono radar per fare diverse cose:
+\begin{itemize}
+	\item sorveglianza, per avere immagini ad esempio del traffico aereo oppure radar per la sorveglianza di basi militari
+	\item radar di inseguimento, che nascono per fare misure molto precise su un solo oggetto.\\
+	esempio: radar di tiro, viene identificato un oggetto come minaccioso ed il radar di inseguimento punta sull'oggetto e ne fa una misura precisa e l'informazione serve per abbattere l'oggetto.
+	\item radar ad altissima risoluzione da piattaforme aeree (es droni, satelliti spia), sfruttano delle tecniche che permettono di avere delle risoluzioni ottime anche con piccole antenne, lavorano con qualsiasi condizione del meteo
+	\item radar altimetri, servono solo per misurare la quota dell'aereo
+	\item radar meteorologici
+	\item radar automotive
+\end{itemize}
+Sono sistemi che possono essere molto complessi, spaziano per forma, costo etc...\\
+Radar diversi usano anche diverse frequenze che sono anche state standardizzate, "conoscere il tuo nemico" non è così semplice: l'apprato che si vuole disturbare può essere ovunque nelle frequenze (300 MHz - 300 GHz) ed avere la possibilità di collezionare informazioni in questo spettro così ampio è complicato.\\
+A meno che non si usino apparati specifici in banda larghissima in tempo di pace, così che in tempo di guerra si riesce ad individuare con buona sicurezza in che banda sarà l'apparato nemico.\\
+
+\subsection{Misure del radar}
+Il segnale trasmesso è quasi sempre un impulso, che raggiunge il bersaglio e riceve l'eco dell'impulso, quando vedo l'eco posso dire che il bersaglio è presente.\\
+Il tempo è facilmente misurabile (slides) (metti immagini?), possiamo poi anche ricavare la distanza invertendo la formula.\\
+Ci aspettiamo quindi questo: (immagine) se riceviamo l'eco il bersaglio è presente. Normalmente:
+\begin{itemize}
+	\item la grandezza dell'impulso è $\tau$
+	\item la grandezza è il ...
+\end{itemize}
+metto una soglia, se la supero ho trovato il bersaglio, posso anche misurare la distanza.\\
+Nello stesso dispositivo persistono elettroniche che lavorano con segnali a diversa potenza
+
+\subsection{Misure di angolo}
+Si misura anche almeno un angolo:
+\begin{itemize}
+	\item azimuth sul piano orizzontale
+	\item elevazione sul piano verticale
+\end{itemize}
+(copia immagine), possiamo avere anche radar che misurano tutti e 3.\\
+Per misurare gli angoli, si sfruttano antenne molti direttive: monto antenne con lobi molto stretti, per cui posso ipotizzare che se ricevo un eco l'ho ricevuto dalla posizione di puntamento dell'antenna.\\
+(copia immagine slides)
+il fascio dell'antenna, nel principale c'è un alto guadagno e ricevendo con un antenna del genere possiamo supporre (molto facilmente) che si riceva la risposta dalla posizione di puntamento.\\
+Sapendo in che direzione sto trasmettendo, misuro l'angolo del bersaglio e poi muovo l'antenna.\\
+I tipi di antenna per applicazioni radar sono sempre a fascio stretto, normalmente:
+(copia)
+
+\begin{itemize}
+	\item la pencil bean ha un angolo stretto in direzione e stretto in azimuth.\\Risolve bene tutti e due gli angoli
+	\item stretta in azimuth, larga in altezza??
+\end{itemize}
+
+Per fare la \textbf{misura radiale} si può sfruttare l'effetto doppler.\\
+Il radar trasmette un impulso su una portante, possiamo scrivere: (copia), dove $f_0$ indica la frequenza della portante (è una sinusoide).\\
+Il target da un segnale di eco del tutto analogo a quello trasmesso, sarà attenuato (fattore $k < 1$) e sarà ritardato di $2R(t)/c$.\\
+Ci aspettiamo quindi lo stesso segnale in ricezione ritardato ed attenuato, se il bersaglio si muove la distanza R dipende dal tempo t:\\ la fase del segnale ricevuto è (copia) e dipende da R(t)\\-sappiamo anche che la frequenza è la derivata della fase: (copiaa), ma la derivata nel tempo di R è la velocità radiale dell'oggetto.\\Quindi, fissando tutto, possiamo dire che (copia slides), quindi il segnale viene ricevuto sulla frequenza $f_0 + f_D$ ed un radar che sa misurare $f_D$ sa anche misurare la velocità radiale.\\
+ATTENZIONE: non è la velocità del dispositivo, ma è quella radiale quindi con cui mi allontano / avvicino dal radar!! (copia immagine), se si muove in modo ortogonale è come se fosse fermo.\\\\
+Tutte le prestazioni ottenibili dipendono da diversi fattori.\\\\
+Nel radar inoltre persistono diverse dimensioni temporali: (copia slides)\\
+il radar trasmette un impulso, la cui durata dipende da determinate caratteristiche, può però trasmettere n impulsi su ogni oggetto e per poter rimetterli sullo stesso oggetto serve aspettare che il radar faccia tutto il giro (radar di sorveglianza).\\
+(immagine)
+
+
+
+
 
 
 
