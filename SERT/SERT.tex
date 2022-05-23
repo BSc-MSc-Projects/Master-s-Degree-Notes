@@ -255,8 +255,359 @@ I vantaggi di un tale algoritmo di scheduling sono molteplici:
 \item i job aperiodici possono essere eseguiti in modo regolare in corrispondenza degli intervalli I
 \item è possibile far si che lo scheduler assuma un altro ruolo, ovvero controllare che i job schedulati precedentemente abbiano rispettato le scadenze.\\ Il software in questo modo viene progettato senza sapere nulla sull'hardware.
 \end{itemize}
-La procedura che implementa un algoritmo di schedulazione ciclico è detta cyclic executive, gli istanti in cui lo scheduler ciclico strutturato prende le decisioni partizionano il tempo in frame.\\ La larghezza di un frame temporale f è prefissata, ogni frame ha dei job da eseguire in sequenza, detto blocco di schedulazione. In un frame non è possibile interrompere i job: se un job inizia, deve anche finire il frame. La fase di ogni task periodico deve essere un multiplo intero, maggiore di 0 della lunghezza del frame: $\forall i \in \{1,...,n\} \exists k \in \mathbb{N}: \phi_i = k\cdot f$. Abbiamo poi che $f \geq max\{e_1,...,e_n\}$, quindi nessun job può essere interrotto in nel frame.\\ La dimensione di un frame deve dividere H: $\frac{H}{f} + \lfloor \frac{H}{f} \rfloor$ = 0. La condizione sufficiente è che f divida il $p_i$ di almeno uno dei task (essendo H il mcm dei $p_i$). Bisogna considerare ogni schedulazione in un iper-periodo successivo come una diversa da quella dell'iper-periodo precedente, se vale la condizione di uguaglianza tutti gli H sono uguali.\\ Un frame deve essere tra il rilascio e la scadenza di un job: deve essere abbastanza piccolo, altrimenti fra il rilascio di un job e la sua scadenza non ci sarebbe un intero frame. Deve valere che $2\cdot f - GCD(p_i, f) \leq D_i \forall i = 1,...,n$
+La procedura che implementa un algoritmo di schedulazione ciclico è detta cyclic executive, gli istanti in cui lo scheduler ciclico strutturato prende le decisioni partizionano il tempo in frame.\\ La larghezza di un frame temporale f è prefissata, ogni frame ha dei job da eseguire in sequenza, detto blocco di schedulazione. In un frame non è possibile interrompere i job: se un job inizia, deve anche finire il frame. La fase di ogni task periodico deve essere un multiplo intero, maggiore di 0 della lunghezza del frame: $\forall i \in \{1,...,n\} \exists k \in \mathbb{N}: \phi_i = k\cdot f$. Abbiamo poi che $f \geq max\{e_1,...,e_n\}$, quindi nessun job può essere interrotto in nel frame.\\ La dimensione di un frame deve dividere H: $\frac{H}{f} + \lfloor \frac{H}{f} \rfloor$ = 0. La condizione sufficiente è che f divida il $p_i$ di almeno uno dei task (essendo H il mcm dei $p_i$). Bisogna considerare ogni schedulazione in un iper-periodo successivo come una diversa da quella dell'iper-periodo precedente, se vale la condizione di uguaglianza tutti gli H sono uguali.\\ Un frame deve essere tra il rilascio e la scadenza di un job: deve essere abbastanza piccolo, altrimenti fra il rilascio di un job e la sua scadenza non ci sarebbe un intero frame. Deve valere che $2\cdot f - GCD(p_i, f) \leq D_i \forall i = 1,...,n$\\
+Nel caso in cui non esista una dimensione adatta per f, si può rimediare considerando il job molto lungo: se il progettista può spezzarlo in due job più piccoli può farlo e ridisegnare il sistema con un vincolo rilassato, ovviamente tenendo conto della precedenza fra i jobs.\\
+L'insieme dei job frammentati NON è equivalente all'insieme dei job originali appunto perché ci sono i vincoli di precedenza fra i frammenti e che prima non c'erano.\\
+In generale quindi quando abbiamo una schedulazione ciclica dobbiamo:
+\begin{itemize}
+	\item scegliere la dimensione del frame
+	\item frammentare i job
+	\item piazzare i frammenti nel frame
+\end{itemize}
+\subsubsection{Difficoltà}
+Gestione dei task non armonici:\\
+consideriamo 3 task: $T_1 = (3,1)$, $T_2 = (7,3)$ e $T_3 = (25,3)$: qui H è 525 e l'unica dimensione ammissibile è 3, quindi il ciclo maggiore ha 175 frame.\\
+È un grande problema, si usa troppa memoria per implementare la tabella, quindi la soluzione potrebbe essere abbassare i periodi dei task, che siano "meno problematici": $T_1 = (3,1)$, $T_2 = (6,3)$ e $T_3 = (24,3)$
+così che H = 24 ed il ciclo maggiore avente 8 frame.\\ Abbassando il periodo del task si alza la frequenza, quindi se avevo un requisito per cui l'attività andava svolta molto frequentemente va bene, ma alza l'utilizzazione del sistema.\\
+In questo caso particolare avrei un aumento del 7.6\%, è come dire "alzo gli stipendi, tutti felici ma devono esserci soldi per tutti".\\\\
+Altro problema è avere periodi non interi:\\
+$T_1 = (1.5,0.5)$, $T_2 = (2.25,0.25)$ e $T_3 = (3,0.75)$.\\
+I tempi su cui lavoriamo sono arbitrari (no unità di misura fissa), quindi possiamo moltiplicare tutti i tempi per un certo valore intero per ottenere interi: $T_1' = (6,2)$, $T_2' = (9,1)$ e $T_3' = (12,3)$ e quindi avere un $f' = 6$.\\
+\subsection{Job aperiodici soft real time}
+C'è una coda servita quando il processore è idle, ma nel cyclic executive sono eseguiti in background, possono essere ritardati ma sono tipicamente attivati in presenza di eventi esterni che sono risultato di operatori umani.\\
+Si vuole quindi che siano messi in esecuzione nel minore tempo possibile e quindi migliorare la reattività del sistema rispetto ad eventi esterni, quindi minimizzare il tempo di risposta è obiettivo di progetto degli scheduler, come lo facciamo per i cyclic executive: \textbf{slack stealing:}\\per ogni frame $k$, chiamiamo $f - x_k$ il margine di tempo che rimane in un frame per fare altro, dove $x_k$ è l'ammontare di tempo già allocato nel frame (è stato già allocato dal progettista).\\
+In ogni frame lo scheduler può eseguire dei job aperiodici prima di quelli periodici se lo slack è maggiore di 0.\\
+Quindi:
+\begin{itemize}
+	\item calcolo quanto slack è libero nel frame
+	\item tengo traccia di quanto slack viene consumato dai job aperiodici
+\end{itemize}
+devo interrompere i job aperiodici quando non c'è tempo, un modo per fare questo è usare un interval timer che generi un interrupt hardware all'inizio del frame con un valore di slack, quindi quando questo scade non c'è più tempo (lo slack è terminato).\\\\
+\subsection{Job aperiodici hard real time}
+Le cose sono molto più difficili, perché se accettiamo un job hard real time dobbiamo prenderci l'impegno di rispettarne le scadenze come per dei job periodici, ma in generale dato un sistema di task può sempre arrivarne uno aperiodico che pone un così alto carico sul sistema tale per cui qualcuno manca le scadenze (o lui o altri job).\\
+Come si schedulano quindi insieme i job periodici e non? Serve implementare un test di accettazione, ovvero il sistema non accetta il job a priori ma verifica se è in grado di soddisfare le esigenze oltre a quelle dei task periodici ed oltre a quelli aperiodici hard rt che sono già stati accettati.\\
+Se lo rifiuto il job non verrà eseguito, è tollerabile in base al contesto o alla situazione: nel flight control dell'elicottero c'è una procedura che tiene in volo l'elicottero in modo stabile. Può darsi che la procedura sia eseguita da un job aperiodico hard rt quindi può accadere che nel manuale di volo dell'elicottero ci sia scritto che per inserire il pilota automatico si possa premere un tasto ma non si possa assumere che il pilota automatico sia inserito finché non si accende una spia.\\
+Quindi si prova ad inserirlo nel sistema per la schedulazione, non è detto che avvenga subito o che venga accettato\\
+Un metodo efficace per far rispettare le scadenze a tutti è usare EDF, dove la precedenza è data al job che ha la scadenza più vicina, si può anche interrompere un job aperiodico già accettato.\\
+Pone un problema: quando si accetta un job occorre controllare che gli altri non manchino le scadenze, quindi il cyclic executive ha due code di job aperiodici:
+\begin{itemize}
+	\item una coda EDF per job rilasciati e non accettati
+	\item una coda EDF per i job accettati
+\end{itemize}
+il controllo di accettazione lo fa lo scheduler stesso.\\
+EDF è in grado di soddisfare i vincoli dei job rispettando le scadenze in maniera ottimale considerando il fatto che i job non possono essere schedulati appena arrivano.\\
+
+\subsubsection{Test di accettazione per job aperiodici hard rt}
+Assumiamo che possiamo classificare con precisione i job aperiodici, quando arrivano dobbiamo saper dire quanto tempo durerà ciascun job e quando sarà la scadenza.\\
+Dovranno essere interrompibili, il test di accettazione prevede di calcolare lo slack disponibile nei frame:
+\begin{itemize}
+	\item supponiamo di avere un job aperiodico rilasciato in un certo tempo, scadenza d e tempo di esecuzione e
+	\item il frame successivo all'istante di rilascio ha un numero t dove $1 \leq t \leq F$ all'interno del ciclo maggiore $j'$
+	\item il frame precedente a quello in cui cade la scadenza ha un numero l, dove $1 \leq l \leq F$ nel ciclo maggiore $j'$
+\end{itemize}
+il cyclic executive esegue il test prima di t.\\
+Funziona in questo modo:
+\begin{itemize}
+	\item calcola la quantità libera di slack nel frame $\sigma(i, h)$ calcolato per ogni ciclo maggiore 
+	\item posso calcolare la quantità di slack totale su più cicli maggiori:\\$\sigma(i+jF, h +j'F) = \sigma(i, F) + (j'-j-1) \cdot \sigma(1,F) + \sigma(1,h)$
+	\item per ogni job aperiodico già accettato, riduco la quantità di slack disponibile: conosco la scadenza $d_k$ degli $S_k$ e devo tenete conto della quantità di lavoro ancora da svolgere $e_k - \xi_k$ e lo slack rimanente $\sigma_k$
+\end{itemize}
+La quantità di slack disponibile fra i frame t ed l è:\\
+$\sigma_c(t,l) = \sigma(t,l) - \sum_{d_k \leq d} (e_k - \xi_k)$ e deve essere minore o uguale ad e altrimenti S viene rifiutato, non avrò tempo per rispettare la scadenza di questo job hard rt.\\
+Se dovessi accettare il job, questo rallenta tutti i job già accettati che hanno una scadenza oltre la sua (stiamo usando EDF), quindi devo rifiutare anche se qualcuno di questi job che hanno una scadenza oltre questo che hanno uno slack $\sigma_k - e < 0$.\\
+Altrimenti accetto il nuovo job e riduco lo slack di quelli che hanno scadenza oltre la sua ed imposto la scadenza del job: $\sigma = \sigma_c(t, l) - e$.\\
+Modifico quindi l'algoritmo cyclic exeuctive.
+
+\subsubsection{Gestione delle violazioni delle scadenze}
+Un job hard rt completa sempre entro la scadenza, ma per vari problemi può mancarla, un cyclic executive può:
+\begin{itemize}
+	\item non reinserire nei blocchi di schedulazione successiva, ormai il job è oltre la sua scadenza, l'algoritmo ha dei blocchi fissi
+	\item alternativa è interrompere il job ed inserirlo nella coda dei job aperiodici, completandolo quando c'è tempo
+	\item si continua l'esecuzione del job allungando il frame e ritardando tutti quello successivi
+\end{itemize}
+la soluzione migliore dipende dalla natura dei job e del sistema, è comunque un evento che non deve accadere da un punto di vista del software e se accade è un bug non è colpa del progettista del software.
+
+\subsection{Resoconto}
+Resoconto sugli scheduler clock driven:
+\begin{itemize}
+	\item sono concettualmente semplici
+	\item non serve controllare l'accesso alle risorse condivise
+	\item non serve sincronizzare i job fra loro
+	\item scegliendo opportunamente la durata dei frame possiamo minimizzare l'overhead dello scheduler
+	\item posso ancora semplificare se assumo che gli eventi esterni siano sincroni ai frame
+\end{itemize}
+Contro:
+\begin{itemize}
+	\item gli istanti di rilascio dei job devono essere prefissati
+	\item lo scheduling è fatto per un solo sistema con quel carico
+	\item non vanno bene per sistemi che hanno molti job aperiodici
+\end{itemize}
+Gli svantaggi sono così forti che la maggior parte di chi progetta sistemi hard rt usa altri tipi di scheduler.
+
+\chapter{Algoritmi priority diven}
+
+\section{Algoritmi round robin}
+Algoritmo gestito tramite una coda di job FIFO, il primo job che arriva in coda è anche il primo ad essere servito.\\
+Quando un job arriva è messo in coda di esecuzione e dovendo scegliere fra tanti job scelgo quello che è in cima alla coda e lo eseguo per un certo quanto di tempo predefinito.\\
+Se il quanto scade ed il job non è finito viene tolto e rimesso in coda, se ci sono quindi n job attivi nel sistema, un gruppo di n time slice è chiamato round.\\
+Tipicamente si usa uno schema un po' più complesso che è il round robin pesato, ovvero dove ai diversi job si dia un peso diverso così da dare più quote di tempo a job più pesanti.\\
+Un round è quindi il numero di time slice pari alla somma dei pesi dei job in coda, se un job ha un peso w, in ogni round ottiene w time slice.\\
+Vantaggi:
+\begin{itemize}
+	\item sono abbastanza equi: job dello stesso peso ottengono la stessa quantità di processore, è una proprietà come il time sharing dei SO general purpose
+	\item sono semplici da implementare
+\end{itemize}
+se ne usano tipicamente delle versioni un po' più sofisticate nei SO reali ma alla base c'è questo schema round robin.\\
+Nell'ambito real time, quali sono gli svantaggi:
+\begin{itemize}
+	\item non considerano le scadenze dei job, quindi inserendo un job in coda non considero quanto è vicina o lontana la sua scadenza
+	\item non viene gestito bene un vincolo di precedenza fra job, dove un certo job $J_i$ non può eseguire se un altro job $J_j$ non ha terminato
+\end{itemize}
+In round robin, siccome i job con precedenza non possono partire, si alternano quelli da cui precedono per poi dare tempo di esecuzione agli altri, ma senza round robin abbiamo risultati migliori (caso multiprocessore).\\
+Se i vincoli di precedenza sono un problema, perché gli algoritmi round robin sono usati in sistemi come Unix, dove molti processi sono spesso legati tramite pipe?\\La pipe \textbf{non è} un vincolo di precedenza: $J_a | J_b$ ma $J_b$ si limita a consumare i dati man mano prodotti da $J_a$ se ad esempio questi eseguono su due processori diversi.
+
+
+
+\section{Algoritmi di tipo priority driven}
+Un algoritmo priority driven non lascia mai inutilizzato un processore o un altra risorsa.\\
+È una caratterizzazione generale, che dice che se c'è un processore od una risorsa libera e se c'è un job che la può usare, l'algoritmo assegna la risorsa attiva o passiva.\\
+Si possono fare anche altre formulazioni:
+\begin{itemize}
+	\item una risorsa attiva o passiva è inutilizzata solo quando non ci sono job pronti per richiedere la risorsa, algoritmi work conserving
+	\item le decisioni dello scheduler vengono effettuate all'occorrenza di specifici eventi
+	\item gli algoritmi di schedulazione prendono decisioni ottimali a livello locale, ossia del singolo processore o risorsa.
+\end{itemize}
+Il modello di riferimento di questi algoritmi è a task periodici o task sporadici, iniziamo con un modello perfissato:
+\begin{itemize}
+	\item il numero di task è perfissato
+	\item singolo processore
+	\item task indipendenti: nessun vincolo di precedenza fra task o conflitti per l'accesso alle risorse
+	\item non ci sono job aperiodici
+\end{itemize}
+Nel modello a task sporadici il periodo corrisponde al minimo intervallo tra gli istanti di rilascio dei job, rilasseremo poi tutti i vincoli.\\
+Gli algoritmi possono facilmente essere descritti considerando il valore numerico della priorità che viene assegnata ai job: la lista dei job viene ordinata per questo valore, in ogni istante lo scheduler sceglie l'algoritmo che ha priorità maggiore (non necessariamente numerica, dipende dall'implementazione).\\
+Sono per questo anche noti come algoritmi list scheduling, indipendentemente dal valore scelto per la priorità e dal suo significato verrà schedulato quello con la priorità maggiore.\\
+Molti scheduler che conosciamo sono priority driven:
+\begin{itemize}
+	\item FIFO: la priorità è inversamente proporzionale all'istante di rilascio
+	\item LIFO, l'opposto del FIFO
+	\item SETF (Shortest Execution Time First): priorità inversamente proporzionale al tempo di esecuzione rimanente
+	\item LETF, opposto degli SETF
+\end{itemize}
+Anche i round robin sono priority driven, la priorità è data dall'istante di rilascio del job, ma questa varia dinamicamente in funzione della posizione nella coda FIFO.\\
+Gli algoritmi possono essere caratterizzati come:
+\begin{itemize}
+	\item a priorità fissa: tutti i job hanno la stessa priorità all'interno del task, questa è fissa
+	\item a priorità dinamica: la priorità dei job può cambiare:
+	\begin{itemize}
+		\item algoritmi dove la priorità dei job già rilasciati non cambia fino al termine del job, quindi sono task-level dynamic priority
+		\item job-level dynamic priority, dove la priorità può cambiare anche dopo il suo rilascio
+	\end{itemize}
+\end{itemize}
+Abbiamo fra gli altri:
+\begin{itemize}
+	\item EDF (Earliest Deadline First): la priorità è inversamente proporzionale alla scadenza assoluta
+	\item LST: priorità inversamente proporzionale allo slack dei job (margine di sicurezza per completare il job entro la scadenza)
+	\item RM: priorità inversamente proporzionale al periodo del task, quindi direttamente proporzionale alla frequenza con cui sono rilasciati i job
+	\item DM: priorità inversamente proporzionale alla scadenza relativa
+	\item 
+\end{itemize}
+
+\subsection{Algoritmi EDF, LRT, LST}
+Ci sono algoritmi ottimali su singolo processore:
+\begin{itemize}
+	\item EDF è ottimale, quindi se esiste un modo per fari rispettare le scadenze ad un insieme di task, EDF trova tale schedulazione
+	\item LRT, anche chiamato EDF inverso (come un EDF applicato dal futuro verso il passato)
+	\item LST va inversamente proporzionale allo slack del job, ossia del valore ottenuto sottraendo dalla scadenza del job il tempo presente ed il tempo richiesto per completare il job
+\end{itemize}
+C'è un teorema (1974, 1983): con un solo processore, job interrompibili, non ci sono contese sulle risorse condivise, sia EDF che LRT che LST producono una schedulazione fattibile di un insieme di job temporali arbitrari se e sono se tale insieme di job è schedulabile.\\
+LRT è anche detto EDF inverso perché inverte i ruoli degli istanti di rilascio e delle scadenze, più è avanti l'istante di rilascio e maggiore è la priorità.\\
+Il vantaggio è che LRT cerca di completare i job in corrispondenza delle scadenze, quindi tende ad essere meno aggressivo verso il processore.\\
+È positivo, perché in un sistema real time vorrei ridurre la predicibilità ma non è un algoritmo priority driven perché all'inizio si potrebbe dover lasciare inutilizzato un processore anche se c'è qualcosa da fare.\\
+Inoltre è un algoritmo off-line, ovvero si deve conoscere tutto a priori e non si può applicare per un job che arriva a run time.\\\\
+LST è basato sullo slack ed assegna priorità più alta a job con slack minore, quindi la logica è che più è basso lo slack e meno tempo si può perdere.\\
+Svantaggio rispetto agli altri due: rispetto ad esempio ad EDF occorre conoscere il tempo di esecuzione dei job, perché occorre ad esempio conoscere quanto tempo manca all'esecuzione.\\
+Potrei considerare il wcet, ma sarebbe una scelta pessimista e occorre tenere conto nell'implementazione dell'algoritmo di questo parametro.\\
+Per certificare EDF serve conoscere i tempi di esecuzione, ma solo per provare che il sistema sia a regola d'arte, ma per prendere la decisione EDF non guarda al tempo di esecuzione, mentre in LST c'è un overhead più costoso da implementare.\\\\Ci sono due varianti di LST: la priorità è inversamente proporzionale allo slack
+\begin{itemize}
+	\item nella variante meno stretta si aggiornano gli slack a tick periodici
+	\item variante rigida, le priorità si modificano ogni volta che un job acquisisce una priorità maggiore di quella del job in esecuzione ma da mettere in pratica è quasi impossibile.\\
+	È più complicata da realizzare e costa molto anche in termini di overhead.
+\end{itemize}
+LST si usa molto raramente
+
+\subsection{Algoritmi RM ed DM}
+(RM è inventato da Liu e Layland nel 1973) RM assegna la priorità in modo proporzionale alla frequenza con la quale viene rilasciato il job, è il primo algoritmo proposto per schedulazione real time.\\
+DM assegna invece la priorità al job in base alla scadenza relativa, è inversamente proporzionale alla scadenza relativa del task.\\
+La priorità è quindi legata dalle caratteristiche del task, il caso in cui coincidono è quando la scadenza relativa è uguale al periodo, ma in realtà la schedulazione prodotta è equivalente quando la deadline relativa è proporzionale al periodo.\\
+In generale, DM è meglio di RM perché se la schedulazione nata da DM non riesce a rispettare le scadenze, allora si può dimostrare che nemmeno RM può rispettare le scadenze.\\
+Ma d'altra parte una schedulazione non fattibile con RM può esserlo con DM.
+
+\subsection{Ottimalità di EDF}
+Se un insieme di task ha una schedulazione fattibile, ovvero c'è un modo per cui tutti i job rispettano le scadenze, questi sono interrompibili, indipendenti, c'è un solo processore, allora qualunque sia la schedulazione che rispetta le scadenze ne posso trovare una con EDF che rispetta le scadenze.\\
+È un risultato forte, vediamo la dimostrazione:
+\begin{itemize}
+	\item suppongo che esista una schedulazione che rispetta le scadenze
+	\item supponiamo che non sia prodotta da EDF: considero $J_i$ schedulato prima di $J_k$, dove $d_i > d_k$.\\
+	Secondo EDF la priorità i è più bassa di quella di k, quindi andrebbe schedulato dopo
+	\item supponiamo che il rilascio di $J_k$ ($r_k$) sia oltre l'intervallo in cui è schedulato $J_i$, allora va bene.\\
+	Ma se $r_k$ precede la schedulazione di $J_i$ potrei schedulare k ma invece schedulo i
+	\item siccome i job sono interrompibili, posso schedulare i al posto di k, scambio i due job.
+	\item lo scambio porta ad avere una schedulazione in cui $J_i, J_k$ rispettano EDF
+\end{itemize}
+ripeto per ogni coppia di job ed ottengo una schedulazione con EDF.\\
+È sufficiente scambiare i job? No, perché alla fine ci potrebbero essere intervalli in cui la schedulazione ha lasciato il processore inutilizzato, quindi non priority driven.\\
+Nessun problema, muovo tutti i job in modo da riempire i punti dove il processore è inutilizzato, ovviamente se prima erano rispettate le scadenze, anche ora sono rispettate.\\
+Quindi EDF è ottimale, tutto questo però non è vero se alcune delle assunzioni non sono verificate ad esempio se i job non sono interrompibili.\\
+Gli algoritmi priority driven non sono in assoluto ottimali se i job non sono interrompibili.
+
+\chapter{Ottimalità di algoritmi priority driven}
+\section{Validazione}
+In generale, gli algoritmi priority driven hanno diverse peculiarità:
+\begin{itemize}
+	\item semplici da implementare e facili da spiegare (es: EDF, DM, RM ...)
+	\item flessibili nel come viene definito il concetto di priorità
+	\item questo tipo di algoritmi no richiedono di conoscere esattamente il modello di carico, differenza sostanziale con gli algoritmi clock driven.\\
+	Quindi di nuovo c'è più flessibilità, lo scheduler deve solo conoscere il modo con cui calcolare la priorità ed ordinare in base ad essa
+\end{itemize}
+Ma mentre negli algoritmi clock driven la schedulazione è costruita off line e quindi è facile da dimostrare, qui no: non è detto in astratto che il progettista conosca in anticipo l'intera configurazione di task che si presenteranno nel sistema.\\
+C'è quindi il problema della \textbf{validazione:} capire se l'algoritmo sarà in grado di far rispettare la scadenza a tutti i job, inoltre occorrerà dare prova matematica.\\
+Questo è complicato da un fenomeno noto come \textbf{anomalia di schedulazione}, ovvero fin dai primi anni della ricerca dei sistemi real time ci si è resi conto che esistono dei comportamenti non attesi: suppongo di aver dimostrato che il sistema rispetta le scadenze.\\
+Un esempio classico è la non interrompibilità dei job: il tempo di risposta dell'ultimo job che termina (detto \textbf{makespan}) può peggiorare se:
+\begin{itemize}
+		\item il job viene rilasciato con una frequenza minore
+		\item un job riduce il suo tempo di esecuzione
+		\item si riducono le dipendenze fra job
+		\item si aumenta la velocità del processore (risultato Buttazzo 2006)
+\end{itemize}
+sono un problema perché non abbiamo più un caso peggiore da esaminare.\\
+Se i parametri dei job possono variare e non so dire quale da il valore peggiore per il rispetto delle scadenze, allora dovrò dimostrare che il sistema è schedulabile per infinite variazioni dei parametri.\\
+Possiamo cercare di ricondurci al caso in cui i job sono effettivamente predicibili: fissato un algoritmo, consideriamo la schedulazione prodotta considerando tutti i tempi di esecuzione massimi (wcet) e la chiamiamo schedulazione massima.
+
+\subsection{Sistema predicibile}
+
+Ci mettiamo nel caso in cui tutti i job hanno il tempo di esecuzione minimo, diciamo che l'esecuzione di un job è \textbf{predicibile} se è sempre entro i limiti stabiliti dalle due schedulazioni.\\
+Quindi:
+\begin{itemize}
+	\item $\sigma^{-}$ ed $\epsilon^{-}$ sono gli istanti di attivazione e completamento di un job nella schedulazione minima
+	\item $\sigma^{+}$ ed $\epsilon^{+}$ per la massima
+\end{itemize}
+l'esecuzione è predicibile per quel job se $\sigma \in [\sigma^{-}, \sigma^{+}]$ e se $\epsilon \in [\epsilon^{-}, \epsilon^{+}]$.\\
+Se tutti i job sono predicibili, lo è anche l'insieme di task e quindi l'esecuzione.\\
+È importante perché possiamo trovare il caso peggiore, almeno per i tempi di esecuzione: il grosso problema è rispettare le scadenze, la difficoltà è fare in modo che i job non completino oltre.\\
+Teorema: un insieme di job interrompibili, indipendenti e con istanti di rilascio fissati che è schedulato su un processore singolo da un algoritmo priority driven è predicibile.\\
+Il vantaggio di lavorare con sistemi predicibili è che possiamo certificarlo con la validazione, dimostrando nel caso peggiore della schedulazione massima.\\
+Se non vale una di queste ipotesi, problemi e vedremo più avanti come risolvere.
+
+
+\section{Fattore di utilizzazione}
+Come certifichiamo un sistema, il concetto necessario è il \textbf{fattore di utilizzazione}, già introdotto fra i parametri del sistema di task o dei job.\\
+Confrontiamo gli algoritmi di schedulazione in base a questo parametro, ci sono algoritmi come FIFO e LIFO che vanno molto male su sistemi real time perché non considerano l'urgenza del job.\\
+Ci sono poi una classe di algoritmi dove la priorità si può legare in maniera arbitraria al "gusto" del progettista, quindi \textbf{fixed priority}: le priorità sono associate all'importanza relativa dei task.\\
+Sono anche questi algoritmi che lavorano male su sistemi real time.\\
+Gli algoritmi migliori sono quelli che assegnano la priorità in base a dei parametri temporali oggettivi, quando questo è stabilito si può fare un discorso formale matematico su questi algoritmi.\\
+Come valutiamo le prestazioni degli algoritmi di schedulazione che si basano su parametri temporali: usiamo il \textbf{fattore di utilizzazione} dell'algoritmo di schedulazione, $U_X \in [0,1]$ da non confondere con l'utilizzazione del task.\\
+Il fattore di utilizzazione è tale che l'algoritmo può determinare una schedulazione fattibile per ogni insieme di task periodici se l'utilizzazione totale di task è $\leq U_X$.\\
+Averlo pari a 0 è male, mentre pari ad 1 vuol dire che il processore non ha tempo libero ma l'algoritmo sarà ottimo.\\
+Confrontiamo i diversi fattori di utilizzazione:
+\begin{itemize}
+	\item FIFO: 0, esiste un insieme di due task con fattore di utilizzazione pari ad $\epsilon > 0$ piccolo quanto si vuole che non è schedulabile con FIFO.\\esempio: $T_1 = (10, 5\epsilon)$, $T_2 = (\frac{20}{\epsilon}, 10)$
+	\item EDF: 1, ma dobbiamo dimostrarlo. Sappiamo solo che EDF è ottimale per le ipotesi viste, ma non abbiamo mai detto che tutti i sistemi di task, anche quelli che occupano il processore al 100\% rispettano le scadenze.\\
+	Per dirlo occorre mostrare che EDF riesca a schedulare anche insiemi di task che occupano il processore al 100\%
+\end{itemize}
+EDF è semplice ed ottimale, quindi perché dovremmo studiarne altri? EDF ha i suoi problemi, uno dei principali è che va benissimo se tutto va bene, ma se l'hardware comincia a cedere e magari i job mancano le scadenze, a quel punto in EDF è difficile capire cosa succederà.\\
+Altro problema è relativo alla priorità assegnata: che succede se un job manca la scadenza? La priorità diventa negativa o cosa? EDF in se non definisce cosa fare quando il job è in ritardo, d'altra parte preso un algoritmo a priorità fissa come RM, il comportamento è bene o male predicibile perché è legato a parametri del task che non cambiano anche quando il sistema è sovraccarico.
+
+\subsection{Fattore di utilizzazione di EDF}
+Teorema (Liu Layland, 1973): un sistema $T$ di task indipendenti, interrompibili, con scadenze relative uguale ai periodi e fattore di utilizzazione $U_T$ ha schedulazione fattibile su un singolo processore se $U_T \leq 1$.\\
+Corollario: l'algoritmo EDF ha un fattore di utilizzazione $U_{EDF} = 1$ per sistemi di task indipendenti, interrompibili, con scadenze relative uguali o maggiori dei rispettivi periodi.\\\\
+Dim. (sketch): la parte del "solo se" è banale, se un sistema di task occupa un processore per più del 100\% qualcuno mancherà le scadenze, visto che queste sono uguali ai periodi.\\
+Rimane da dimostrare il "se": se $U_T \leq 1$ allora esiste una schedulazione che rispetta le scadenze.\\
+Usiamo lo scheduler EDF come algoritmo che produce tale schedulazione fattibile.\\
+Supponiamo di avere un sistema di task in cui EDF non riesce a trovare una schedulazione fattibile, allora posso provare che $U_T > 1$.\\Supponiamo di avere una schedulazione fattibile, in cui si possono rispettare le scadenze, ma tale per cui EDF non trova questa schedulazione.\\
+In realtà basta considerare una schedulazione dove EDF non la trova: supponiamo che al tempo t $J_{i,c}$ manchi una scadenza, t = $p_i$ perché le scadenze sono implicite.\\
+Supponiamo anche che il processore non sia mai stato idle.
+\begin{itemize}
+	\item caso 1: il job andrebbe eseguito fra $r_{i,c}$ ed $r_{i,c} + p_i$ ma non riesce a completare entro la scadenza.\\
+	Il caso è quello per cui i periodi di tutti gli altri task iniziano sempre dopo $r_{i,c}$, quindi dopo il job che manca la scadenza.\\
+	Le scadenze di tutti i job rilasciati nei periodi in cui cade t hanno una priorità inferiore a quello che manca la scadenza perché la loro scadenza assoluta è oltre t, quindi non hanno preso nessun tempo di CPU perché vengono rilasciati dopo e la loro priorità è inferiore.\\
+	Quindi dire che il job manca la scadenza implica che il processore non riesce ad eseguire tutto il carico richiesto:\\
+	$t < \frac{(t - \phi_i) e_i}{p_i} + \sum_{k \neq i} \lfloor \frac{(t - \phi_k)}{p_k} e_k \rfloor$ ($phi_i$ è la fase del job, è il primo rilascio). Prendo la parte intera inferiore, perché nell'ultimo periodo in cui il job viene rilasciato non può aver rubato nulla al job i.\\Abbiamo che:
+	è tutto $\leq t \frac{e_i}{p_i} + \sum_{k \neq i} t \frac{e_k}{p_k}$ maggiorando, ma è proprio $tU_T$, quindi $t < t U_T \rightarrow U_T > 1$
+	\item caso 2: esistono dei task nell'insieme $T'$ in cui il periodo contiene t.\\
+	La priorità di questi task è comunque inferiore a quello che manca la scadenza, quindi possono essere eseguiti solo prima che venga rilasciato il job in $r_{i,c}$, quindi possiamo definire un istante $t'$ che è l'ultimo istante dove si esegue un job dell'insieme $T'$.\\
+	Applichiamo il discorso precedente all'intervallo $[t', t]$: $\phi_k'$ è l'istante di rilascio del primo job in questo intervallo.\\
+	Tutti i task in $t'$ contribuiranno 0 perché la loro scadenza starà  oltre e quindi considero:\\
+	$t - t' < \frac{(t - \phi_i') e_i}{p_i} + \sum_{T_k \in T\backslash T', k\neq i} \lfloor \frac{t - \phi_k'}{p_k} \rfloor e_k \leq (t-t') + \sum_{T_k \in T\backslash T', k\neq i} \frac{e_k}{p_k} \leq (t-t') \rightarrow U_T > 1$
+\end{itemize}
+
+\subsection{Densità dei task}
+
+Se cade l'ipotesi che la scadenza relativa di qualche task sia inferiore al periodo non vale più quanto detto, quindi si considera la \textbf{denistà di un task}: $\dfrac{e}{min(D,p)}$.\\
+Teorema: un sistema di task indipendenti, interrompibili e densità $\Delta_T$ ha una schedulazione fattibile su un singolo processore se $\Delta_T \leq 1$.\\
+Questa è una condizione sufficiente e non necessaria.\\
+Anche questo va dimostrato, nel "solo se": il fatto che le scadenze siano oltre i periodi questo non ci consente comunque di caricare un processore per più del 100\%.
+Non si verifica mai il caso in cui $U_T > \Delta_T$:
+\begin{itemize}
+	\item se esiste un task tale che $D_i < p_i$ allora $U_T < \Delta_T$
+	\item se per ogni task, $D_i \geq p_i$ allora $U_T = \Delta_T$
+\end{itemize}
+Dim: volgiamo provare che se per ogni task la scadenza relativa è $\geq$ al periodo allora esiste una schedulazione fattibile solo se $U_T \leq 1$.\\
+La facciamo per induzione:
+\begin{itemize}
+	\item per un solo task, $e \leq D$. Possiamo permetterci che abbia una utilizzazione maggiore di 1? Sì, l'importante è che valga il $\leq$.\\
+	Ma anche il secondo job del task deve terminare entro la sua scadenza assoluta: $2e \leq D + p$, dove D+p è la distanza temporale fra i due job.\\
+	Possiamo iterare per tutti i job del task: $(k+1)e \leq D + kp \forall k$
+	\item ma fissato $k \geq 1$, $\frac{e}{p} < \frac{k+1}{k} \cdot \frac{e}{p} \leq 1 + \frac{D}{pk} \rightarrow \frac{e}{p} \leq 1$, questo perché k posso aumentarlo a piacere, quindi $\frac{D}{pk}$ tende a 0
+	\item dato che sia vero per n-1 task in fase, allora possiamo dire che per $T_n$ e per k intero:\\
+	$(k+1)e_n \leq (D_n + k p_n) \cdot (1 - \sum_{i=1}^{n-1} \frac{e_i}{p_i})$: il processore non è tutto per me, deve eseguire gli n-1 task precedenti ma qui usiamo l'ipotesi induttiva
+	\item ma allora per ogni k $leq 1$, abbiamo $\frac{e_n}{p_n} < (\dfrac{D_n}{k p_n} + 1) (1 - \sum_{i=1}^{n-1} \frac{e_i}{p_i}) \rightarrow U_T \leq 1$
+\end{itemize} 
+l'idea intuitiva è che nei periodi successivi inizierò ad eseguire i job un po' oltre quel periodo, perché ho mangiato del tempo per via dell'utilizzazione precedente.\\
+Quindi prima o poi arriverò ad un task che mancherà la scadenza, perché mi mangio ogni volta un pezzo del "vantaggio".\\
+Se i task non sono in fase si può complicare un po' la dimostrazione
+
+\section{Test di schedulabilità}
+Quindi se abbiamo tutte le ipotesi dette, come stabiliamo se è schedulabile con EDF:
+\begin{itemize}
+	\item vediamo $\Delta$, se è $\leq 1$ non serve dire altro
+	\item Altrimenti, se $D_i \geq p_i$ per ogni i allora il sistema non è schedulabile
+	\item Ancora, possiamo simulare EDF per un segmento lungo $2H + max p_i + max D_i$ e se in questo tempo EDF rispetta sempre le scadenze posso concludere che il sistema rispetta le scadenze.
+\end{itemize}
+Potrei però avere che il sistema non è totalmente definito, quindi non avrei modo di simulare:
+\begin{itemize}
+	\item se i tempi di esecuzione sono più corti, il sistema è predicibile quindi simulo il worst case
+	\item se i task sono sporadici, ossia gli intervalli di rilascio dei job sono maggiori dei periodi posso ancora riuscire
+\end{itemize}
+se le fasi non sono note non posso simulare
+\subsection{Analisi di schedulabilità per EDF}
+Se alcuni task hanno scadenze relative inferiori ai periodi, la condizione è sufficiente:\\
+Teorema: Un sistema $T$ con task periodici, indipendenti, interrompibili, con $U_T < 1$ è schedulabile con EDF se e solo se:\\
+$\forall L > 0, \sum_{i=0}^{n} \lfloor \dfrac{L + p_i - D_I}{p_i} e_i \leq L \rfloor$
+posso controllare un numero finito di valori di L:\\
+$L \leq max\{D_1, ..., D_N \dfrac{\sum_{i=1}^{n} (p_i - D_i) (\frac{e_i}{p_i})}{1 - U_T} \}$.\\
+Questa analisi di schedulabilità con EDF non viene messa in pratica spesso, si tende a preferire la formulazione con la densità.
+
+\subsection{Schedulabilità di algoritmi a priorità fissa}
+Gli algoritmi a priorità fissa in generale non sono ottimali, ad esempio: $T_1 = (2,1)$ e $T_2 = (5, 2.5)$, siccome $U_1$ si può schedulare con EDF ma non si ci riesce con nessun algoritmo a priorità fissa.\\
+$J_{1,1}$ deve avere una priorità maggiore di $J_{1,2}$ e lo stesso deve valere per $J_{2,1}$, altrimenti il job di $T_2$ non lascerebbe abbastanza tempo al job di $T_1$ per completare.\\
+Ancora $J_{2,1}$ deve avere priorità maggiore di $J_{1,3}$, ma a priorità fissa solo uno dei due task può avere priorità maggiore dell'altro.\\
+Esistono quindi classi di sistemi che ammettono un algoritmo a priorità fissa ottimale?\\Sì: classico esempio sono sistemi di task \textbf{semplicemente periodici}: questo è vero se per ogni coppia di task $T_i$ e $T_k$ con $p_i < p_k$, $p_k$ è multiplo intero di $p_i$.\\
+Classico caso: tutti i task hanno un periodo che sono multipli di 2, esiste un teorema\\
+Teorema: un sistema di task semplicemente periodici, interrompibili, indipendenti le cui scadenze relative non sono inferiori ai rispettivi periodi ha una scadenza RM fattibile su singolo processore se e solo se $U_T \leq 1$.\\
+Dim: supponiamo che i task siano in fase, le scadenze siano uguali ad i periodi e il processore non sia mai idle.\\
+Per assurdo, $T_i$ manca la scadenza al tempo t, facciamo quindi il conto:\\
+ogni task $T_k$ che ha priorità maggiore di $T_i$ ha un periodo più piccolo di $p_i$, perciò t deve essere un multiplo intero di tutti i $p_k$.\\
+È importante perché se qui il task manca la scadenza, sono stati solo i task a priorità superiore, quelli a priorità inferiore non possono avergli tolto tempo:\\
+$t < \sum_{k = 1}^{i} \frac{e_k t}{p_k} = t \cdot \sum_{k = 1}^{i} \frac{e_k}{p_k} \leq t \cdot U_T$.\\\\
+Possiamo anche considerare DM, anche qui:\\
+Teorema: se per un sistema di task periodici, indipendenti ed interrompibili che sono in fase ed hanno scadenze relative minori o uguali ai rispettivi periodi esiste un algoritmo a priorità fissa che produce una schedulazione fattibile, allora anche DM lo fa.\\
+Corollario: siccome DM coincide con RM quando le scadenze relative sono proporzionali ai rispettivi periodi, allora RM è ottimale fra tutti gli algoritmi a priorità fissa qualora le scadenze relative dei task siano non superiori e proporzionali ai rispettivi periodi\\\\
+Il thm prevede che i task siano in fase, mentre nel corollario no, perché avere i task in fase è il caso peggiore possibile.
+
+
 \chapter{Schedulabilità di algoritmi a priorità fissa}
+
 \section{Schedulabilità di algoritmi a priorità fissa}
 Algoritmi a priorità dinamica, come EDF, sono ottimali (sotto determinate condizioni): se $\exists$ schedulazione fattibile $\Rightarrow$ anche EDF trova schedulazione.\\ Nessun algoritmo X a priorità fissa può avere un fatto di utilizzazione U$_{X}$ = 1, deve per forza essere $<$ 1.\\ Inoltre RM è ottimale (in senso assoluto, ovvero può raggiungere U = 1) per sistemi armonici con scadenze implicite.\\ In questa condizione RM è tanto buono quanto EDF.\\ DM è ottimale tra gli algoritmi a priorità fissa, ma non in senso assoluto: se $\exists$ algoritmo a priorità fissa che trova una schedulazione fattibile per un insieme di task, allora lo fa anche DM. Questo mi fa capire assegnare priorità fisse ai task,in modo arbitrario, non fa guadagnare nulla rispetto ad assegnarle con un parametro come la scadenza relativa. Algoritmo è altrettanto buono, se non più buono di algoritmi che fissano le scadenze in modo soggettivo, posso realizzare sistemi di task basati su parametri oggettivi e non soggettivi.\\ Corollario: RM è ottimale tra gli algoritmi a priorità fissa per sistemi ti task con scadenza proporzionale al periodo.\\ Mi pongo un problema generale: se ho sys di task generale ed un algoritmo di schedulazione a priorità fissa, come faccio a verificare il sistema, ovvero a certificare che l'algoritmo produrrà sempre una schedulazione valida?
 \subsection{Istanti critici}
@@ -266,7 +617,8 @@ Istanti critici: suppongo che nel sys di task tutti i job abbiano un tempo di ri
 \includegraphics[scale=0.4]{immagini/image-001.jpg}
 \end{figure}
 Stesso esempio anche se i task non sono in fase: 6 è istante critico, è descritto dal teorema.\\ Quando c'è rilascio in fase, siccome priorità è fissa, la schedulazione prodotta risulta identica a qualsiasi schedulazione non in fase $\Rightarrow$ mi interessa ricondurmi a quando tutti i task sono in fase.
-\subsection{Schedulabilità per priorità fissa e tempi di risposta piccoli}Supponiamo che in un sistema ho task a priorità fissa e tempi di risposta piccoli.\\ Ordino i task per priorità decrescente, suppongo siano in fase all'istante t$_{0}$.\\ Ho i task T$_{1}$......T$_{i}$ e mi chiedo il tempo necessario per eseguire tutti i job dei task T$_{1}$......T$_{i}$, nell'intervallo [t$_{0}$, t$_{0}$+t] (t $\leq$ p$_{i}$:\\
+\subsection{Schedulabilità per priorità fissa e tempi di risposta piccoli}
+Supponiamo che in un sistema ho task a priorità fissa e tempi di risposta piccoli.\\ Ordino i task per priorità decrescente, suppongo siano in fase all'istante t$_{0}$.\\ Ho i task T$_{1}$......T$_{i}$ e mi chiedo il tempo necessario per eseguire tutti i job dei task T$_{1}$......T$_{i}$, nell'intervallo [t$_{0}$, t$_{0}$+t] (t $\leq$ p$_{i}$:\\
 w$_{i}$(t) = e$_{i}$ +  $\sum\limits_{k=0}^{i-1} \lceil\frac{t}{p_{k}}\rceil \cdot e_{k}$.\\ Somma si estende su tutti i task di priorità superiore di T$_{i}$, devo considerarli perché portano via tempo al job di T$_{i}$. Prendo k-esimo task: a t$_{0}$ tutti i task sono in fase, quindi rilascio sicuro un job, quando ne rilascio? Prendo il ceil di $\frac{t}{p_{k}}$,anche job rilasciato nel periodo dopo quello considerato mi ruba tempo; moltiplico tutto per e$_{k}$, il tempo che ci metto per completare i job.\\ Test di schedulabilità: dati job T$_{1}$......T$_{i}$, in fase a t$_{0}$ con priorità decrescenti con T$_{1}$......T$_{i-1}$ effettivamente schedulabili. Il task T$_{i}$ può essere schedulato nell'intervallo di tempo [t$_{0}$, t$_{0}$+D] se $\exists$ t $\leq$ D$_{i}$ tale che w$_{i}$(t) $\leq$ t. IL mio scopo è sempre quello di verificare la schedulabilità del sistema, se ne trovo uno non schedulabile la mia analisi è finita, non ci faccio nulla col sistema di task.\\ Applicazione: ho T$_{1}$......T$_{n}$ con priorità decrescenti. \\Considero un task alla volta: $\forall$ task T$_{i}$  calcolo il valore della funzione di tempo necessario w$_{i}$(t) per tutti i valori t $\leq$D$_{i}$ tali per cui t è un multiplo intero di p$_{k}$ per k $\in$ \{1,2....,i \}.Funzione w$_{i}$(t) sale a gradini, devo considerare valori per cui tale funzione cambia valori.\\ Se per almeno uno dei valori t vale che w$_{i}$(t) $\leq$ t allora T$_{i}$ è effettivamente schedulabile. Altrimenti il test fallisce, ovvero n job di T$_{i}$ potrebbe mancare la scadenza, ovvero la manca sicuro se c'è un rilascio di tutti i job in fase dei task di priorità superiore e tutti quei task hanno un tempo di esecuzione pari al loro worst-case.\\ Possono esserci casi fortuiti, quindi in ipotesi rilassate il test non conferma schedulabilità ma scheduler riesce, però il risultato non è rilevante.\\Tanto vale fermarsi e riprogettare il sistema.\\
 esempio: T$_{1}$=(3,1), T$_{2}$=(5,1.5), T$_{3}$=(7, 1.25), T$_{4}$=(9,0,5) e considero le funzioni di tempo necessario:\\
 \begin{figure}[!h]
