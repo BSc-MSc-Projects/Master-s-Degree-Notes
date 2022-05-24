@@ -3830,6 +3830,138 @@ Nel radar inoltre persistono diverse dimensioni temporali: (copia slides)\\
 il radar trasmette un impulso, la cui durata dipende da determinate caratteristiche, può però trasmettere n impulsi su ogni oggetto e per poter rimetterli sullo stesso oggetto serve aspettare che il radar faccia tutto il giro (radar di sorveglianza).\\
 (immagine)
 
+Quindi riusciamo ad avere la capacità di trovare un oggetto senza che questo collabori, deve solo avere la capacità di retro-diffondere onde EM ed in natura nessun oggetto non lo fa.\\
+L'informazione di interesse al radar la aggiunge l'oggetto: la forma d'onda è pienamente nota, la presenza dell'oggetto aggiunge l'informazione, nella navigazione e localizzazione per sorveglianza non c'è trasferimento di informazione, ma lo fa la presenza del target nell'ambiente e questo ha implicazioni nel tipo di attacco.\\
+
+\subsection{Capacità di rilevazione - RCS}
+Nel mondo reale l'oggetto produce eco ma non tutti danno luogo a detection del radar perché possono essere poco potenti e nascondersi sotto al rumore termico del ricevitore, quindi c'è un limite di sensibilità tipica dei sistemi elettronici.\\
+La portata, ovvero la massima distanza alla quale possiamo vedere l'oggetto ha un limite legato alla sensitività, inoltre dipende anche dalle capacità dell'oggetto stesso ovvero quanto retrodiffonde:
+\begin{itemize}
+	\item oggetto metallico, retrodiffonde molto
+	\item altri oggetti assorbono, quindi coefficiente di retrodiffusione è più basso
+\end{itemize}
+dipende anche dalla forma, dall'assetto etc...\\
+Tutte queste proprietà si riassumono nella \textbf{radar cross-action} del bersaglio, un parametro che identifica la capacità del bersaglio di retrodiffondere la potenza EM che lo colpisce.\\
+Ha la misura di un'area ($m^2$), quindi qualitativamente è relativa alla grandezza dell'oggetto ma nella realtà non è strettamente legata solo alle dimensioni fisiche dell'oggetto.\\
+Maggiore questo valore e maggiore sarà la capacità (quindi la distanza) con cui il radar identifica l'oggetto.\\
+Per il principio di funzionamento del radar, c'è una retrodiffusione, quindi l'onda EM si deve propagare per 2 volte la distanza r, si può dimostrare che la potenza ricevuta è proporzionale ad $r^{-4}$.\\
+È importante perché fa capire che per vedere oggetti lontani occorre trasmettere potenze elevate perché l'oggetto ritrasmetterà con una potenza più bassa ed inoltre è legata alla RCS.\\\\
+Uno dei possibili modi per mettere in crisi un radar è ridurre la RCS: se riesco a costruire gli oggetti in modo che nella direzione del radar trasmettono una potenza bassissima, ho costruito degli oggetti praticamente invisibili al radar, è il principio di funzionamento della tecnologia stealth.\\
+esempio:\\
+se ho una sfera retrodiffondo in più direzioni, se ho un "piano infinito", si retrodiffonde gran parte della potenza incidente con un angolo di 90° rispetto alla normale.\\Se quindi la superficie è infinita e messa storta, si retrodiffonde lontano dal radar, in realtà non è infinita quindi c'è poco eco verso il radar.\\Possiamo pensare ad un oggetto complesso come una serie di "faccette" scatteratrici che diffondo con una certa potenza.\\
+Quindi nel radar trasmetto un certo segnale, vedo quello di ritorno e misuro una certa soglia della potenza e se la supera vuol dire che l'oggetto è presente e quindi calcolo l'angolo, per poter superare la soglia
+\begin{itemize}
+	\item o sono vicino
+	\item oppure devo avere un RCS grande
+\end{itemize}
+se costruisco bersagli in modo che tutte le onde incidenti sono riflesse in altre direzioni ma mai in quella di arrivo allora sono invisibili al radar.\\\\
+altro esempio: una superficie piana è ben visibile, ma se anche il radar si sposta di poco tutta la potenza EM è diffusa in un'altra direzione.\\
+Ammettiamo quindi di avere due piani metallici a 90° la radar cross action è estremamente elevata, sono dei \textbf{corner reflector}, quindi se ci sono superfici normali alla direzione del radar è elevato ma anche in caso di superfici fra loro ortogonali.\\
+Spesso usati per aumentare la RCS degli oggetti per aumentarne la rilevabilità.
+
+\section{Tecnologia stealth}
+Non si vuole essere visti, quindi occorre evitare il più possibile di avere superfici metalliche normali alla direzione di incidenza dell'onda EM e superfici ortogonali fra loro.\\
+C'è comunque potenza EM retrodiffusa ed è il punto critico di questa tecnologia, perché l'energia incidente da qualche parte deve andare, non può assorbirla tutta.\\
+Si cerca quindi di minimizzarla in direzione del radar, andando nelle altre direzioni e funziona finché l'antenna del radar in tx è la stessa in rx, ma se le due antenne vengono disaccoppiate non è più invisibile.\\
+Deve essere invisibile a tutto non solo al radar:
+\begin{itemize}
+	\item colore per volo notturno
+	\item emissioni termiche ridotte al massimo
+	\item dentro c'è un pilota, che ha bisogno di vetro per vedere.\\
+	Ma il vetro lascia passare potenza EM, quindi anche quello va coperto da un sottile film metallico
+\end{itemize}
+quindi l'oggetto in se non è banale da realizzare e costa soldi veri.\\
+Quantifichiamo "l'invisibilità":
+
+(copia immagine)\\
+un target normale come una nave è nell'ordine dei 10000 dB$m^2$, l'uomo è nella frazione dei pochi dB$m^2$ per poi scendere agli insetti.\\
+Il JSF, ovvero l'ultima tecnologia da un punto di vista del fighter sta alla RCS visto frontalmente di un insetto, il bombardiere B2 ancora più in basso.\\
+Non sono totalmente invisibili al radar, ma trasmettendo a più potenza si ha un grande numero di falsi allarmi dovuti alla presenza di uccelli, insetti etc...\\
+esempio: fighter moderno e dove lavorare per rendere l'oggetto invisibile (immagini??)
+
+si tende a:
+\begin{itemize}
+	\item ridurre le taniche di cherosene
+	\item si evitano i corner reflector
+	\item si lavora sulle cavità
+	\item etc...
+\end{itemize}
+Questa è la prima capacità di fare contromisura rispetto al sistema radar: funziona ricevendo l'eco, quindi se riesco a minimizzare l'eco ho abbassato la probabilità di intercetto.
+
+\chapter{Tecniche di disturbo e difesa}
+
+\section{Electronic Warfare}
+Abbiamo visto 2 grandi sistemi:
+\begin{enumerate}
+	\item radar, in cui un oggetto cerca di fare sorveglianza e capire la presenza e la posizione di un oggetto.\\
+	Il segnale qui è:
+	\begin{itemize}
+		\item tipicamente impulsivo
+		\item segnale non noto
+		\item frequenze disparate
+		\item a banda abbastanza stretta
+		\item informazione calcolata mediante il tempo di volo e dipende dalle proprietà del target (RCS)
+	\end{itemize}
+	\item sistemi di navigazione, l'approccio più classico è il GPS dove ci sono n satelliti in orbita ed un ricevitore a terra, tutti i satelliti trasmettono un segnale ed il ricevitore calcola la propria posizione.\\
+	Qui i segnali sono:
+	\begin{itemize}
+		\item continui nel tempo
+		\item noti a tutti
+		\item a banda larga
+		\item trasmettono informazioni sul tempo di trasmissione e sulla posizione del satellite.\\
+		Con queste, l'utente calcola la sua posizione
+	\end{itemize}
+\end{enumerate}
+Ora dobbiamo trovare un modo per non fare funzionare i sistemi, è il mondo dell'Electronic Warfare:
+\begin{itemize}
+	\item nel caso dei radar è molto sviluppato quello che è chiamato SIGNIT, ELINT o ESM, ovvero prevede tutta una attività per capire come è fatto il radar perché questo non è uno standard.\\
+	C'è  poi tutta la parte di ECM;
+	\item nella navigazione satellitare la prima parte è ridotta all'osso perché i segnali sono noti, quindi è molto sviluppata la ECM
+\end{itemize}
+Dovendo lavorare con la navigazione satellitare, non possiamo entrare nel device utente, quindi sfrutto ciò che succede prima di entrare nell'antenna utente, quindi fare in modo che non vi arrivi il segnale dal satellite.\\
+È molto efficace perché il segnale che arriva è a potenza molto bassa, abbiamo:
+\begin{itemize}
+	\item jamming, l'attaccante comincia a trasmettere verso la vittima fino a non far più ricevere segnali dai satelliti, DoS (\textbf{SMARMELLI IL SEGNALE CIT*})
+	\item spoofing, ovvero trasmettere segnali analoghi a quelli dei satelliti.\\
+	Se ben fatto l'utente non se ne rende conto, a differenza magari del jamming, quindi il ricevitore continua a fornire la posizione all'utente che è errata e può essere tanto errata quanto è bravo chi fa spoofing nel mimare la costellazione di satelliti
+\end{itemize}
+Ci sono poi altre questioni che sono ad esempio manomissioni di hardware e software.\\\\
+Sui radar ci sono varie possibilità di contromisure elettroniche, ma anche qui si lavora sul fatto che l'informazione per il radar è aggiunta dal target, quindi possiamo:
+\begin{itemize}
+	\item far sparire l'aereo lavorando sull'RCS (stealth)
+	\item inganni, cioè mettere finti target da qualche parte per ingannare il radar
+	\item nascondere il target, ad esempio dietro una cortina di echi radar che riempie il visore del radar di questi echi e rende impossibile capire dove si trova il target, è il chaff
+	\item jamming, l'eco che torna dall'aereo è nascosto da segnali trasmessi appositamente.\\
+	Questa si declina quasi a tendere fino allo spoofing, anche se non si chiama così nel radar
+\end{itemize}
+Riprendiamo lo schema generale: (copia immagine)
+Le misure di SIGINT ed ELINT va fatta sia in tempo reale che in tempo differito perché il nemico può cambiare segnale operativo durante l'attacco (magari sono applicate in maniera differente).\\
+
+\section{Contromisure nei radar}
+\subsection{ARM}
+È una tipica contromisura radar, ha costo basso: è un "missilotto" che al posto della punta ha un antenna che se fatto bene è adattata al segnale radar usato dal nemico.\\
+Il sistema funziona sganciando il "missilotto" che con l'antenna capta il segnale radar e cerca il massimo di potenza ricevuta dal radar, quindi si autoguida verso la direzione da dove arriva la potenza EM e cade dritto sul radar, è economico e fa bene il suo lavoro.\\
+Esistono contro-contromisure in cui il radar ha diverse antenne per far si che il missile cominci a puntare le antenne a stecca e poi perda il controllo per non andare su nessuna.
+
+\subsection{Attività ESM}
+L'approccio classico prevede di vedere il sistema costituito da: (copia immagine)\\
+questa catena dice chi abbiamo di fronte, quindi come è fatto il segnale che stiamo ricevendo, es: un aereo in missione accende il ricevitore ESM che dopo il processamento dice quale radar c'è.\\
+Si attiva quindi un'altra catena di ricezione, in quel momento adattato a quel particolare radar (copia altra immagine)\\
+c'è quindi il technique generator che comincia a trasmettere il disturbo con dei segnali adattati, il ricevitore ECM può non essere necessario ma aiuta.\\
+È un oggetto non banale perché riceve e trasmettere contemporaneamente sulle stesse frequenze, quindi si usano tipicamente tecniche pe evitare che ciò che venga trasmesso rientri nel ricevitore: si comincia a disturbare, si ci ferma e ri riascolta per vedere ad esempio se il radar ha cambiato la forma d'onda di disturbo per adattarsi e ricominciare a disturbare.\\
+Nel ricevitore ESM, come si fa a capire con chi si ha a che fare: dobbiamo avere la capacità di ricevere qualsiasi tipo di segnale radar.\\
+Un radar moderno ha tutta una serie di processamenti nel segnale trasmesso che non lo rendono più il classico impulso e non lo rendono facile da ricevere se non con un filtro, quindi bisogna rinunciare a qualche cosa.\\
+Gli apparati sono dotati di strumenti che misurano solo l'ampiezza del segnale ricevuto, così da poter fare delle misure come la direzione da dove arriva, il tempo etc... ma non è ancora banale perché comunque non sappiamo la frequenza su cui lavora il radar (almeno inizialmente), quindi sono chiamati ricevitori a banda larga (panoramici).\\
+Quindi da una parte sono "banali": (metti immagine sopra)\\
+oggetti così hanno bande passanti strette, quindi non si possono ricevere bande dai 100 Mhz ai 100 Ghz, occorre selezionare una banda e questo abbassa la probabilità di intercetto perché ogni volta si sceglie una banda e si riceve su quella:
+(immagine)\\
+dovendo capire dove trasmette un radar non posso sapere subito che sta a 10GHz, posso cercare di provare a ricevere sulle diverse bande e devo farlo di continuo perché di oggetti che emettono potenza EM ce ne sono molti, quindi devo ciclicamente scansionare tutte le possibili frequenze, quindi la probabilità di intercettare si abbassa perché magari il radar quando entro nella frequenza giusta sta trasmettendo altrove o magari perché cambia frequenza.\\
+Quindi lo schema è questo (immagine sotto)
+\\il ricevitore ha diversi svantaggi ma rispetto al radar ha il vantaggio di ricevere segnali per propagazione diretta, quindi con una potenza che va con $r^{-2}$, quindi la capacità è maggiore del radar ($r^{-4}$).\\
+L'ESM confronta con la sua library per capire il tipo di radar con cui ha a che fare, riempito in tempo di pace.\\
+Esistono tecniche per evitare la bassa probabilità di intercetto, che sono i ricevitori folding che ripiegano tutte le bande osservate contemporaneamente in una.\\
+Ci sono poi casi di ESM con più antenne in più direzioni dove si compara l'ampiezza del segnale delle diverse antenne per trovare gli angoli (immagine):\\
+ogni canale di ricezione misura l'impulso, si mettono insieme per misurare da dove arrivano e per poi matchare l'informazione nella library e capire quali radar ci sono.\\
 
 
 
