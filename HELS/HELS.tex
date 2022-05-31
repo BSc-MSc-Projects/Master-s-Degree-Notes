@@ -206,7 +206,7 @@ Quindi tutti i mezzi biologici sono dispersivi, quindi occorre lavorare distanti
 (dove $0 < \alpha < 1$), 
 ottenendo \textbf{l'espressione di Cole-Cole}.\\Mettendo tutto insieme, si è visto che tutto il corpo umano si può rappresentare con 4 di queste espressioni
 \begin{equation}
-	\dot{\epsilon} = \sum\limits_{i = 1}^{4} \dfrac{\epsilon_{si} - \epsilon_{\infty}}{1 + (j \omega \tau_i)^{1 - \alpha_i}} + \epsilon{\infty} - j \frac{\sigma_0}{\omega}
+	\dot{\epsilon} = \sum\limits_{i = 1}^{4} \dfrac{\epsilon_{si} - \epsilon_{\infty}}{1 + (j \omega \tau_i)^{1 - \alpha_i}} + \epsilon_{\infty} - j \frac{\sigma_0}{\omega}
 \end{equation}
 dove tutti i parametri con la i e $\sigma$ sono dipendenti dai tessuti del corpo considerato.\\Rappresentando la finestra di dispersione, abbiamo 3 finestre per i vari parametri:
 \begin{figure}[!h]
@@ -379,7 +379,7 @@ dove:
 \end{itemize}
 Abbiamo che 
 \begin{equation}
-	B = W\cdot c_b (T - T_{arteria}
+	B = W\cdot c_b (T - T_{arteria})
 \end{equation}
 dove T arteria se stiamo bene è di 37°, se questa diminuisce è il sangue che tende a scaldare, altrimenti raffredda. Ma dopo un po' c'è shock termico e quindi il tessuto comincia a bruciare: se ne vediamo l'andamento
 \begin{figure}[!h]
@@ -428,7 +428,7 @@ Sull'analisi e la ricondizione degli effetti sono stati individuati dei limiti: 
 \end{figure}
 \\\\Nel caso di dispositivi wearable, i limiti dei lavoratori sono coincidenti con quelli della popolazione\\Vi è poi un altro aspetto: le analisi vengono spesso fatte nel caso peggiore, ovvero quando viene trasmessa una sinusoide, quindi un segnale continuo.\\Nella realtà ogni dispotivo di telemetria ha un \textbf{duty cycle:} ci  sono parti alte e poi periodi di nulla, come mostrato in figura:
 \begin{figure}[!h]
-	\includegraphics[scale=1.5]{immagini/duty_cycle.png}
+	\includegraphics[scale=0.7]{immagini/duty_cycle.png}
 	\caption{Trasmissione classica di un dispositivo di telemetria}
 \end{figure}
 \\\\Immaginiamo di avere un esempio in cui un dispositivo trasmette una volta l giorno lo stato di salute di una protesi impiantata, dove:
@@ -557,7 +557,7 @@ Quando si fa un collegamento, una delle cose più preziose è l'energia, in quan
 	\end{equation}
 	se abbiamo un sistema di comunicazione deve prevalere la potenza irradiata, mentre invece per sistemi che fanno terapia deve prevalere quella dissipata.\\\\Possiamo caratterizzare la bontà del trasmettitore in base alla efficienza 
 	\begin{equation}
-		\ni_R = \frac{P_R}{P_{in}} = \dfrac{P_r}{P_j(A) + P_j(B)} \equiv \dfrac{R_R}{R_R + R_j}
+		\nu_R = \frac{P_R}{P_{in}} = \dfrac{P_r}{P_j(A) + P_j(B)} \equiv \dfrac{R_R}{R_R + R_j}
 	\end{equation}
 	abbiamo in più il termine (verde) che è proprio specifico della presenza del corpo.Si possono anche associare le resistenze delle antenne.\\Quando non c'è il corpo umano, la $R_R$ tende ad andare proporzionalmente come il raggio dell'antenna, l'andamento è simile a questo (metti immagine), le prestazioni migliorano ingrandendo l'antenna in modo da avere una resistenza di radiazione migliore ed enfatizzare quindi la parte radiata.\\Se abbiamo anche il corpo, aumentando le dimensioni dell'antenna irradia meglio ma manda più potenza nel corpo e ci sarà maggiore dissipazione. Se $\frac{R}{\lambda}$ aumenta abbiamo due effetti opposti:
 	\begin{itemize}
@@ -568,7 +568,7 @@ Quando si fa un collegamento, una delle cose più preziose è l'energia, in quan
 	\item[2] Consideriamo ora anche il link in presenza del corpo umano.\\Possiamo avere la seguente immagine:\\un'antenna che irradia, chiamiamo P$_l$ la potenza che verrà raccolta per far funzionare il dispositivo. Il parametro che descrive quanto p efficiente questo trasferimento di potenza dal tx all'oggetto è il PTE: $\frac{P_L}{P_{in}}$ e va massimizzato per avere un link efficiente.\\Dipenderà anche in questo caso dai tessuti, dalla posizione rispetto al corpo (più in profondità, maggiore l'attenuazione), dipende anche dalla forma delle antenne coinvolte ed ovviamente dalla frequenza (PTE tende a diminuire quando la frequenza aumenta perché l'attenuazione del corpo aumenta ed è quindi più difficile eseguire il comportamento).\\Possiamo scrivere $P_L = P_{in} \cdot PTE$, fissando la PTE, per aumentare la P$_L$ va aumentata la $P_{in}$, ma nel corpo aumenta anche il SAR ovvero la potenza rilasciata: qui il problema è che per aumentare la P$_L$ potremmo aumentare la potenza in ingresso ma se aumenta troppo il SAR sforo i limiti di legge e qui si capisce bene cosa vuol dire safety by design.\\Il primo anello della catena di progettazione deve:
 	\begin{itemize}
 		\item SAR $< SAR_{max}$
-		\item P$_{in}$ < P max
+		\item P$_{in} < P_{max}$
 	\end{itemize} 
 	viene quindi fuori un vincolo per la PTE, imposto dal SAR: questo ci dice quindi quanto deve essere fatto bene il collegamento in modo da poter minimizzare la potenza necessaria.
 \end{itemize}
@@ -598,7 +598,7 @@ abbiamo due spire ai capi della seconda spira vogliamo raccogliere la tensione.P
 \end{equation}
 ed inoltre
 \begin{equation}
-	V_2 = -M \frac{dI_1}{dt}
+	V_2 = - M \frac{dI_1}{dt}
 \end{equation}
 nel caso ideale abbiamo che tutto il flusso del primario è raccolto dal secondario e quindi vale:
 \begin{equation}
@@ -670,7 +670,7 @@ M = 	\dfrac{\mu_0 I a^2 N_1}{2(a^2 + r^2)^{\frac{3}{2}}} \pi b^2 cos\alpha
 \subsection{Accoppiamento induttivo risonante}
 Uno dei modi è quindi fare un'accoppiamento induttivo risonante: si deve a Telsa, alla risonanza si ha tipicamente un massimo trasferimento di potenza (o quanto meno di stimolo).\\Per far risonare i due sistemi occorre, innanzi tutto fare in modo che il tx sia risonante: occorre agire sulle dimensioni in modo che la parte immaginaria x sia pari a 0.\\Sull'RX c'è poco margine, se abbiamo un loop piccolo e ne vediamo la reattanza in ingresso $X_{in}$ se 2$pi$B << x allora la reattanza sarà induttiva, ovvero $>$ 0 e si comporterà come un circuito.\\Ci sarà poi il carico del dispositivo, ovvero qualcosa che gli permetta di utilizzare l'energia, occorre aggiungere un condensatore che può essere messo sia in serie che in parallelo.\\Avremo quindi il coil trasmittente e possiamo mettere in risonanza sia tramite un condensatore in serie oppure con un condensatore in parallelo 
 \begin{figure}[!h]
-	\includegraphics[scale=1]{immagini/cond_ser_parall.png}
+	\includegraphics[scale=0.7]{immagini/cond_ser_parall.png}
 	\caption{Condensatore in parallelo o in serie per il ricevente}
 \end{figure}
  entrambe danno la stessa potenza sul carico ma cambiano i valori mutui di corrente e di tensione:
@@ -681,7 +681,7 @@ Uno dei modi è quindi fare un'accoppiamento induttivo risonante: si deve a Tels
  \end{itemize}
 Questo tipo di dispositivo lavora meglio con alte tensioni, quindi si preferisce usare uno schema parallelo.\\\\Abbiamo quindi il nostro modello circuitale TX ed RX:
 \begin{figure}
-	\includegraphics[scale=1]{immagini/schema_circuitale.png}
+	\includegraphics[scale=0.5]{immagini/schema_circuitale.png}
 	\caption{Schema circuitale di TX ed RX}
 \end{figure}
 dove nel ricevitore C$_T$ è il condensatore di tuning. La $C_T$ va scelta in modo tale che 
@@ -722,7 +722,7 @@ quindi la
 \end{equation}
 e vale per un circuito risonante parallelo.\\Nota importante: a frequenza basse (dove siamo) le perdite dei tessuti sono basse, cioè la conducibilità $\sigma$ (legata alle perdite) è piccola. Siamo nell'ordine dei 100KHz e contano quasi più le perdite sui conduttori che sul tessuto.\\Tipicamente quindi i due coil conviene farli di dimensioni simili in modo che buona parte del campo B prodotto dal primario viene raccolto dal secondario, in alcuni casi però non è possibile farli simili perché magari un coil ricevente deve poter raccogliere più coil tx, quindi è possibile usare un coil booster:\\
 \begin{figure}
-	\includegraphics[scale=1]{immagini/booster_coil.png}
+	\includegraphics[scale=0.6]{immagini/booster_coil.png}
 	\caption{Sistema con coil booster}
 \end{figure}
 \\\\
@@ -3929,7 +3929,7 @@ Tutte le prestazioni ottenibili dipendono da diversi fattori.\\\\
 Nel radar inoltre persistono diverse dimensioni temporali: (copia slides)\\
 il radar trasmette un impulso, la cui durata dipende da determinate caratteristiche, può però trasmettere n impulsi su ogni oggetto e per poter rimetterli sullo stesso oggetto serve aspettare che il radar faccia tutto il giro (radar di sorveglianza).\\
 \begin{figure}[!h]
-	\includegraphics[scale=0.5]{immagini/tempi_radar.png}
+	\includegraphics[scale=0.5]{immagini/localization/tempi_radar.png}
 \end{figure}\\\\
 Quindi riusciamo ad avere la capacità di trovare un oggetto senza che questo collabori, deve solo avere la capacità di retro-diffondere onde EM ed in natura nessun oggetto non lo fa.\\
 L'informazione di interesse al radar la aggiunge l'oggetto: la forma d'onda è pienamente nota, la presenza dell'oggetto aggiunge l'informazione, nella navigazione e localizzazione per sorveglianza non c'è trasferimento di informazione, ma lo fa la presenza del target nell'ambiente e questo ha implicazioni nel tipo di attacco.\\
@@ -4045,7 +4045,7 @@ Esistono contro-contromisure in cui il radar ha diverse antenne per far si che i
 \subsection{Attività ESM}
 L'approccio classico prevede di vedere il sistema costituito da:\\
 \begin{figure}[!h]
-	\includegraphics[scale=0.6]{immagini/esm-1.png}
+	\includegraphics[scale=0.6]{immagini/localization/esm-1.png}
 \end{figure}\\\\
 questa catena dice chi abbiamo di fronte, quindi come è fatto il segnale che stiamo ricevendo, es: un aereo in missione accende il ricevitore ESM che dopo il processamento dice quale radar c'è.\\
 Si attiva quindi un'altra catena di ricezione, in quel momento adattato a quel particolare radar.\\
