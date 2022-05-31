@@ -3442,6 +3442,7 @@ tutti condividono lo spettro EM, non solo esistono enti che standardizzano la co
 	\item attacchi chaff e ARM, abbastanza banali nel funzionamento
 	\item possibili contromisure agli attacchi
 \end{itemize}
+
 \subsection{Esempi storici di guerra elettronica}
 La guerra elettronica ed in generale la disinformazione si fa in molti modi, fra cui ad esempio da un punto di vista EM: creare delle false informazioni da un punto di vista degli apparati utilizzati per far credere al nemico qualcosa di falso.
 \\Esempio: ammasso di truppe al confine per fare esercitazioni per mostrare la "forza".
@@ -3457,8 +3458,10 @@ royal air force (aeronautica inglese) aveva a disposizione fra gli aerei uno con
 \\Arrivato alla posizione di interferenza costruttiva per procedere e trovare gli aerei della marina.
 
 \subsection{Terminologia}
-Prima ancora di introdurre i  sistemi radar e di navigazione, cerchiamo di capire come è concepito un sistema per la guerra elettronica:\\
-(copia immagine)
+Prima ancora di introdurre i  sistemi radar e di navigazione, cerchiamo di capire come è concepito un sistema per la guerra elettronica:\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/localization/elec_warfare.png}
+\end{figure}\\
 ammesso di avere un sistema di qualunque tipo, abbiamo bisogno se ipotizziamo che questo sia sotto attacco, di 3 grosse funzioni:
 \begin{itemize}
 	\item ESM: misure elettroniche di supporto.
@@ -3478,8 +3481,10 @@ ammesso di avere un sistema di qualunque tipo, abbiamo bisogno se ipotizziamo ch
 	\\Esempio classico: costruisco un jammer per interferire con le bande del GPS, CCM quando debo trasmettere qualcosa di importante cambio la banda di trasmissione, cambia funzionamento.
 \end{itemize}
 Il processo diventa un loop: il radar che si accorge che è sotto attacco cambia frequenza, quindi anche il jammer cambia frequenza e così via.
-\\Altra divisione:
-(copia)
+\\Altra divisione:\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/localization/elec_warefare_2.png}
+\end{figure}\\
 \begin{itemize}
 	\item SIGINT (signal intelligence): cerca di capire come sono fatti i segnali
 	\begin{itemize}
@@ -3563,21 +3568,43 @@ possiamo poi impostare un sistema di equazioni per trovare la posizione, vedremo
 individuo ad esempio una cima di un monte, riconoscerlo sulla mappa, identifico l'angolo risetto al nord ed identifico una retta che passa per la montagna, misuro la stessa cosa per la torre, interseco le rette e so dove sono.\\
 Stesso esempio, senza bussola, ma ho un \textbf{TELEMETRO LASER}: identifico di nuovo due oggetti sulla mappa e misuro la distanza: identifico una circonferenza con centro l'oggetto e raggio la distanza, lo faccio con un altro ma le due circonferenze si identificano in due punti ma si dovrebbe risolvere.\\
 Le tecniche di posizionamento sono abbastanza banali, sempre risolvere un sistema di equazione che rappresentano le figure geometriche, la difficoltà sta nel misurare le distanze: devo saper trovare l'angolo di arrivo di un segnale EM.
+
 \subsection{Metodo di localizzazione}
-(copia immagine)\\
-tecnica che sfrutta l'angolo di arrivo. Ammettiamo di essere un oggetto in una certa posizione ($x_n, y_n$) e fissiamo un sistema di coordinate.\\
-Possiamo localizzare dei punti di riferimento, che nei sistemi di radio localizzazione vengono definiti radio-aiuti.\\
-Non conosco la mia posizione ($x_n, y_n$) ma conosco ($x_1, y_1$) e so misurare, ad esempio, l'angolo rispetto all'asse x $\theta$, posso quindi scrivere l'equazione della prima retta: (copia).\\
-Nella prima, la tg è la mia misura, so misurare l'angolo, conosco ($x_1, y_1$) ma ho due incognite, quindi mi trovo un altro radio aiuto e faccio l'altra misura e metto a sistema: (copiaa!)\\
-È un sistema lineare in ($x_n, y_n$) e possiamo trovare la posizione.\\\\
-Altro caso (copia immagine)
+Tecnica che sfrutta l'angolo di arrivo. Ammettiamo di essere un oggetto in una certa posizione ($x_N, y_N$) e fissiamo un sistema di coordinate:\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/localization/aoa.png}
+\end{figure}\\
+possiamo localizzare dei punti di riferimento, che nei sistemi di radio localizzazione vengono definiti radio-aiuti.\\
+Non conosco la mia posizione ($x_N, y_N$) ma conosco ($x_1, y_1$) e so misurare, ad esempio, l'angolo rispetto all'asse x $\theta$, posso quindi scrivere l'equazione della prima retta:
+\begin{equation}
+	y_1 - y_N = tg(\theta)(x_1 - x_N)
+\end{equation}
+Nella prima, la tg è la mia misura, so misurare l'angolo, conosco ($x_1, y_1$) ma ho due incognite, quindi mi trovo un altro radio aiuto e faccio l'altra misura e metto a sistema:
+\begin{equation}
+	\begin{cases}
+		y_1 - y_N = tg(\theta)(x_1 - x_N)\\
+		y_2 - y_N = tg(\lambda)(x_2 - x_N)\\
+	\end{cases}
+\end{equation}
+È un sistema lineare in ($x_N, y_N$) e possiamo trovare la posizione.\\\\
+Altro caso\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/localization/range_mes.png}
+\end{figure}\\
 \\misuriamo una distanza, sempre identificando il radio-aiuto e sappiamo fare la misura di distanza, quindi identifichiamo una circonferenza (1), poi col secondo radio-aiuto otteniamo il sistema:
-(copia)\\
+\begin{equation}
+	\begin{cases}
+		(x_1 - x_N)^2 + (y_1 - y_N)^2 = \rho_1^2 \\
+		(x_2 - x_N)^2 + (y_2 - y_N)^2 = \rho_2^2 \\
+	\end{cases}
+\end{equation}
 È un sistema quadratico quindi otteniamo due soluzioni, quindi c'è un problema di ambiguità e dobbiamo trovare un modo per eliminarla.\\
 Cosa banale: abbiamo una conoscenza approssimativa della posizione che basta per scegliere qual è il punto corretto da scegliere.\\\\
-Potremmo poi combinare le cose: (copia)
-\\tecnica di localizzazione mista dove avviene sia una misura di distanza che di angoli (copia)
-\\Qui basta un solo radio aiuto, perché le equazioni rappresentano due misure indipendenti e quindi basta una sola equazione.\\
+Potremmo poi combinare le cose:\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/localization/mixed_mes.png}
+\end{figure}\\
+tecnica di localizzazione mista dove avviene sia una misura di distanza che di angoli, qui basta un solo radio aiuto, perché le equazioni rappresentano due misure indipendenti e quindi basta una sola equazione.\\
 Non cambia nulla da un punto di vista matematico quanti radio-aiuti abbiamo, ma dal punti di vista reale cambia perché avere un sistema misto permette di mettere a terra meno radio-aiuti e quindi meno sistemi di riferimento, ma aumenta la complessità dell'oggetto che deve fare le misure, perché sono due diverse.\\
 Geometricamente il sistema è banale, basta avere due equazioni (o 3) in due incognite (o 3) ma viene declinato in sistemi di navigazione del mondo reale molto disparati che risolvono problemi diversi fra loro.\\
 Il radar usa una tecnica come questa, riesce a misurare la distanza di un oggetto e l'angolo sotto cui lo vede.
@@ -3635,7 +3662,16 @@ Il principio è ""banale"":
 	\item l'utente ha sempre a disposizione delle informazioni trasmesse dai satelliti stessi, ad esempio un modo per calcolare la posizione del satellite in ogni momento
 	\item ogni satellite trasmette il suo identificativo
 	\item il ricevitore riceverà segnali da diversi satelliti, calcola il tempo di arrivo del segnale (TOA), nel segnale stesso c'è scritto anche l'istante temprale di trasmissione, quindi: (TOA - TOT)*c è la distanza del satellite. La posizione è scritta nel segnale del satellite e si può impostare l'equazione della sfera
-	(copia disegno)
+	\\\\
+	\begin{figure}[!h]
+		\includegraphics[scale=0.3]{immagini/localization/satellite_tx.png}
+	\end{figure}\\
+	Le informazioni trasportate conterranno:
+	\begin{itemize}
+		\item posizione
+		\item identificativo
+		\item TOT (Time Of Transmission), ovvero a che istante temporale è iniziata la trasmissione
+	\end{itemize}
 	\begin{itemize}
 		\item l'utente inizia a decodificare il segnale e ricava $x_s$, $y_s$ e $z_s$ che sono scritte lì
 		\item trova anche TOT
@@ -3673,7 +3709,10 @@ Ora abbiamo 1 equazione in 4 incognite, \textbf{IL BARBATRUCCO} è che se faccio
 (copia e metti le i ai pedici del satellite, così come anche al TOA), il $\Delta t$ è sempre lo stesso.\\
 Quindi, accettiamo che il sistema sia più complesso dal punto di vista di chi fornisce il servizio, perché servono più satelliti ma non devo mantenere sincronizzati i ricevitori e questo permette anche di sincronizzare al tempo universale di sistema tutti i ricevitori.\\
 Implicitamente abbiamo anche una tecnica di sincronizzazione globale, così da trovare sia la mia posizione in qualunque punto del globo ma anche di capire di quanto va male il mio orologio rispetto a quello del tempo.\\
-In realtà, tutta la prima parte della formula è una distanza geometrica, nel caso dei sistemi di navigazione satellitare l'utente misura una pseudo-distanza: è la distanza + c + l'errore dell'orologio ed è chiamato \textbf{pseudo-range}. (copia slides, formule).
+In realtà, tutta la prima parte della formula è una distanza geometrica, nel caso dei sistemi di navigazione satellitare l'utente misura una pseudo-distanza: è la distanza + c + l'errore dell'orologio ed è chiamato \textbf{pseudo-range}:\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/localization/pseudo-range.png}
+\end{figure}\\
 La distanza fra il punto u ed il punto s è di fatto legata al tempo di volo del segnale, il ricevitore non è sincrono col clock di sistema e quindi ne va tenuto conto, quindi maneggiamo la pseudo-distanza $\rho$.\\
 (eq sotto è la stessa ma scritta in forma normale).\\
 Ne consegue che per fare localizzazione servono almeno 4 satelliti, la realizzazione matematica non corrisponde però ad una realizzazione semplice nella realtà: anche sapendo fare le misure, ci sarà rumore nella misura ed avrò $\rho_i - \epsilon$.\\
@@ -3712,9 +3751,11 @@ Lette queste e misurate il tempo di arrivo del segnale è possibile impostare il
 
 
 \subsection{Misurazione del tempo di arrivo}
-Come viene misurato il tempo di arrivo, è qui che si annidano le debolezze.\\
-(copia immagine)\\
-Il satellite trasmette verso terra continuamente, oltre alle informazioni dette prima, un \textbf{codice pseudo-randomico}, una sequenza di 0,1 che sembrano casuali e questo è trasmesso continuamente verso terra, ha una certa lunghezza e non porta nessun tipo di informazione ed è completamente noto sia al satellite che all'utente.\\
+Come viene misurato il tempo di arrivo, è qui che si annidano le debolezze.\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/localization/rand_gen.png}
+\end{figure}\\
+il satellite trasmette verso terra continuamente, oltre alle informazioni dette prima, un \textbf{codice pseudo-randomico}, una sequenza di 0,1 che sembrano casuali e questo è trasmesso continuamente verso terra, ha una certa lunghezza e non porta nessun tipo di informazione ed è completamente noto sia al satellite che all'utente.\\
 Può essere replicato, come fa il satellite, nel ricevitore dell'utente e quindi avranno entrambe una sequenza di 01 sincronizzate fra di loro (ammettiamo che sia così).\\
 Il satellite trasmette questa sequenza verso terra, il ricevitore la vedrà ed avrà nel suo interno due sequenze identiche, di cui una l'ha generata lui, l'unica differenza è che quella ricevuta dal satellite ha subito un ritardo di propagazione necessario per raggiungere l'utente (d/c), lo sfasamento dipende proprio da quanto tempo ha volato il segnale.\\
 Quindi, la misura del tempo di arrivo funziona così:
@@ -3724,17 +3765,19 @@ Quindi, la misura del tempo di arrivo funziona così:
 \end{itemize}
 Prendo un segnale, ne ho due copie identiche e comincio a traslarne uno e cerco il punto in cui i due segnali sono perfettamente sovrapposti, per capire di quanto devo traslare posso moltiplicarli fra loro e quando saranno perfettamente sovrapposti ci saranno solo 1, quindi l'integrale sarà molto grande.\\
 Faccio la \textbf{correlazione} del segnale che genero a terra con quello che genero io, ma in questo caso è importante l'approccio perché posso misurare il tempo di arrivo del segnale, andando a vedere dove è il picco della cross-correlazione tra il segnale replicato dal ricevitore e quello ricevuto dal satellite.\\
-Ricevitore avrà: $r(t)$ ed $s(t)$ e farà $\int_{-\infty}^{\infty} r(\tau) s(t-\tau) d\tau$ e sappiamo che è massima quando i segnali sono sovrapposti.\\
-Avremo qualcosa del genere: (copia immagine)
-non tutti i codici sono così, ce ne sono una 30ina nel GPS ovvero i \textbf{codici gold} e li associo al satellite.\\
+Ricevitore avrà: $r(t)$ ed $s(t)$ e farà $\int_{-\infty}^{\infty} r(\tau) s(t-\tau) d\tau$ e sappiamo che è massima quando i segnali sono sovrapposti, ci sono una 30ina di \textbf{codici gold} nel GPS e li associo al satellite:\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/localization/cross-corr.png}
+\end{figure}\\
 I segnali si portano quindi dentro dei codici pseudo random che con la correlazione col ricevitore permettono di calcolare il tempo.
 
 
 \section{GPS}
 Nel caso del GPS, ogni satellite trasmette segnali su due bande L diverse (slides):
 \begin{itemize}
-	\item L$_1$ trasmette il codice C/A e P
-	\item L$_2$ solo il codice P
+	\item L$_1$: fa broadcast a 1575.42 MHz (10.23 $\cdot$ 154).\\
+	Trasmette il codice C/A (modulato a 1.023 MHz) e P (a 10.23 MHz)
+	\item L$_2$ solo il codice P a 10.23 MHz
 \end{itemize}
 sono due codici pseudo-random associati al satellite, con caratteristiche diverse:
 \begin{itemize}
@@ -3744,16 +3787,23 @@ sono due codici pseudo-random associati al satellite, con caratteristiche divers
 	Nel caso del GPS possono essere cambiati dal Dipartimento della Difesa Americano per divenire Y e non essere noti a tutti se non al Dipartimento stesso.\\
 	Il codice P è molto lungo (circa 30 settimane), si tronca ad una settimana e si ripete: ha throughput di 10 MBit/sec con una lunghezza di 1 settimana, quindi fare bruteforcing non è pensabile.
 \end{itemize}
-Il clock del satellite può essere riassunto come segue (copia immagine)\\
-
-Questi sono invece gli spettri dei segnali trasmessi: (copia immagini)\\
+Il clock del satellite può essere riassunto come segue\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/localization/gps_clock.png}
+\end{figure}\\
+Questi sono invece gli spettri dei segnali trasmessi:\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/localization/gps_signals.png}
+\end{figure}\\
 sono segnali a banda larga perché trasportano poche informazioni ma hanno una banda abbastanza elevata e questo è importante perché di fatto usando delle bande così elevate, a parità di potenza trasmessa per arrivare a terra, i segnali arrivano a terra con una potenza molto bassa e quindi non sono intercettabili in condizioni normali.\\
 Per potervi risalire, occorre correlare il segnale che ri riceve con quello generato a terra, è il \textbf{despliting??}: la potenza del segnale ricevuto cresce molto, si stringe la banda, quindi possiamo decodificarlo e leggerlo.\\
 Il trasmettitore di bordo del satellite inserisce nel segnale da trasmettere un segnale pseudo random che allarghi la banda (modulazione a spettro espanso), fa si che il segnale abbia una bassa probabilità di intercetto e non disturbi gli altri.\\
 Nel ricevitore si va l'inverso, tutta la potenza del segnale è concentrata su una banda stretta per decodificare, quindi se non si conosce il codice non si può ricevere il segnale mail codice poi di fatto è a disposizione di chiunque.\\
 È utile anche per proteggere il sistema da disturbi intenzionali a banda stretta.\\\\
-Un ricevitore per navigazione satellitare è tipicamente fatto così:
-(copia immagine)
+Un ricevitore per navigazione satellitare è tipicamente fatto così:\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/localization/gps_antenna.png}
+\end{figure}
 \begin{itemize}
 	\item si arriva fino alla banda base
 	\item si fanno una serie di processamenti 
@@ -3765,9 +3815,15 @@ Il sistema non è un semplice ricevitore:
 	\item siccome i satelliti si muovono cambia la frequenza su cui arriva il segnale e deve trovarla
 	\item si deve agganciare al segnale per fare misure precise
 \end{itemize}
-solo dopo può fare tutti i calcoli, dentro al ricevitore ci sono quindi algoritmi diversi ad esempio:
-(copia immagine)\\
-nella parte a sinistra c'è proprio la correlazione e poi si comincia a cercare il picco: (frequenza doppler, ritardo) (copia immagine), trovo il satellite ed acquisisco il segnale.\\
+solo dopo può fare tutti i calcoli, dentro al ricevitore ci sono quindi algoritmi diversi ad esempio:\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/localization/gps_alg.png}
+\end{figure}\\
+nella parte a sinistra c'è proprio la correlazione e poi si comincia a cercare il picco: (frequenza doppler, ritardo)\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/localization/gps_correlation.png}
+\end{figure}\\
+trovo il satellite ed acquisisco il segnale.\\
 Si passa poi al tracking del segnale per far si che si rimanga sempre agganciati al picco per stimare il tempo di arrivo (si muove sull'asse delle x).\\
 Tutti i sistemi di navigazione satellitare sono fatti così, hanno le caratteristiche simili a quanto abbiamo detto.
 
@@ -3775,7 +3831,15 @@ Tutti i sistemi di navigazione satellitare sono fatti così, hanno le caratteris
 
 \section{Funzionamento}
 RADAR sta per Radio Detection and Ranging, sfrutta le onde radio per capire se c'è qualche cosa e per fare posizionamento, in realtà i radar riescono a localizzare in due direzioni (anche in azimuth).\\
-Il segnale viene riflesso dall'oggetto, chiamato target, viene ricevuto dal ricevitore del radar ed il tempo che intercorre fra la trasmissione ed il ritorno da la distanza del bersaglio (slides per formule).\\
+Il segnale viene riflesso dall'oggetto, chiamato target, viene ricevuto dal ricevitore del radar ed il tempo che intercorre fra la trasmissione ed il ritorno da la distanza del bersaglio (per radar bistatico)
+\begin{equation}
+	\Delta t = \frac{R_1 + R_2}{c}
+\end{equation}
+o nel radar monostatico
+\begin{equation}
+	\Delta t = \frac{2R}{c}
+\end{equation}
+
 Esistono radar per fare diverse cose:
 \begin{itemize}
 	\item sorveglianza, per avere immagini ad esempio del traffico aereo oppure radar per la sorveglianza di basi militari
@@ -3792,28 +3856,38 @@ A meno che non si usino apparati specifici in banda larghissima in tempo di pace
 
 \subsection{Misure del radar}
 Il segnale trasmesso è quasi sempre un impulso, che raggiunge il bersaglio e riceve l'eco dell'impulso, quando vedo l'eco posso dire che il bersaglio è presente.\\
-Il tempo è facilmente misurabile (slides) (metti immagini?), possiamo poi anche ricavare la distanza invertendo la formula.\\
-Ci aspettiamo quindi questo: (immagine) se riceviamo l'eco il bersaglio è presente. Normalmente:
+Il tempo è facilmente misurabile, possiamo poi anche ricavare la distanza invertendo la formula.\\
+Ci aspettiamo quindi questo:\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/localization/radar_mes.png}
+\end{figure}\\
+se riceviamo l'eco il bersaglio è presente. Normalmente:
 \begin{itemize}
 	\item la grandezza dell'impulso è $\tau$
 	\item la grandezza è il ...
 \end{itemize}
 metto una soglia, se la supero ho trovato il bersaglio, posso anche misurare la distanza.\\
-Nello stesso dispositivo persistono elettroniche che lavorano con segnali a diversa potenza
-
-\subsection{Misure di angolo}
+Nello stesso dispositivo persistono elettroniche che lavorano con segnali a diversa potenza\\\\
 Si misura anche almeno un angolo:
 \begin{itemize}
 	\item azimuth sul piano orizzontale
 	\item elevazione sul piano verticale
 \end{itemize}
-(copia immagine), possiamo avere anche radar che misurano tutti e 3.\\
-Per misurare gli angoli, si sfruttano antenne molti direttive: monto antenne con lobi molto stretti, per cui posso ipotizzare che se ricevo un eco l'ho ricevuto dalla posizione di puntamento dell'antenna.\\
-(copia immagine slides)
+
+\begin{figure}[!h]
+	\includegraphics[scale=0.7]{immagini/localization/misure_angoli.png}
+\end{figure}
+possiamo avere anche radar che misurano tutti e 3.\\
+Per misurare gli angoli, si sfruttano antenne molti direttive: monto antenne con lobi molto stretti, per cui posso ipotizzare che se ricevo un eco l'ho ricevuto dalla posizione di puntamento dell'antenna.\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/localization/lobi_antenna.png}
+\end{figure}\\
 il fascio dell'antenna, nel principale c'è un alto guadagno e ricevendo con un antenna del genere possiamo supporre (molto facilmente) che si riceva la risposta dalla posizione di puntamento.\\
 Sapendo in che direzione sto trasmettendo, misuro l'angolo del bersaglio e poi muovo l'antenna.\\
-I tipi di antenna per applicazioni radar sono sempre a fascio stretto, normalmente:
-(copia)
+I tipi di antenna per applicazioni radar sono sempre a fascio stretto, normalmente:\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/localization/tipi_antenne.png}
+\end{figure}
 
 \begin{itemize}
 	\item la pencil bean ha un angolo stretto in direzione e stretto in azimuth.\\Risolve bene tutti e due gli angoli
@@ -3821,15 +3895,42 @@ I tipi di antenna per applicazioni radar sono sempre a fascio stretto, normalmen
 \end{itemize}
 
 Per fare la \textbf{misura radiale} si può sfruttare l'effetto doppler.\\
-Il radar trasmette un impulso su una portante, possiamo scrivere: (copia), dove $f_0$ indica la frequenza della portante (è una sinusoide).\\
+Il radar trasmette un impulso su una portante, possiamo scrivere:
+\begin{equation}
+	S_T(t) = cos(2\pi f_0 t+ \alpha)
+\end{equation}
+e
+\begin{equation}
+	S_R(t) = kS_T(t - 2\frac{R(t)}{c})
+\end{equation}
+dove $f_0$ indica la frequenza della portante (è una sinusoide).\\
 Il target da un segnale di eco del tutto analogo a quello trasmesso, sarà attenuato (fattore $k < 1$) e sarà ritardato di $2R(t)/c$.\\
-Ci aspettiamo quindi lo stesso segnale in ricezione ritardato ed attenuato, se il bersaglio si muove la distanza R dipende dal tempo t:\\ la fase del segnale ricevuto è (copia) e dipende da R(t)\\-sappiamo anche che la frequenza è la derivata della fase: (copiaa), ma la derivata nel tempo di R è la velocità radiale dell'oggetto.\\Quindi, fissando tutto, possiamo dire che (copia slides), quindi il segnale viene ricevuto sulla frequenza $f_0 + f_D$ ed un radar che sa misurare $f_D$ sa anche misurare la velocità radiale.\\
-ATTENZIONE: non è la velocità del dispositivo, ma è quella radiale quindi con cui mi allontano / avvicino dal radar!! (copia immagine), se si muove in modo ortogonale è come se fosse fermo.\\\\
+Ci aspettiamo quindi lo stesso segnale in ricezione ritardato ed attenuato, se il bersaglio si muove la distanza R dipende dal tempo t:\\ la fase del segnale ricevuto è 
+\begin{equation}
+	\phi(t) = \frac{-4\pi}{c}f_0R(t)
+\end{equation}
+e dipende da R(t).\\
+Sappiamo anche che la frequenza è la derivata della fase:
+\begin{equation}
+	f_D = \frac{1}{2\pi} \frac{d}{dt}\phi(t) = -\frac{1}{2\pi}\frac{4\pi}{c}f_0 \frac{dR(t)}{dt} = \frac{-2f_0}{c}\dot{R(t)}
+\end{equation}
+ma la derivata nel tempo di R è la velocità radiale dell'oggetto.
+\\Quindi, fissando tutto, possiamo dire che:
+\begin{equation}
+	f_D = -\frac{2v_r}{\lambda}
+\end{equation}
+quindi il segnale viene ricevuto sulla frequenza $f_0 + f_D$ ed un radar che sa misurare $f_D$ sa anche misurare la velocità radiale.\\
+ATTENZIONE: non è la velocità del dispositivo, ma è quella radiale quindi con cui mi allontano / avvicino dal radar!!\\
+Se si muove in modo ortogonale è come se fosse fermo.\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/localization/allont-avvic.png}
+\end{figure}\\\\
 Tutte le prestazioni ottenibili dipendono da diversi fattori.\\\\
 Nel radar inoltre persistono diverse dimensioni temporali: (copia slides)\\
 il radar trasmette un impulso, la cui durata dipende da determinate caratteristiche, può però trasmettere n impulsi su ogni oggetto e per poter rimetterli sullo stesso oggetto serve aspettare che il radar faccia tutto il giro (radar di sorveglianza).\\
-(immagine)
-
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/tempi_radar.png}
+\end{figure}\\\\
 Quindi riusciamo ad avere la capacità di trovare un oggetto senza che questo collabori, deve solo avere la capacità di retro-diffondere onde EM ed in natura nessun oggetto non lo fa.\\
 L'informazione di interesse al radar la aggiunge l'oggetto: la forma d'onda è pienamente nota, la presenza dell'oggetto aggiunge l'informazione, nella navigazione e localizzazione per sorveglianza non c'è trasferimento di informazione, ma lo fa la presenza del target nell'ambiente e questo ha implicazioni nel tipo di attacco.\\
 
@@ -3871,15 +3972,14 @@ Deve essere invisibile a tutto non solo al radar:
 	Ma il vetro lascia passare potenza EM, quindi anche quello va coperto da un sottile film metallico
 \end{itemize}
 quindi l'oggetto in se non è banale da realizzare e costa soldi veri.\\
-Quantifichiamo "l'invisibilità":
-
-(copia immagine)\\
+Quantifichiamo "l'invisibilità":\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.6]{immagini/localization/stealths.png}
+\end{figure}\\\\
 un target normale come una nave è nell'ordine dei 10000 dB$m^2$, l'uomo è nella frazione dei pochi dB$m^2$ per poi scendere agli insetti.\\
 Il JSF, ovvero l'ultima tecnologia da un punto di vista del fighter sta alla RCS visto frontalmente di un insetto, il bombardiere B2 ancora più in basso.\\
 Non sono totalmente invisibili al radar, ma trasmettendo a più potenza si ha un grande numero di falsi allarmi dovuti alla presenza di uccelli, insetti etc...\\
-esempio: fighter moderno e dove lavorare per rendere l'oggetto invisibile (immagini??)
-
-si tende a:
+esempio: fighter moderno e dove lavorare per rendere l'oggetto invisibile, si tende a:
 \begin{itemize}
 	\item ridurre le taniche di cherosene
 	\item si evitano i corner reflector
@@ -3934,8 +4034,7 @@ Sui radar ci sono varie possibilità di contromisure elettroniche, ma anche qui 
 	\item jamming, l'eco che torna dall'aereo è nascosto da segnali trasmessi appositamente.\\
 	Questa si declina quasi a tendere fino allo spoofing, anche se non si chiama così nel radar
 \end{itemize}
-Riprendiamo lo schema generale: (copia immagine)
-Le misure di SIGINT ed ELINT va fatta sia in tempo reale che in tempo differito perché il nemico può cambiare segnale operativo durante l'attacco (magari sono applicate in maniera differente).\\
+Riprendiamo lo schema generale visto sopra (non ho intenzione di rimettere l'immagine), le misure di SIGINT ed ELINT va fatta sia in tempo reale che in tempo differito perché il nemico può cambiare segnale operativo durante l'attacco (magari sono applicate in maniera differente).\\
 
 \section{Contromisure nei radar}
 \subsection{ARM}
@@ -3944,24 +4043,126 @@ Il sistema funziona sganciando il "missilotto" che con l'antenna capta il segnal
 Esistono contro-contromisure in cui il radar ha diverse antenne per far si che il missile cominci a puntare le antenne a stecca e poi perda il controllo per non andare su nessuna.
 
 \subsection{Attività ESM}
-L'approccio classico prevede di vedere il sistema costituito da: (copia immagine)\\
+L'approccio classico prevede di vedere il sistema costituito da:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.6]{immagini/esm-1.png}
+\end{figure}\\\\
 questa catena dice chi abbiamo di fronte, quindi come è fatto il segnale che stiamo ricevendo, es: un aereo in missione accende il ricevitore ESM che dopo il processamento dice quale radar c'è.\\
-Si attiva quindi un'altra catena di ricezione, in quel momento adattato a quel particolare radar (copia altra immagine)\\
+Si attiva quindi un'altra catena di ricezione, in quel momento adattato a quel particolare radar.\\
 c'è quindi il technique generator che comincia a trasmettere il disturbo con dei segnali adattati, il ricevitore ECM può non essere necessario ma aiuta.\\
 È un oggetto non banale perché riceve e trasmettere contemporaneamente sulle stesse frequenze, quindi si usano tipicamente tecniche pe evitare che ciò che venga trasmesso rientri nel ricevitore: si comincia a disturbare, si ci ferma e ri riascolta per vedere ad esempio se il radar ha cambiato la forma d'onda di disturbo per adattarsi e ricominciare a disturbare.\\
 Nel ricevitore ESM, come si fa a capire con chi si ha a che fare: dobbiamo avere la capacità di ricevere qualsiasi tipo di segnale radar.\\
 Un radar moderno ha tutta una serie di processamenti nel segnale trasmesso che non lo rendono più il classico impulso e non lo rendono facile da ricevere se non con un filtro, quindi bisogna rinunciare a qualche cosa.\\
 Gli apparati sono dotati di strumenti che misurano solo l'ampiezza del segnale ricevuto, così da poter fare delle misure come la direzione da dove arriva, il tempo etc... ma non è ancora banale perché comunque non sappiamo la frequenza su cui lavora il radar (almeno inizialmente), quindi sono chiamati ricevitori a banda larga (panoramici).\\
-Quindi da una parte sono "banali": (metti immagine sopra)\\
-oggetti così hanno bande passanti strette, quindi non si possono ricevere bande dai 100 Mhz ai 100 Ghz, occorre selezionare una banda e questo abbassa la probabilità di intercetto perché ogni volta si sceglie una banda e si riceve su quella:
-(immagine)\\
+Quindi da una parte sono "banali": oggetti così hanno bande passanti strette, quindi non si possono ricevere bande dai 100 Mhz ai 100 Ghz, occorre selezionare una banda e questo abbassa la probabilità di intercetto perché ogni volta si sceglie una banda e si riceve su quella:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/localization/esm-freq.png}
+\end{figure}\\\\
 dovendo capire dove trasmette un radar non posso sapere subito che sta a 10GHz, posso cercare di provare a ricevere sulle diverse bande e devo farlo di continuo perché di oggetti che emettono potenza EM ce ne sono molti, quindi devo ciclicamente scansionare tutte le possibili frequenze, quindi la probabilità di intercettare si abbassa perché magari il radar quando entro nella frequenza giusta sta trasmettendo altrove o magari perché cambia frequenza.\\
 Quindi lo schema è questo (immagine sotto)
 \\il ricevitore ha diversi svantaggi ma rispetto al radar ha il vantaggio di ricevere segnali per propagazione diretta, quindi con una potenza che va con $r^{-2}$, quindi la capacità è maggiore del radar ($r^{-4}$).\\
 L'ESM confronta con la sua library per capire il tipo di radar con cui ha a che fare, riempito in tempo di pace.\\
 Esistono tecniche per evitare la bassa probabilità di intercetto, che sono i ricevitori folding che ripiegano tutte le bande osservate contemporaneamente in una.\\
-Ci sono poi casi di ESM con più antenne in più direzioni dove si compara l'ampiezza del segnale delle diverse antenne per trovare gli angoli (immagine):\\
+Ci sono poi casi di ESM con più antenne in più direzioni dove si compara l'ampiezza del segnale delle diverse antenne per trovare gli angoli\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/localization/esm-multi.png}
+\end{figure}\\\\
 ogni canale di ricezione misura l'impulso, si mettono insieme per misurare da dove arrivano e per poi matchare l'informazione nella library e capire quali radar ci sono.\\
+Il radar tipicamente trasmette qualcosa come: 0 - pezzo di sinusiode (la portante) - 0 ... il ricevitore ad inviluppo vede un segnale molto simile a quello in banda base del radar.\\
+Misura quindi l'impulso, da dove arriva, quanto è potente ... estrae delle feature dell'impulso, poi ne riceverà un altro e farà la stessa estrazione per poi vedere le distanze intra-impulso e con tutte queste misure capirà che c'è un radar con la PRT data (distanza fra gli impulsi) e grandezza dell'impulso $\tau$ nota quindi confronta nella library e trova il radar.\\
+Inoltre se misuro l'ampiezza degli impulsi troverò che dove l'ampiezza è molto alta l'antenna punta su di me mentre quando è piccola sono sul lobo laterale, quindi sto campionando di fatto il digramma di radiazione dell'antenna e quindi riesco a capire che antenna il radar sta usando.\\
+La cosa è periodica, prima o poi l'antenna ripunterà su di me quindi conosco anche la velocità con cui gira l'antenna, posso anche conoscere il fascio di antenna quindi acquisisco tante informazioni che restringono l'insieme dove fare matching.\\
+Posso anche vedere che l'impulso non è proprio netto, ma ci sia un certo massimo dovuto a come realmente è fatta l'antenna quindi posso fare un fingerprinting ancora più sicuro perché non posso avere due radar che hanno le stesse tolleranze nella generazione delle forme d'onda.\\
+Se ci sono tanti radar il segnale diviene pieno di impulsi quindi il processo diviene complesso, ma è importante capire il principio: anche se il ricevitore è di scarse qualità e riceve solo l'inviluppo del segnale riesco comunque ad ottenere molte informazioni.
+
+
+\subsection{Attività ECM}
+L'obiettivo è disturbare l'apparato radar del nemico, dove nemico ha accezione generica e può anche essere un sistema civile.\\
+Per attivare una contromisura elettronica, ci sono 3 possibili modalità di intervento:
+\begin{itemize}
+	\item SSJ, Self Screaning Jammer: l'oggetto che entra nella copertura radar si auto-protegge, ha lui stesso gli apparati per disturbare il radar
+	\item EJ due aerei, uno protegge dagli apparati elettronici
+	\item SOJ, Stand Of Jammer, un sistema molto più lontano dalla minaccia ha come unico compito disturbare il radar
+\end{itemize}
+I primi due casi sono molto simili, il caso 1 è buono perché più ci si avvicina al radar e più il disturbo è efficace.\\
+Svantaggio è che l'aereo si deve portare dietro tutto l'apparato di difesa elettronica, la classica configurazione fatta da aerei caccia si leva spazio a qualcos altro come un sistema ad arma per difendersi.\\
+Occorre trovare il giusto compromesso, quindi la EJ dove un aereo protegge se stesso e l'altro e quindi porta solo lui i sistemi di difesa elettronica.\\
+C'è ancora il vantaggio della vicinanza, ma stiamo mandando due aerei in condizioni operative in ambiente pericoloso, inoltre i due sono costretti a viaggiare in formazione perché altrimenti quello senza apparato è completamente visibile.\\
+Ultima soluzione, disturbo continuo da lontano: vantaggio è che l'aereo di disturbo è grande, non si avvicina mai ma lo svantaggio è che chi deve entrare nella zona di copertura radar verrà prima o poi scoperto\\
+La 1 sarebbe la configurazione che più mi protegge (più mi avvicino più aumenta la potenza del jamming) ma poi rimane poco spazio per armi di tipo convenzionale.\\
+La 2 sembra la più usata, ma se poi vengono scoperti i due caccia devono attuare misure di fuga, ma quello senza ECM rimane indifeso.
+
+\subsection{Tecniche passive}
+Misura di guerra elettronica banalissima, con costo praticamente nullo e molto efficace.\\
+Non è altro che il lancio da parte dell'oggetto che si vuole difendere dal radar una nuvola di piccoli oggetti metallici, che cadono per caduta libera, hanno dimensioni diverse e vengono viste dal radar come una grossa nuvola metallica che "nasconde" l'oggetto vero al radar.\\
+Il radar è "accecato" dalle riflessioni della nube e nel frattempo il target può scappare, c'è però un grosso svantaggio dovuto al fatto che è un'arma tenuta come ultima spiaggia: se si attiva, il nemico vede sicuramente il target, quindi normalmente si lancia il chaff quando si è sicuri di essere visti o che sia stato lanciato un missile.\\\\
+Tecnica stealth, divenire "invisibili" al radar, ci sono vari limiti riguardo cose difficili da nascondere sull'aereo (vedi sopra).\\
+I radar moderni sono talmente tanto sensibili che magari non vedono l'aereo ma i gas combusti dall'aereo e quindi vedono questa turbolenza e non l'aereo, le tecniche funzionano bene con radar a frequenze X.
+
+\subsection{Tecniche attive - Jammer}
+La tecnica attiva più famosa è il jammer: si costruisce un apparato che trasmette più potenza possibile sulla banda dell'oggetto che si vuole disturbare.\\
+Si può fare su qualunque apparato di comunicazione, costano anche pochi dollari infatti chi in passato aveva assicurazione basata su GPS si auto-disturbava per non far sapere dove andava.\\
+Se so quindi su quale banda sta lavorando il radar lo inibisco con questo segnale a potenza molto alta che nega la potenza di ritorno degli echi, ad esempio nel caso 1 di prima il radar riceve la mia trasmissione con $r^{-2}$ mentre l'eco con $r^{-4}$ quindi anche non trasmettendo a potenza elevatissima riesco a sovrastare l'eco.\\
+Per sapere su che frequenza trasmette i radar occorre avere un ESM, mentre per la navigazione satellitare li sappiamo già.\\
+Solitamente il radar lavora su una certa frequenza, ma normalmente questa cambia nel tempo proprio per non essere visto, quindi in generale non posso mai sapere con estrema accuratezza che frequenza sta usando l'oggetto.\\
+Conosco quindi il range di frequenza, quindi per avere una altissima probabilità di intercetto dobbiamo disturbare tutto l'intervallo di frequenze dove lavora il radar, ma ho energia limitata.\\
+Posso ad esempio trasmettere un segnale a banda larga e disturbare tutta la frequenza del radar, oppure concentrare l'energia che ho a disposizione su una banda più stretta così che il disturbo abbia una potenza maggiore mal col rischio che non disturbo la frequenza corretta\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/localization/jamming.png}
+\end{figure}\\\\
+istantaneamente la banda usata è molto stretta (grigio), se riesco a disturbare solo dove necessario farò molto più danno al radar.\\
+Abbiamo quindi \textbf{barrage noise} vs \textbf{spot noise}\\
+Ma non so dove sta lavorando il radar, allora facci muovere lo spot noise avanti ed indietro sulla banda grande: nel caso del barrage noise disturbo sempre ma a potenza più bassa, mentre nello spot noise disturbo forte ma solo quando è perfettamente sovrapposto alla frequenza che il radar sta usando.\\
+Il metodo migliore dipende sempre da chi sto disturbando, la fa da padrone la library o anche come è fatto l'apparato di disturbo che magari non può generare bande troppo larghe e mi costringe quindi ad usare stop noise.\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/localization/jammin-on-radar.png}
+\end{figure}\\\\
+il radar vedrà sempre disturbo, anche su i lobi laterali, quindi lo schermo radar vedrà sempre l'oggetto tranne in punti dove ci sono i nulli dei lobi, si oscura tutto il visore radar.\\
+Stesso vale nel barrage noise, ma con intensità minore, mentre con lo stop noise conta la sincronizzazione col radar: manda impulso - riceve eco ma durante questo processo riceverà anche il segnale di disturbo quando la spot noise è perfettamente sovrapposta al segnale di riferimento.\\
+Ogni tanto verrà vista una potenza molto elevata, quindi cominceranno ad apparire sul visore del radar una serie di bersagli finti,sono delle forme a spirale che ruotano su se stesse quindi il radar non è più in grado di funzionare e c'è un DoS.\\\\
+Il radar ha un guadagno di antenna molto elevato nel main beam, quindi qui il jammer è ricevuto a potenze molto elevate, altrimenti di meno quindi:\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.3]{immagini/localization/jamming-plot.png}
+\end{figure}\\\\
+quando il l'antenna punta sul jammer c'è molto più disturbo, la riduzione della portata radar può essere anche al 10\% (da 100 km ne vedo 10).\\\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.4]{immagini/localization/jamming-power.png}
+\end{figure}\\\\
+ammettendo di avere un radar che trasmette con potenza di picco anche elevata, l'eco del bersagli va con $r^{-4}$ con cui decade la potenza.\\
+La potenza del jammer ricevuta dal radar va con $r^{-2}$, non sarà grande come quella ricevuta dal radar (parte più bassa), ma allontanandosi dal radar esisterà un punto per cui per ogni distanza la potenza ricevuta dal jammer sarà $>$ di quella ricevuta dall'eco.\\
+Quindi portandosi dietro un jammer ci sarà protezione dal radar fino a quel punto, è la \textbf{distanza di mascheramento}.\\
+Chi attacca deve avere cognizione di quanto è il punto di smascheramento, perché avvicinandosi di più si viene visti, non si può andare oltre e si gioca tutto: conoscendolo (es 30 km), occorre armarsi per avere capacità maggiori in distanza del punto di smascheramento.\\
+Di contro il radar cercherà di alzarlo così da vedere prima l'oggetto.
+
+\subsubsection{Jammer in navigazione satellitare}
+Abbiamo i satelliti in orbita ed il ricevitore a terra, che è cosa vogliamo disturbare.\\
+I satelliti trasmettono al ricevitore a terra con una potenza bassissima, trasportano un codice PRNG ovvero una portante più un codice di 01 che modula la portante in fase dove il codice di 01 è pienamente noto al ricevitore, usato per fare la misura del tempo di arrivo e decodificare il segnale.\\È modulazione a spettro espanso: moltiplico il segnale per il codice PRGN ed allargo la banda del segnale trasmesso (passo da Dirac a "semicerchio", area dentro è la stessa), viene fatto per evitare di interferire con altri segnali.\\
+Nel ricevitore si fa il despliting, correlazione tra il segnale ricevuto ed il codice, restringo la banda del segnale ricevuto e riportarlo in banda stretta per vederlo sopra il rumore termico:
+\\
+\begin{figure}[!h]
+	\includegraphics[scale=0.5]{immagini/localization/despliting.png}
+\end{figure}\\\\
+($r$ rumore (applico spliting??)), quindi lo spettro del segnale ricevuto è nascosto.\\
+Nel ricevitore faccio la correlazione fra il segnale ed una sua replica che ridiviene a spetto stretto, permette anche di avere bassa probabilità di intercetto perché non si può fare despliting se non si conosce il PRNG con cui fare correlazione.\\\\
+Quindi il segnale nella navigazione satellitare è:
+\begin{itemize}
+	\item a banda larga
+	\item spettro espanso
+	\item LPDI
+	\item TOA
+\end{itemize}
+i primi due punti dipendo da che codici PRNG si usano (nel P si allunga la banda su 20 MHz quindi si è ancora più nascosti).\\
+Vediamo l'effetto del jammer: ammettiamo di sapere che il sistema lavora sulla L1, costruiamo un jammer con: oscillatore sulla frequenza L1, un amplificatore ed un antenna, la potenza entra nel ricevitore e nasconde la potenza mandata dal satellite.\\
+Se il jammer è vicino la potenza mandata dentro nega il servizio, ma anche se non si è vicini il rapporto segnale/rumore sarà abbassato ma nel processo di spliting/despliting: entra nel ricevitore il segnale di disturbo nel ricevitore, se lo moltiplico per un codice PRNG e questo era a banda stretta, diventa a banda larga perché è come fare spliting.\\
+Ci da protezione rispetto al disturbo: arriva un segnale molto potente che è il jammer ed un segnale a banda larga: abbiamo che il satellite dopo il despliting diventa stretto.\\
+Il rapporto segnale/jammer cambia e prima del processo magari vince il segnale del jammer e magari dopo vince il segnale del satellite, tutto dipende dalla banda del codice pesudo-random: più è larga e più siamo robusti al rumore.\\\\
+Costo importante: per trasmettere pochi bit uso una banda molto larga, si decide di sprecare la risorsa per divenire robusti rispetto alle interferenze.\\
+Quindi per disturbare il GPS occorre trasmettere segnali a banda larga altrimenti non sono visti come disturbo, un jammer per GPS deve necessariamente trasmettere segnali a banda larga che comporta un aumento del costo dell'apparato, sia nella produzione ma anche dal punto di vista dell'utilizzo: stiamo spalmando la potenza da trasmettere su banda larga quindi i rapporti cambiano, un oscillatore di 10W messi su una banda più larga mi fa essere meno efficace.\\
+I sistemi di navigazione satellitare si proteggono dal jamming con segnali a spettro espanso e banda più larga possibile, mentre i segnali civili sono tipicamente a banda più stretta e sono facilmente disturbabili.\\\\
+I sistemi sono intrinsecamente sicuri perché la prima fase è il despliting ma sul disturbo spalma su banda più larga e cambia i rapporti di potenza in gioco.
+
+
+
 
 
 
