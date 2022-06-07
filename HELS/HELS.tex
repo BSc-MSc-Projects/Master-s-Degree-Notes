@@ -4076,7 +4076,7 @@ Posso anche vedere che l'impulso non è proprio netto, ma ci sia un certo massim
 Se ci sono tanti radar il segnale diviene pieno di impulsi quindi il processo diviene complesso, ma è importante capire il principio: anche se il ricevitore è di scarse qualità e riceve solo l'inviluppo del segnale riesco comunque ad ottenere molte informazioni.
 
 
-\subsection{Attività ECM}
+\section{Attività ECM}
 L'obiettivo è disturbare l'apparato radar del nemico, dove nemico ha accezione generica e può anche essere un sistema civile.\\
 Per attivare una contromisura elettronica, ci sono 3 possibili modalità di intervento:
 \begin{itemize}
@@ -4162,8 +4162,187 @@ I sistemi di navigazione satellitare si proteggono dal jamming con segnali a spe
 I sistemi sono intrinsecamente sicuri perché la prima fase è il despliting ma sul disturbo spalma su banda più larga e cambia i rapporti di potenza in gioco.
 
 
+\subsubsection{Recap sul jammer}
+L'idea è quella di mandare un segnale a potenza più alta possibile che al limite copre il segnale utile.\\
+Nel caso più estremo è talmente potente che manda in saturazione il ricevitore, quindi nega completamente la possibilità di ricevere il segnale utile, ma in ogni caso il ricevitore subisce un grande danno perché cambiano i rapporti di potenza (segnale utile / segnale di disturbo).\\
+In un sistema di telecomunicazioni classico il bit error rate comincia a crescere, quindi non si riesce a ricevere correttamente l'informazione e serve applicare controlli di errore, ritrasmettere etc...\\
+Nel caso di sistemi radar questo comporta:
+\begin{itemize}
+	\item non riuscire a ricevere l'eco
+	\item limitazione nella copertura radar.\\
+	La capacità di vedere un oggetto di nuovo dipende dal rapporto segnale /disturbo, dove il segnale utile è l'eco dell'oggetto quindi se questo è abbastanza vicino c'è ancora abbastanza potenza per superare il disturbo, altrimenti diviene "invisibile".\\
+\end{itemize}
+Quindi nel classico sistema radar o cominciano ad apparire falsi oggetti perché il disturbatore è al di sopra della soglia di rivelazione oppure si alzano le soglie di rivelazione per coprire i falsi oggetti e quindi si nascondono anche oggetti veri.\\
+Si arriva quindi ad una condizione dove si vedono solo oggetti vicini.\\
+Nel caso della navigazione satellitare il jammer riesce quasi sempre ad oscurare il segnale perché quelli per calcolare la posizione sono a bassissima potenza, oppure si oscura la posizione.\\
+
+\subsubsection{Recap su banda di sistema \& disturbi}
+Ammesso di avere a disposizione tutto un intervallo di frequenze: (metti disegno)\\
+la banda è una porzione dello spettro e questa è tipicamente estesa, ad esempio in banda L si va da 1-2 GHz.\\
+Un apparato che lavora in una certa banda non lavora su tutte queste, normalmente la \textbf{banda istantanea} dell'apparato è $<<$ della banda totale dell'apparato, ad esempio un radar che lavora in banda x può trasmettere da 9-10 GHz, ma trasmetterà istantaneamente su una porzione di questa banda di lavoro (quella cerchiata).\\
+Posso essere ad esempio 10MHz di banda centrati su 9, 9.5, 10 GHz etc... è sempre un apparato che lavora in banda X, si può anche facilmente cambiare magari, ma di fatto si usa una frequenza centrata ben definita ed una banda istantanea molto più piccola di quella di lavoro.\\
+Abbiamo quindi visto i diversi tipi di jammer:
+\begin{itemize}
+	\item[1)] spot noise
+	\item[2)] barrage noise
+	\item[3)] sweept noise
+\end{itemize}
+che approcciano proprio questo problema qui: se non so qual è la banda istantanea che voglio disturbare posso pensare di:
+\begin{itemize}
+	\item[2)] disturbare tutta la frequenza di lavoro possibile del radar, avrà una potenza media sempre bassa
+	\item[1)] conosco molto bene la frequenza di lavoro del radar, posso concentrare il disturbo sulla banda istantanea.\\
+	Spreco meno energia, se ad esempio il dispositivo è ad energia
+	\item[3)] vado avanti ed indietro su tutta la banda di lavoro per cercare di diminuire gli sprechi di energia
+\end{itemize}
+ci sono sempre svantaggi e vantaggi, trovare la tecnica di disturbo migliore non è banale.\\
+Dipendentemente da quali sono le nostre conoscenze rispetto al nemico ed alle nostre capacità possiamo usare uno piuttosto che un altro modo di disturbo.\\
+Nei sistemi di navigazione satellitare può essere visto più o meno come la stessa cosa, il sistema tenta di proteggersi dal jammer cercando di allargare il più possibile la banda istantanea di funzionamento.\\
+(disegno)\\
+così facendo uno spot noise saprà disturbarmi solo quando becco la banda istantanea corretta, quindi per disturbare devo trasmettere un segnale in banda larga e questo rende più complesso il disturbo.\\\\
+Ciò per quanto riguarda questi jammer: chi ha più potenza da poter trasmettere vince, è uno dei più grossi problemi dei sistemi di navigazione satellitare moderni che possono facilmente essere disturbati.
+
+\subsubsection{Repeater jammer}
+Abbiamo un radar che sta funzionando, trasmette una serie di impulsi nel tempo e cerca di ricevere gli echi.\\
+Costruisco un \textbf{repeater jammer:}
+\begin{itemize}
+	\item un'antenna ricevente
+	\item un amplificatore
+	\item un modulatore
+	\item un amplificatore di potenza
+\end{itemize}
+è un reader che riceve una cosa e la ripete, aggiungo una linea di ritardo che posso usare o no: la parte dell'allarme si accorge che sta ricevendo degli impulsi, quindi sa che c'è un radar.\\
+Si decide di disturbarlo, quindi ricevuto l'impulso, lo si manda in amplificatore (aumenta la potenza) e lo manda su una linea di ritardo e poi chiudo in ricezione ed osservo cosa accade sulla linea di ritardo: (immagine)\\
+comincio a replicare infinite volte l'impulso sulla linea di ritardo, lo mando poi in amplificazione e lo mando al radar.\\
+Il ricevitore radar vedrà degli impulsi amplificati che sono esattamente i suoi, quindi per lui sono echi veri, è una forma "primordiale" dello spoofing, mando cosa il radar si aspetta di ricevere ma con informazione errata perché creo tutta una serie di bersagli falsi, uno per ogni impulso che ho ripetuto.\\
+Non devo conoscere minimamente come funziona il radar o come è fatto il segnale: lo vedo, lo copio e lo amplifico, quindi non devo fare un lavoro importante di signal processing, il radar si aspetta di ricevere un certo segnale ed io gliene rimando tanti replicati per non farlo funzionare più.\\\\
+Oggi è digitale: il segnale viene amplificato e salvato in una memoria per poi leggerlo quando serve e ritrasformarlo in analogico e spedirlo dopo averlo amplificato(immagine sotto a destra).\\
+È un jammer abbastanza semplice e dannoso, è anche però facile capire di essere sotto attacco di repeater jammer
+
+\subsubsection{Cover pulse e range Pool off}
+Si lavora sempre sugli impulsi: il ricevitore trasmette al radar un impulso largo e grande: (immagine)\\
+mi porto a bordo un oggetto che crea un impulso molto largo rispetto all'eco dell'aereo, così che il radar vede che l'oggetto è sempre presente e quindi comincia ad alzare le soglie di detection, così l'eco vero si nasconde sotto il cover pulse.\\\\
+Altra possibilità è il range gate pool off, evoluzione del repeater jammer: (immagine)\\
+l'impulso sarà replicato dall'eco, ci sarà sempre perché è quello vero che viene rimbalzato dall'aereo quindi il disturbatore mette a bordo un apparato che possa ricevere l'impulso del radar e replicarlo.\\
+Stavolta però si fa una replica sola, si amplifica e si ritrasmette, l'apparato radar riceve sia questo eco che quello vero, il primo sarà leggermente in ritardo (per via del processamento) ma sovrapposto all'ultimo.\\
+Il radar cercherà quindi di misurare in modo preciso dove si trova il massimo dell'impulso, perché dove è il massimo è dove spara un radar di tracking, ma il massimo è "spostato" perché c'è l'impulso amplificato.\\
+L'astuzia sta nel fatto che trovando questo nuovo massimo, il radar comincia a seguire quello per trovare la posizione dell'oggetto, quindi io comincio a ritardarlo così che l'effetto è che il radar continua ad inseguirlo e sposterà più lontano la posizione misurata da quella vera dell'oggetto, ma ritardando per più di un PRT (tempo che intercorre fra la trasmissione degli impulsi del radar) possiamo anche far credere che sia più vicino.\\
+Tutte queste tecniche hanno dei limiti, per ognuna spesso esistono le ECCM.
+
+\subsection{Esempi di ECCM}
+Ripartiamo dal jammer, sul chaff non si può fare molto ma è comunque un elemento di difesa estremo
+
+\subsubsection{Sidelobes suppression}
+
+Una delle tecniche più usate è il \textbf{sidelobes suppression}: anzi che usare una sola antenna direttiva, ne uso anche una omni-direzionale: il segnale radar è trasmessa con l'antenna direttiva e ricevuto con entrambe.
+\\Se il segnale è ricevuto dalla direzione in cui trasmetto con la direttiva, avrà una certa potenza: (immagine)
+se l'aereo è su a destra il guadagno sarà basso quindi il segnale ricevuto a potenza bassa, ma un jammer può essere in qualunque posizione, quindi il segnale di disturbo può entrare
+\begin{itemize}
+	\item dal lobo principale, potenza alta
+	\item dai lobi laterali, potenza bassa.\\
+	Ma ha comunque potenza più alta perché è più alto dell'eco di un bersagli lontano che entra nel lobo laterale
+\end{itemize}
+Quindi la presenza del jammer c'è anche se non entra dal lobo principale, usiamo un antenna omni che ha un guadagno più basso ma uguale in tutte le direzioni, quindi quando si riceve un segnale si confrontano quelli di entrambe le antenne: quello sulla direttiva è maggiore per quella omni nel caso di echi di oggetti veri, nel caso invece del jammer avremo potenza molto più bassa del caso della omni.\\
+Posso quindi dire se il segnale arriva dai lobi laterali o principali, siccome io faccio sempre riferimento ai lobi principali, tutti quei segnali che arrivano dai lobi laterali con potenza più alta li cancello (confronto con la omni), così da poter spegnere l'azione del jammer per tutto il tempo in cui non è sul fascio principale dell'antenna direttiva.\\
+Si può fare con componenti RF: si fa la differenza fra la curva della omni e quella della direttiva, confronto i segnali (con l'ibrido a 180°) (immagine), nella differenza quando siamo vicini a 0 siamo nel centro del fascio, cancelliamo tutto ciò che è lontano dal centro del fascio perché non lo vogliamo ricevere e quindi prendiamo in considerazione solo i segnali che arrivano dal fascio somma quando il fascio differenza è 0.\\
+Tipica ECCM, ma è usabile anche ad esempio in ponti radio dove la comunicazione arriva con due antenne fortemente direttive ed il sidelobus suppression permette di evitare interferenza di tutti i segnali intorno
+
+\subsubsection{Null stealing}
+Generare appositamente dei nulli nel diagramma di direzione dell'antenna nei punti dove sono il jammer.\\
+Con antenne come quelle ad array possiamo decidere la forma del fascio, quindi dove mettere i massimi ma anche dove mettere dei minimi o dei nulli.\\
+Con dei nulli di guadagno possiamo fare un'antenna che abbia dei nulli nella direzione del jammer così da annullarne l'effetto, nella realtà però non è semplice:
+\begin{enumerate}
+	\item devo saper sagomare il fascio di antenna, che si fa tipicamente con oggetti riflettenti, altrimenti devo usare feased array
+	\item devo conoscere da che direzione arriva il disturbo.\\
+	Si può usare la stessa antenna per sapere come trovare il jammer oppure avere un sistema di supporto alle misure
+	\item il fatto che esista un disturbo in una direzione non implica che ci sia una minaccia, quindi mettere dei nulli non è banale
+\end{enumerate}
+Inoltre, l'antenna radar gira mentre il jammer rimane fermo quindi per ogni spostamento dell'antenna dobbiamo cambiare la posizione del nullo (deve girare in contro-fase con la direzione dell'antenna) e metterlo sempre nella direzione del jammer. (immagine)\\\\
+Non è banale economicamente e praticamente, è una tecnica usata dai radar ma può anche essere usata per navigazione satellitare: l'antenna deve essere omni-direzionale, negli ultimi anni si cominciano a vedere antenne con null stealing per navigazione satellitare
+
+\subsubsection{Leading edge tracking \& PRI}
+Contromisura al range gate pool off, ne esistono varie.\\
+Una possibilità è questa: (metti immagine)\\
+so che devo ricevere un eco (quello "di pelle"), ricevo in realtà anche quello del disturbatore e faccio in modo che invece del massimo si cerca la gobba relativa al ritardo del jammer.\\
+Se riesco a trovare la derivata del segnale, posso capire che è dato dalla somma di due echi ed anziché seguire il secondo ci agganciamo sul primo picco.\\\\
+Altro metodo è cambiare la PRI: (immagine) il repeater jammer passa un certo tempo ad osservare per poi trasmettere, quindi cambiando la PRF mi accorgerò che gli echi ripetuti non sono dei bersagli e posso cancellarli.\\
+Ritardare l'eco di pelle non ha molto senso perché tipicamente parliamo di sistemi che sparano missili, quindi allontanando abbastanza si cambia il sistema ad arma, quindi lo spostamento si può fare finché la distanza del PRI è fisso, ma se il radar cambia PRT e quindi l'impulso arriva in tempi differenti, il bersaglio comincia a muoversi in quanto la distanza reale è indotta rispetto al 2° impulso.\\
+Questo da modo di capire facilmente che l'eco non è reale ma indotto da un range gate pull off.
 
 
+\subsubsection{Missile warning}
+Stiamo facendo tracking sul radar dove l'eco è posizionato in un certo punto (immagine)\\
+mentre faccio questo dedico parte delle risorse a dedicare cosa accade qualche cella radar prima, ci teniamo aperte delle finestre temporali più vicine al radar per fare misure con meno precisione.\\
+Se l'oggetto sotto osservazione lancia un missile, il radar continua a fare tracking sull'aereo perché la RCS è maggiore, quindi per accorgersene usa la seconda finestra temporale.\\
+Con questa, si accorge che c'è un eco anche lì quindi l'aereo ha lanciato un missile e quindi il radar si sposta sul missile.\\
+È utile anche per contrastare il pull off, in quanto prima o poi l'eco piccolo cade nella parte di detection della missile warning
+
+
+\subsubsection{Dickie fixe receiver}
+Sistema dove entrano in gioco non linearità dei sistemi.
+(immagine)\\
+qualitativamente, si può fare qualcosa anche quando i sistemi vanno in saturazione: se l'amplificatore satura fin ora abbiamo visto che non ci possiamo fare nulla.\\
+Ma esistono sistemi che riescono a lavorare vicino alla saturazione, questo apparato sè stato inventato per applicazioni radar.\\
+Il principio di funzionamento cerca di vedere il segnale piccolo a cui è sovrapposto uno grande che manda in saturazione: ammettiamo che ci sia l'eco del bersaglio S a cui è sovrapposto il jammer J.\\
+J ha una potenza $>>$ S, i segnali possono essere rappresentati con dei vettori analitici, modulo e fase (metti immagine)\\
+ammettiamo che il ricevitore abbia al massimo la capacità di ricevere segnali fino massimo all'ampiezza mostrata.\\
+L'informazione sulla distanza fra l'origine è limitata ad un cerchio, dopo di che si perde informazione quindi se J è grande e porta fuori dal cerchio, l'ampiezza del segnale che riceviamo è completamente privata dalla presenza di S.\\
+Se però mettiamo un limitatore, che comunque toglie informazioni di ampiezza, ed un sistema che misura la fase: il vettore è J+S, se S nel tempo cambia l'effetto sulla somma è una variazione di angolo (sull'ampiezza non abbiamo variazione perché siamo sempre saturi, limitato dal cerchio).\\
+Quindi possiamo fare misure di fase e vedere che il vettore si muove e quindi si può risalire a qualche limitata informazione di S.\\
+Se pensiamo al sistema come un conta-km analogico, la lancetta "vibra" quando appare S: se ad esempio S ruota vediamo una vibrazione che ci permette ancora di osservare il segnale se anche siamo in saturazione.\\
+Si fanno quindi due catene riceventi:
+\begin{itemize}
+	\item una lavora in condizioni di non saturazione
+	\item una limita il segnale in ampiezza così da non saturare l'amplificatore, per poi fare il discorso della variazione di angolo.\\
+	Taglia di netto il segnale, in modo che sappiamo che il segnale a valle non manderà in saturazione il componente, così da poter misurare la fase.
+\end{itemize}
+
+\subsubsection{Sommario ECCM}
+Tecniche e buone maniere per essere robusti ad interferenze:
+\begin{itemize}
+	\item buona progettazione, se ci sono falle nel sistema prima o poi saranno usate (simile al "garbage in garbage out");
+	\item war data set: costruisco un radar, co che può funzionare con diverse modalità operative e decido tutte le forma d'onda.\\
+	Alcune delle forme d'onda le tengo per la guerra, le chiamo war data set così che tutte le informazioni trovate dal nemico in tempo di pace non valgono almeno per un certo lasso di tempo.\\
+	Nella navigazione satellitare c'è ad esempio il codice P, può essere cambiato in qualunque momento dal dipartimento della difesa americana;
+	\item agily/staggering: capacità della macchina in ambiente operativo di cambiare periodicamente i parametri:
+	\begin{itemize}
+		\item salto di frequenza per piccoli intervalli di tempo
+		\item impulsi una volta lunghi ed una volta corti
+	\end{itemize}
+	cambiare anche durante il funzionamento i parametri di funzionamento della macchina, così che il disturbatore debba sempre inseguires
+	\item coding;
+	\item sidelob blanking/cancelling;
+	\item AFS;
+	\item inverse gain;
+	\item CFAR;
+	\item track on jammer: siccome esiste chi ci disturba e me ne accorgo, posso ribaltare il problema.\\
+	È qualcuno che sta trasmettendo un segnale quindi posso misurare l'angolo di arrivo del segnale e fare tracking di chi sta facendo jamming e neutralizzarlo.\\
+	Molti radar di tracking hanno questa capacità, quindi mentre lavorano trovano anche i jammer;
+	\item leading edge tracking;
+	\item warning gate;
+	\item multy threat capability: capacità di gestire contemporaneamente minacce diverse, non solo implemento qualcosa che sa trovare il jammer, ma riesco anche a vederne di più e quindi magari mettere più nulli;
+	\item cooperative radar: in un ambiente complesso possono esserci più radar che lavorano, se so scambiare le informazioni fra radar, con le tecniche di ECCM viste possiamo dare informazioni ad esempio se uno mette un nullo in una direzione un altro radar punta nella direzione del nullo;
+\end{itemize}
+
+\section{Contrasto delle tecniche di spoofing}
+È difficile contrastarli perché son visti dal ricevitore come segnali reali:
+(immagine)\\
+se i segnali sono identici rispetto a quelli dei satelliti parliamo di spoofing.\\
+Quindi il ricevitore GPS usa anche le misure del "satellite falso", così che quando risolve le equazioni delle sfere ottiene una posizione con un grosso errore.\\
+Lo spoofing è difficile da rilevare, si può fare perché probabilmente il segnale che arriva dal disturbatore è molto più potente degli altri quindi servirebbe un check nel ricevitore che vede che la potenza utile è aumentata.\\
+Dalla decodifica dei segnali non è possibile fare controlli, in ogni caso ci sono altre tecniche usabili a valle del sistema, dette di \textbf{integrity o  controllo di ridondanza}: ho a disposizione 5-6 satelliti, da usare per calcolare la posizione, risolvo il sistema di disequazioni e trovo la posizione.\\
+Sfrutto le misure, che sono di più, in sottogruppi:(disegno)
+ho un sistema con una misura in più (matrice 5x4), invece di usarla per accuratezza uso quelle dalla 1-4 per calcolare la posizione.\\
+Fatto questo, prendo da 2-5 e ricalcolo la posizione, ne avrò un'altra e faccio tutte le possibili combinazioni e verifico se le posizioni stimate sono tutte vicine fra loro.\\
+È un classico controllo di ridondanza: lo faccio perché se ad esempio il satellite 3 è guasto o è finto (creato da spoofer), succederà che se il satellite da una misura molto errata tutti i gruppi che includono il satellite 3 daranno una misura che è affetta dall'errore, l'unico gruppo senza il satellite 3 darà la misura giusta.\\
+Tutte le posizioni calcolate col satellite guasto si concentrano in un punto, mentre le altre in un altro punto e con tecniche statistiche posso affermare con una certa sicurezza che ci sia un satellite guasto, che può essere uno spoofer.\\
+Già averlo rilevato è importante, in base a quanto si è precisi con la tecnica e quanti satelliti si hanno possiamo capire chi è il guasto: con 5 satelliti possiamo rilevare che c'è uno guasto, con 6 possiamo dire chi è quello guasto O rilevarne di più.\\
+Se lo spoofer non è particolarmente complesso creerà dei segnali non molto complessi e che "allarga" la "nuvola" dei punti di posizione e quindi si scopre che c'è un guasto.\\
+Se abbiamo poi abbondanza di satelliti possiamo anche trovare chi è il satellite guasto ed escluderlo dal calcolo.\\
+Ma ormai gli spoofer moderni, molto costosi e che sono veri e proprio simulatori di costellazione, non permettono di applicare questo tipo di contromisure.
+
+\Huge
+\centering
+\textbf{\textsf{THAT'S ALL FOLKS}}
 
 
 
